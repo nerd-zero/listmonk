@@ -10,10 +10,10 @@
             {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
           </span>
         </p>
-        <h4 v-if="isEditing" class="title is-4">
+        <h4 v-if="isEditing" class="page-title">
           {{ data.name }}
         </h4>
-        <h4 v-else class="title is-4">
+        <h4 v-else class="page-title">
           {{ $t('campaigns.newCampaign') }}
         </h4>
       </div>
@@ -154,7 +154,7 @@
                   </div>
 
                   <div>
-                    <p class="has-text-right">
+                    <p style="text-align:right">
                       <a href="#" @click.prevent="onShowHeaders" data-cy="btn-headers">
                         <i class="pi pi-plus" />{{ $t('settings.smtp.setCustomHeaders') }}
                       </a>
@@ -215,7 +215,7 @@
                   @focus="onOpenAttach" :disabled="!canEdit" multiple />
               </div>
             </div>
-            <div class="col has-text-right">
+            <div class="col" style="text-align:right">
               <a href="https://listmonk.app/docs/templating/#template-expressions" target="_blank"
                 rel="noopener noreferer">
                 <i class="pi pi-code" /> {{ $t('campaigns.templatingRef') }}</a>
@@ -329,11 +329,7 @@
     </PvTabs>
 
     <PvDialog v-model:visible="isAttachModalOpen" :style="{ width: '900px' }" :closable="true" modal>
-      <div class="modal-card content" style="width: auto">
-        <section expanded class="modal-card-body">
-          <media is-modal @selected="onAttachSelect" />
-        </section>
-      </div>
+      <media is-modal @selected="onAttachSelect" />
     </PvDialog>
 
     <campaign-preview v-if="isPreviewingArchive" @close="onToggleArchivePreview" type="campaign" :id="data.id"

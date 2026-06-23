@@ -1,10 +1,12 @@
 <template>
   <section class="media-files">
-    <h1 class="title is-4">
-      {{ $t('media.title') }}
-      <span v-if="media.results && media.results.length > 0">({{ media.results.length }})</span>
-      <span class="has-text-grey-light"> / {{ serverConfig.media_provider }}</span>
-    </h1>
+    <div class="page-header" style="margin-bottom:1.5rem">
+      <h1 class="page-title">
+        {{ $t('media.title') }}
+        <span v-if="media.results && media.results.length > 0" class="page-title-count">{{ media.results.length }}</span>
+        <span style="font-size:0.85rem;font-weight:400;color:#94a3b8"> / {{ serverConfig.media_provider }}</span>
+      </h1>
+    </div>
 
     <div v-if="isProcessing || loading.media" class="flex justify-center p-8">
       <PvProgressSpinner />

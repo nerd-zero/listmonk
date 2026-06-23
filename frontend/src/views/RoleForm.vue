@@ -83,7 +83,7 @@
                 {{ $t('users.perms') }}
               </h5>
             </div>
-            <div class="col has-text-right" v-if="!disabled">
+            <div v-if="!disabled" style="text-align:right">
               <a href="#" @click.prevent="onToggleSelect">{{ $t('globals.buttons.toggleSelect') }}</a>
             </div>
           </div>

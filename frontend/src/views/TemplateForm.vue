@@ -1,21 +1,16 @@
 <template>
   <section>
-    <form @submit.prevent="onSubmit">
-      <div class="modal-card content template-modal-content" style="width: auto">
-        <header class="modal-card-head">
-          <PvButton severity="primary" @click="onTogglePreview" class="is-pulled-right" icon="pi pi-file" :label="$t('templates.preview') + ' (F9)'" />
-
-          <template v-if="isEditing">
-            <h4>{{ data.name }}</h4>
-            <p class="has-text-grey is-size-7">
-              {{ $t('globals.fields.id') }}: <span data-cy="id"><copy-text :text="`${data.id}`" /></span>
-            </p>
-          </template>
-          <h4 v-else>
-            {{ $t('templates.newTemplate') }}
-          </h4>
-        </header>
-        <section expanded class="modal-card-body mb-0 pb-0">
+    <form class="lm-form" @submit.prevent="onSubmit">
+      <div class="lm-form-header">
+        <div class="lm-form-title-row">
+          <h3 class="lm-form-title">{{ isEditing ? data.name : $t('templates.newTemplate') }}</h3>
+          <PvButton severity="secondary" @click="onTogglePreview" icon="pi pi-file" :label="$t('templates.preview') + ' (F9)'" />
+        </div>
+        <p v-if="isEditing" class="lm-form-meta">
+          {{ $t('globals.fields.id') }}: <copy-text :text="`${data.id}`" data-cy="id" />
+        </p>
+      </div>
+      <div class="lm-form-body">
           <div class="grid">
             <div class="col-9">
               <div class="field">
@@ -59,7 +54,7 @@
             </div>
           </template>
 
-          <p class="is-size-7">
+          <p class="template-help">
             <template v-if="form.type === 'campaign'">
               {{ $t('templates.placeholderHelp', { placeholder: egPlaceholder }) }}
             </template>
@@ -67,12 +62,12 @@
               {{ $t('globals.buttons.learnMore') }}
             </a>
           </p>
-        </section>
-        <footer class="modal-card-foot has-text-right">
-          <PvButton @click="$parent.close()" :label="$t('globals.buttons.close')" />
-          <PvButton v-if="$can('templates:manage')" type="submit" severity="primary" :loading="loading.templates"
-            :label="$t('globals.buttons.save')" />
-        </footer>
+      </div>
+
+      <div class="lm-form-footer">
+        <PvButton @click="$emit('close')" :label="$t('globals.buttons.close')" severity="secondary" />
+        <PvButton v-if="$can('templates:manage')" type="submit" severity="primary" :loading="loading.templates"
+          :label="$t('globals.buttons.save')" />
       </div>
     </form>
     <campaign-preview v-if="previewItem" is-post type="template" :title="previewItem.name"
@@ -100,6 +95,8 @@ export default {
     data: { type: Object, default: () => { } },
     isEditing: { type: Boolean, default: false },
   },
+
+  emits: ['finished', 'close'],
 
   data() {
     return {
@@ -150,7 +147,7 @@ export default {
 
       this.$api.createTemplate(data).then((d) => {
         this.$emit('finished');
-        this.$parent.close();
+        this.$emit('close');
         this.$utils.toast(this.$t('globals.messages.created', { name: d.name }));
       });
     },
@@ -167,7 +164,7 @@ export default {
 
       this.$api.updateTemplate(data).then((d) => {
         this.$emit('finished');
-        this.$parent.close();
+        this.$emit('close');
         this.$utils.toast(`'${d.name}' updated`);
       });
     },
@@ -197,3 +194,26 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.lm-form { display: flex; flex-direction: column; }
+
+.lm-form-header {
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.lm-form-title-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.35rem;
+}
+.lm-form-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
+.lm-form-meta { font-size: 0.75rem; color: #94a3b8; margin: 0; }
+
+.lm-form-body { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+
+.lm-form-footer {
+  display: flex; justify-content: flex-end; gap: 0.5rem;
+  padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0;
+}
+
+.template-help { font-size: 0.78rem; color: #94a3b8; margin: 0; }
+</style>

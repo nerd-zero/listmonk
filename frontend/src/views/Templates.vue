@@ -81,9 +81,9 @@
     </div>
 
     <!-- Add / edit form modal -->
-    <PvDialog v-model:visible="isFormVisible" :style="{ width: '1200px' }" :closable="false" modal
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '1200px' }" show-header="false" :closable="false" modal
       class="template-modal">
-      <template-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
+      <template-form :data="curItem" :is-editing="isEditing" @finished="formFinished" @close="isFormVisible = false" />
     </PvDialog>
 
     <campaign-preview v-if="previewItem" type="template" :id="previewItem.id" :template-type="previewItem.type"

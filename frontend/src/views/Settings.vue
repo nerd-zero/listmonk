@@ -4,22 +4,15 @@
       <div v-if="loading.settings || isLoading" class="flex justify-center p-8">
         <PvProgressSpinner />
       </div>
-      <header class="grid page-header">
-        <div class="col-6">
-          <h1 class="title is-4">
-            {{ $t('settings.title') }}
-            <span class="has-text-grey-light">({{ serverConfig.version }})</span>
-          </h1>
-        </div>
-        <div class="col has-text-right">
-          <div v-if="$can('settings:manage')">
-            <PvButton :disabled="!hasFormChanged" severity="primary" icon="pi pi-save"
-              type="submit" class="isSaveEnabled" data-cy="btn-save"
-              :label="$t('globals.buttons.save')" />
-          </div>
-        </div>
-      </header>
-      <hr />
+      <div class="page-header" style="margin-bottom:1.5rem">
+        <h1 class="page-title">
+          {{ $t('settings.title') }}
+          <span style="font-size:0.85rem;font-weight:400;color:#94a3b8">({{ serverConfig.version }})</span>
+        </h1>
+        <PvButton v-if="$can('settings:manage')" :disabled="!hasFormChanged" severity="primary" icon="pi pi-save"
+          type="submit" class="isSaveEnabled" data-cy="btn-save"
+          :label="$t('globals.buttons.save')" />
+      </div>
 
       <section class="wrap settings-wrap" v-if="form">
         <PvTabs class="settings-tabs" v-model:value="tab">
