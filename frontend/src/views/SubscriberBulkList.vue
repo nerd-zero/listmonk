@@ -1,47 +1,43 @@
 <template>
-  <form @submit.prevent="onSubmit">
-    <div class="modal-card" style="width: auto">
-      <header class="modal-card-head">
-        <h4 class="title is-size-5">
-          {{ $t('subscribers.manageLists') }}
-        </h4>
-      </header>
+  <form class="lm-form" @submit.prevent="onSubmit">
+    <div class="lm-form-header">
+      <h3 class="lm-form-title">{{ $t('subscribers.manageLists') }}</h3>
+    </div>
 
-      <section expanded class="modal-card-body">
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">Action</label>
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <PvRadioButton v-model="form.action" name="action" value="add" input-id="action-add" data-cy="check-list-add" />
-              <label for="action-add">{{ $t('globals.buttons.add') }}</label>
-            </div>
-            <div class="flex items-center gap-2 mb-1">
-              <PvRadioButton v-model="form.action" name="action" value="remove" input-id="action-remove" data-cy="check-list-remove" />
-              <label for="action-remove">{{ $t('globals.buttons.remove') }}</label>
-            </div>
-            <div class="flex items-center gap-2 mb-1">
-              <PvRadioButton v-model="form.action" name="action" value="unsubscribe" input-id="action-unsubscribe" data-cy="check-list-unsubscribe" />
-              <label for="action-unsubscribe">{{ $t('subscribers.markUnsubscribed') }}</label>
-            </div>
-          </div>
+    <div class="lm-form-body">
+      <div class="lm-field">
+        <label class="lm-label">Action</label>
+        <div class="radio-group">
+          <label class="radio-item">
+            <PvRadioButton v-model="form.action" name="action" value="add" input-id="action-add" data-cy="check-list-add" />
+            <span>{{ $t('globals.buttons.add') }}</span>
+          </label>
+          <label class="radio-item">
+            <PvRadioButton v-model="form.action" name="action" value="remove" input-id="action-remove" data-cy="check-list-remove" />
+            <span>{{ $t('globals.buttons.remove') }}</span>
+          </label>
+          <label class="radio-item">
+            <PvRadioButton v-model="form.action" name="action" value="unsubscribe" input-id="action-unsubscribe" data-cy="check-list-unsubscribe" />
+            <span>{{ $t('subscribers.markUnsubscribed') }}</span>
+          </label>
         </div>
+      </div>
 
-        <list-selector label="Target lists" placeholder="Lists to apply to" v-model="form.lists" :selected="form.lists"
-          :all="lists.results" />
+      <list-selector label="Target lists" placeholder="Lists to apply to" v-model="form.lists" :selected="form.lists"
+        :all="lists.results" />
 
-        <div class="field">
-          <div class="flex items-center gap-2">
-            <PvCheckbox v-model="form.preconfirm" data-cy="preconfirm" :binary="true" :true-value="true" :false-value="false" :disabled="!hasOptinList" input-id="preconfirm" />
-            <label for="preconfirm">{{ $t('subscribers.preconfirm') }}</label>
-          </div>
-          <small class="block mt-1 text-color-secondary">{{ $t('subscribers.preconfirmHelp') }}</small>
+      <div class="lm-field">
+        <div class="flex items-center gap-2">
+          <PvCheckbox v-model="form.preconfirm" data-cy="preconfirm" :binary="true" :true-value="true" :false-value="false" :disabled="!hasOptinList" input-id="preconfirm" />
+          <label for="preconfirm" class="lm-label" style="margin:0">{{ $t('subscribers.preconfirm') }}</label>
         </div>
-      </section>
+        <small class="lm-help">{{ $t('subscribers.preconfirmHelp') }}</small>
+      </div>
+    </div>
 
-      <footer class="modal-card-foot has-text-right">
-        <PvButton @click="$parent.close()" :label="$t('globals.buttons.close')" />
-        <PvButton type="submit" severity="primary" :disabled="form.lists.length === 0" :label="$t('globals.buttons.save')" />
-      </footer>
+    <div class="lm-form-footer">
+      <PvButton @click="$emit('close')" :label="$t('globals.buttons.close')" severity="secondary" />
+      <PvButton type="submit" severity="primary" :disabled="form.lists.length === 0" :label="$t('globals.buttons.save')" />
     </div>
   </form>
 </template>
@@ -60,9 +56,10 @@ export default {
     numSubscribers: { type: Number, default: 0 },
   },
 
+  emits: ['finished', 'close'],
+
   data() {
     return {
-      // Binds form input values.
       form: {
         action: 'add',
         lists: [],
@@ -74,7 +71,7 @@ export default {
   methods: {
     onSubmit() {
       this.$emit('finished', this.form.action, this.form.preconfirm, this.form.lists);
-      this.$parent.close();
+      this.$emit('close');
     },
   },
 
@@ -87,3 +84,35 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.lm-form { display: flex; flex-direction: column; }
+
+.lm-form-header {
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.lm-form-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
+
+.lm-form-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.lm-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.lm-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+.lm-help { font-size: 0.75rem; color: #94a3b8; line-height: 1.4; }
+
+.radio-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.radio-item { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; color: #374151; }
+
+.lm-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+</style>

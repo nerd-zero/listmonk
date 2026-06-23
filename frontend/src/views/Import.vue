@@ -1,8 +1,9 @@
 <template>
-  <section class="import">
-    <h1 class="title is-4">
-      {{ $t('import.title') }}
-    </h1>
+  <div class="import-page">
+    <div class="page-header">
+      <h1 class="page-title">{{ $t('import.title') }}</h1>
+    </div>
+
     <div v-if="isLoading" class="flex justify-center p-8">
       <PvProgressSpinner />
     </div>
@@ -120,47 +121,30 @@
       <br /><br />
 
       <div class="import-help">
-        <h5 class="title is-size-6">
-          {{ $t('import.instructions') }}
-        </h5>
+        <h5 class="import-help-title">{{ $t('import.instructions') }}</h5>
         <p>{{ $t('import.instructionsHelp') }}</p>
-        <br />
         <blockquote class="csv-example">
           <code class="csv-headers"> <span>email,</span> <span>name,</span> <span>attributes</span></code>
         </blockquote>
-
         <hr />
-
-        <h5 class="title is-size-6">
-          {{ $t('import.csvExample') }}
-        </h5>
-
+        <h5 class="import-help-title">{{ $t('import.csvExample') }}</h5>
         <pre class="csv-example" v-text="example" />
       </div>
-    </section><!-- upload //-->
+    </section>
 
-    <section v-if="isRunning() || isDone()" class="wrap status box has-text-centered">
+    <section v-if="isRunning() || isDone()" class="import-status">
       <PvProgressBar :value="progress" style="height:6px" />
-      <br />
-      <p
-        :class="['is-size-5', 'is-capitalized', { 'has-text-success': status.status === 'finished' }, { 'has-text-danger': (status.status === 'failed' || status.status === 'stopped') }]">
+      <p :class="['import-status-text', { 'import-status-text--success': status.status === 'finished', 'import-status-text--danger': (status.status === 'failed' || status.status === 'stopped') }]">
         {{ status.status }}
       </p>
-
-      <p>{{ $t('import.recordsCount', { num: status.imported, total: status.total }) }}</p>
-      <br />
-
-      <p>
-        <PvButton @click="stopImport" :loading="isProcessing" icon="pi pi-upload" severity="primary"
-          :label="isDone() ? $t('import.importDone') : $t('import.stopImport')" />
-      </p>
-      <br />
-
+      <p class="import-count">{{ $t('import.recordsCount', { num: status.imported, total: status.total }) }}</p>
+      <PvButton @click="stopImport" :loading="isProcessing" icon="pi pi-upload" severity="primary"
+        :label="isDone() ? $t('import.importDone') : $t('import.stopImport')" />
       <div class="import-logs">
         <log-view :lines="logs" :loading="false" />
       </div>
     </section>
-  </section>
+  </div>
 </template>
 
 <script>
@@ -401,3 +385,22 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.import-page { display: flex; flex-direction: column; gap: 1.5rem; }
+.page-header { display: flex; align-items: center; }
+.page-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0; }
+
+.import-help-title { font-size: 0.95rem; font-weight: 600; color: #374151; margin: 0 0 0.5rem; }
+
+.import-status {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  text-align: center;
+}
+.import-status-text { font-size: 1.25rem; font-weight: 600; text-transform: capitalize; color: #374151; margin: 0; }
+.import-status-text--success { color: #22c55e; }
+.import-status-text--danger { color: #ef4444; }
+.import-count { font-size: 0.875rem; color: #64748b; margin: 0; }
+.import-logs { width: 100%; }
+</style>

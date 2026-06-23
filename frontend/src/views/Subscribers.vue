@@ -191,13 +191,13 @@
     </div>
 
     <!-- Manage list modal -->
-    <PvDialog v-model:visible="isBulkListFormVisible" :style="{ width: '500px' }" :closable="true" modal>
-      <subscriber-bulk-list :num-subscribers="numSelectedSubscribers" @finished="bulkChangeLists" />
+    <PvDialog v-model:visible="isBulkListFormVisible" :style="{ width: '500px' }" show-header="false" :closable="false" modal>
+      <subscriber-bulk-list :num-subscribers="numSelectedSubscribers" @finished="bulkChangeLists" @close="isBulkListFormVisible = false" />
     </PvDialog>
 
     <!-- Add / edit form modal -->
-    <PvDialog v-model:visible="isFormVisible" :style="{ width: '850px' }" :closable="true" modal @hide="onFormClose">
-      <subscriber-form :data="curItem" :is-editing="isEditing" @finished="querySubscribers" />
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '850px' }" show-header="false" :closable="false" modal @hide="onFormClose">
+      <subscriber-form :data="curItem" :is-editing="isEditing" @finished="querySubscribers" @close="isFormVisible = false" />
     </PvDialog>
   </div>
 </template>

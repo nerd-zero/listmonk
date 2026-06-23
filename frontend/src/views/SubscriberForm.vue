@@ -1,23 +1,18 @@
 <template>
-  <form @submit.prevent="onSubmit">
-    <div class="modal-card content" style="width: auto">
-      <header class="modal-card-head">
-        <PvTag v-if="isEditing" :class="[data.status, 'is-pulled-right']"
+  <form class="lm-form" @submit.prevent="onSubmit">
+    <div class="lm-form-header">
+      <div class="lm-form-title-row">
+        <h3 class="lm-form-title">{{ isEditing ? data.name : $t('subscribers.newSubscriber') }}</h3>
+        <PvTag v-if="isEditing" :severity="data.status === 'enabled' ? 'success' : 'danger'" size="small"
           :value="$t(`subscribers.status.${data.status}`)" />
-        <h4 v-if="isEditing">
-          {{ data.name }}
-        </h4>
-        <h4 v-else>
-          {{ $t('subscribers.newSubscriber') }}
-        </h4>
+      </div>
+      <p v-if="isEditing" class="lm-form-meta">
+        ID: <copy-text :text="`${data.id}`" data-cy="id" /> &nbsp;·&nbsp;
+        UUID: <copy-text :text="data.uuid" />
+      </p>
+    </div>
 
-        <p v-if="isEditing" class="has-text-grey is-size-7">
-          {{ $t('globals.fields.id') }}: <span data-cy="id"><copy-text :text="`${data.id}`" /></span>
-          {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
-        </p>
-      </header>
-
-      <section expanded class="modal-card-body">
+    <div class="lm-form-body">
         <div class="field">
           <label class="block mb-1 text-sm font-medium">{{ $t('subscribers.email') }}</label>
           <PvInputText :maxlength="200" v-model="form.email" name="email" ref="focus"
@@ -64,7 +59,7 @@
                     </div>
                   </div>
                 </div>
-                <div v-if="$can('subscribers:manage') && isEditing" class="col-5 has-text-right">
+                <div v-if="$can('subscribers:manage') && isEditing" style="text-align:right">
                   <a href="#" @click.prevent="sendOptinConfirmation" :class="{ 'is-disabled': !hasOptinList }">
                     <i class="pi pi-envelope" />
                     {{ $t('subscribers.sendOptinConfirm') }}</a>
@@ -165,22 +160,20 @@
           </PvTabPanels>
         </PvTabs>
 
-        <div class="field mt-6">
-          <small class="block mt-1 text-color-secondary">{{ $t('subscribers.attribsHelp') + ' ' + egAttribs }}</small>
-          <div>
-            <h5>{{ $t('globals.terms.attribs') }}</h5>
-            <PvTextarea v-model="form.strAttribs" name="attribs" rows="4" />
-            <a href="https://listmonk.app/docs/concepts" target="_blank" rel="noopener noreferrer" class="is-size-7">
-              {{ $t('globals.buttons.learnMore') }} <i class="pi pi-external-link" />
-            </a>
-          </div>
+        <div class="attribs-field">
+          <h5 class="attribs-title">{{ $t('globals.terms.attribs') }}</h5>
+          <small class="attribs-help">{{ $t('subscribers.attribsHelp') + ' ' + egAttribs }}</small>
+          <PvTextarea v-model="form.strAttribs" name="attribs" rows="4" class="w-full" />
+          <a href="https://listmonk.app/docs/concepts" target="_blank" rel="noopener noreferrer" class="learn-more-link">
+            {{ $t('globals.buttons.learnMore') }} <i class="pi pi-external-link" />
+          </a>
         </div>
-      </section>
-      <footer class="modal-card-foot has-text-right">
-        <PvButton @click="$parent.close()" :label="$t('globals.buttons.close')" />
-        <PvButton v-if="$can('subscribers:manage')" type="submit" severity="primary"
-          :loading="loading.subscribers" :label="$t('globals.buttons.save')" />
-      </footer>
+    </div>
+
+    <div class="lm-form-footer">
+      <PvButton @click="$emit('close')" :label="$t('globals.buttons.close')" severity="secondary" />
+      <PvButton v-if="$can('subscribers:manage')" type="submit" severity="primary"
+        :loading="loading.subscribers" :label="$t('globals.buttons.save')" />
     </div>
   </form>
 </template>
@@ -206,6 +199,8 @@ export default {
     },
     isEditing: Boolean,
   },
+
+  emits: ['finished', 'close'],
 
   data() {
     return {
@@ -383,3 +378,37 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.lm-form { display: flex; flex-direction: column; }
+
+.lm-form-header {
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.lm-form-title-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.35rem; }
+.lm-form-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
+.lm-form-meta { font-size: 0.75rem; color: #94a3b8; margin: 0; }
+
+.lm-form-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  max-height: 65vh;
+}
+
+.lm-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.attribs-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.attribs-title { font-size: 0.9rem; font-weight: 600; color: #0f172a; margin: 0; }
+.attribs-help { font-size: 0.75rem; color: #94a3b8; }
+.learn-more-link { font-size: 0.78rem; color: #3b82f6; text-decoration: none; &:hover { text-decoration: underline; } }
+</style>

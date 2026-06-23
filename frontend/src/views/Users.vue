@@ -105,8 +105,8 @@
     </div>
 
     <!-- Add / edit form modal -->
-    <PvDialog v-model:visible="isFormVisible" :style="{ width: '600px' }" :closable="true" modal @hide="onFormClose">
-      <user-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '600px' }" show-header="false" :closable="false" modal @hide="onFormClose">
+      <user-form :data="curItem" :is-editing="isEditing" @finished="formFinished" @close="isFormVisible = false" />
     </PvDialog>
   </div>
 </template>
