@@ -6,65 +6,85 @@
       <span class="has-text-grey-light"> / {{ serverConfig.media_provider }}</span>
     </h1>
 
-    <b-loading :active="isProcessing || loading.media" />
+    <div v-if="isProcessing || loading.media" class="flex justify-center p-8">
+      <PvProgressSpinner />
+    </div>
 
     <section class="wrap gallery mt-6">
       <div class="columns mb-4">
         <div class="column">
           <form @submit.prevent="onQueryMedia" class="search">
             <div>
-              <b-field>
-                <b-input v-model="queryParams.query" name="query" expanded icon="magnify" ref="query" data-cy="query" />
-                <p class="controls">
-                  <b-button native-type="submit" type="is-primary" icon-left="magnify" data-cy="btn-query" />
-                </p>
-              </b-field>
+              <div class="field">
+                <div class="p-inputgroup">
+                  <PvInputText v-model="queryParams.query" name="query" ref="query" data-cy="query" />
+                  <PvButton type="submit" severity="primary" icon="pi pi-search" data-cy="btn-query" />
+                </div>
+              </div>
             </div>
           </form>
         </div>
         <div v-if="$can('media:manage')" class="column is-narrow">
-          <b-button @click="onToggleForm" icon-left="file-upload-outline" data-cy="btn-toggle-upload">
-            {{ $t('media.upload') }}
-          </b-button>
+          <PvButton @click="onToggleForm" icon="pi pi-upload" data-cy="btn-toggle-upload"
+            :label="$t('media.upload')" />
         </div>
       </div>
 
-      <b-collapse v-if="$can('media:manage')" v-model="showUploadForm" animation="">
-        <form @submit.prevent="onSubmit" class="mb-6" data-cy="upload">
+      <div v-if="$can('media:manage') && showUploadForm" class="mb-6">
+        <form @submit.prevent="onSubmit" data-cy="upload">
           <div>
-            <b-field :label="$t('media.upload')">
-              <b-upload v-model="form.files" drag-drop multiple xaccept=".png,.jpg,.jpeg,.gif,.svg" expanded>
-                <div class="has-text-centered section">
-                  <p>
-                    <b-icon icon="file-upload-outline" size="is-large" />
-                  </p>
-                  <p>{{ $t('media.uploadHelp') }}</p>
-                </div>
-              </b-upload>
-            </b-field>
-            <div class="tags" v-if="form.files.length > 0">
-              <b-tag v-for="(f, i) in form.files" :key="i" size="is-medium" closable @close="removeUploadFile(i)">
-                {{ f.name }}
-              </b-tag>
+            <div class="field">
+              <label class="block mb-1 text-sm font-medium">{{ $t('media.upload') }}</label>
+              <!-- TODO: PrimeVue FileUpload used in custom mode to replicate drag-drop multi-file upload -->
+              <PvFileUpload
+                mode="advanced"
+                :multiple="true"
+                :auto="false"
+                :custom-upload="true"
+                @select="onFilesSelect"
+                @remove="onFileRemove"
+                :show-upload-button="false"
+                :show-cancel-button="false"
+              >
+                <template #empty>
+                  <div class="has-text-centered section">
+                    <p>
+                      <i class="pi pi-upload" style="font-size:2rem" />
+                    </p>
+                    <p>{{ $t('media.uploadHelp') }}</p>
+                  </div>
+                </template>
+              </PvFileUpload>
             </div>
-            <div class="buttons">
-              <b-button native-type="submit" type="is-primary" icon-left="file-upload-outline"
-                :disabled="form.files.length === 0" :loading="isProcessing">
-                {{ $tc('media.upload') }}
-              </b-button>
+            <div class="tags" v-if="form.files.length > 0">
+              <PvTag v-for="(f, i) in form.files" :key="i" :value="f.name" class="mr-1 mb-1">
+                <template #default>
+                  {{ f.name }}
+                  <i class="pi pi-times ml-1" style="cursor:pointer" @click="removeUploadFile(i)" />
+                </template>
+              </PvTag>
+            </div>
+            <div class="buttons mt-3">
+              <PvButton type="submit" severity="primary" icon="pi pi-upload"
+                :disabled="form.files.length === 0" :loading="isProcessing"
+                :label="$tc('media.upload')" />
             </div>
           </div>
         </form>
-      </b-collapse>
+      </div>
 
       <!-- Pagination -->
       <div v-if="media.total > media.perPage" class="pagination-wrapper mt-5">
-        <b-pagination :total="media.total" :current.sync="media.page" :per-page="media.perPage"
-          @change="onPageChange" />
+        <PvPaginator
+          :rows="media.perPage"
+          :total-records="media.total"
+          :first="(media.page - 1) * media.perPage"
+          @page="(e) => onPageChange(e.page + 1)"
+        />
       </div>
 
       <div v-if="loading.media" class="has-text-centered py-6">
-        <b-loading :active="loading.media" />
+        <PvProgressSpinner />
       </div>
       <div v-else-if="media.results && media.results.length > 0" class="grid">
         <div v-for="item in media.results" :key="item.id" class="item">
@@ -83,7 +103,7 @@
             <div class="actions">
               <a href="#" @click.prevent="$utils.confirm(null, () => onDeleteMedia(item.id))" data-cy="btn-delete"
                 :aria-label="$t('globals.buttons.delete')" class="delete-btn">
-                <b-icon icon="trash-can-outline" size="is-small" />
+                <i class="pi pi-trash" />
               </a>
             </div>
           </div>
@@ -101,19 +121,22 @@
 
       <!-- Pagination -->
       <div v-if="media.total > media.perPage" class="pagination-wrapper mt-5">
-        <b-pagination :total="media.total" :current.sync="media.page" :per-page="media.perPage"
-          @change="onPageChange" />
+        <PvPaginator
+          :rows="media.perPage"
+          :total-records="media.total"
+          :first="(media.page - 1) * media.perPage"
+          @page="(e) => onPageChange(e.page + 1)"
+        />
       </div>
     </section>
   </section>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default Vue.extend({
+export default {
   components: {
     EmptyPlaceholder,
   },
@@ -144,6 +167,14 @@ export default Vue.extend({
   methods: {
     removeUploadFile(i) {
       this.form.files.splice(i, 1);
+    },
+
+    onFilesSelect(event) {
+      this.form.files = event.files ? [...event.files] : [];
+    },
+
+    onFileRemove(event) {
+      this.form.files = this.form.files.filter((f) => f !== event.file);
     },
 
     getMedia() {
@@ -227,7 +258,7 @@ export default Vue.extend({
     this.$root.$on('page.refresh', this.getMedia);
   },
 
-  destroyed() {
+  unmounted() {
     this.$root.$off('page.refresh', this.getMedia);
   },
 
@@ -238,5 +269,5 @@ export default Vue.extend({
       this.showUploadForm = true;
     }
   },
-});
+};
 </script>

@@ -4,68 +4,66 @@
       <div class="block box" v-for="(item, n) in form.smtp" :key="n">
         <div class="columns">
           <div class="column is-2">
-            <b-field>
-              <b-switch v-model="item.enabled" name="enabled" :native-value="true" data-cy="btn-enable-smtp">
-                {{ $t('globals.buttons.enabled') }}
-              </b-switch>
-            </b-field>
-            <b-field v-if="form.smtp.length > 1">
+            <div class="field">
+              <div class="flex items-center gap-2">
+                <PvToggleSwitch v-model="item.enabled" name="enabled" data-cy="btn-enable-smtp" />
+                <span>{{ $t('globals.buttons.enabled') }}</span>
+              </div>
+            </div>
+            <div class="field" v-if="form.smtp.length > 1">
               <a @click.prevent="$utils.confirm(null, () => removeSMTP(n))" href="#" data-cy="btn-delete-smtp">
-                <b-icon icon="trash-can-outline" />
+                <i class="pi pi-trash" />
                 {{ $t('globals.buttons.delete') }}
               </a>
-            </b-field>
+            </div>
           </div><!-- first column -->
 
           <div class="column" :class="{ disabled: !item.enabled }">
             <div class="columns">
               <div class="column is-9">
-                <b-field :label="$t('settings.mailserver.host')" label-position="on-border"
-                  :message="$t('settings.mailserver.hostHelp')">
-                  <b-input v-model="item.host" name="host" placeholder="smtp.yourmailserver.net" :maxlength="200" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.host') }}</label>
+                  <PvInputText v-model="item.host" name="host" placeholder="smtp.yourmailserver.net" :maxlength="200" />
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.hostHelp') }}</small>
+                </div>
               </div>
               <div class="column">
-                <b-field :label="$t('settings.mailserver.port')" label-position="on-border"
-                  :message="$t('settings.mailserver.portHelp')">
-                  <b-numberinput v-model="item.port" name="port" type="is-light" controls-position="compact"
-                    placeholder="25" min="1" max="65535" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.port') }}</label>
+                  <PvInputNumber v-model="item.port" name="port" placeholder="25" :min="1" :max="65535" />
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.portHelp') }}</small>
+                </div>
               </div>
             </div><!-- host -->
 
             <div class="columns">
               <div class="column is-3">
-                <b-field :label="$t('settings.mailserver.authProtocol')" label-position="on-border">
-                  <b-select v-model="item.auth_protocol" name="auth_protocol" expanded>
-                    <option value="login">
-                      LOGIN
-                    </option>
-                    <option value="cram">
-                      CRAM
-                    </option>
-                    <option value="plain">
-                      PLAIN
-                    </option>
-                    <option value="none">
-                      None
-                    </option>
-                  </b-select>
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.authProtocol') }}</label>
+                  <PvSelect v-model="item.auth_protocol" name="auth_protocol"
+                    :options="[{ label: 'LOGIN', value: 'login' }, { label: 'CRAM', value: 'cram' }, { label: 'PLAIN', value: 'plain' }, { label: 'None', value: 'none' }]"
+                    option-label="label" option-value="value" />
+                </div>
               </div>
               <div class="column">
-                <b-field grouped>
-                  <b-field :label="$t('settings.mailserver.username')" label-position="on-border" expanded>
-                    <b-input v-model="item.username" :custom-class="`smtp-username-${n}`"
-                      :disabled="item.auth_protocol === 'none'" name="username" placeholder="mysmtp" :maxlength="200" />
-                  </b-field>
-                  <b-field :label="$t('settings.mailserver.password')" label-position="on-border" expanded
-                    :message="$t('settings.mailserver.passwordHelp')">
-                    <b-input v-model="item.password" :disabled="item.auth_protocol === 'none'" name="password"
-                      type="password" :custom-class="`password-${n}`"
-                      :placeholder="$t('settings.mailserver.passwordHelp')" :maxlength="200" />
-                  </b-field>
-                </b-field>
+                <div class="columns">
+                  <div class="column">
+                    <div class="field">
+                      <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.username') }}</label>
+                      <PvInputText v-model="item.username" :class="`smtp-username-${n}`"
+                        :disabled="item.auth_protocol === 'none'" name="username" placeholder="mysmtp" :maxlength="200" />
+                    </div>
+                  </div>
+                  <div class="column">
+                    <div class="field">
+                      <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.password') }}</label>
+                      <PvPassword v-model="item.password" :disabled="item.auth_protocol === 'none'" name="password"
+                        :input-class="`password-${n}`"
+                        :placeholder="$t('settings.mailserver.passwordHelp')" :maxlength="200" :feedback="false" />
+                      <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.passwordHelp') }}</small>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div><!-- auth -->
             <div class="spaced-links is-size-7">
@@ -83,93 +81,98 @@
 
             <div class="columns">
               <div class="column is-6">
-                <b-field :label="$t('settings.smtp.heloHost')" label-position="on-border"
-                  :message="$t('settings.smtp.heloHostHelp')">
-                  <b-input v-model="item.hello_hostname" name="hello_hostname" placeholder="" :maxlength="200" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.heloHost') }}</label>
+                  <PvInputText v-model="item.hello_hostname" name="hello_hostname" placeholder="" :maxlength="200" />
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.smtp.heloHostHelp') }}</small>
+                </div>
               </div>
               <div class="column">
-                <b-field grouped>
-                  <b-field :label="$t('settings.mailserver.tls')" expanded :message="$t('settings.mailserver.tlsHelp')"
-                    label-position="on-border">
-                    <b-select v-model="item.tls_type" name="items.tls_type">
-                      <option value="none">
-                        {{ $t('globals.states.off') }}
-                      </option>
-                      <option value="STARTTLS">
-                        STARTTLS
-                      </option>
-                      <option value="TLS">
-                        SSL/TLS
-                      </option>
-                    </b-select>
-                  </b-field>
-                  <b-field expanded :message="$t('settings.mailserver.skipTLSHelp')">
-                    <b-switch v-model="item.tls_skip_verify" :disabled="item.tls_type === 'none'"
-                      name="item.tls_skip_verify">
-                      {{ $t('settings.mailserver.skipTLS') }}
-                    </b-switch>
-                  </b-field>
-                </b-field>
+                <div class="columns">
+                  <div class="column">
+                    <div class="field">
+                      <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.tls') }}</label>
+                      <PvSelect v-model="item.tls_type" name="items.tls_type"
+                        :options="[{ label: $t('globals.states.off'), value: 'none' }, { label: 'STARTTLS', value: 'STARTTLS' }, { label: 'SSL/TLS', value: 'TLS' }]"
+                        option-label="label" option-value="value" />
+                      <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.tlsHelp') }}</small>
+                    </div>
+                  </div>
+                  <div class="column">
+                    <div class="field">
+                      <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.skipTLSHelp') }}</small>
+                      <div class="flex items-center gap-2">
+                        <PvToggleSwitch v-model="item.tls_skip_verify" :disabled="item.tls_type === 'none'"
+                          name="item.tls_skip_verify" />
+                        <span>{{ $t('settings.mailserver.skipTLS') }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div><!-- TLS -->
             <hr />
 
             <div class="columns">
               <div class="column is-4">
-                <b-field :label="$t('settings.mailserver.maxConns')" label-position="on-border"
-                  :message="$t('settings.mailserver.maxConnsHelp')">
-                  <b-numberinput v-model="item.max_conns" name="max_conns" type="is-light" controls-position="compact"
-                    placeholder="25" min="1" max="65535" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.maxConns') }}</label>
+                  <PvInputNumber v-model="item.max_conns" name="max_conns" placeholder="25" :min="1" :max="65535" />
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.maxConnsHelp') }}</small>
+                </div>
               </div>
               <div class="column is-4">
-                <b-field :label="$t('settings.mailserver.idleTimeout')" label-position="on-border"
-                  :message="$t('settings.mailserver.idleTimeoutHelp')">
-                  <b-input v-model="item.idle_timeout" name="idle_timeout" placeholder="15s" :pattern="regDuration"
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.idleTimeout') }}</label>
+                  <PvInputText v-model="item.idle_timeout" name="idle_timeout" placeholder="15s" :pattern="regDuration"
                     :maxlength="10" />
-                </b-field>
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.idleTimeoutHelp') }}</small>
+                </div>
               </div>
               <div class="column is-4">
-                <b-field :label="$t('settings.mailserver.waitTimeout')" label-position="on-border"
-                  :message="$t('settings.mailserver.waitTimeoutHelp')">
-                  <b-input v-model="item.wait_timeout" name="wait_timeout" placeholder="5s" :pattern="regDuration"
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.waitTimeout') }}</label>
+                  <PvInputText v-model="item.wait_timeout" name="wait_timeout" placeholder="5s" :pattern="regDuration"
                     :maxlength="10" />
-                </b-field>
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.waitTimeoutHelp') }}</small>
+                </div>
               </div>
             </div>
 
             <div class="columns">
               <div class="column is-4">
-                <b-field :label="$t('settings.smtp.retries')" label-position="on-border"
-                  :message="$t('settings.smtp.retriesHelp')">
-                  <b-numberinput v-model="item.max_msg_retries" name="max_msg_retries" type="is-light"
-                    controls-position="compact" placeholder="2" min="1" max="1000" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.retries') }}</label>
+                  <PvInputNumber v-model="item.max_msg_retries" name="max_msg_retries" placeholder="2" :min="1" :max="1000" />
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.smtp.retriesHelp') }}</small>
+                </div>
               </div>
               <div class="column is-4">
-                <b-field :label="$t('settings.smtp.retryDelay')" label-position="on-border"
-                  :message="$t('settings.smtp.retryDelayHelp')">
-                  <b-input v-model="item.msg_retry_delay" name="msg_retry_delay" placeholder="0s" :pattern="regDuration"
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.retryDelay') }}</label>
+                  <PvInputText v-model="item.msg_retry_delay" name="msg_retry_delay" placeholder="0s" :pattern="regDuration"
                     :maxlength="10" />
-                </b-field>
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.smtp.retryDelayHelp') }}</small>
+                </div>
               </div>
             </div>
 
             <hr />
             <div class="columns">
               <div class="column is-6">
-                <b-field :label="$t('globals.fields.name')" label-position="on-border"
-                  :message="$t('settings.mailserver.nameHelp')">
-                  <b-input v-model="item.name" name="name" placeholder="email-primary" :maxlength="100" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+                  <PvInputText v-model="item.name" name="name" placeholder="email-primary" :maxlength="100" />
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.nameHelp') }}</small>
+                </div>
               </div>
               <div class="column is-6">
-                <b-field :label="$t('settings.smtp.fromAddresses')" label-position="on-border"
-                  :message="$t('settings.smtp.fromAddressesHelp')">
-                  <b-taginput v-model="item.from_addresses" name="from_addresses" ellipsis icon="tag-outline"
-                    :before-adding="validateFromAddress" placeholder="user@example.com, anothersite.com" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.fromAddresses') }}</label>
+                  <PvAutoComplete v-model="item.from_addresses" name="from_addresses" multiple
+                    :placeholder="'user@example.com, anothersite.com'" />
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.smtp.fromAddressesHelp') }}</small>
+                </div>
               </div>
             </div>
 
@@ -177,13 +180,13 @@
               <div class="column">
                 <p v-if="item.email_headers.length === 0 && !item.showHeaders">
                   <a href="#" @click.prevent="() => showSMTPHeaders(n)">
-                    <b-icon icon="plus" />{{ $t('settings.smtp.setCustomHeaders') }}</a>
+                    <i class="pi pi-plus" />{{ $t('settings.smtp.setCustomHeaders') }}</a>
                 </p>
-                <b-field v-if="item.email_headers.length > 0 || item.showHeaders" label-position="on-border"
-                  :message="$t('settings.smtp.customHeadersHelp')">
-                  <b-input v-model="item.strEmailHeaders" name="email_headers" type="textarea"
+                <div class="field" v-if="item.email_headers.length > 0 || item.showHeaders">
+                  <PvTextarea v-model="item.strEmailHeaders" name="email_headers"
                     placeholder="[{&quot;X-Custom&quot;: &quot;value&quot;}, {&quot;X-Custom2&quot;: &quot;value&quot;}]" />
-                </b-field>
+                  <small class="block mt-1 text-color-secondary">{{ $t('settings.smtp.customHeadersHelp') }}</small>
+                </div>
               </div>
             </div>
             <hr />
@@ -197,18 +200,18 @@
                     {{ settings['app.from_email'] }}
                   </div>
                   <div class="column is-4">
-                    <b-field :label="$t('settings.smtp.toEmail')" label-position="on-border">
-                      <b-input type="email" required v-model="testEmail" :ref="'testEmailTo'"
-                        placeholder="email@site.com" :custom-class="`test-email-${n}`" />
-                    </b-field>
+                    <div class="field">
+                      <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.toEmail') }}</label>
+                      <PvInputText type="email" required v-model="testEmail" :ref="'testEmailTo'"
+                        placeholder="email@site.com" :class="`test-email-${n}`" />
+                    </div>
                   </div>
                 </template>
                 <div class="column has-text-right">
-                  <b-button v-if="smtpTestItem === n" class="is-primary" @click.prevent="() => doSMTPTest(item, n)">
-                    {{ $t('settings.smtp.sendTest') }}
-                  </b-button>
+                  <PvButton v-if="smtpTestItem === n" severity="primary" @click.prevent="() => doSMTPTest(item, n)"
+                    :label="$t('settings.smtp.sendTest')" />
                   <a href="#" v-else class="is-primary" @click.prevent="showTestForm(n)">
-                    <b-icon icon="rocket-launch-outline" /> {{ $t('settings.smtp.testConnection') }}
+                    <i class="pi pi-send" /> {{ $t('settings.smtp.testConnection') }}
                   </a>
                 </div>
                 <div class="columns">
@@ -216,9 +219,9 @@
                 </div>
               </div>
               <div v-if="errMsg && smtpTestItem === n">
-                <b-field class="mt-4" type="is-danger">
-                  <b-input v-model="errMsg" type="textarea" custom-class="has-text-danger is-size-6" readonly />
-                </b-field>
+                <div class="field mt-4">
+                  <PvTextarea v-model="errMsg" class="has-text-danger is-size-6" readonly />
+                </div>
               </div>
             </form><!-- smtp test -->
           </div>
@@ -226,14 +229,11 @@
       </div><!-- block -->
     </div><!-- mail-servers -->
 
-    <b-button @click="addSMTP" icon-left="plus" type="is-primary">
-      {{ $t('globals.buttons.addNew') }}
-    </b-button>
+    <PvButton @click="addSMTP" icon="pi pi-plus" severity="primary" :label="$t('globals.buttons.addNew')" />
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import { regDuration } from '../../constants';
 
@@ -267,7 +267,7 @@ const smtpTemplates = {
   },
 };
 
-export default Vue.extend({
+export default {
   props: {
     form: {
       type: Object, default: () => { },
@@ -398,5 +398,5 @@ export default Vue.extend({
   computed: {
     ...mapState(['settings']),
   },
-});
+};
 </script>

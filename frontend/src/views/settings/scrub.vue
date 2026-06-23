@@ -3,36 +3,38 @@
     <div class="block box">
       <div class="columns">
         <div class="column is-2">
-          <b-field>
-            <b-switch v-model="data.scrub.enabled" name="scrub.enabled">
-              {{ $t('globals.buttons.enabled') }}
-            </b-switch>
-          </b-field>
+          <div class="field">
+            <div class="flex items-center gap-2">
+              <PvToggleSwitch v-model="data.scrub.enabled" name="scrub.enabled" />
+              <span>{{ $t('globals.buttons.enabled') }}</span>
+            </div>
+          </div>
         </div>
 
         <div class="column" :class="{ disabled: !data.scrub.enabled }">
-          <b-field :label="$t('settings.scrub.url')" label-position="on-border"
-            :message="$t('settings.scrub.urlHelp')">
-            <b-input v-model="data.scrub.url" name="scrub.url"
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.scrub.url') }}</label>
+            <PvInputText v-model="data.scrub.url" name="scrub.url"
               placeholder="https://api.thescrub.app" :maxlength="300"
               :disabled="!data.scrub.enabled" />
-          </b-field>
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.scrub.urlHelp') }}</small>
+          </div>
 
-          <b-field :label="$t('settings.scrub.apiKey')" label-position="on-border"
-            :message="$t('settings.scrub.apiKeyHelp')">
-            <b-input v-model="data.scrub.api_key" name="scrub.api_key"
-              type="password" :maxlength="300"
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.scrub.apiKey') }}</label>
+            <PvPassword v-model="data.scrub.api_key" name="scrub.api_key"
+              :maxlength="300" :feedback="false"
               :placeholder="$t('settings.scrub.apiKeyPlaceholder')"
               :disabled="!data.scrub.enabled" />
-          </b-field>
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.scrub.apiKeyHelp') }}</small>
+          </div>
 
-          <b-field>
-            <b-button type="is-primary" :loading="isTesting"
+          <div class="field">
+            <PvButton severity="primary" :loading="isTesting"
               :disabled="!data.scrub.enabled || !data.scrub.url || !data.scrub.api_key"
-              icon-left="connection" @click="testConnection">
-              {{ $t('settings.scrub.testConnection') }}
-            </b-button>
-          </b-field>
+              icon="pi pi-link" :label="$t('settings.scrub.testConnection')"
+              @click="testConnection" />
+          </div>
         </div>
       </div>
     </div>
@@ -40,9 +42,7 @@
 </template>
 
 <script>
-import Vue from 'vue';
-
-export default Vue.extend({
+export default {
   props: {
     form: {
       type: Object,
@@ -76,5 +76,5 @@ export default Vue.extend({
       }
     },
   },
-});
+};
 </script>

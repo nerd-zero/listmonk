@@ -1,6 +1,6 @@
-import { ToastProgrammatic as Toast } from 'buefy';
 import axios from 'axios';
 import qs from 'qs';
+import { showToast } from '../toastService';
 import store from '../store';
 import { models } from '../constants';
 import Utils from '../utils';
@@ -78,13 +78,7 @@ http.interceptors.response.use((resp) => {
   }
 
   if (!err.config.disableToast) {
-    Toast.open({
-      message: msg,
-      type: 'is-danger',
-      queue: false,
-      position: 'is-top',
-      pauseOnHover: true,
-    });
+    showToast(msg, 'is-danger');
   }
 
   return Promise.reject(err);

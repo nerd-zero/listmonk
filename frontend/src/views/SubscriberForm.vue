@@ -2,9 +2,8 @@
   <form @submit.prevent="onSubmit">
     <div class="modal-card content" style="width: auto">
       <header class="modal-card-head">
-        <b-tag v-if="isEditing" :class="[data.status, 'is-pulled-right']">
-          {{ $t(`subscribers.status.${data.status}`) }}
-        </b-tag>
+        <PvTag v-if="isEditing" :class="[data.status, 'is-pulled-right']"
+          :value="$t(`subscribers.status.${data.status}`)" />
         <h4 v-if="isEditing">
           {{ data.name }}
         </h4>
@@ -19,163 +18,180 @@
       </header>
 
       <section expanded class="modal-card-body">
-        <b-field :label="$t('subscribers.email')" label-position="on-border">
-          <b-input :maxlength="200" v-model="form.email" name="email" :ref="'focus'"
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('subscribers.email') }}</label>
+          <PvInputText :maxlength="200" v-model="form.email" name="email" ref="focus"
             :placeholder="$t('subscribers.email')" required />
-        </b-field>
+        </div>
 
         <div class="columns">
           <div class="column is-8">
-            <b-field :label="$t('globals.fields.name')" label-position="on-border">
-              <b-input :maxlength="200" v-model="form.name" name="name" :placeholder="$t('globals.fields.name')" />
-            </b-field>
+            <div class="field">
+              <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+              <PvInputText :maxlength="200" v-model="form.name" name="name"
+                :placeholder="$t('globals.fields.name')" />
+            </div>
           </div>
           <div class="column is-4">
-            <b-field :label="$t('globals.fields.status')" label-position="on-border"
-              :message="$t('subscribers.blocklistedHelp')">
-              <b-select v-model="form.status" name="status" :placeholder="$t('globals.fields.status')" required
-                expanded>
-                <option value="enabled">
-                  {{ $t('subscribers.status.enabled') }}
-                </option>
-                <option value="blocklisted">
-                  {{ $t('subscribers.status.blocklisted') }}
-                </option>
-              </b-select>
-            </b-field>
+            <div class="field">
+              <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
+              <PvSelect v-model="form.status" name="status" :placeholder="$t('globals.fields.status')" required
+                :options="statusOptions" option-label="label" option-value="value" />
+              <small class="block mt-1 text-color-secondary">{{ $t('subscribers.blocklistedHelp') }}</small>
+            </div>
           </div>
         </div>
 
-        <b-tabs type="is-boxed" :animated="false">
-          <b-tab-item :label="$t('globals.terms.lists')" label-position="on-border">
-            <list-selector :label="$t('subscribers.lists')" :placeholder="$t('subscribers.listsPlaceholder')"
-              :message="$t('subscribers.listsHelp')" v-model="form.lists" :selected="form.lists" :all="lists.results" />
-            <div class="columns">
-              <div class="column is-7">
-                <b-field :message="$t('subscribers.preconfirmHelp')">
-                  <b-checkbox v-model="form.preconfirm" :native-value="true" :disabled="!hasOptinList">
-                    {{ $t('subscribers.preconfirm') }}
-                  </b-checkbox>
-                </b-field>
-              </div>
-              <div v-if="$can('subscribers:manage') && isEditing" class="column is-5 has-text-right">
-                <a href="#" @click.prevent="sendOptinConfirmation" :class="{ 'is-disabled': !hasOptinList }">
-                  <b-icon icon="email-outline" size="is-small" />
-                  {{ $t('subscribers.sendOptinConfirm') }}</a>
-              </div>
-            </div>
-          </b-tab-item><!-- lists -->
-
-          <b-tab-item :label="`${$tc('globals.terms.subscriptions', 2)} (${data.lists ? data.lists.length : 0})`"
-            label-position="on-border" :disabled="!data.lists || data.lists.length === 0">
-            <template v-if="data.lists">
-              <b-table :data="data.lists" hoverable default-sort="createdAt" class="subscriptions">
-                <b-table-column v-slot="props" field="name" :label="$tc('globals.terms.list', 1)">
-                  <div>
-                    <router-link v-if="!props.row.restricted" :to="`/lists/${props.row.id}`">
-                      {{ props.row.name }}
-                    </router-link>
-                    <span v-else class="has-text-grey-light is-italic">{{ props.row.name }}</span>
-                    <br />
-                    <b-tag :class="props.row.optin" :data-cy="`optin-${props.row.optin}`">
-                      <b-icon :icon="props.row.optin === 'double' ? 'account-check-outline' : 'account-off-outline'"
-                        size="is-small" />
-                      {{ ' ' }}
-                      {{ $t(`lists.optins.${props.row.optin}`) }}
-                    </b-tag>{{ ' ' }}
+        <PvTabs v-model:value="activeTab">
+          <PvTabList>
+            <PvTab value="0">{{ $t('globals.terms.lists') }}</PvTab>
+            <PvTab value="1">{{ `${$tc('globals.terms.subscriptions', 2)} (${data.lists ? data.lists.length : 0})` }}</PvTab>
+            <PvTab value="2" :disabled="bounces.length === 0">{{ `${$t('globals.terms.bounces')} (${bounces.length})` }}</PvTab>
+            <PvTab value="3" :disabled="!isEditing">{{ $t('subscribers.activity') }}</PvTab>
+          </PvTabList>
+          <PvTabPanels>
+            <!-- lists -->
+            <PvTabPanel value="0">
+              <list-selector :label="$t('subscribers.lists')" :placeholder="$t('subscribers.listsPlaceholder')"
+                :message="$t('subscribers.listsHelp')" v-model="form.lists" :selected="form.lists" :all="lists.results" />
+              <div class="columns">
+                <div class="column is-7">
+                  <div class="field">
+                    <small class="block mt-1 text-color-secondary">{{ $t('subscribers.preconfirmHelp') }}</small>
+                    <div class="flex items-center gap-2">
+                      <PvCheckbox v-model="form.preconfirm" :binary="true" :disabled="!hasOptinList" />
+                      <span>{{ $t('subscribers.preconfirm') }}</span>
+                    </div>
                   </div>
-                </b-table-column>
-
-                <b-table-column v-slot="props" field="status" cell-class="status" :label="$t('globals.fields.status')">
-                  <b-tag :class="`status-${props.row.subscriptionStatus}`">
-                    {{ $t(`subscribers.status.${props.row.subscriptionStatus}`) }}
-                  </b-tag>
-                  <template v-if="props.row.optin === 'double' && props.row.subscriptionMeta.optinIp">
-                    <br /><span class="is-size-7">{{ props.row.subscriptionMeta.optinIp }}</span>
-                  </template>
-                </b-table-column>
-
-                <b-table-column v-slot="props" field="createdAt" :label="$t('globals.fields.createdAt')">
-                  {{ $utils.niceDate(props.row.subscriptionCreatedAt, true) }}
-                </b-table-column>
-
-                <b-table-column v-slot="props" field="updatedAt" :label="$t('globals.fields.updatedAt')">
-                  {{ $utils.niceDate(props.row.subscriptionCreatedAt, true) }}
-                </b-table-column>
-              </b-table>
-            </template>
-          </b-tab-item><!-- subscriptions -->
-
-          <b-tab-item :label="`${$t('globals.terms.bounces')} (${bounces.length})`" class="bounces"
-            :disabled="bounces.length === 0">
-            <a href="#" class="is-size-6 is-pulled-right" disabed="true" @click.prevent="deleteBounces"
-              v-if="isBounceVisible">
-              <b-icon icon="trash-can-outline" />
-              {{ $t('globals.buttons.delete') }}
-            </a>
-
-            <b-table :data="bounces" hoverable default-sort="createdAt" class="bounces">
-              <b-table-column field="campaign" :label="$tc('globals.terms.campaign', 1)" v-slot="props">
-                <div v-if="props.row.campaign">
-                  <router-link :to="{ name: 'bounces', query: { campaign_id: props.row.campaign.id } }">
-                    {{ props.row.campaign.name }}
-                  </router-link>
                 </div>
-              </b-table-column>
+                <div v-if="$can('subscribers:manage') && isEditing" class="column is-5 has-text-right">
+                  <a href="#" @click.prevent="sendOptinConfirmation" :class="{ 'is-disabled': !hasOptinList }">
+                    <i class="pi pi-envelope" />
+                    {{ $t('subscribers.sendOptinConfirm') }}</a>
+                </div>
+              </div>
+            </PvTabPanel><!-- lists -->
 
-              <b-table-column field="createdAt" :label="$t('globals.fields.createdAt')" v-slot="props">
-                {{ $utils.niceDate(props.row.createdAt, true) }}
-              </b-table-column>
+            <!-- subscriptions -->
+            <PvTabPanel value="1">
+              <template v-if="data.lists">
+                <PvDataTable :value="data.lists" hoverable sort-field="createdAt" class="subscriptions">
+                  <PvColumn field="name" :header="$tc('globals.terms.list', 1)">
+                    <template #body="{ data: row }">
+                      <div>
+                        <router-link v-if="!row.restricted" :to="`/lists/${row.id}`">
+                          {{ row.name }}
+                        </router-link>
+                        <span v-else class="has-text-grey-light is-italic">{{ row.name }}</span>
+                        <br />
+                        <PvTag :class="row.optin" :data-cy="`optin-${row.optin}`">
+                          <i :class="row.optin === 'double' ? 'pi pi-check-circle' : 'pi pi-times-circle'" />
+                          {{ ' ' }}
+                          {{ $t(`lists.optins.${row.optin}`) }}
+                        </PvTag>{{ ' ' }}
+                      </div>
+                    </template>
+                  </PvColumn>
 
-              <b-table-column field="action" :label="$t('globals.fields.type')" v-slot="props">
-                <span class="is-pulled-right">
-                  <a href="#" @click.prevent="toggleMeta(props.row.id)">
-                    {{ props.row.source }}
-                    <b-icon :icon="visibleMeta[props.row.id] ? 'arrow-up' : 'arrow-down'" />
-                  </a>
-                </span>
-                <span class="is-clearfix" />
-                <pre v-if="visibleMeta[props.row.id]">{{ props.row.meta }}</pre>
-              </b-table-column>
-            </b-table>
-          </b-tab-item><!-- bounces -->
+                  <PvColumn field="status" :header="$t('globals.fields.status')" class="status">
+                    <template #body="{ data: row }">
+                      <PvTag :class="`status-${row.subscriptionStatus}`"
+                        :value="$t(`subscribers.status.${row.subscriptionStatus}`)" />
+                      <template v-if="row.optin === 'double' && row.subscriptionMeta.optinIp">
+                        <br /><span class="is-size-7">{{ row.subscriptionMeta.optinIp }}</span>
+                      </template>
+                    </template>
+                  </PvColumn>
 
-          <b-tab-item :label="$t('subscribers.activity')" class="activity" :disabled="!isEditing">
-            <subscriber-activity v-if="isEditing && data.id" :subscriber-id="data.id" />
-          </b-tab-item><!-- activity -->
-        </b-tabs>
+                  <PvColumn field="createdAt" :header="$t('globals.fields.createdAt')">
+                    <template #body="{ data: row }">
+                      {{ $utils.niceDate(row.subscriptionCreatedAt, true) }}
+                    </template>
+                  </PvColumn>
 
-        <b-field :message="$t('subscribers.attribsHelp') + ' ' + egAttribs" class="mt-6">
+                  <PvColumn field="updatedAt" :header="$t('globals.fields.updatedAt')">
+                    <template #body="{ data: row }">
+                      {{ $utils.niceDate(row.subscriptionCreatedAt, true) }}
+                    </template>
+                  </PvColumn>
+                </PvDataTable>
+              </template>
+            </PvTabPanel><!-- subscriptions -->
+
+            <!-- bounces -->
+            <PvTabPanel value="2" class="bounces">
+              <a href="#" class="is-size-6 is-pulled-right" disabed="true" @click.prevent="deleteBounces"
+                v-if="isBounceVisible">
+                <i class="pi pi-trash" />
+                {{ $t('globals.buttons.delete') }}
+              </a>
+
+              <PvDataTable :value="bounces" hoverable sort-field="createdAt" class="bounces">
+                <PvColumn field="campaign" :header="$tc('globals.terms.campaign', 1)">
+                  <template #body="{ data: row }">
+                    <div v-if="row.campaign">
+                      <router-link :to="{ name: 'bounces', query: { campaign_id: row.campaign.id } }">
+                        {{ row.campaign.name }}
+                      </router-link>
+                    </div>
+                  </template>
+                </PvColumn>
+
+                <PvColumn field="createdAt" :header="$t('globals.fields.createdAt')">
+                  <template #body="{ data: row }">
+                    {{ $utils.niceDate(row.createdAt, true) }}
+                  </template>
+                </PvColumn>
+
+                <PvColumn field="action" :header="$t('globals.fields.type')">
+                  <template #body="{ data: row }">
+                    <span class="is-pulled-right">
+                      <a href="#" @click.prevent="toggleMeta(row.id)">
+                        {{ row.source }}
+                        <i :class="visibleMeta[row.id] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" />
+                      </a>
+                    </span>
+                    <span class="is-clearfix" />
+                    <pre v-if="visibleMeta[row.id]">{{ row.meta }}</pre>
+                  </template>
+                </PvColumn>
+              </PvDataTable>
+            </PvTabPanel><!-- bounces -->
+
+            <!-- activity -->
+            <PvTabPanel value="3" class="activity">
+              <subscriber-activity v-if="isEditing && data.id" :subscriber-id="data.id" />
+            </PvTabPanel><!-- activity -->
+          </PvTabPanels>
+        </PvTabs>
+
+        <div class="field mt-6">
+          <small class="block mt-1 text-color-secondary">{{ $t('subscribers.attribsHelp') + ' ' + egAttribs }}</small>
           <div>
             <h5>{{ $t('globals.terms.attribs') }}</h5>
-            <b-input v-model="form.strAttribs" name="attribs" type="textarea" />
+            <PvTextarea v-model="form.strAttribs" name="attribs" rows="4" />
             <a href="https://listmonk.app/docs/concepts" target="_blank" rel="noopener noreferrer" class="is-size-7">
-              {{ $t('globals.buttons.learnMore') }} <b-icon icon="link-variant" size="is-small" />
+              {{ $t('globals.buttons.learnMore') }} <i class="pi pi-external-link" />
             </a>
           </div>
-        </b-field>
+        </div>
       </section>
       <footer class="modal-card-foot has-text-right">
-        <b-button @click="$parent.close()">
-          {{ $t('globals.buttons.close') }}
-        </b-button>
-        <b-button v-if="$can('subscribers:manage')" native-type="submit" type="is-primary"
-          :loading="loading.subscribers">
-          {{ $t('globals.buttons.save') }}
-        </b-button>
+        <PvButton @click="$parent.close()" :label="$t('globals.buttons.close')" />
+        <PvButton v-if="$can('subscribers:manage')" type="submit" severity="primary"
+          :loading="loading.subscribers" :label="$t('globals.buttons.save')" />
       </footer>
     </div>
   </form>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import ListSelector from '../components/ListSelector.vue';
 import CopyText from '../components/CopyText.vue';
 import SubscriberActivity from '../components/SubscriberActivity.vue';
 
-export default Vue.extend({
+export default {
   components: {
     ListSelector,
     CopyText,
@@ -203,8 +219,14 @@ export default Vue.extend({
       isBounceVisible: false,
       bounces: [],
       visibleMeta: {},
+      activeTab: '0',
 
       egAttribs: '{"job": "developer", "location": "Mars", "has_rocket": true}',
+
+      statusOptions: [
+        { label: this.$t('subscribers.status.enabled'), value: 'enabled' },
+        { label: this.$t('subscribers.status.blocklisted'), value: 'blocklisted' },
+      ],
     };
   },
 
@@ -218,7 +240,7 @@ export default Vue.extend({
       if (!this.visibleMeta[id]) {
         v = true;
       }
-      Vue.set(this.visibleMeta, id, v);
+      this.visibleMeta[id] = v;
     },
 
     deleteBounces(sub) {
@@ -355,8 +377,8 @@ export default Vue.extend({
     }
 
     this.$nextTick(() => {
-      this.$refs.focus.focus();
+      this.$refs.focus.$el.focus();
     });
   },
-});
+};
 </script>

@@ -4,13 +4,13 @@
       title="Visual email editor" />
 
     <!-- image picker -->
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isMediaVisible" :width="900">
+    <PvDialog v-model:visible="isMediaVisible" :style="{ width: '900px' }" :closable="true" modal>
       <div class="modal-card content" style="width: auto">
         <section expanded class="modal-card-body">
           <media is-modal @selected="onMediaSelect" />
         </section>
       </div>
-    </b-modal>
+    </PvDialog>
   </div>
 </template>
 

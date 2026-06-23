@@ -13,12 +13,14 @@
         <div class="tile is-vertical is-12">
           <div class="tile">
             <div class="tile is-parent is-vertical relative">
-              <b-loading v-if="isCountsLoading" active :is-full-page="false" />
+              <div v-if="isCountsLoading" class="flex justify-center p-8">
+                <PvProgressSpinner style="width:2rem;height:2rem" />
+              </div>
               <article class="tile is-child notification" data-cy="lists">
                 <div class="columns is-mobile">
                   <div class="column is-6">
                     <p class="title">
-                      <b-icon icon="format-list-bulleted-square" />
+                      <i class="pi pi-list" />
                       {{ $utils.niceNumber(counts.lists.total) }}
                     </p>
                     <p class="is-size-6 has-text-grey">
@@ -52,7 +54,7 @@
                 <div class="columns is-mobile">
                   <div class="column is-6">
                     <p class="title">
-                      <b-icon icon="rocket-launch-outline" />
+                      <i class="pi pi-send" />
                       {{ $utils.niceNumber(counts.campaigns.total) }}
                     </p>
                     <p class="is-size-6 has-text-grey">
@@ -65,7 +67,7 @@
                         <label for="#" :data-cy="`campaigns-${status}`">{{ num }}</label>
                         {{ $t(`campaigns.status.${status}`) }}
                         <span v-if="status === 'running'" class="spinner is-tiny">
-                          <b-loading :is-full-page="false" active />
+                          <PvProgressSpinner style="width:1rem;height:1rem" />
                         </span>
                       </li>
                     </ul>
@@ -75,12 +77,14 @@
             </div><!-- block -->
 
             <div class="tile is-parent relative">
-              <b-loading v-if="isCountsLoading" active :is-full-page="false" />
+              <div v-if="isCountsLoading" class="flex justify-center p-8">
+                <PvProgressSpinner style="width:2rem;height:2rem" />
+              </div>
               <article class="tile is-child notification" data-cy="subscribers">
                 <div class="columns is-mobile">
                   <div class="column is-6">
                     <p class="title">
-                      <b-icon icon="account-multiple" />
+                      <i class="pi pi-users" />
                       {{ $utils.niceNumber(counts.subscribers.total) }}
                     </p>
                     <p class="is-size-6 has-text-grey">
@@ -105,7 +109,7 @@
                 <div class="columns" data-cy="messages">
                   <div class="column is-12">
                     <p class="title">
-                      <b-icon icon="email-outline" />
+                      <i class="pi pi-envelope" />
                       {{ $utils.niceNumber(counts.messages) }}
                     </p>
                     <p class="is-size-6 has-text-grey">
@@ -117,7 +121,9 @@
             </div>
           </div>
           <div class="tile is-parent relative">
-            <b-loading v-if="isChartsLoading" active :is-full-page="false" />
+            <div v-if="isChartsLoading" class="flex justify-center p-8">
+              <PvProgressSpinner style="width:2rem;height:2rem" />
+            </div>
             <article class="tile is-child notification charts">
               <div class="columns">
                 <div class="column is-6">
@@ -141,7 +147,7 @@
         *{{ $t('globals.messages.slowQueriesCached') }}
         <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferer"
           class="has-text-grey">
-          <b-icon icon="link-variant" /> {{ $t('globals.buttons.learnMore') }}
+          <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}
         </a>
       </p>
     </section>
@@ -150,12 +156,11 @@
 
 <script>
 import dayjs from 'dayjs';
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import { colors } from '../constants';
 import Chart from '../components/Chart.vue';
 
-export default Vue.extend({
+export default {
   components: {
     Chart,
   },
@@ -222,12 +227,12 @@ export default Vue.extend({
     this.$root.$on('page.refresh', this.fetchData);
   },
 
-  destroyed() {
+  unmounted() {
     this.$root.$off('page.refresh', this.fetchData);
   },
 
   mounted() {
     this.fetchData();
   },
-});
+};
 </script>

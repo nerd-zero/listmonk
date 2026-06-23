@@ -15,68 +15,74 @@
       <section expanded class="modal-card-body">
         <div class="columns">
           <div class="column is-6">
-            <b-field label-position="on-border" class="mb-6">
-              <b-radio-button v-model="form.type" name="type" native-value="user" :disabled="isEditing" expanded
-                type="is-light is-outlined">
-                <b-icon icon="account-outline" />
-                {{ $t('users.type.user') }}
-              </b-radio-button>
-              <b-radio-button v-model="form.type" name="type" native-value="api" :disabled="isEditing" expanded
-                type="is-light is-outlined">
-                <b-icon icon="code" />
-                {{ $t('users.type.api') }}
-              </b-radio-button>
-            </b-field>
+            <div class="field mb-6">
+              <div class="flex gap-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" v-model="form.type" name="type" value="user" :disabled="isEditing" />
+                  <i class="pi pi-user" />
+                  {{ $t('users.type.user') }}
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" v-model="form.type" name="type" value="api" :disabled="isEditing" />
+                  <i class="pi pi-code" />
+                  {{ $t('users.type.api') }}
+                </label>
+              </div>
+            </div>
           </div>
           <div class="column is-6">
-            <b-field :label="$t('globals.fields.status')" label-position="on-border">
-              <b-select v-model="form.status" name="status" required expanded>
-                <option value="enabled">
-                  {{ $t('users.status.enabled') }}
-                </option>
-                <option value="disabled">
-                  {{ $t('users.status.disabled') }}
-                </option>
-              </b-select>
-            </b-field>
+            <div class="field">
+              <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
+              <PvSelect v-model="form.status" name="status" required
+                :options="[{ label: $t('users.status.enabled'), value: 'enabled' }, { label: $t('users.status.disabled'), value: 'disabled' }]"
+                option-label="label" option-value="value" class="w-full" />
+            </div>
           </div>
         </div>
 
-        <b-field :label="$t('users.username')" label-position="on-border">
-          <b-input :maxlength="200" v-model="form.username" name="username" ref="focus" autofocus
-            :placeholder="$t('users.username')" required :message="$t('users.usernameHelp')" autocomplete="off"
-            pattern="[a-zA-Z0-9_\-\.@]+$" />
-        </b-field>
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('users.username') }}</label>
+          <PvInputText :maxlength="200" v-model="form.username" name="username" ref="focus" autofocus
+            :placeholder="$t('users.username')" required autocomplete="off"
+            pattern="[a-zA-Z0-9_\-\.@]+$" class="w-full" />
+          <small class="block mt-1 text-color-secondary">{{ $t('users.usernameHelp') }}</small>
+        </div>
 
-        <b-field :label="$t('globals.fields.name')" label-position="on-border">
-          <b-input :maxlength="200" v-model="form.name" name="name" :placeholder="$t('globals.fields.name')" />
-        </b-field>
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+          <PvInputText :maxlength="200" v-model="form.name" name="name" :placeholder="$t('globals.fields.name')" class="w-full" />
+        </div>
 
-        <b-field v-if="form.type !== 'api'" :label="$t('subscribers.email')" label-position="on-border">
-          <b-input :maxlength="200" v-model="form.email" name="email" :placeholder="$t('subscribers.email')" required />
-        </b-field>
+        <div v-if="form.type !== 'api'" class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('subscribers.email') }}</label>
+          <PvInputText :maxlength="200" v-model="form.email" name="email" type="email"
+            :placeholder="$t('subscribers.email')" required class="w-full" />
+        </div>
 
         <template v-if="form.type !== 'api'">
           <div class="box">
-            <b-field>
-              <b-checkbox v-model="form.passwordLogin" :native-value="true" name="password_login">
-                {{ $t('users.passwordEnable') }}
-              </b-checkbox>
-            </b-field>
+            <div class="field">
+              <div class="flex items-center gap-2">
+                <PvCheckbox v-model="form.passwordLogin" :binary="true" name="password_login" input-id="passwordLogin" />
+                <label for="passwordLogin">{{ $t('users.passwordEnable') }}</label>
+              </div>
+            </div>
 
             <div class="columns">
               <div class="column is-6">
-                <b-field :label="$t('users.password')" label-position="on-border">
-                  <b-input :disabled="!form.passwordLogin" minlength="8" :maxlength="200" v-model="form.password"
-                    type="password" name="password" :placeholder="$t('users.password')"
-                    :required="form.passwordLogin && !isEditing" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('users.password') }}</label>
+                  <PvPassword :disabled="!form.passwordLogin" :minlength="8" :maxlength="200" v-model="form.password"
+                    name="password" :placeholder="$t('users.password')"
+                    :required="form.passwordLogin && !isEditing" :feedback="false" class="w-full" />
+                </div>
               </div>
               <div class="column is-6">
-                <b-field :label="$t('users.passwordRepeat')" label-position="on-border">
-                  <b-input :disabled="!form.passwordLogin" minlength="8" :maxlength="200" v-model="form.password2"
-                    type="password" name="password2" :required="form.passwordLogin && !isEditing && form.password" />
-                </b-field>
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('users.passwordRepeat') }}</label>
+                  <PvPassword :disabled="!form.passwordLogin" :minlength="8" :maxlength="200" v-model="form.password2"
+                    name="password2" :required="form.passwordLogin && !isEditing && form.password" :feedback="false" class="w-full" />
+                </div>
               </div>
             </div>
           </div>
@@ -86,24 +92,19 @@
         <div class="box">
           <div class="columns">
             <div class="column is-6">
-              <b-field :label="$tc('users.userRole')" label-position="on-border">
-                <b-select v-model="form.userRoleId" name="user_role" required expanded>
-                  <option v-for="r in userRoles" :value="r.id" :key="r.id">
-                    {{ r.name }}
-                  </option>
-                </b-select>
-              </b-field>
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $tc('users.userRole') }}</label>
+                <PvSelect v-model="form.userRoleId" name="user_role" required
+                  :options="userRoles" option-label="name" option-value="id" class="w-full" />
+              </div>
             </div>
 
             <div class="column is-6">
-              <b-field :label="$tc('users.listRole', 0)" label-position="on-border">
-                <b-select v-model="form.listRoleId" name="list_role" expanded>
-                  <option value="">&mdash; {{ $t("globals.terms.none") }} &mdash;</option>
-                  <option v-for="r in listRoles" :value="r.id" :key="r.id">
-                    {{ r.name }}
-                  </option>
-                </b-select>
-              </b-field>
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $tc('users.listRole', 0) }}</label>
+                <PvSelect v-model="form.listRoleId" name="list_role"
+                  :options="listRoleOptions" option-label="name" option-value="id" class="w-full" />
+              </div>
             </div>
           </div>
         </div>
@@ -114,24 +115,19 @@
         </div>
       </section>
       <footer class="modal-card-foot has-text-right">
-        <b-button @click="$parent.close()">
-          {{ $t('globals.buttons.close') }}
-        </b-button>
-        <b-button v-if="$can('users:manage') && !apiToken" native-type="submit" type="is-primary"
-          :loading="loading.lists" data-cy="btn-save">
-          {{ $t('globals.buttons.save') }}
-        </b-button>
+        <PvButton @click="$parent.close()" :label="$t('globals.buttons.close')" severity="secondary" />
+        <PvButton v-if="$can('users:manage') && !apiToken" type="submit" severity="primary"
+          :loading="loading.lists" data-cy="btn-save" :label="$t('globals.buttons.save')" />
       </footer>
     </div>
   </form>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import CopyText from '../components/CopyText.vue';
 
-export default Vue.extend({
+export default {
   name: 'UserForm',
 
   components: {
@@ -223,6 +219,10 @@ export default Vue.extend({
 
   computed: {
     ...mapState(['loading', 'userRoles', 'listRoles']),
+
+    listRoleOptions() {
+      return [{ name: `— ${this.$t('globals.terms.none')} —`, id: '' }, ...this.listRoles];
+    },
   },
 
   mounted() {
@@ -237,8 +237,8 @@ export default Vue.extend({
     this.$api.getListRoles();
 
     this.$nextTick(() => {
-      this.$refs.focus.focus();
+      this.$refs.focus.$el.focus();
     });
   },
-});
+};
 </script>

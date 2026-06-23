@@ -8,134 +8,138 @@
         </h1>
       </div>
       <div class="column has-text-right">
-        <b-field v-if="$can('users:manage')" expanded>
-          <b-button expanded type="is-primary" icon-left="plus" class="btn-new" @click="showNewForm" data-cy="btn-new">
-            {{ $t('globals.buttons.new') }}
-          </b-button>
-        </b-field>
+        <div v-if="$can('users:manage')" class="field">
+          <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm" data-cy="btn-new"
+            :label="$t('globals.buttons.new')" />
+        </div>
       </div>
     </header>
 
-    <b-table :data="users" :loading="loading.users" hoverable checkable :checked-rows.sync="checked"
-      default-sort="createdAt" backend-sorting @sort="onSort" @check-all="onTableCheck" @check="onTableCheck">
-      <template #top-left>
+    <PvDataTable :value="users" :loading="loading.users" :rows="20"
+      sort-field="createdAt" sort-order="1"
+      v-model:selection="checked"
+      data-key="id">
+      <template #header>
         <div class="columns">
           <div class="column is-6">
             <form @submit.prevent="getUsers">
-              <div>
-                <b-field>
-                  <b-input v-model="queryParams.query" name="query" expanded icon="magnify" ref="query"
+              <div class="field">
+                <div class="p-inputgroup">
+                  <PvInputText v-model="queryParams.query" name="query" ref="query"
                     data-cy="query" />
-                  <p class="controls">
-                    <b-button native-type="submit" type="is-primary" icon-left="magnify" data-cy="btn-query" />
-                  </p>
-                </b-field>
+                  <PvButton type="submit" severity="primary" icon="pi pi-search" data-cy="btn-query" />
+                </div>
               </div>
             </form>
           </div>
         </div>
       </template>
 
-      <b-table-column v-slot="props" field="username" :label="$t('users.username')" header-class="cy-username" sortable
-        :td-attrs="$utils.tdID">
-        <a :href="`/users/${props.row.id}`" @click.prevent="showEditForm(props.row)"
-          :class="{ 'has-text-grey': props.row.status === 'disabled' }">
-          {{ props.row.username }}
-        </a>
-        <b-tag v-if="props.row.status === 'disabled'">
-          {{ $t(`users.status.${props.row.status}`) }}
-        </b-tag>
-        <b-tag v-if="props.row.type === 'api'" class="api">
-          <b-icon icon="code" />
-          {{ $t(`users.type.${props.row.type}`) }}
-        </b-tag>
-        <div class="has-text-grey is-size-7 mt-2">
-          {{ props.row.name }}
-        </div>
-      </b-table-column>
+      <PvColumn selection-mode="multiple" header-style="width:3rem" />
 
-      <b-table-column v-slot="props" field="status" :label="$tc('users.role')" header-class="cy-status" sortable
-        :td-attrs="$utils.tdID">
-        <router-link :to="{ name: 'userRoles' }">
-          <b-tag :class="props.row.userRole.id === 1 ? 'enabled' : 'primary'">
-            <b-icon icon="account-outline" />
-            {{ props.row.userRole.name }}
-          </b-tag>
-        </router-link>
-        <router-link :to="{ name: 'listRoles' }">
-          <b-tag v-if="props.row.listRole">
-            <b-icon icon="newspaper-variant-outline" />
-            {{ props.row.listRole.name }}
-          </b-tag>
-        </router-link>
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="name" :label="$t('subscribers.email')" header-class="cy-name" sortable
-        :td-attrs="$utils.tdID">
-        <div>
-          <a v-if="props.row.email" :href="`/users/${props.row.id}`" @click.prevent="showEditForm(props.row)"
-            :class="{ 'has-text-grey': props.row.status === 'disabled' }">
-            {{ props.row.email }}
+      <PvColumn field="username" :header="$t('users.username')" header-class="cy-username" sortable>
+        <template #body="{ data }">
+          <a :href="`/users/${data.id}`" @click.prevent="showEditForm(data)"
+            :class="{ 'has-text-grey': data.status === 'disabled' }">
+            {{ data.username }}
           </a>
-          <template v-else>
-            —
-          </template>
-        </div>
-      </b-table-column>
+          <PvTag v-if="data.status === 'disabled'" class="ml-1">
+            {{ $t(`users.status.${data.status}`) }}
+          </PvTag>
+          <PvTag v-if="data.type === 'api'" class="api ml-1">
+            <i class="pi pi-code mr-1" />
+            {{ $t(`users.type.${data.type}`) }}
+          </PvTag>
+          <div class="has-text-grey is-size-7 mt-2">
+            {{ data.name }}
+          </div>
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" field="created_at" :label="$t('globals.fields.createdAt')"
-        header-class="cy-created_at" sortable>
-        {{ $utils.niceDate(props.row.createdAt) }}
-      </b-table-column>
+      <PvColumn field="status" :header="$tc('users.role')" header-class="cy-status" sortable>
+        <template #body="{ data }">
+          <router-link :to="{ name: 'userRoles' }">
+            <PvTag :class="data.userRole.id === 1 ? 'enabled' : 'primary'">
+              <i class="pi pi-user mr-1" />
+              {{ data.userRole.name }}
+            </PvTag>
+          </router-link>
+          <router-link :to="{ name: 'listRoles' }">
+            <PvTag v-if="data.listRole" class="ml-1">
+              <i class="pi pi-list mr-1" />
+              {{ data.listRole.name }}
+            </PvTag>
+          </router-link>
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" field="updated_at" :label="$t('globals.fields.updatedAt')"
-        header-class="cy-updated_at" sortable>
-        {{ $utils.niceDate(props.row.updatedAt) }}
-      </b-table-column>
+      <PvColumn field="name" :header="$t('subscribers.email')" header-class="cy-name" sortable>
+        <template #body="{ data }">
+          <div>
+            <a v-if="data.email" :href="`/users/${data.id}`" @click.prevent="showEditForm(data)"
+              :class="{ 'has-text-grey': data.status === 'disabled' }">
+              {{ data.email }}
+            </a>
+            <template v-else>
+              —
+            </template>
+          </div>
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" field="last_login" :label="$t('users.lastLogin')" header-class="cy-updated_at"
-        sortable>
-        {{ props.row.loggedinAt ? $utils.niceDate(props.row.loggedinAt, true) : '—' }}
-      </b-table-column>
+      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.createdAt) }}
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" cell-class="actions" align="right">
-        <div>
-          <a v-if="$can('users:manage')" href="#" @click.prevent="showEditForm(props.row)" data-cy="btn-edit"
-            :aria-label="$t('globals.buttons.edit')">
-            <b-tooltip :label="$t('globals.buttons.edit')" type="is-dark">
-              <b-icon icon="pencil-outline" size="is-small" />
-            </b-tooltip>
-          </a>
+      <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.updatedAt) }}
+        </template>
+      </PvColumn>
 
-          <a v-if="$can('users:manage')" href="#" @click.prevent="deleteUser(props.row)" data-cy="btn-delete"
-            :aria-label="$t('globals.buttons.delete')">
-            <b-tooltip :label="$t('globals.buttons.delete')" type="is-dark">
-              <b-icon icon="trash-can-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-        </div>
-      </b-table-column>
+      <PvColumn field="last_login" :header="$t('users.lastLogin')" header-class="cy-updated_at" sortable>
+        <template #body="{ data }">
+          {{ data.loggedinAt ? $utils.niceDate(data.loggedinAt, true) : '—' }}
+        </template>
+      </PvColumn>
+
+      <PvColumn header-class="actions" body-class="actions" align-frozen="right">
+        <template #body="{ data }">
+          <div>
+            <a v-if="$can('users:manage')" href="#" @click.prevent="showEditForm(data)" data-cy="btn-edit"
+              :aria-label="$t('globals.buttons.edit')">
+              <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
+            </a>
+
+            <a v-if="$can('users:manage')" href="#" @click.prevent="deleteUser(data)" data-cy="btn-delete"
+              :aria-label="$t('globals.buttons.delete')">
+              <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
+            </a>
+          </div>
+        </template>
+      </PvColumn>
 
       <template #empty v-if="!loading.users">
         <empty-placeholder />
       </template>
-    </b-table>
+    </PvDataTable>
 
     <!-- Add / edit form modal -->
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isFormVisible" :width="600" @close="onFormClose">
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '600px' }" :closable="true" modal @hide="onFormClose">
       <user-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
-    </b-modal>
+    </PvDialog>
   </section>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
 import UserForm from './UserForm.vue';
 
-export default Vue.extend({
+export default {
   components: {
     EmptyPlaceholder,
     UserForm,
@@ -227,7 +231,7 @@ export default Vue.extend({
     this.$root.$on('page.refresh', this.getUsers);
   },
 
-  destroyed() {
+  unmounted() {
     this.$root.$off('page.refresh', this.getUsers);
   },
 
@@ -240,5 +244,5 @@ export default Vue.extend({
       this.getUsers();
     }
   },
-});
+};
 </script>

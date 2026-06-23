@@ -15,11 +15,10 @@
         </h1>
       </div>
       <div class="column has-text-right">
-        <b-field v-if="$can('subscribers:manage')" expanded>
-          <b-button expanded type="is-primary" icon-left="plus" @click="showNewForm" data-cy="btn-new" class="btn-new">
-            {{ $t('globals.buttons.new') }}
-          </b-button>
-        </b-field>
+        <div v-if="$can('subscribers:manage')" class="field">
+          <PvButton severity="primary" icon="pi pi-plus" @click="showNewForm" data-cy="btn-new" class="btn-new w-full"
+            :label="$t('globals.buttons.new')" />
+        </div>
       </div>
     </header>
 
@@ -28,20 +27,22 @@
         <div class="column is-8">
           <form @submit.prevent="onSubmit">
             <div>
-              <b-field addons>
-                <b-input @input="onSimpleQueryInput" v-model="queryInput" expanded
-                  :placeholder="$t('subscribers.queryPlaceholder')" icon="magnify" ref="query"
-                  :disabled="isSearchAdvanced" data-cy="search" />
+              <div class="field has-addons">
+                <div class="control is-expanded">
+                  <PvInputText @input="onSimpleQueryInput" v-model="queryInput" class="w-full"
+                    :placeholder="$t('subscribers.queryPlaceholder')" ref="query"
+                    :disabled="isSearchAdvanced" data-cy="search" />
+                </div>
                 <p class="controls">
-                  <b-button native-type="submit" type="is-primary" icon-left="magnify" :disabled="isSearchAdvanced"
+                  <PvButton type="submit" severity="primary" icon="pi pi-search" :disabled="isSearchAdvanced"
                     data-cy="btn-search" />
                 </p>
-              </b-field>
+              </div>
 
               <div v-if="isSearchAdvanced">
-                <b-input v-model="queryParams.queryExp" @keydown.native.enter="onAdvancedQueryEnter" type="textarea"
+                <PvTextarea v-model="queryParams.queryExp" @keydown="onAdvancedQueryEnter" rows="3"
                   ref="queryExp" placeholder="subscribers.name LIKE '%user%' or subscribers.status='blocklisted'"
-                  data-cy="query" />
+                  class="w-full" data-cy="query" />
                 <span class="is-size-6 has-text-grey">
                   {{ $t('subscribers.advancedQueryHelp') }}.{{ ' ' }}
                   <a href="https://listmonk.app/docs/querying-and-segmentation" target="_blank"
@@ -50,20 +51,17 @@
                   </a>
                 </span>
                 <div class="buttons">
-                  <b-button native-type="submit" type="is-primary" icon-left="magnify" data-cy="btn-query">
-                    {{
-                      $t('subscribers.query') }}
-                  </b-button>
-                  <b-button @click.prevent="toggleAdvancedSearch" icon-left="cancel" data-cy="btn-query-reset">
-                    {{ $t('subscribers.reset') }}
-                  </b-button>
+                  <PvButton type="submit" severity="primary" icon="pi pi-search" data-cy="btn-query"
+                    :label="$t('subscribers.query')" />
+                  <PvButton @click.prevent="toggleAdvancedSearch" icon="pi pi-times" data-cy="btn-query-reset"
+                    :label="$t('subscribers.reset')" />
                 </div>
               </div><!-- advanced query -->
             </div>
           </form>
           <div v-if="!isSearchAdvanced" class="toggle-advanced">
             <a href="#" @click.prevent="toggleAdvancedSearch" data-cy="btn-advanced-search">
-              <b-icon icon="cog-outline" size="is-small" />
+              <i class="pi pi-cog" />
               {{ $t('subscribers.advancedQuery') }}
             </a>
           </div>
@@ -72,25 +70,32 @@
     </section><!-- control -->
 
     <br />
-    <b-table :data="subscribers.results ?? []" :loading="loading.subscribers" @check-all="onTableCheck"
-      @check="onTableCheck" :checked-rows.sync="bulk.checked" paginated backend-pagination pagination-position="both"
-      @page-change="onPageChange" :current-page="queryParams.page" :per-page="subscribers.perPage"
-      :total="subscribers.total" hoverable checkable backend-sorting @sort="onSort">
-      <template #top-left>
+    <PvDataTable :value="subscribers.results ?? []" :loading="loading.subscribers"
+      data-key="id"
+      :rows="subscribers.perPage" :paginator="true" paginator-position="both"
+      :total-records="subscribers.total" :lazy="true"
+      @page="(e) => onPageChange(e.page + 1)"
+      @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
+      selection-mode="checkbox" v-model:selection="bulk.checked"
+      @row-select="onTableCheck" @row-unselect="onTableCheck"
+      @row-select-all="onTableCheck" @row-unselect-all="onTableCheck"
+      :current-page-report-template="'{first} - {last} of {totalRecords}'"
+      hoverable>
+      <template #header>
         <div class="actions">
           <a class="a" href="#" @click.prevent="exportSubscribers" data-cy="btn-export-subscribers">
-            <b-icon icon="cloud-download-outline" size="is-small" />
+            <i class="pi pi-download" />
             {{ $t('subscribers.export') }}
           </a>
           <template v-if="bulk.checked.length > 0">
             <a class="a" href="#" @click.prevent="showBulkListForm" data-cy="btn-manage-lists">
-              <b-icon icon="format-list-bulleted-square" size="is-small" /> Manage lists
+              <i class="pi pi-list" /> Manage lists
             </a>
             <a class="a" href="#" @click.prevent="deleteSubscribers" data-cy="btn-delete-subscribers">
-              <b-icon icon="trash-can-outline" size="is-small" /> Delete
+              <i class="pi pi-trash" /> Delete
             </a>
             <a class="a" href="#" @click.prevent="blocklistSubscribers" data-cy="btn-manage-blocklist">
-              <b-icon icon="account-off-outline" size="is-small" /> Blocklist
+              <i class="pi pi-user-minus" /> Blocklist
             </a>
             <span class="a">
               {{ $t('globals.messages.numSelected', { num: numSelectedSubscribers }) }}
@@ -105,94 +110,99 @@
         </div>
       </template>
 
-      <b-table-column v-slot="props" field="email" :label="$t('subscribers.email')" header-class="cy-email" sortable
-        :td-attrs="$utils.tdID">
-        <a :href="`/subscribers/${props.row.id}`" @click.prevent="showEditForm(props.row)"
-          :class="{ 'blocklisted': props.row.status === 'blocklisted' }">
-          {{ props.row.email }}
-          <copy-text :text="`${props.row.email}`" hide-text />
-        </a>
-        <b-tag v-if="props.row.status !== 'enabled'" :class="props.row.status" data-cy="blocklisted">
-          {{ $t(`subscribers.status.${props.row.status}`) }}
-        </b-tag>
-        <b-taglist>
-          <template v-for="l in props.row.lists">
-            <router-link :to="`/subscribers/lists/${l.id}`" :key="l.id" style="padding-right:0.5em;">
-              <b-tag :class="l.subscriptionStatus" size="is-small" :key="l.id">
-                {{ l.name }}
-                <sup v-if="l.optin === 'double' || l.subscriptionStatus == 'unsubscribed'">
-                  {{ $t(`subscribers.status.${l.subscriptionStatus}`) }}
-                </sup>
-              </b-tag>
-            </router-link>
-          </template>
-        </b-taglist>
-      </b-table-column>
+      <PvColumn selection-mode="multiple" header-style="width:3rem" />
 
-      <b-table-column v-slot="props" field="name" :label="$t('globals.fields.name')" header-class="cy-name" sortable>
-        <a :href="`/subscribers/${props.row.id}`" @click.prevent="showEditForm(props.row)"
-          :class="{ 'blocklisted': props.row.status === 'blocklisted' }">
-          {{ props.row.name }}
-          <copy-text :text="`${props.row.name}`" hide-text />
-        </a>
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="lists" :label="$t('globals.terms.lists')" header-class="cy-lists" centered>
-        {{ listCount(props.row.lists) }}
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="created_at" :label="$t('globals.fields.createdAt')"
-        header-class="cy-created_at" sortable>
-        {{ $utils.niceDate(props.row.createdAt) }}
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="updated_at" :label="$t('globals.fields.updatedAt')"
-        header-class="cy-updated_at" sortable>
-        {{ $utils.niceDate(props.row.updatedAt) }}
-      </b-table-column>
-
-      <b-table-column v-slot="props" cell-class="actions" align="right">
-        <div>
-          <a :href="`/api/subscribers/${props.row.id}/export`" data-cy="btn-download"
-            :aria-label="$t('subscribers.downloadData')">
-            <b-tooltip :label="$t('subscribers.downloadData')" type="is-dark">
-              <b-icon icon="cloud-download-outline" size="is-small" />
-            </b-tooltip>
+      <PvColumn field="email" :header="$t('subscribers.email')" header-class="cy-email" sortable>
+        <template #body="{ data }">
+          <a :href="`/subscribers/${data.id}`" @click.prevent="showEditForm(data)"
+            :class="{ 'blocklisted': data.status === 'blocklisted' }">
+            {{ data.email }}
+            <copy-text :text="`${data.email}`" hide-text />
           </a>
-          <a v-if="$can('subscribers:manage')" :href="`/subscribers/${props.row.id}`"
-            @click.prevent="showEditForm(props.row)" data-cy="btn-edit" :aria-label="$t('globals.buttons.edit')">
-            <b-tooltip :label="$t('globals.buttons.edit')" type="is-dark">
-              <b-icon icon="pencil-outline" size="is-small" />
-            </b-tooltip>
+          <PvTag v-if="data.status !== 'enabled'" :class="data.status" data-cy="blocklisted"
+            :value="$t(`subscribers.status.${data.status}`)" />
+          <span class="tags">
+            <template v-for="l in data.lists" :key="l.id">
+              <router-link :to="`/subscribers/lists/${l.id}`" style="padding-right:0.5em;">
+                <PvTag :class="l.subscriptionStatus" size="small">
+                  {{ l.name }}
+                  <sup v-if="l.optin === 'double' || l.subscriptionStatus == 'unsubscribed'">
+                    {{ $t(`subscribers.status.${l.subscriptionStatus}`) }}
+                  </sup>
+                </PvTag>
+              </router-link>
+            </template>
+          </span>
+        </template>
+      </PvColumn>
+
+      <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" sortable>
+        <template #body="{ data }">
+          <a :href="`/subscribers/${data.id}`" @click.prevent="showEditForm(data)"
+            :class="{ 'blocklisted': data.status === 'blocklisted' }">
+            {{ data.name }}
+            <copy-text :text="`${data.name}`" hide-text />
           </a>
-          <a v-if="$can('subscribers:manage')" href="#" @click.prevent="deleteSubscriber(props.row)"
-            data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
-            <b-tooltip :label="$t('globals.buttons.delete')" type="is-dark">
-              <b-icon icon="trash-can-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-        </div>
-      </b-table-column>
+        </template>
+      </PvColumn>
+
+      <PvColumn field="lists" :header="$t('globals.terms.lists')" header-class="cy-lists" style="text-align:center">
+        <template #body="{ data }">
+          {{ listCount(data.lists) }}
+        </template>
+      </PvColumn>
+
+      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.createdAt) }}
+        </template>
+      </PvColumn>
+
+      <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.updatedAt) }}
+        </template>
+      </PvColumn>
+
+      <PvColumn body-class="actions" style="text-align:right">
+        <template #body="{ data }">
+          <div>
+            <a :href="`/api/subscribers/${data.id}/export`" data-cy="btn-download"
+              :aria-label="$t('subscribers.downloadData')">
+              <i class="pi pi-download" v-tooltip.bottom="$t('subscribers.downloadData')" />
+            </a>
+            <a v-if="$can('subscribers:manage')" :href="`/subscribers/${data.id}`"
+              @click.prevent="showEditForm(data)" data-cy="btn-edit" :aria-label="$t('globals.buttons.edit')">
+              <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
+            </a>
+            <a v-if="$can('subscribers:manage')" href="#" @click.prevent="deleteSubscriber(data)"
+              data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
+              <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
+            </a>
+          </div>
+        </template>
+      </PvColumn>
 
       <template #empty v-if="!loading.subscribers">
         <empty-placeholder />
       </template>
-    </b-table>
+    </PvDataTable>
 
     <!-- Manage list modal -->
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isBulkListFormVisible" :width="500" class="has-overflow">
+    <PvDialog v-model:visible="isBulkListFormVisible" :style="{ width: '500px' }" :closable="true" modal
+      class="has-overflow">
       <subscriber-bulk-list :num-subscribers="this.numSelectedSubscribers" @finished="bulkChangeLists" />
-    </b-modal>
+    </PvDialog>
 
     <!-- Add / edit form modal -->
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isFormVisible" :width="850" @close="onFormClose">
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '850px' }" :closable="true" modal
+      @hide="onFormClose">
       <subscriber-form :data="curItem" :is-editing="isEditing" @finished="querySubscribers" />
-    </b-modal>
+    </PvDialog>
   </section>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import { uris } from '../constants';
@@ -200,7 +210,7 @@ import SubscriberBulkList from './SubscriberBulkList.vue';
 import SubscriberForm from './SubscriberForm.vue';
 import CopyText from '../components/CopyText.vue';
 
-export default Vue.extend({
+export default {
   components: {
     SubscriberForm,
     SubscriberBulkList,
@@ -257,7 +267,7 @@ export default Vue.extend({
         this.queryParams.queryExp = '';
         this.queryParams.page = 1;
         this.querySubscribers();
-        this.$refs.query.focus();
+        this.$refs.query.$el.focus();
         return;
       }
 
@@ -273,7 +283,7 @@ export default Vue.extend({
 
       // Toggling to advanced search.
       this.$nextTick(() => {
-        this.$refs.queryExp.focus();
+        this.$refs.queryExp.$el.focus();
       });
     },
 
@@ -332,7 +342,7 @@ export default Vue.extend({
 
     // Ctrl + Enter on the advanced query searches.
     onAdvancedQueryEnter(e) {
-      if (e.ctrlKey) {
+      if (e.ctrlKey && e.key === 'Enter') {
         this.onSubmit();
       }
     },
@@ -529,7 +539,7 @@ export default Vue.extend({
     this.$root.$on('page.refresh', this.querySubscribers);
   },
 
-  destroyed() {
+  unmounted() {
     this.$root.$off('page.refresh', this.querySubscribers);
   },
 
@@ -550,5 +560,5 @@ export default Vue.extend({
       this.querySubscribers();
     }
   },
-});
+};
 </script>

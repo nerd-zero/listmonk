@@ -1,28 +1,30 @@
 <template>
   <div class="field list-selector">
     <div :class="['list-tags', ...classes]">
-      <b-taglist>
-        <b-tag v-for="l in selectedItems" :key="l.id" :class="[l.subscriptionStatus, { 'is-restricted': l.restricted }]"
-          :closable="!$props.disabled && !l.restricted" :data-id="l.id" @close="removeList(l.id)" class="list">
+      <div class="tags">
+        <PvTag v-for="l in selectedItems" :key="l.id" :class="[l.subscriptionStatus, { 'is-restricted': l.restricted }, 'list']"
+          :data-id="l.id" class="list">
           {{ l.name }}
           <sup v-if="l.optin === 'double' && l.subscriptionStatus">
             {{ $t(`subscribers.status.${l.subscriptionStatus}`) }}
           </sup>
-        </b-tag>
-      </b-taglist>
+          <i v-if="!$props.disabled && !l.restricted" class="pi pi-times ml-1 cursor-pointer" @click="removeList(l.id)" />
+        </PvTag>
+      </div>
     </div>
 
-    <b-field :message="message" :label="label + (selectedItems ? ` (${selectedItems.length})` : '')"
-      label-position="on-border">
-      <b-autocomplete v-model="query" :placeholder="placeholder" clearable dropdown-position="top"
-        :disabled="all.length === 0 || $props.disabled" :keep-first="true" :clear-on-select="true" :open-on-focus="true"
-        :data="filteredLists" @select="selectList" field="name" />
-    </b-field>
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ label + (selectedItems ? ` (${selectedItems.length})` : '') }}</label>
+      <PvAutoComplete v-model="query" :placeholder="placeholder"
+        :disabled="all.length === 0 || $props.disabled"
+        :suggestions="filteredLists" @item-select="onSelect" option-label="name"
+        :dropdown="true" force-selection />
+      <small v-if="message" class="block mt-1 text-color-secondary">{{ message }}</small>
+    </div>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 
 export default {
   name: 'ListSelector',
@@ -55,6 +57,10 @@ export default {
   },
 
   methods: {
+    onSelect(event) {
+      this.selectList(event.value);
+    },
+
     selectList(l) {
       if (!l) {
         return;
@@ -63,7 +69,7 @@ export default {
       this.query = '';
 
       // Propagate the items to the parent's v-model binding.
-      Vue.nextTick(() => {
+      this.$nextTick(() => {
         this.$emit('input', this.selectedItems);
       });
     },
@@ -72,7 +78,7 @@ export default {
       this.selectedItems = this.selectedItems.filter((l) => l.id !== id);
 
       // Propagate the items to the parent's v-model binding.
-      Vue.nextTick(() => {
+      this.$nextTick(() => {
         this.$emit('input', this.selectedItems);
       });
     },
@@ -86,7 +92,7 @@ export default {
 
       // Filter lists from the global lists whose IDs are not in the user's
       // subscribed ist.
-      const q = this.query.toLowerCase();
+      const q = typeof this.query === 'string' ? this.query.toLowerCase() : '';
       return this.$props.all.filter(
         (l) => (!(l.id in subIDs) && l.name.toLowerCase().indexOf(q) >= 0),
       );

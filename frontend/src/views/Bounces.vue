@@ -9,20 +9,24 @@
       </div>
     </header>
 
-    <b-table :data="bounces.results" :hoverable="true" :loading="loading.bounces" default-sort="createdAt" checkable
-      @check-all="onTableCheck" @check="onTableCheck" :checked-rows.sync="bulk.checked" detailed show-detail-icon
-      paginated backend-pagination pagination-position="both" @page-change="onPageChange"
-      :current-page="queryParams.page" :per-page="bounces.perPage" :total="bounces.total" backend-sorting
-      @sort="onSort">
-      <template #top-left>
+    <PvDataTable :value="bounces.results" :hoverable="true" :loading="loading.bounces"
+      sort-field="createdAt" :sort-order="-1"
+      selection-mode="checkbox" v-model:selection="bulk.checked"
+      @update:selection="onTableCheck"
+      :rows="bounces.perPage" :paginator="true" :total-records="bounces.total"
+      :lazy="true" @page="(e) => onPageChange(e.page + 1)"
+      @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
+      data-key="id"
+      :expanded-rows="expandedRows" @update:expanded-rows="expandedRows = $event">
+      <template #header>
         <div class="actions">
           <template v-if="bulk.checked.length > 0">
             <a class="a" href="#" @click.prevent="$utils.confirm(null, () => deleteBounces())" data-cy="btn-delete">
-              <b-icon icon="trash-can-outline" size="is-small" /> {{ $t('globals.buttons.delete') }}
+              <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
             </a>
             <a class="a" href="#" @click.prevent="$utils.confirm(null, () => blocklistSubscribers())"
               data-cy="btn-manage-blocklist">
-              <b-icon icon="account-off-outline" size="is-small" /> {{ $t('import.blocklist') }}
+              <i class="pi pi-ban" /> {{ $t('import.blocklist') }}
             </a>
             <span>
               {{ $t('globals.messages.numSelected', { num: numSelectedBounces }) }}
@@ -36,71 +40,83 @@
           </template>
         </div>
       </template>
-      <b-table-column v-slot="props" field="email" :label="$t('subscribers.email')" :td-attrs="$utils.tdID" sortable>
-        <router-link :to="{ name: 'subscriber', params: { id: props.row.subscriberId } }"
-          :class="{ 'blocklisted': props.row.subscriberStatus === 'blocklisted' }">
-          {{ props.row.email }}
-          <b-tag v-if="props.row.subscriberStatus !== 'enabled'" :class="props.row.subscriberStatus"
-            data-cy="blocklisted">
-            {{ $t(`subscribers.status.${props.row.subscriberStatus}`) }}
-          </b-tag>
-        </router-link>
-      </b-table-column>
 
-      <b-table-column v-slot="props" field="campaign" :label="$tc('globals.terms.campaign')" sortable>
-        <router-link v-if="props.row.campaign" :to="{ name: 'bounces', query: { campaign_id: props.row.campaign.id } }">
-          {{ props.row.campaign.name }}
-        </router-link>
-        <span v-else>-</span>
-      </b-table-column>
+      <PvColumn selection-mode="multiple" header-style="width:3rem" />
 
-      <b-table-column v-slot="props" field="source" :label="$t('bounces.source')" sortable>
-        <router-link :to="{ name: 'bounces', query: { source: props.row.source } }">
-          {{ props.row.source }}
-        </router-link>
-      </b-table-column>
+      <PvColumn expander header-style="width:3rem" />
 
-      <b-table-column v-slot="props" field="type" :label="$t('globals.fields.type')" sortable>
-        <router-link :to="{ name: 'bounces', query: { type: props.row.type } }">
-          {{ $t(`bounces.${props.row.type}`) }}
-        </router-link>
-      </b-table-column>
+      <PvColumn field="email" :header="$t('subscribers.email')" sortable>
+        <template #body="{ data }">
+          <router-link :to="{ name: 'subscriber', params: { id: data.subscriberId } }"
+            :class="{ 'blocklisted': data.subscriberStatus === 'blocklisted' }">
+            {{ data.email }}
+            <PvTag v-if="data.subscriberStatus !== 'enabled'" :class="data.subscriberStatus"
+              data-cy="blocklisted" :value="$t(`subscribers.status.${data.subscriberStatus}`)" />
+          </router-link>
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" field="created_at" :label="$t('globals.fields.createdAt')" sortable>
-        {{ $utils.niceDate(props.row.createdAt, true) }}
-      </b-table-column>
+      <PvColumn field="campaign" :header="$tc('globals.terms.campaign')" sortable>
+        <template #body="{ data }">
+          <router-link v-if="data.campaign" :to="{ name: 'bounces', query: { campaign_id: data.campaign.id } }">
+            {{ data.campaign.name }}
+          </router-link>
+          <span v-else>-</span>
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" cell-class="actions" align="right">
-        <div>
-          <a v-if="!props.row.isDefault" href="#" @click.prevent="$utils.confirm(null, () => deleteBounce(props.row))"
-            data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
-            <b-tooltip :label="$t('globals.buttons.delete')" type="is-dark">
-              <b-icon icon="trash-can-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-          <span v-else class="a has-text-grey-light">
-            <b-icon icon="trash-can-outline" size="is-small" />
-          </span>
-        </div>
-      </b-table-column>
+      <PvColumn field="source" :header="$t('bounces.source')" sortable>
+        <template #body="{ data }">
+          <router-link :to="{ name: 'bounces', query: { source: data.source } }">
+            {{ data.source }}
+          </router-link>
+        </template>
+      </PvColumn>
 
-      <template #detail="props">
-        <pre class="is-size-7">{{ props.row.meta }}</pre>
+      <PvColumn field="type" :header="$t('globals.fields.type')" sortable>
+        <template #body="{ data }">
+          <router-link :to="{ name: 'bounces', query: { type: data.type } }">
+            {{ $t(`bounces.${data.type}`) }}
+          </router-link>
+        </template>
+      </PvColumn>
+
+      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.createdAt, true) }}
+        </template>
+      </PvColumn>
+
+      <PvColumn body-class="actions" align-frozen="right">
+        <template #body="{ data }">
+          <div>
+            <a v-if="!data.isDefault" href="#" @click.prevent="$utils.confirm(null, () => deleteBounce(data))"
+              data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
+              <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
+            </a>
+            <span v-else class="a has-text-grey-light">
+              <i class="pi pi-trash" />
+            </span>
+          </div>
+        </template>
+      </PvColumn>
+
+      <template #expansion="{ data }">
+        <pre class="is-size-7">{{ data.meta }}</pre>
       </template>
 
       <template #empty v-if="!loading.templates">
         <empty-placeholder />
       </template>
-    </b-table>
+    </PvDataTable>
   </section>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default Vue.extend({
+export default {
   components: {
     EmptyPlaceholder,
   },
@@ -108,6 +124,8 @@ export default Vue.extend({
   data() {
     return {
       bounces: {},
+
+      expandedRows: [],
 
       // Table bulk row selection states.
       bulk: {
@@ -217,7 +235,7 @@ export default Vue.extend({
     this.$root.$on('page.refresh', this.getBounces);
   },
 
-  destroyed() {
+  unmounted() {
     this.$root.$off('page.refresh', this.getBounces);
   },
 
@@ -232,5 +250,5 @@ export default Vue.extend({
 
     this.getBounces();
   },
-});
+};
 </script>

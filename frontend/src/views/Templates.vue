@@ -8,107 +8,98 @@
         </h1>
       </div>
       <div class="column has-text-right">
-        <b-field v-if="$can('templates:manage')" expanded>
-          <b-button expanded type="is-primary" icon-left="plus" class="btn-new" @click="showNewForm">
-            {{ $t('globals.buttons.new') }}
-          </b-button>
-        </b-field>
+        <div v-if="$can('templates:manage')" class="field">
+          <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm"
+            :label="$t('globals.buttons.new')" />
+        </div>
       </div>
     </header>
 
-    <b-table :data="templates" :hoverable="true" :loading="loading.templates" default-sort="createdAt">
-      <b-table-column v-slot="props" field="name" :label="$t('globals.fields.name')" :td-attrs="$utils.tdID" sortable>
-        <a href="#" @click.prevent="showEditForm(props.row)">
-          {{ props.row.name }}
-        </a>
-        <b-tag v-if="props.row.isDefault">
-          {{ $t('templates.default') }}
-        </b-tag>
-
-        <p class="is-size-7 has-text-grey" v-if="props.row.type === 'tx'">
-          {{ props.row.subject }}
-        </p>
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="type" :label="$t('globals.fields.type')" sortable>
-        <b-tag v-if="props.row.type === 'campaign'" :class="props.row.type" :data-cy="`type-${props.row.type}`">
-          {{ $tc('templates.typeCampaignHTML') }}
-        </b-tag>
-        <b-tag v-else-if="props.row.type === 'campaign_visual'" :class="props.row.type"
-          :data-cy="`type-${props.row.type}`">
-          {{ $tc('templates.typeCampaignVisual') }}
-        </b-tag>
-        <b-tag v-else :class="props.row.type" :data-cy="`type-${props.row.type}`">
-          {{ $tc('templates.typeTransactional') }}
-        </b-tag>
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="id" :label="$t('globals.fields.id')" sortable>
-        {{ props.row.id }}
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="createdAt" :label="$t('globals.fields.createdAt')" sortable>
-        {{ $utils.niceDate(props.row.createdAt) }}
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="updatedAt" :label="$t('globals.fields.updatedAt')" sortable>
-        {{ $utils.niceDate(props.row.updatedAt) }}
-      </b-table-column>
-
-      <b-table-column v-slot="props" cell-class="actions" align="right">
-        <div>
-          <a href="#" @click.prevent="previewTemplate(props.row)" data-cy="btn-preview"
-            :aria-label="$t('templates.preview')">
-            <b-tooltip :label="$t('templates.preview')" type="is-dark">
-              <b-icon icon="file-find-outline" size="is-small" />
-            </b-tooltip>
+    <PvDataTable :value="templates" :loading="loading.templates" sort-field="createdAt" sort-order="1">
+      <PvColumn field="name" :header="$t('globals.fields.name')" sortable>
+        <template #body="{ data }">
+          <a href="#" @click.prevent="showEditForm(data)">
+            {{ data.name }}
           </a>
-          <a href="#" @click.prevent="showEditForm(props.row)" data-cy="btn-edit"
-            :aria-label="$t('globals.buttons.edit')">
-            <b-tooltip :label="$t('globals.buttons.edit')" type="is-dark">
-              <b-icon icon="pencil-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-          <a href="#" @click.prevent="$utils.prompt(`Clone template`,
-            { placeholder: 'Name', value: `Copy of ${props.row.name}` },
-            (name) => cloneTemplate(name, props.row))" data-cy="btn-clone" :aria-label="$t('globals.buttons.clone')">
-            <b-tooltip :label="$t('globals.buttons.clone')" type="is-dark">
-              <b-icon icon="file-multiple-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-          <a v-if="!props.row.isDefault && props.row.type === 'campaign'" href="#"
-            @click.prevent="$utils.confirm(null, () => makeTemplateDefault(props.row))" data-cy="btn-set-default"
-            :aria-label="$t('templates.makeDefault')">
-            <b-tooltip :label="$t('templates.makeDefault')" type="is-dark">
-              <b-icon icon="check-circle-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-          <span v-else class="a has-text-grey-light">
-            <b-icon icon="check-circle-outline" size="is-small" />
-          </span>
+          <PvTag v-if="data.isDefault" :value="$t('templates.default')" />
 
-          <a v-if="!props.row.isDefault" href="#" @click.prevent="$utils.confirm(null, () => deleteTemplate(props.row))"
-            data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
-            <b-tooltip :label="$t('globals.buttons.delete')" type="is-dark">
-              <b-icon icon="trash-can-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-          <span v-else class="a has-text-grey-light">
-            <b-icon icon="trash-can-outline" size="is-small" />
-          </span>
-        </div>
-      </b-table-column>
+          <p class="is-size-7 has-text-grey" v-if="data.type === 'tx'">
+            {{ data.subject }}
+          </p>
+        </template>
+      </PvColumn>
+
+      <PvColumn field="type" :header="$t('globals.fields.type')" sortable>
+        <template #body="{ data }">
+          <PvTag v-if="data.type === 'campaign'" :class="data.type" :data-cy="`type-${data.type}`"
+            :value="$tc('templates.typeCampaignHTML')" />
+          <PvTag v-else-if="data.type === 'campaign_visual'" :class="data.type"
+            :data-cy="`type-${data.type}`" :value="$tc('templates.typeCampaignVisual')" />
+          <PvTag v-else :class="data.type" :data-cy="`type-${data.type}`"
+            :value="$tc('templates.typeTransactional')" />
+        </template>
+      </PvColumn>
+
+      <PvColumn field="id" :header="$t('globals.fields.id')" sortable />
+
+      <PvColumn field="createdAt" :header="$t('globals.fields.createdAt')" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.createdAt) }}
+        </template>
+      </PvColumn>
+
+      <PvColumn field="updatedAt" :header="$t('globals.fields.updatedAt')" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.updatedAt) }}
+        </template>
+      </PvColumn>
+
+      <PvColumn class="actions" style="text-align:right">
+        <template #body="{ data }">
+          <div>
+            <a href="#" @click.prevent="previewTemplate(data)" data-cy="btn-preview"
+              :aria-label="$t('templates.preview')">
+              <i class="pi pi-file" v-tooltip.bottom="$t('templates.preview')" />
+            </a>
+            <a href="#" @click.prevent="showEditForm(data)" data-cy="btn-edit"
+              :aria-label="$t('globals.buttons.edit')">
+              <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
+            </a>
+            <a href="#" @click.prevent="$utils.prompt(`Clone template`,
+              { placeholder: 'Name', value: `Copy of ${data.name}` },
+              (name) => cloneTemplate(name, data))" data-cy="btn-clone" :aria-label="$t('globals.buttons.clone')">
+              <i class="pi pi-copy" v-tooltip.bottom="$t('globals.buttons.clone')" />
+            </a>
+            <a v-if="!data.isDefault && data.type === 'campaign'" href="#"
+              @click.prevent="$utils.confirm(null, () => makeTemplateDefault(data))" data-cy="btn-set-default"
+              :aria-label="$t('templates.makeDefault')">
+              <i class="pi pi-check-circle" v-tooltip.bottom="$t('templates.makeDefault')" />
+            </a>
+            <span v-else class="a has-text-grey-light">
+              <i class="pi pi-check-circle" />
+            </span>
+
+            <a v-if="!data.isDefault" href="#" @click.prevent="$utils.confirm(null, () => deleteTemplate(data))"
+              data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
+              <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
+            </a>
+            <span v-else class="a has-text-grey-light">
+              <i class="pi pi-trash" />
+            </span>
+          </div>
+        </template>
+      </PvColumn>
 
       <template #empty v-if="!loading.templates">
         <empty-placeholder />
       </template>
-    </b-table>
+    </PvDataTable>
 
     <!-- Add / edit form modal -->
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isFormVisible" :width="1200" :can-cancel="false"
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '1200px' }" :closable="false" modal
       class="template-modal">
       <template-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
-    </b-modal>
+    </PvDialog>
 
     <campaign-preview v-if="previewItem" type="template" :id="previewItem.id" :template-type="previewItem.type"
       :title="previewItem.name" @close="closePreview" />
@@ -116,14 +107,13 @@
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
 import TemplateForm from './TemplateForm.vue';
 
-export default Vue.extend({
+export default {
   components: {
     CampaignPreview,
     TemplateForm,
@@ -208,12 +198,12 @@ export default Vue.extend({
     this.$root.$on('page.refresh', this.fetchTemplates);
   },
 
-  destroyed() {
+  unmounted() {
     this.$root.$off('page.refresh', this.fetchTemplates);
   },
 
   mounted() {
     this.$api.getTemplates();
   },
-});
+};
 </script>

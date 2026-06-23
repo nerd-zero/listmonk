@@ -2,52 +2,40 @@
   <div class="richtext-editor" v-if="isRichtextReady">
     <tiny-mce v-model="computedValue" :disabled="disabled" :init="richtextConf" />
 
-    <b-modal scroll="keep" :width="1200" :aria-modal="true" :active.sync="isRichtextSourceVisible">
+    <PvDialog v-model:visible="isRichtextSourceVisible" :style="{ width: '1200px' }" :closable="true" modal scroll="keep" :aria-modal="true">
       <div>
         <section expanded class="modal-card-body preview">
           <code-editor lang="html" v-model="richTextSourceBody" key="richtext-source" />
         </section>
         <footer class="modal-card-foot has-text-right">
-          <b-button @click="onFormatRichtextHTML">
-            {{ $t('campaigns.formatHTML') }}
-          </b-button>
-          <b-button @click="() => { this.isRichtextSourceVisible = false; }">
-            {{ $t('globals.buttons.close') }}
-          </b-button>
-          <b-button @click="onSaveRichTextSource" class="is-primary">
-            {{ $t('globals.buttons.save') }}
-          </b-button>
+          <PvButton @click="onFormatRichtextHTML" :label="$t('campaigns.formatHTML')" />
+          <PvButton @click="() => { this.isRichtextSourceVisible = false; }" :label="$t('globals.buttons.close')" />
+          <PvButton @click="onSaveRichTextSource" severity="primary" :label="$t('globals.buttons.save')" />
         </footer>
       </div>
-    </b-modal>
+    </PvDialog>
 
-    <b-modal scroll="keep" :width="750" :aria-modal="true" :active.sync="isInsertHTMLVisible">
+    <PvDialog v-model:visible="isInsertHTMLVisible" :style="{ width: '750px' }" :closable="true" modal scroll="keep" :aria-modal="true">
       <div>
         <section expanded class="modal-card-body preview">
           <code-editor lang="html" v-model="insertHTMLSnippet" key="richtext-snippet" />
         </section>
         <footer class="modal-card-foot has-text-right">
-          <b-button @click="onFormatRichtextHTMLSnippet">
-            {{ $t('campaigns.formatHTML') }}
-          </b-button>
-          <b-button @click="() => { this.isInsertHTMLVisible = false; }">
-            {{ $t('globals.buttons.close') }}
-          </b-button>
-          <b-button @click="onInsertHTML" class="is-primary">
-            {{ $t('globals.buttons.insert') }}
-          </b-button>
+          <PvButton @click="onFormatRichtextHTMLSnippet" :label="$t('campaigns.formatHTML')" />
+          <PvButton @click="() => { this.isInsertHTMLVisible = false; }" :label="$t('globals.buttons.close')" />
+          <PvButton @click="onInsertHTML" severity="primary" :label="$t('globals.buttons.insert')" />
         </footer>
       </div>
-    </b-modal>
+    </PvDialog>
 
     <!-- image picker -->
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isMediaVisible" :width="900">
+    <PvDialog v-model:visible="isMediaVisible" :style="{ width: '900px' }" :closable="true" modal scroll="keep" :aria-modal="true">
       <div class="modal-card content" style="width: auto">
         <section expanded class="modal-card-body">
           <media is-modal @selected="onMediaSelect" />
         </section>
       </div>
-    </b-modal>
+    </PvDialog>
   </div>
 </template>
 
@@ -114,11 +102,13 @@ export default {
 
   props: {
     disabled: { type: Boolean, default: false },
-    value: {
+    modelValue: {
       type: String,
       default: '',
     },
   },
+
+  emits: ['update:modelValue'],
 
   data() {
     return {
@@ -389,10 +379,10 @@ export default {
 
     computedValue: {
       get() {
-        return this.value;
+        return this.modelValue;
       },
       set(newValue) {
-        this.$emit('input', newValue);
+        this.$emit('update:modelValue', newValue);
       },
     },
   },

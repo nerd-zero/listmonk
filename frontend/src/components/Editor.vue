@@ -3,57 +3,62 @@
   <section class="editor">
     <div class="columns">
       <div class="column is-three-quarters is-inline-flex">
-        <b-field :label="$t('campaigns.format')" label-position="on-border" class="mr-4 mb-0">
-          <b-select v-model="contentTypeSel" :disabled="disabled" name="content_type">
+        <div class="field mr-4 mb-0">
+          <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.format') }}</label>
+          <select v-model="contentTypeSel" :disabled="disabled" name="content_type">
             <option v-for="(name, f) in contentTypes" :key="f" name="format" :value="f" :data-cy="`check-${f}`">
               {{ name }}
             </option>
-          </b-select>
-        </b-field>
+          </select>
+        </div>
 
-        <b-field v-if="self.contentType !== 'visual'" :label="$tc('globals.terms.template')" label-position="on-border">
-          <b-select :placeholder="$t('globals.terms.none')" v-model="templateId" name="template" :disabled="disabled">
-            <template v-for="t in validTemplates">
-              <option :value="t.id" :key="t.id">
+        <div class="field" v-if="self.contentType !== 'visual'">
+          <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
+          <select v-model="templateId" name="template" :disabled="disabled">
+            <option value="">{{ $t('globals.terms.none') }}</option>
+            <template v-for="t in validTemplates" :key="t.id">
+              <option :value="t.id">
                 {{ t.name }}
               </option>
             </template>
-          </b-select>
-        </b-field>
+          </select>
+        </div>
 
         <div v-else>
-          <b-button v-if="!isVisualTplSelector" @click="onShowVisualTplSelector" type="is-ghost"
-            icon-left="file-find-outline" data-cy="btn-select-visual-tpl">
-            {{ $t('campaigns.importVisualTemplate') }}
-          </b-button>
-          <b-field v-else :label="$tc('globals.terms.template')" label-position="on-border">
-            <b-select :placeholder="$t('globals.terms.none')" v-model="visualTemplateId"
-              @input="() => isVisualTplDisabled = false" name="template" :disabled="disabled"
-              class="copy-visual-template-list">
-              <template v-for="t in validTemplates">
-                <option :value="t.id" :key="t.id">
-                  {{ t.name }}
-                </option>
-              </template>
-            </b-select>
+          <PvButton v-if="!isVisualTplSelector" @click="onShowVisualTplSelector" severity="secondary"
+            icon="pi pi-file-find" data-cy="btn-select-visual-tpl"
+            :label="$t('campaigns.importVisualTemplate')" />
+          <div class="field" v-else>
+            <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
+            <div class="flex items-center gap-2">
+              <select v-model="visualTemplateId"
+                @change="() => isVisualTplDisabled = false" name="template" :disabled="disabled"
+                class="copy-visual-template-list">
+                <option value="">{{ $t('globals.terms.none') }}</option>
+                <template v-for="t in validTemplates" :key="t.id">
+                  <option :value="t.id">
+                    {{ t.name }}
+                  </option>
+                </template>
+              </select>
 
-            <b-button :disabled="disabled || isVisualTplDisabled || !visualTemplateId" class="ml-3"
-              @click="onImportVisualTpl" type="is-primary" icon-left="content-save-outline"
-              data-cy="btn-save-visual-tpl">
-              {{ $t('globals.terms.import') }}
-
-              <span class="spinner is-tiny" v-if="loading.templates">
-                <b-loading :is-full-page="false" active />
-              </span>
-            </b-button>
-          </b-field>
+              <PvButton :disabled="disabled || isVisualTplDisabled || !visualTemplateId" class="ml-3"
+                @click="onImportVisualTpl" severity="primary" icon="pi pi-save"
+                data-cy="btn-save-visual-tpl"
+                :label="$t('globals.terms.import')">
+                <span class="spinner is-tiny" v-if="loading.templates">
+                  <PvProgressSpinner style="width:1rem;height:1rem" />
+                </span>
+              </PvButton>
+            </div>
+          </div>
         </div>
       </div>
       <div class="column is- has-text-right">
-        <b-button @click="onTogglePreview" type="is-primary" icon-left="file-find-outline" data-cy="btn-preview"
+        <PvButton @click="onTogglePreview" severity="primary" icon="pi pi-file-find" data-cy="btn-preview"
           aria-keyshortcuts="F9">
           <span class="has-kbd">{{ $t('campaigns.preview') }} <span class="kbd">F9</span></span>
-        </b-button>
+        </PvButton>
       </div>
     </div>
 
@@ -71,7 +76,7 @@
     <code-editor lang="markdown" v-if="self.contentType === 'markdown'" v-model="self.body" key="editor-markdown" />
 
     <!-- plain text //-->
-    <b-input v-if="self.contentType === 'plain'" v-model="self.body" type="textarea" name="content" ref="plainEditor"
+    <PvTextarea v-if="self.contentType === 'plain'" v-model="self.body" name="content" ref="plainEditor"
       class="plain-editor" />
 
     <!-- campaign preview //-->
@@ -340,7 +345,7 @@ export default {
     });
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('keydown', this.onKeyboardShortcut);
     this.$events.$off('campaign.preview');
   },

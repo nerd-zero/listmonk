@@ -14,64 +14,70 @@
       </header>
 
       <section expanded class="modal-card-body">
-        <b-field :label="$t('globals.fields.name')" label-position="on-border">
-          <b-input autofocus :disabled="disabled" :maxlength="200" v-model="form.name" name="name" ref="focus"
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+          <PvInputText autofocus :disabled="disabled" :maxlength="200" v-model="form.name" name="name" ref="focus"
             required />
-        </b-field>
+        </div>
 
         <div v-if="type === 'list'" class="box">
           <h5>{{ $t('users.listPerms') }}</h5>
           <div class="mb-5">
             <div class="columns">
               <div class="column is-9">
-                <b-select :placeholder="$tc('globals.terms.list')" v-model="form.curList" name="list"
-                  :disabled="disabled || filteredLists.length < 1" expanded class="mb-3">
-                  <template v-for="l in filteredLists">
-                    <option :value="l.id" :key="l.id">
-                      {{ l.name }}
-                    </option>
-                  </template>
-                </b-select>
+                <PvSelect v-model="form.curList" name="list"
+                  :placeholder="$tc('globals.terms.list')"
+                  :disabled="disabled || filteredLists.length < 1"
+                  :options="filteredLists"
+                  option-label="name"
+                  option-value="id"
+                  class="mb-3"
+                  style="width:100%" />
               </div>
               <div class="column">
-                <b-button @click="onAddListPerm" :disabled="!form.curList" class="is-primary" expanded>
-                  {{ $t('globals.buttons.add') }}
-                </b-button>
+                <PvButton @click="onAddListPerm" :disabled="!form.curList" severity="primary" style="width:100%"
+                  :label="$t('globals.buttons.add')" />
               </div>
             </div>
             <span
               v-if="form.lists.length > 0 && (form.permissions['lists:get_all'] || form.permissions['lists:manage_all'])"
               class="is-size-6 has-text-danger">
-              <b-icon icon="warning-empty" />
+              <i class="pi pi-exclamation-triangle" />
               {{ $t('users.listPermsWarning') }}
             </span>
           </div>
 
-          <b-table :data="form.lists">
-            <b-table-column v-slot="props" field="name" :label="$tc('globals.terms.list')">
-              <router-link :to="`/lists/${props.row.id}`" target="_blank">
-                {{ props.row.name }}
-              </router-link>
-            </b-table-column>
+          <PvDataTable :value="form.lists">
+            <PvColumn field="name" :header="$tc('globals.terms.list')">
+              <template #body="{ data }">
+                <router-link :to="`/lists/${data.id}`" target="_blank">
+                  {{ data.name }}
+                </router-link>
+              </template>
+            </PvColumn>
 
-            <b-table-column v-slot="props" field="permissions" :label="$t('users.perms')" width="40%">
-              <b-checkbox v-model="props.row.permissions" native-value="list:get">
-                {{ $t('globals.buttons.view') }}
-              </b-checkbox>
-              <b-checkbox v-model="props.row.permissions" native-value="list:manage">
-                {{ $t('globals.buttons.manage') }}
-              </b-checkbox>
-            </b-table-column>
+            <PvColumn field="permissions" :header="$t('users.perms')" style="width:40%">
+              <template #body="{ data }">
+                <div class="flex items-center gap-2">
+                  <PvCheckbox v-model="data.permissions" value="list:get" :input-id="`list-get-${data.id}`" />
+                  <label :for="`list-get-${data.id}`">{{ $t('globals.buttons.view') }}</label>
+                </div>
+                <div class="flex items-center gap-2">
+                  <PvCheckbox v-model="data.permissions" value="list:manage" :input-id="`list-manage-${data.id}`" />
+                  <label :for="`list-manage-${data.id}`">{{ $t('globals.buttons.manage') }}</label>
+                </div>
+              </template>
+            </PvColumn>
 
-            <b-table-column v-slot="props" width="10%">
-              <a href="#" @click.prevent="onDeleteListPerm(props.row.id)" data-cy="btn-delete"
-                :aria-label="$t('globals.buttons.delete')">
-                <b-tooltip :label="$t('globals.buttons.delete')" type="is-dark">
-                  <b-icon icon="trash-can-outline" size="is-small" />
-                </b-tooltip>
-              </a>
-            </b-table-column>
-          </b-table>
+            <PvColumn style="width:10%">
+              <template #body="{ data }">
+                <a href="#" @click.prevent="onDeleteListPerm(data.id)" data-cy="btn-delete"
+                  :aria-label="$t('globals.buttons.delete')">
+                  <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
+                </a>
+              </template>
+            </PvColumn>
+          </PvDataTable>
         </div>
 
         <template v-if="type === 'user'">
@@ -86,48 +92,49 @@
             </div>
           </div>
 
-          <b-table :data="serverConfig.permissions">
-            <b-table-column v-slot="props" field="group" :label="$t('users.roleGroup')">
-              {{ $tc(`globals.terms.${props.row.group}`) }}
-            </b-table-column>
+          <PvDataTable :value="serverConfig.permissions">
+            <PvColumn field="group" :header="$t('users.roleGroup')">
+              <template #body="{ data }">
+                {{ $tc(`globals.terms.${data.group}`) }}
+              </template>
+            </PvColumn>
 
-            <b-table-column v-slot="props" field="permissions" label="Permissions">
-              <div v-for="p in props.row.permissions" :key="p">
-                <b-checkbox v-model="form.permissions" :native-value="p" :disabled="disabled">
-                  {{ p }}
-                  <a v-if="p === 'subscribers:sql_query'"
-                    href="https://listmonk.app/docs/roles-and-permissions/#subscriberssql_query" target="_blank"
-                    rel="noopener noreferrer" aria-label="Warning: high risk permission">
-                    <b-icon icon="warning-empty" type="is-danger" size="is-small" />
-                  </a>
-                </b-checkbox>
-              </div>
-            </b-table-column>
-          </b-table>
+            <PvColumn field="permissions" header="Permissions">
+              <template #body="{ data }">
+                <div v-for="p in data.permissions" :key="p" class="flex items-center gap-2 mb-1">
+                  <PvCheckbox v-model="form.permissions" :value="p" :input-id="`perm-${p}`" :disabled="disabled" />
+                  <label :for="`perm-${p}`">
+                    {{ p }}
+                    <a v-if="p === 'subscribers:sql_query'"
+                      href="https://listmonk.app/docs/roles-and-permissions/#subscriberssql_query" target="_blank"
+                      rel="noopener noreferrer" aria-label="Warning: high risk permission">
+                      <i class="pi pi-exclamation-triangle text-red-500" />
+                    </a>
+                  </label>
+                </div>
+              </template>
+            </PvColumn>
+          </PvDataTable>
         </template>
         <a href="https://listmonk.app/docs/roles-and-permissions" target="_blank" rel="noopener noreferrer">
-          <b-icon icon="link-variant" /> {{ $t('globals.buttons.learnMore') }}
+          <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}
         </a>
       </section>
 
       <footer class="modal-card-foot has-text-right">
-        <b-button @click="$parent.close()">
-          {{ $t('globals.buttons.close') }}
-        </b-button>
-        <b-button v-if="!disabled" native-type="submit" type="is-primary" :loading="loading.roles" data-cy="btn-save">
-          {{ $t('globals.buttons.save') }}
-        </b-button>
+        <PvButton @click="$parent.close()" :label="$t('globals.buttons.close')" />
+        <PvButton v-if="!disabled" type="submit" severity="primary" :loading="loading.roles" data-cy="btn-save"
+          :label="$t('globals.buttons.save')" />
       </footer>
     </div>
   </form>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import CopyText from '../components/CopyText.vue';
 
-export default Vue.extend({
+export default {
   name: 'RoleForm',
 
   components: {
@@ -278,8 +285,8 @@ export default Vue.extend({
       if (this.filteredLists.length > 0) {
         this.form.curList = this.filteredLists[0].id;
       }
-      this.$refs.focus.focus();
+      this.$refs.focus.$el.focus();
     });
   },
-});
+};
 </script>

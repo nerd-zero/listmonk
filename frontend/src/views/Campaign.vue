@@ -3,12 +3,8 @@
     <header class="columns page-header">
       <div class="column is-6">
         <p v-if="isEditing && data.status" class="tags">
-          <b-tag v-if="isEditing" :class="data.status">
-            {{ $t(`campaigns.status.${data.status}`) }}
-          </b-tag>
-          <b-tag v-if="data.type === 'optin'" :class="data.type">
-            {{ $t('lists.optin') }}
-          </b-tag>
+          <PvTag v-if="isEditing" :class="data.status" :value="$t(`campaigns.status.${data.status}`)" />
+          <PvTag v-if="data.type === 'optin'" :class="data.type" :value="$t('lists.optin')" />
           <span v-if="isEditing" class="has-text-grey-light is-size-7" :data-campaign-id="data.id">
             {{ $t('globals.fields.id') }}: <copy-text :text="`${data.id}`" />
             {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
@@ -24,295 +20,321 @@
 
       <div class="column is-6">
         <div v-if="canManage || canSend" class="buttons">
-          <b-field grouped v-if="isEditing && canEdit">
-            <b-field v-if="canManage" expanded>
-              <b-button expanded @click="() => onSubmit('update')" :loading="loading.campaigns" type="is-primary"
-                icon-left="content-save-outline" data-cy="btn-save" aria-keyshortcuts="ctrl+s">
+          <div class="field is-grouped" v-if="isEditing && canEdit">
+            <div class="field" v-if="canManage">
+              <PvButton @click="() => onSubmit('update')" :loading="loading.campaigns" severity="primary"
+                icon="pi pi-save" data-cy="btn-save" aria-keyshortcuts="ctrl+s">
                 <span class="has-kbd">{{ $t('globals.buttons.saveChanges') }} <span class="kbd">Ctrl+S</span></span>
-              </b-button>
-            </b-field>
-            <b-field expanded v-if="canSend && canStart">
-              <b-button expanded @click="startCampaign" :loading="loading.campaigns" type="is-primary"
-                icon-left="rocket-launch-outline" data-cy="btn-start">
-                {{ $t('campaigns.start') }}
-              </b-button>
-            </b-field>
-            <b-field expanded v-if="canSend && canSchedule">
-              <b-button expanded @click="startCampaign" :loading="loading.campaigns" type="is-primary"
-                icon-left="clock-start" data-cy="btn-schedule">
-                {{ $t('campaigns.schedule') }}
-              </b-button>
-            </b-field>
-            <b-field expanded v-if="canSend && canUnSchedule">
-              <b-button expanded @click="$utils.confirm(null, unscheduleCampaign)" :loading="loading.campaigns"
-                type="is-primary" icon-left="clock-start" data-cy="btn-unschedule">
-                {{ $t('campaigns.unSchedule') }}
-              </b-button>
-            </b-field>
-          </b-field>
+              </PvButton>
+            </div>
+            <div class="field" v-if="canSend && canStart">
+              <PvButton @click="startCampaign" :loading="loading.campaigns" severity="primary"
+                icon="pi pi-send" data-cy="btn-start" :label="$t('campaigns.start')" />
+            </div>
+            <div class="field" v-if="canSend && canSchedule">
+              <PvButton @click="startCampaign" :loading="loading.campaigns" severity="primary"
+                icon="pi pi-clock" data-cy="btn-schedule" :label="$t('campaigns.schedule')" />
+            </div>
+            <div class="field" v-if="canSend && canUnSchedule">
+              <PvButton @click="$utils.confirm(null, unscheduleCampaign)" :loading="loading.campaigns"
+                severity="primary" icon="pi pi-clock" data-cy="btn-unschedule" :label="$t('campaigns.unSchedule')" />
+            </div>
+          </div>
         </div>
       </div>
     </header>
 
-    <b-loading :active="loading.campaigns" />
+    <div v-if="loading.campaigns" class="flex justify-center p-8">
+      <PvProgressSpinner />
+    </div>
 
-    <b-tabs type="is-boxed" :animated="false" v-model="activeTab" @input="onTab">
-      <b-tab-item :label="$tc('globals.terms.campaign')" label-position="on-border" value="campaign"
-        icon="rocket-launch-outline">
-        <section class="wrap">
-          <div class="columns">
-            <div class="column is-7">
-              <form @submit.prevent="() => onSubmit(isNew ? 'create' : 'update')">
-                <b-field :label="$t('globals.fields.name')" label-position="on-border">
-                  <b-input :maxlength="200" :ref="'focus'" v-model="form.name" name="name" :disabled="!canEdit"
-                    :placeholder="$t('globals.fields.name')" required autofocus />
-                </b-field>
+    <PvTabs v-model:value="activeTab" @update:value="onTab">
+      <PvTabList>
+        <PvTab value="campaign">
+          <i class="pi pi-send mr-1" />{{ $tc('globals.terms.campaign') }}
+        </PvTab>
+        <PvTab value="content" :disabled="isNew">
+          <i class="pi pi-file mr-1" />{{ $t('campaigns.content') }}
+        </PvTab>
+        <PvTab value="attribs" :disabled="isNew">
+          <i class="pi pi-code mr-1" />{{ $t('globals.terms.attribs') }}
+        </PvTab>
+        <PvTab value="archive" :disabled="isNew">
+          <i class="pi pi-file mr-1" />{{ $t('campaigns.archive') }}
+        </PvTab>
+      </PvTabList>
 
-                <b-field :label="$t('campaigns.subject')" label-position="on-border">
-                  <b-input :maxlength="5000" v-model="form.subject" name="subject" :disabled="!canEdit"
-                    :placeholder="$t('campaigns.subject')" required />
-                </b-field>
-
-                <b-field :label="$t('campaigns.fromAddress')" label-position="on-border">
-                  <b-input :maxlength="200" v-model="form.fromEmail" name="from_email" :disabled="!canEdit"
-                    :placeholder="$t('campaigns.fromAddressPlaceholder')" required />
-                </b-field>
-
-                <list-selector v-model="form.lists" :selected="form.lists" :all="lists.results" :disabled="!canEdit"
-                  :label="$t('globals.terms.lists')" :placeholder="$t('campaigns.sendToLists')" />
-
-                <div class="columns">
-                  <div class="column is-6">
-                    <b-field :label="$tc('globals.terms.messenger')" label-position="on-border">
-                      <b-select :placeholder="$tc('globals.terms.messenger')" v-model="form.messenger" name="messenger"
-                        :disabled="!canEdit" required expanded>
-                        <template v-if="emailMessengers.length > 1">
-                          <optgroup label="email">
-                            <option v-for="m in emailMessengers" :value="m" :key="m">
-                              {{ m }}
-                            </option>
-                          </optgroup>
-                        </template>
-                        <template v-else>
-                          <option value="email">email</option>
-                        </template>
-                        <option v-for="m in otherMessengers" :value="m" :key="m">{{ m }}</option>
-                      </b-select>
-                    </b-field>
+      <PvTabPanels>
+        <!-- campaign tab -->
+        <PvTabPanel value="campaign">
+          <section class="wrap">
+            <div class="columns">
+              <div class="column is-7">
+                <form @submit.prevent="() => onSubmit(isNew ? 'create' : 'update')">
+                  <div class="field">
+                    <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+                    <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name" :disabled="!canEdit"
+                      :placeholder="$t('globals.fields.name')" required autofocus class="w-full" />
                   </div>
-                  <div class="column is-6">
-                    <b-field :label="$t('campaigns.format')" label-position="on-border" class="mr-4 mb-0">
-                      <b-select v-model="form.content.contentType" :disabled="!canEdit || isEditing" value="richtext"
-                        expanded>
-                        <option v-for="(name, f) in contentTypes" :key="f" name="format" :value="f"
-                          :data-cy="`check-${f}`">
-                          {{ name }}
-                        </option>
-                      </b-select>
-                    </b-field>
+
+                  <div class="field">
+                    <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.subject') }}</label>
+                    <PvInputText :maxlength="5000" v-model="form.subject" name="subject" :disabled="!canEdit"
+                      :placeholder="$t('campaigns.subject')" required class="w-full" />
+                  </div>
+
+                  <div class="field">
+                    <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.fromAddress') }}</label>
+                    <PvInputText :maxlength="200" v-model="form.fromEmail" name="from_email" :disabled="!canEdit"
+                      :placeholder="$t('campaigns.fromAddressPlaceholder')" required class="w-full" />
+                  </div>
+
+                  <list-selector v-model="form.lists" :selected="form.lists" :all="lists.results" :disabled="!canEdit"
+                    :label="$t('globals.terms.lists')" :placeholder="$t('campaigns.sendToLists')" />
+
+                  <div class="columns">
+                    <div class="column is-6">
+                      <div class="field">
+                        <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.messenger') }}</label>
+                        <select v-model="form.messenger" name="messenger" :disabled="!canEdit" required
+                          class="w-full">
+                          <template v-if="emailMessengers.length > 1">
+                            <optgroup label="email">
+                              <option v-for="m in emailMessengers" :value="m" :key="m">
+                                {{ m }}
+                              </option>
+                            </optgroup>
+                          </template>
+                          <template v-else>
+                            <option value="email">email</option>
+                          </template>
+                          <option v-for="m in otherMessengers" :value="m" :key="m">{{ m }}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="column is-6">
+                      <div class="field mr-4 mb-0">
+                        <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.format') }}</label>
+                        <select v-model="form.content.contentType" :disabled="!canEdit || isEditing"
+                          class="w-full">
+                          <option v-for="(name, f) in contentTypes" :key="f" name="format" :value="f"
+                            :data-cy="`check-${f}`">
+                            {{ name }}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.tags') }}</label>
+                    <PvAutoComplete v-model="form.tags" name="tags" :disabled="!canEdit"
+                      :placeholder="$t('globals.terms.tags')" multiple />
+                  </div>
+                  <hr />
+
+                  <div class="columns">
+                    <div class="column is-4">
+                      <div class="field" data-cy="btn-send-later">
+                        <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.sendLater') }}</label>
+                        <div class="flex items-center gap-2">
+                          <PvToggleSwitch v-model="form.sendLater" :disabled="!canEdit" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="column">
+                      <br />
+                      <div class="field" v-if="form.sendLater" data-cy="send_at">
+                        <small class="block mt-1 text-color-secondary">{{ form.sendAtDate ? $utils.duration(Date(), form.sendAtDate) : '' }}</small>
+                        <!-- TODO: replace b-datetimepicker with a PrimeVue equivalent (PvDatePicker) -->
+                        <PvDatePicker v-model="form.sendAtDate" :disabled="!canEdit" show-time hour-format="24"
+                          :placeholder="$t('campaigns.dateAndTime')" required />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p class="has-text-right">
+                      <a href="#" @click.prevent="onShowHeaders" data-cy="btn-headers">
+                        <i class="pi pi-plus" />{{ $t('settings.smtp.setCustomHeaders') }}
+                      </a>
+                    </p>
+                    <div class="field" v-if="form.headersStr !== '[]' || isHeadersVisible">
+                      <small class="block mt-1 text-color-secondary">{{ $t('campaigns.customHeadersHelp') }}</small>
+                      <PvTextarea v-model="form.headersStr" name="headers"
+                        placeholder="[{&quot;X-Custom&quot;: &quot;value&quot;}, {&quot;X-Custom2&quot;: &quot;value&quot;}]"
+                        :disabled="!canEdit" class="w-full" />
+                    </div>
+                  </div>
+                  <hr />
+
+                  <div class="field" v-if="isNew">
+                    <PvButton type="submit" severity="primary" :loading="loading.campaigns" data-cy="btn-continue"
+                      :label="$t('campaigns.continue')" />
+                  </div>
+                </form>
+              </div>
+              <div v-if="canManage" class="column is-4 is-offset-1">
+                <br />
+                <div class="box">
+                  <h3 class="title is-size-6">
+                    {{ $t('campaigns.sendTest') }}
+                  </h3>
+                  <div class="field">
+                    <small class="block mt-1 text-color-secondary">{{ $t('campaigns.sendTestHelp') }}</small>
+                    <PvAutoComplete v-model="form.testEmails" :disabled="isNew"
+                      :placeholder="$t('campaigns.testEmails')" multiple />
+                  </div>
+                  <div class="field">
+                    <PvButton @click="() => onSubmit('test')" :loading="loading.campaigns" :disabled="isNew"
+                      severity="primary" icon="pi pi-envelope" :label="$t('campaigns.send')" />
                   </div>
                 </div>
-
-                <b-field :label="$t('globals.terms.tags')" label-position="on-border">
-                  <b-taginput v-model="form.tags" name="tags" :disabled="!canEdit" ellipsis icon="tag-outline"
-                    :placeholder="$t('globals.terms.tags')" />
-                </b-field>
-                <hr />
-
-                <div class="columns">
-                  <div class="column is-4">
-                    <b-field :label="$t('campaigns.sendLater')" data-cy="btn-send-later">
-                      <b-switch v-model="form.sendLater" :disabled="!canEdit" />
-                    </b-field>
-                  </div>
-                  <div class="column">
-                    <br />
-                    <b-field v-if="form.sendLater" data-cy="send_at"
-                      :message="form.sendAtDate ? $utils.duration(Date(), form.sendAtDate) : ''">
-                      <b-datetimepicker v-model="form.sendAtDate" :disabled="!canEdit" required editable mobile-native
-                        position="is-top-right" :placeholder="$t('campaigns.dateAndTime')" icon="calendar-clock"
-                        :timepicker="{ hourFormat: '24' }" :datetime-formatter="formatDateTime"
-                        horizontal-time-picker />
-                    </b-field>
-                  </div>
-                </div>
-
-                <div>
-                  <p class="has-text-right">
-                    <a href="#" @click.prevent="onShowHeaders" data-cy="btn-headers">
-                      <b-icon icon="plus" />{{ $t('settings.smtp.setCustomHeaders') }}
-                    </a>
-                  </p>
-                  <b-field v-if="form.headersStr !== '[]' || isHeadersVisible" label-position="on-border"
-                    :message="$t('campaigns.customHeadersHelp')">
-                    <b-input v-model="form.headersStr" name="headers" type="textarea"
-                      placeholder="[{&quot;X-Custom&quot;: &quot;value&quot;}, {&quot;X-Custom2&quot;: &quot;value&quot;}]"
-                      :disabled="!canEdit" />
-                  </b-field>
-                </div>
-                <hr />
-
-                <b-field v-if="isNew">
-                  <b-button native-type="submit" type="is-primary" :loading="loading.campaigns" data-cy="btn-continue">
-                    {{ $t('campaigns.continue') }}
-                  </b-button>
-                </b-field>
-              </form>
-            </div>
-            <div v-if="canManage" class="column is-4 is-offset-1">
-              <br />
-              <div class="box">
-                <h3 class="title is-size-6">
-                  {{ $t('campaigns.sendTest') }}
-                </h3>
-                <b-field :message="$t('campaigns.sendTestHelp')">
-                  <b-taginput v-model="form.testEmails" :before-adding="$utils.validateEmail" :disabled="isNew" ellipsis
-                    icon="email-outline" :placeholder="$t('campaigns.testEmails')" />
-                </b-field>
-                <b-field>
-                  <b-button @click="() => onSubmit('test')" :loading="loading.campaigns" :disabled="isNew"
-                    type="is-primary" icon-left="email-outline">
-                    {{ $t('campaigns.send') }}
-                  </b-button>
-                </b-field>
               </div>
             </div>
-          </div>
-        </section>
-      </b-tab-item><!-- campaign -->
+          </section>
+        </PvTabPanel><!-- campaign -->
 
-      <b-tab-item :label="$t('campaigns.content')" icon="text" :disabled="isNew" value="content">
-        <editor v-if="data.id" v-model="form.content" :id="data.id" :title="data.name" :disabled="!canEdit"
-          :templates="templates" :content-types="contentTypes" />
+        <!-- content tab -->
+        <PvTabPanel value="content">
+          <editor v-if="data.id" v-model="form.content" :id="data.id" :title="data.name" :disabled="!canEdit"
+            :templates="templates" :content-types="contentTypes" />
 
-        <div class="columns">
-          <div class="column is-6">
-            <p v-if="!isAttachFieldVisible" class="is-size-6 has-text-grey">
-              <a href="#" @click.prevent="onShowAttachField()" data-cy="btn-attach">
-                <b-icon icon="file-upload-outline" size="is-small" />
-                {{ $t('campaigns.addAttachments') }}
-              </a>
-            </p>
-
-            <b-field v-if="isAttachFieldVisible" :label="$t('campaigns.attachments')" label-position="on-border"
-              expanded data-cy="media">
-              <b-taginput v-model="form.media" name="media" ellipsis icon="tag-outline" ref="media" field="filename"
-                @focus="onOpenAttach" :disabled="!canEdit" />
-            </b-field>
-          </div>
-          <div class="column has-text-right">
-            <a href="https://listmonk.app/docs/templating/#template-expressions" target="_blank"
-              rel="noopener noreferer">
-              <b-icon icon="code" /> {{ $t('campaigns.templatingRef') }}</a>
-            <span v-if="canEdit && form.content.contentType !== 'plain'" class="is-size-6 has-text-grey ml-6">
-              <a v-if="form.altbody === null" href="#" @click.prevent="onAddAltBody">
-                <b-icon icon="text" size="is-small" /> {{ $t('campaigns.addAltText') }}
-              </a>
-              <a v-else href="#" @click.prevent="$utils.confirm(null, onRemoveAltBody)">
-                <b-icon icon="trash-can-outline" size="is-small" />
-                {{ $t('campaigns.removeAltText') }}
-              </a>
-            </span>
-          </div>
-        </div>
-
-        <div v-if="canEdit && form.content.contentType !== 'plain'" class="alt-body">
-          <b-input v-if="form.altbody !== null" v-model="form.altbody" type="textarea" :disabled="!canEdit" />
-        </div>
-      </b-tab-item><!-- content -->
-
-      <b-tab-item :label="$t('globals.terms.attribs')" icon="code" value="attribs" :disabled="isNew">
-        <section class="wrap">
-          <b-field :label="$t('globals.terms.attribs')" :message="$t('campaigns.attribsHelp')"
-            label-position="on-border">
-            <b-input v-model="form.attribsStr" type="textarea" :disabled="!canEdit" rows="15" />
-          </b-field>
-        </section>
-      </b-tab-item><!-- attribs -->
-
-      <b-tab-item :label="$t('campaigns.archive')" icon="newspaper-variant-outline" value="archive" :disabled="isNew">
-        <section class="wrap">
           <div class="columns">
-            <div class="column is-4">
-              <b-field :label="$t('campaigns.archiveEnable')" data-cy="btn-archive"
-                :message="$t('campaigns.archiveHelp')">
-                <div class="columns">
-                  <div class="column">
-                    <b-switch data-cy="btn-archive" v-model="form.archive" :disabled="!canArchive" />
-                  </div>
-                  <div class="column is-12">
-                    <a :href="`${serverConfig.root_url}/archive/${data.uuid}`" target="_blank" rel="noopener noreferer"
-                      :class="{ 'has-text-grey-light': !form.archive }" aria-label="$t('campaigns.archive')">
-                      <b-icon icon="link-variant" />
-                    </a>
+            <div class="column is-6">
+              <p v-if="!isAttachFieldVisible" class="is-size-6 has-text-grey">
+                <a href="#" @click.prevent="onShowAttachField()" data-cy="btn-attach">
+                  <i class="pi pi-upload" />
+                  {{ $t('campaigns.addAttachments') }}
+                </a>
+              </p>
+
+              <div class="field" v-if="isAttachFieldVisible" data-cy="media">
+                <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.attachments') }}</label>
+                <PvAutoComplete v-model="form.media" name="media" ref="media" option-label="filename"
+                  @focus="onOpenAttach" :disabled="!canEdit" multiple />
+              </div>
+            </div>
+            <div class="column has-text-right">
+              <a href="https://listmonk.app/docs/templating/#template-expressions" target="_blank"
+                rel="noopener noreferer">
+                <i class="pi pi-code" /> {{ $t('campaigns.templatingRef') }}</a>
+              <span v-if="canEdit && form.content.contentType !== 'plain'" class="is-size-6 has-text-grey ml-6">
+                <a v-if="form.altbody === null" href="#" @click.prevent="onAddAltBody">
+                  <i class="pi pi-file" /> {{ $t('campaigns.addAltText') }}
+                </a>
+                <a v-else href="#" @click.prevent="$utils.confirm(null, onRemoveAltBody)">
+                  <i class="pi pi-trash" />
+                  {{ $t('campaigns.removeAltText') }}
+                </a>
+              </span>
+            </div>
+          </div>
+
+          <div v-if="canEdit && form.content.contentType !== 'plain'" class="alt-body">
+            <PvTextarea v-if="form.altbody !== null" v-model="form.altbody" :disabled="!canEdit" class="w-full" />
+          </div>
+        </PvTabPanel><!-- content -->
+
+        <!-- attribs tab -->
+        <PvTabPanel value="attribs">
+          <section class="wrap">
+            <div class="field">
+              <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.attribs') }}</label>
+              <PvTextarea v-model="form.attribsStr" :disabled="!canEdit" rows="15" class="w-full" />
+              <small class="block mt-1 text-color-secondary">{{ $t('campaigns.attribsHelp') }}</small>
+            </div>
+          </section>
+        </PvTabPanel><!-- attribs -->
+
+        <!-- archive tab -->
+        <PvTabPanel value="archive">
+          <section class="wrap">
+            <div class="columns">
+              <div class="column is-4">
+                <div class="field" data-cy="btn-archive">
+                  <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.archiveEnable') }}</label>
+                  <small class="block mt-1 text-color-secondary">{{ $t('campaigns.archiveHelp') }}</small>
+                  <div class="columns">
+                    <div class="column">
+                      <div class="flex items-center gap-2">
+                        <PvToggleSwitch data-cy="btn-archive" v-model="form.archive" :disabled="!canArchive" />
+                      </div>
+                    </div>
+                    <div class="column is-12">
+                      <a :href="`${serverConfig.root_url}/archive/${data.uuid}`" target="_blank" rel="noopener noreferer"
+                        :class="{ 'has-text-grey-light': !form.archive }" aria-label="$t('campaigns.archive')">
+                        <i class="pi pi-external-link" />
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </b-field>
-            </div>
-            <div class="column is-8">
-              <b-field grouped position="is-right">
-                <b-field v-if="!canEdit && canArchive">
-                  <b-button @click="onUpdateCampaignArchive" :loading="loading.campaigns" type="is-primary"
-                    icon-left="content-save-outline" data-cy="btn-save">
-                    {{ $t('globals.buttons.saveChanges') }}
-                  </b-button>
-                </b-field>
-              </b-field>
-            </div>
-          </div>
-
-          <div class="columns">
-            <div class="column is-6">
-              <b-field :label="$tc('globals.terms.template')" label-position="on-border">
-                <b-select :placeholder="$tc('globals.terms.template')" v-model="form.archiveTemplateId" name="template"
-                  :disabled="!canArchive || !form.archive || form.content.contentType === 'visual'" required>
-                  <template v-for="t in templates">
-                    <option v-if="t.type === 'campaign'" :value="t.id" :key="t.id">
-                      {{ t.name }}
-                    </option>
-                  </template>
-                </b-select>
-              </b-field>
+              </div>
+              <div class="column is-8">
+                <div class="field is-grouped" style="justify-content: flex-end;">
+                  <div class="field" v-if="!canEdit && canArchive">
+                    <PvButton @click="onUpdateCampaignArchive" :loading="loading.campaigns" severity="primary"
+                      icon="pi pi-save" data-cy="btn-save" :label="$t('globals.buttons.saveChanges')" />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="column is-6">
-              <b-field grouped position="is-right">
-                <b-field v-if="form.archive && (!this.form.archiveMetaStr || this.form.archiveMetaStr === '{}')">
-                  <a class="button is-primary" href="#" @click.prevent="onFillArchiveMeta" aria-label="{}"><b-icon
-                      icon="code" /></a>
-                </b-field>
-                <b-field v-if="form.archive">
-                  <b-button @click="onToggleArchivePreview" type="is-primary" icon-left="file-find-outline"
-                    data-cy="btn-preview">
-                    {{ $t('campaigns.preview') }}
-                  </b-button>
-                </b-field>
-              </b-field>
-            </div>
-          </div>
-          <b-field>
-            <b-field :label="$t('campaigns.archiveSlug')" label-position="on-border"
-              :message="$t('campaigns.archiveSlugHelp')">
-              <b-input :maxlength="200" :ref="'focus'" v-model="form.archiveSlug" name="archive_slug"
-                data-cy="archive-slug" :disabled="!canArchive || !form.archive" />
-            </b-field>
-          </b-field>
-          <b-field :label="$t('campaigns.archiveMeta')" :message="$t('campaigns.archiveMetaHelp')"
-            label-position="on-border">
-            <b-input v-model="form.archiveMetaStr" name="archive_meta" type="textarea" data-cy="archive-meta"
-              :disabled="!canArchive || !form.archive" rows="20" />
-          </b-field>
-        </section>
-      </b-tab-item><!-- archive -->
-    </b-tabs>
+            <div class="columns">
+              <div class="column is-6">
+                <div class="field">
+                  <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
+                  <select v-model="form.archiveTemplateId" name="template"
+                    :disabled="!canArchive || !form.archive || form.content.contentType === 'visual'" required
+                    class="w-full">
+                    <template v-for="t in templates">
+                      <option v-if="t.type === 'campaign'" :value="t.id" :key="t.id">
+                        {{ t.name }}
+                      </option>
+                    </template>
+                  </select>
+                </div>
+              </div>
 
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isAttachModalOpen" :width="900">
+              <div class="column is-6">
+                <div class="field is-grouped" style="justify-content: flex-end;">
+                  <div class="field" v-if="form.archive && (!this.form.archiveMetaStr || this.form.archiveMetaStr === '{}')">
+                    <a class="button is-primary" href="#" @click.prevent="onFillArchiveMeta" aria-label="{}"><i class="pi pi-code" /></a>
+                  </div>
+                  <div class="field" v-if="form.archive">
+                    <PvButton @click="onToggleArchivePreview" severity="primary" icon="pi pi-eye"
+                      data-cy="btn-preview" :label="$t('campaigns.preview')" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.archiveSlug') }}</label>
+                <small class="block mt-1 text-color-secondary">{{ $t('campaigns.archiveSlugHelp') }}</small>
+                <PvInputText :maxlength="200" ref="focus" v-model="form.archiveSlug" name="archive_slug"
+                  data-cy="archive-slug" :disabled="!canArchive || !form.archive" class="w-full" />
+              </div>
+            </div>
+            <div class="field">
+              <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.archiveMeta') }}</label>
+              <small class="block mt-1 text-color-secondary">{{ $t('campaigns.archiveMetaHelp') }}</small>
+              <PvTextarea v-model="form.archiveMetaStr" name="archive_meta" data-cy="archive-meta"
+                :disabled="!canArchive || !form.archive" rows="20" class="w-full" />
+            </div>
+          </section>
+        </PvTabPanel><!-- archive -->
+      </PvTabPanels>
+    </PvTabs>
+
+    <PvDialog v-model:visible="isAttachModalOpen" :style="{ width: '900px' }" :closable="true" modal>
       <div class="modal-card content" style="width: auto">
         <section expanded class="modal-card-body">
           <media is-modal @selected="onAttachSelect" />
         </section>
       </div>
-    </b-modal>
+    </PvDialog>
 
     <campaign-preview v-if="isPreviewingArchive" @close="onToggleArchivePreview" type="campaign" :id="data.id"
       :archive-meta="form.archiveMetaStr" :title="data.title" :content-type="data.contentType"
@@ -323,7 +345,6 @@
 <script>
 import dayjs from 'dayjs';
 import htmlToPlainText from 'textversionjs';
-import Vue from 'vue';
 import { mapState } from 'vuex';
 
 import CampaignPreview from '../components/CampaignPreview.vue';
@@ -332,7 +353,7 @@ import Editor from '../components/Editor.vue';
 import ListSelector from '../components/ListSelector.vue';
 import Media from './Media.vue';
 
-export default Vue.extend({
+export default {
   components: {
     ListSelector,
     Editor,
@@ -823,8 +844,8 @@ export default Vue.extend({
     });
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     this.$events.$off('campaign.update');
   },
-});
+};
 </script>

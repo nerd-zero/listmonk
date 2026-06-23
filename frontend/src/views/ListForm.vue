@@ -6,9 +6,8 @@
           {{ $t('globals.fields.id') }}: <copy-text :text="`${data.id}`" />
           {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
         </p>
-        <b-tag v-if="isEditing" :class="[data.type, 'is-pulled-right']">
-          {{ $t(`lists.types.${data.type}`) }}
-        </b-tag>
+        <PvTag v-if="isEditing" :class="[data.type, 'is-pulled-right']"
+          :value="$t(`lists.types.${data.type}`)" />
         <h4 v-if="isEditing">
           {{ data.name }}
         </h4>
@@ -17,66 +16,63 @@
         </h4>
       </header>
       <section expanded class="modal-card-body">
-        <b-field :label="$t('globals.fields.name')" label-position="on-border">
-          <b-input :maxlength="200" :ref="'focus'" v-model="form.name" name="name"
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+          <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
             :placeholder="$t('globals.fields.name')" required />
-        </b-field>
+        </div>
 
-        <b-field :label="$t('lists.type')" label-position="on-border" :message="$t('lists.typeHelp')">
-          <b-select v-model="form.type" name="type" :placeholder="$t('lists.typeHelp')" required expanded>
-            <option value="private">
-              {{ $t('lists.types.private') }}
-            </option>
-            <option value="public">
-              {{ $t('lists.types.public') }}
-            </option>
-          </b-select>
-        </b-field>
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('lists.type') }}</label>
+          <PvSelect v-model="form.type" name="type" :placeholder="$t('lists.typeHelp')" required
+            :options="[{ label: $t('lists.types.private'), value: 'private' }, { label: $t('lists.types.public'), value: 'public' }]"
+            option-label="label" option-value="value" />
+          <small class="block mt-1 text-color-secondary">{{ $t('lists.typeHelp') }}</small>
+        </div>
 
-        <b-field :label="$t('lists.optin')" label-position="on-border" :message="$t('lists.optinHelp')">
-          <b-select v-model="form.optin" name="optin" placeholder="Opt-in type" required expanded>
-            <option value="single">
-              {{ $t('lists.optins.single') }}
-            </option>
-            <option value="double">
-              {{ $t('lists.optins.double') }}
-            </option>
-          </b-select>
-        </b-field>
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('lists.optin') }}</label>
+          <PvSelect v-model="form.optin" name="optin" placeholder="Opt-in type" required
+            :options="[{ label: $t('lists.optins.single'), value: 'single' }, { label: $t('lists.optins.double'), value: 'double' }]"
+            option-label="label" option-value="value" />
+          <small class="block mt-1 text-color-secondary">{{ $t('lists.optinHelp') }}</small>
+        </div>
 
-        <b-field :label="$t('globals.terms.tags')" label-position="on-border">
-          <b-taginput v-model="form.tags" name="tags" ellipsis icon="tag-outline"
-            :placeholder="$t('globals.terms.tags')" />
-        </b-field>
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.tags') }}</label>
+          <PvAutoComplete v-model="form.tags" name="tags"
+            :placeholder="$t('globals.terms.tags')" multiple />
+        </div>
 
-        <b-field :label="$t('globals.fields.description')" label-position="on-border">
-          <b-input :maxlength="2000" v-model="form.description" name="description" type="textarea"
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.description') }}</label>
+          <PvTextarea :maxlength="2000" v-model="form.description" name="description"
             :placeholder="$t('globals.fields.description')" />
-        </b-field>
+        </div>
 
-        <b-field :message="$t('lists.archivedHelp')" :label="$t('lists.archived')">
-          <b-switch v-model="isArchived" name="status" />
-        </b-field>
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('lists.archived') }}</label>
+          <div class="flex items-center gap-2">
+            <PvToggleSwitch v-model="isArchived" name="status" />
+          </div>
+          <small class="block mt-1 text-color-secondary">{{ $t('lists.archivedHelp') }}</small>
+        </div>
       </section>
       <footer class="modal-card-foot has-text-right">
-        <b-button @click="$parent.close()">
-          {{ $t('globals.buttons.close') }}
-        </b-button>
-        <b-button v-if="$can('lists:manage_all') || $canList(data.id, 'list:manage')" native-type="submit"
-          type="is-primary" :loading="loading.lists" data-cy="btn-save">
-          {{ $t('globals.buttons.save') }}
-        </b-button>
+        <PvButton @click="$parent.close()" :label="$t('globals.buttons.close')" />
+        <PvButton v-if="$can('lists:manage_all') || $canList(data.id, 'list:manage')" type="submit"
+          severity="primary" :loading="loading.lists" data-cy="btn-save"
+          :label="$t('globals.buttons.save')" />
       </footer>
     </div>
   </form>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import CopyText from '../components/CopyText.vue';
 
-export default Vue.extend({
+export default {
   name: 'ListForm',
 
   components: {
@@ -145,8 +141,8 @@ export default Vue.extend({
     this.form = { ...this.form, ...this.$props.data };
 
     this.$nextTick(() => {
-      this.$refs.focus.focus();
+      this.$refs.focus.$el.focus();
     });
   },
-});
+};
 </script>

@@ -17,33 +17,36 @@
     <form @submit.prevent="onSubmit">
       <div class="columns">
         <div class="column is-6">
-          <b-field :label="$t('globals.terms.campaigns')" label-position="on-border">
-            <b-taginput v-model="form.campaigns" :data="queriedCampaigns" name="campaigns" ellipsis icon="tag-outline"
-              :placeholder="$t('globals.terms.campaigns')" autocomplete :allow-new="false" :open-on-focus="true"
-              :before-adding="isCampaignSelected" @typing="queryCampaigns" @focus="queryCampaigns" field="name"
-              :loading="isSearchLoading" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.campaigns') }}</label>
+            <PvAutoComplete v-model="form.campaigns" :suggestions="queriedCampaigns" name="campaigns"
+              :placeholder="$t('globals.terms.campaigns')" multiple option-label="name"
+              :loading="isSearchLoading" @complete="(e) => queryCampaigns(e.query)"
+              @focus="queryCampaigns('')" />
+          </div>
         </div>
 
         <div class="column is-5">
           <div class="columns">
             <div class="column is-6">
-              <b-field data-cy="from" :label="$t('analytics.fromDate')" label-position="on-border">
-                <b-datetimepicker v-model="form.from" icon="calendar-clock" :timepicker="{ hourFormat: '24' }"
-                  :datetime-formatter="formatDateTime" @input="onFromDateChange" />
-              </b-field>
+              <div class="field" data-cy="from">
+                <label class="block mb-1 text-sm font-medium">{{ $t('analytics.fromDate') }}</label>
+                <PvDatePicker v-model="form.from" show-time hour-format="24"
+                  :date-format="'yy-mm-dd'" @date-select="onFromDateChange" @update:model-value="onFromDateChange" />
+              </div>
             </div>
             <div class="column is-6">
-              <b-field data-cy="to" :label="$t('analytics.toDate')" label-position="on-border">
-                <b-datetimepicker v-model="form.to" icon="calendar-clock" :timepicker="{ hourFormat: '24' }"
-                  :datetime-formatter="formatDateTime" @input="onToDateChange" />
-              </b-field>
+              <div class="field" data-cy="to">
+                <label class="block mb-1 text-sm font-medium">{{ $t('analytics.toDate') }}</label>
+                <PvDatePicker v-model="form.to" show-time hour-format="24"
+                  :date-format="'yy-mm-dd'" @date-select="onToDateChange" @update:model-value="onToDateChange" />
+              </div>
             </div>
           </div><!-- columns -->
         </div><!-- columns -->
 
         <div class="column is-1">
-          <b-button native-type="submit" type="is-primary" icon-left="magnify" :disabled="form.campaigns.length === 0"
+          <PvButton type="submit" severity="primary" icon="pi pi-search" :disabled="form.campaigns.length === 0"
             data-cy="btn-search" />
         </div>
       </div><!-- columns -->
@@ -53,7 +56,9 @@
       <div class="chart" v-for="(v, k) in charts" :key="k">
         <div class="columns">
           <div class="column is-9">
-            <b-loading v-if="v.loading" :active="v.loading" :is-full-page="false" />
+            <div v-if="v.loading" class="flex justify-center p-8">
+              <PvProgressSpinner style="width:2rem;height:2rem" />
+            </div>
             <h4>
               {{ v.name }}
               <span v-if="v.type !== 'bar'" class="has-text-grey-light">({{ $utils.niceNumber(counts[k]) }})</span>
@@ -71,7 +76,6 @@
 
 <script>
 import dayjs from 'dayjs';
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import { colors } from '../constants';
 import Chart from '../components/Chart.vue';
@@ -88,7 +92,7 @@ const chartColors = [
   '#FFC43D',
 ];
 
-export default Vue.extend({
+export default {
   components: {
     Chart,
   },
@@ -335,5 +339,5 @@ export default Vue.extend({
       });
     }
   },
-});
+};
 </script>

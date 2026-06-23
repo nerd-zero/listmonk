@@ -3,69 +3,88 @@
     <h1 class="title is-4">
       {{ $t('import.title') }}
     </h1>
-    <b-loading :active="isLoading" />
+    <div v-if="isLoading" class="flex justify-center p-8">
+      <PvProgressSpinner />
+    </div>
 
     <section v-if="isFree()" class="wrap">
       <form @submit.prevent="onUpload" class="box">
         <div>
           <div class="columns">
             <div class="column">
-              <b-field :label="$t('import.mode')" :addons="false">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('import.mode') }}</label>
                 <div>
-                  <b-radio v-model="form.mode" name="mode" native-value="subscribe" data-cy="check-subscribe">
-                    {{ $t('import.subscribe') }}
-                  </b-radio>
+                  <label class="flex items-center gap-2 mb-1">
+                    <PvRadioButton v-model="form.mode" name="mode" value="subscribe" data-cy="check-subscribe" />
+                    <span>{{ $t('import.subscribe') }}</span>
+                  </label>
                   <br />
-                  <b-radio v-model="form.mode" name="mode" native-value="blocklist" data-cy="check-blocklist">
-                    {{ $t('import.blocklist') }}
-                  </b-radio>
+                  <label class="flex items-center gap-2">
+                    <PvRadioButton v-model="form.mode" name="mode" value="blocklist" data-cy="check-blocklist" />
+                    <span>{{ $t('import.blocklist') }}</span>
+                  </label>
                 </div>
-              </b-field>
+              </div>
             </div>
             <div class="column">
-              <b-field :label="$t('globals.fields.status')" :addons="false">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
                 <template v-if="form.mode === 'subscribe'">
-                  <b-radio v-model="form.subStatus" name="subStatus" native-value="unconfirmed"
-                    data-cy="check-unconfirmed">
-                    {{ $t('subscribers.status.unconfirmed') }}
-                  </b-radio>
-                  <b-radio v-model="form.subStatus" name="subStatus" native-value="confirmed" data-cy="check-confirmed">
-                    {{ $t('subscribers.status.confirmed') }}
-                  </b-radio>
+                  <label class="flex items-center gap-2 mb-1">
+                    <PvRadioButton v-model="form.subStatus" name="subStatus" value="unconfirmed"
+                      data-cy="check-unconfirmed" />
+                    <span>{{ $t('subscribers.status.unconfirmed') }}</span>
+                  </label>
+                  <label class="flex items-center gap-2">
+                    <PvRadioButton v-model="form.subStatus" name="subStatus" value="confirmed"
+                      data-cy="check-confirmed" />
+                    <span>{{ $t('subscribers.status.confirmed') }}</span>
+                  </label>
                 </template>
 
-                <b-radio v-else v-model="form.subStatus" name="subStatus" native-value="unsubscribed"
-                  data-cy="check-unsubscribed">
-                  {{ $t('subscribers.status.unsubscribed') }}
-                </b-radio>
-              </b-field>
+                <label v-else class="flex items-center gap-2">
+                  <PvRadioButton v-model="form.subStatus" name="subStatus" value="unsubscribed"
+                    data-cy="check-unsubscribed" />
+                  <span>{{ $t('subscribers.status.unsubscribed') }}</span>
+                </label>
+              </div>
             </div>
 
             <div class="column">
-              <b-field :label="$t('import.csvDelim')" :message="$t('import.csvDelimHelp')" class="delimiter">
-                <b-input v-model="form.delim" name="delim" placeholder="," maxlength="1" required />
-              </b-field>
+              <div class="field delimiter">
+                <label class="block mb-1 text-sm font-medium">{{ $t('import.csvDelim') }}</label>
+                <PvInputText v-model="form.delim" name="delim" placeholder="," :maxlength="1" required />
+                <small class="block mt-1 text-color-secondary">{{ $t('import.csvDelimHelp') }}</small>
+              </div>
             </div>
           </div>
 
           <div class="columns">
             <div class="column is-4">
-              <b-field v-if="form.mode === 'subscribe'" :label="$t('import.overwriteUserInfo')"
-                :message="$t('import.overwriteUserInfoHelp')">
+              <div v-if="form.mode === 'subscribe'" class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('import.overwriteUserInfo') }}</label>
                 <div>
-                  <b-switch v-model="form.overwriteUserInfo" name="overwriteUserInfo" data-cy="overwrite-user-info" />
+                  <div class="flex items-center gap-2">
+                    <PvToggleSwitch v-model="form.overwriteUserInfo" name="overwriteUserInfo"
+                      data-cy="overwrite-user-info" />
+                  </div>
                 </div>
-              </b-field>
+                <small class="block mt-1 text-color-secondary">{{ $t('import.overwriteUserInfoHelp') }}</small>
+              </div>
             </div>
 
             <div class="column">
-              <b-field v-if="form.mode === 'subscribe'" :label="$t('import.overwriteSubStatus')"
-                :message="$t('import.overwriteSubStatusHelp')">
+              <div v-if="form.mode === 'subscribe'" class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('import.overwriteSubStatus') }}</label>
                 <div>
-                  <b-switch v-model="form.overwriteSubStatus" name="overwriteSubStatus"
-                    data-cy="overwrite-sub-status" />
+                  <div class="flex items-center gap-2">
+                    <PvToggleSwitch v-model="form.overwriteSubStatus" name="overwriteSubStatus"
+                      data-cy="overwrite-sub-status" />
+                  </div>
                 </div>
-              </b-field>
+                <small class="block mt-1 text-color-secondary">{{ $t('import.overwriteSubStatusHelp') }}</small>
+              </div>
             </div>
           </div>
 
@@ -74,26 +93,27 @@
             :selected="form.lists" :all="lists.results" />
           <hr />
 
-          <b-field :label="$t('import.csvFile')" label-position="on-border">
-            <b-upload v-model="form.file" drag-drop expanded>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('import.csvFile') }}</label>
+            <div class="upload-drop-area" @dragover.prevent @drop.prevent="onFileDrop"
+              @click="$refs.fileInput.click()" style="border:2px dashed #ccc;border-radius:4px;cursor:pointer;">
               <div class="has-text-centered section">
                 <p>
-                  <b-icon icon="file-upload-outline" size="is-large" />
+                  <i class="pi pi-upload" style="font-size:2rem;" />
                 </p>
                 <p>{{ $t('import.csvFileHelp') }}</p>
               </div>
-            </b-upload>
-          </b-field>
+              <input ref="fileInput" type="file" style="display:none" @change="onFileSelect" />
+            </div>
+          </div>
           <div class="tags" v-if="form.file">
-            <b-tag size="is-medium" closable @close="clearFile">
-              {{ form.file.name }}
-            </b-tag>
+            <PvTag :value="form.file.name" severity="secondary" style="margin-right:4px" />
+            <PvButton icon="pi pi-times" severity="secondary" size="small" text @click="clearFile" />
           </div>
           <div class="buttons">
-            <b-button native-type="submit" type="is-primary"
-              :disabled="!form.file || (form.mode === 'subscribe' && form.lists.length === 0)" :loading="isProcessing">
-              {{ $t('import.upload') }}
-            </b-button>
+            <PvButton type="submit" severity="primary"
+              :disabled="!form.file || (form.mode === 'subscribe' && form.lists.length === 0)"
+              :loading="isProcessing" :label="$t('import.upload')" />
           </div>
         </div>
       </form>
@@ -120,7 +140,7 @@
     </section><!-- upload //-->
 
     <section v-if="isRunning() || isDone()" class="wrap status box has-text-centered">
-      <b-progress :value="progress" show-value type="is-success" />
+      <PvProgressBar :value="progress" style="height:6px" />
       <br />
       <p
         :class="['is-size-5', 'is-capitalized', { 'has-text-success': status.status === 'finished' }, { 'has-text-danger': (status.status === 'failed' || status.status === 'stopped') }]">
@@ -131,9 +151,8 @@
       <br />
 
       <p>
-        <b-button @click="stopImport" :loading="isProcessing" icon-left="file-upload-outline" type="is-primary">
-          {{ isDone() ? $t('import.importDone') : $t('import.stopImport') }}
-        </b-button>
+        <PvButton @click="stopImport" :loading="isProcessing" icon="pi pi-upload" severity="primary"
+          :label="isDone() ? $t('import.importDone') : $t('import.stopImport')" />
       </p>
       <br />
 
@@ -145,12 +164,11 @@
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import ListSelector from '../components/ListSelector.vue';
 import LogView from '../components/LogView.vue';
 
-export default Vue.extend({
+export default {
   components: {
     ListSelector,
     LogView,
@@ -201,6 +219,18 @@ export default Vue.extend({
   methods: {
     clearFile() {
       this.form.file = null;
+    },
+
+    onFileSelect(e) {
+      if (e.target.files && e.target.files.length > 0) {
+        [this.form.file] = e.target.files;
+      }
+    },
+
+    onFileDrop(e) {
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        [this.form.file] = e.dataTransfer.files;
+      }
     },
 
     // Returns true if we're free to do an upload.
@@ -270,7 +300,7 @@ export default Vue.extend({
     getLogs() {
       this.$api.getImportLogs().then((data) => {
         this.logs = data.split('\n').map((line) => line.replace(/\s+importer\.go:\d+:\s*/, ' *: '));
-        Vue.nextTick(() => {
+        this.$nextTick(() => {
           // vue.$refs doesn't work as the logs textarea is rendered dynamically.
           const ref = document.getElementById('import-log');
           if (ref) {
@@ -368,5 +398,5 @@ export default Vue.extend({
       });
     }
   },
-});
+};
 </script>

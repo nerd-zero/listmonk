@@ -1,60 +1,61 @@
 <template>
   <div id="app">
-    <b-navbar :fixed-top="true" v-if="$root.isLoaded">
-      <template #brand>
+    <PvToast />
+    <PvConfirmDialog />
+
+    <nav class="navbar is-fixed-top" v-if="$root.isLoaded">
+      <div class="navbar-brand">
         <div class="logo">
           <router-link :to="{ name: 'dashboard' }">
             <img class="full" src="@/assets/logo.svg" alt="" />
             <img class="favicon" src="@/assets/favicon.png" alt="" />
           </router-link>
         </div>
-      </template>
-      <template #end>
+      </div>
+      <div class="navbar-end">
         <navigation v-if="isMobile" :is-mobile="isMobile" :active-item="activeItem" :active-group="activeGroup"
-          @toggleGroup="toggleGroup" @doLogout="doLogout" />
+          @toggle-group="toggleGroup" @do-logout="doLogout" />
 
-        <b-navbar-item tag="a" href="#" @click.prevent="emitPageRefresh" data-cy="btn-refresh"
+        <a class="navbar-item" href="#" @click.prevent="emitPageRefresh" data-cy="btn-refresh"
           :aria-label="$t('globals.buttons.refresh')">
-          <b-tooltip :label="$t('globals.buttons.refresh')" type="is-dark" position="is-bottom">
-            <b-icon icon="refresh" /> <span class="is-hidden-tablet">{{ $t('globals.buttons.refresh') }}</span>
-          </b-tooltip>
-        </b-navbar-item>
+          <i class="pi pi-refresh" v-tooltip.bottom="$t('globals.buttons.refresh')" />
+          <span class="is-hidden-tablet">{{ $t('globals.buttons.refresh') }}</span>
+        </a>
 
-        <b-navbar-dropdown class="user" tag="div" right>
-          <template v-if="profile.username" #label>
-            <span class="user-avatar">
+        <div class="navbar-item has-dropdown is-hoverable user">
+          <a class="navbar-link">
+            <span class="user-avatar" v-if="profile.username">
               <img v-if="profile.avatar" :src="profile.avatar" alt="" />
               <span v-else>{{ profile.username[0].toUpperCase() }}</span>
             </span>
-          </template>
-
-          <b-navbar-item class="user-name" tag="router-link" to="/user/profile">
-            <strong>{{ profile.username }}</strong>
-            <div class="is-size-7">{{ profile.name }}</div>
-          </b-navbar-item>
-
-          <b-navbar-item href="#">
-            <router-link to="/user/profile">
-              <b-icon icon="account-outline" /> {{ $t('users.profile') }}
+          </a>
+          <div class="navbar-dropdown is-right">
+            <router-link class="navbar-item user-name" to="/user/profile">
+              <strong>{{ profile.username }}</strong>
+              <div class="is-size-7">{{ profile.name }}</div>
             </router-link>
-          </b-navbar-item>
-          <b-navbar-item href="#">
-            <a href="#" @click.prevent="doLogout"><b-icon icon="logout-variant" /> {{ $t('users.logout') }}</a>
-          </b-navbar-item>
-        </b-navbar-dropdown>
-      </template>
-    </b-navbar>
+
+            <router-link class="navbar-item" to="/user/profile">
+              <i class="pi pi-user" /> {{ $t('users.profile') }}
+            </router-link>
+            <a class="navbar-item" href="#" @click.prevent="doLogout">
+              <i class="pi pi-sign-out" /> {{ $t('users.logout') }}
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
 
     <div class="wrapper" v-if="$root.isLoaded">
       <section class="sidebar">
-        <b-sidebar position="static" mobile="hide" :fullheight="true" :open="true" :can-cancel="false">
+        <aside class="sidebar-inner">
           <div>
-            <b-menu :accordion="false">
+            <nav>
               <navigation v-if="!isMobile" :is-mobile="isMobile" :active-item="activeItem" :active-group="activeGroup"
-                @toggleGroup="toggleGroup" />
-            </b-menu>
+                @toggle-group="toggleGroup" />
+            </nav>
           </div>
-        </b-sidebar>
+        </aside>
       </section>
       <!-- sidebar-->
 
@@ -64,10 +65,9 @@
           <div v-if="serverConfig.needs_restart" class="notification is-danger">
             {{ $t('settings.needsRestart') }}
             &mdash;
-            <b-button class="is-primary" size="is-small"
-              @click="$utils.confirm($t('settings.confirmRestart'), reloadApp)">
-              {{ $t('settings.restart') }}
-            </b-button>
+            <PvButton severity="primary" size="small"
+              @click="$utils.confirm($t('settings.confirmRestart'), reloadApp)"
+              :label="$t('settings.restart')" />
           </div>
 
           <template v-if="serverConfig.update">
@@ -90,7 +90,7 @@
           </template>
 
           <div v-if="serverConfig.has_legacy_user" class="notification is-danger">
-            <b-icon icon="warning-empty" />
+            <i class="pi pi-exclamation-triangle" />
             Remove the <code>admin_username</code> and <code>admin_password</code> fields from the TOML
             configuration file or environment variables. If you are using APIs, create and use new API credentials
             before removing them. Visit
@@ -105,18 +105,22 @@
       </div>
     </div>
 
-    <b-loading v-if="!$root.isLoaded" active />
+    <div v-if="!$root.isLoaded" class="flex justify-center p-8">
+      <PvProgressSpinner />
+    </div>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
+import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import { uris } from './constants';
+import { setToastInstance, setConfirmInstance } from './toastService';
 
 import Navigation from './components/Navigation.vue';
 
-export default Vue.extend({
+export default {
   name: 'App',
 
   components: {
@@ -215,6 +219,11 @@ export default Vue.extend({
     },
   },
 
+  setup() {
+    setToastInstance(useToast());
+    setConfirmInstance(useConfirm());
+  },
+
   mounted() {
     // Lists is required across different views. On app load, fetch the lists
     // and have them in the store.
@@ -226,7 +235,7 @@ export default Vue.extend({
 
     this.listenEvents();
   },
-});
+};
 </script>
 
 <style lang="scss">

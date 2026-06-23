@@ -2,79 +2,101 @@
   <div class="items">
     <div class="columns">
       <div class="column is-6">
-        <b-field :message="$t('settings.privacy.disableTrackingHelp')">
-          <b-switch v-model="data['privacy.disable_tracking']" name="privacy.disable_tracking">
-            {{ $t('settings.privacy.disableTracking') }}
-          </b-switch>
-        </b-field>
+        <div class="field">
+          <div class="flex items-center gap-2">
+            <PvToggleSwitch v-model="data['privacy.disable_tracking']" name="privacy.disable_tracking" />
+            <span>{{ $t('settings.privacy.disableTracking') }}</span>
+          </div>
+          <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.disableTrackingHelp') }}</small>
+        </div>
       </div>
       <div class="column is-6" :class="{ 'is-disabled': data['privacy.disable_tracking'] }">
-        <b-field :message="$t('settings.privacy.individualSubTrackingHelp')">
-          <b-switch v-model="data['privacy.individual_tracking']" :disabled="data['privacy.disable_tracking']"
-            name="privacy.individual_tracking">
-            {{ $t('settings.privacy.individualSubTracking') }}
-          </b-switch>
-        </b-field>
+        <div class="field">
+          <div class="flex items-center gap-2">
+            <PvToggleSwitch v-model="data['privacy.individual_tracking']" :disabled="data['privacy.disable_tracking']"
+              name="privacy.individual_tracking" />
+            <span>{{ $t('settings.privacy.individualSubTracking') }}</span>
+          </div>
+          <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.individualSubTrackingHelp') }}</small>
+        </div>
       </div>
     </div>
 
-    <b-field :message="$t('settings.privacy.listUnsubHeaderHelp')">
-      <b-switch v-model="data['privacy.unsubscribe_header']" name="privacy.unsubscribe_header">
-        {{ $t('settings.privacy.listUnsubHeader') }}
-      </b-switch>
-    </b-field>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['privacy.unsubscribe_header']" name="privacy.unsubscribe_header" />
+        <span>{{ $t('settings.privacy.listUnsubHeader') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.listUnsubHeaderHelp') }}</small>
+    </div>
 
-    <b-field :message="$t('settings.privacy.allowBlocklistHelp')">
-      <b-switch v-model="data['privacy.allow_blocklist']" name="privacy.allow_blocklist">
-        {{ $t('settings.privacy.allowBlocklist') }}
-      </b-switch>
-    </b-field>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['privacy.allow_blocklist']" name="privacy.allow_blocklist" />
+        <span>{{ $t('settings.privacy.allowBlocklist') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.allowBlocklistHelp') }}</small>
+    </div>
 
-    <b-field :message="$t('settings.privacy.allowPrefsHelp')">
-      <b-switch v-model="data['privacy.allow_preferences']" name="privacy.allow_blocklist">
-        {{ $t('settings.privacy.allowPrefs') }}
-      </b-switch>
-    </b-field>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['privacy.allow_preferences']" name="privacy.allow_blocklist" />
+        <span>{{ $t('settings.privacy.allowPrefs') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.allowPrefsHelp') }}</small>
+    </div>
 
-    <b-field :message="$t('settings.privacy.allowExportHelp')">
-      <b-switch v-model="data['privacy.allow_export']" name="privacy.allow_export">
-        {{ $t('settings.privacy.allowExport') }}
-      </b-switch>
-    </b-field>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['privacy.allow_export']" name="privacy.allow_export" />
+        <span>{{ $t('settings.privacy.allowExport') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.allowExportHelp') }}</small>
+    </div>
 
-    <b-field :message="$t('settings.privacy.allowWipeHelp')">
-      <b-switch v-model="data['privacy.allow_wipe']" name="privacy.allow_wipe">
-        {{ $t('settings.privacy.allowWipe') }}
-      </b-switch>
-    </b-field>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['privacy.allow_wipe']" name="privacy.allow_wipe" />
+        <span>{{ $t('settings.privacy.allowWipe') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.allowWipeHelp') }}</small>
+    </div>
 
-    <b-field :message="$t('settings.privacy.recordOptinIPHelp')">
-      <b-switch v-model="data['privacy.record_optin_ip']" name="privacy.record_optin_ip">
-        {{ $t('settings.privacy.recordOptinIP') }}
-      </b-switch>
-    </b-field>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['privacy.record_optin_ip']" name="privacy.record_optin_ip" />
+        <span>{{ $t('settings.privacy.recordOptinIP') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.recordOptinIPHelp') }}</small>
+    </div>
 
     <hr />
 
-    <b-tabs v-model="tab" type="is-boxed" :animated="false">
-      <b-tab-item :label="`${$t('settings.privacy.domainBlocklist')} (${numBlocked})`">
-        <b-field :message="$t('settings.privacy.domainBlocklistHelp')">
-          <b-input type="textarea" v-model="data['privacy.domain_blocklist']" name="privacy.domain_blocklist" />
-        </b-field>
-      </b-tab-item>
-      <b-tab-item :label="`${$t('settings.privacy.domainAllowlist')} (${numAllowed})`">
-        <b-field :message="$t('settings.privacy.domainAllowlistHelp')">
-          <b-input type="textarea" v-model="data['privacy.domain_allowlist']" name="privacy.domain_allowlist" />
-        </b-field>
-      </b-tab-item>
-    </b-tabs>
+    <PvTabs v-model:value="tab">
+      <PvTabList>
+        <PvTab value="0">{{ `${$t('settings.privacy.domainBlocklist')} (${numBlocked})` }}</PvTab>
+        <PvTab value="1">{{ `${$t('settings.privacy.domainAllowlist')} (${numAllowed})` }}</PvTab>
+      </PvTabList>
+      <PvTabPanels>
+        <PvTabPanel value="0">
+          <div class="field">
+            <PvTextarea v-model="data['privacy.domain_blocklist']" name="privacy.domain_blocklist" rows="6" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.domainBlocklistHelp') }}</small>
+          </div>
+        </PvTabPanel>
+        <PvTabPanel value="1">
+          <div class="field">
+            <PvTextarea v-model="data['privacy.domain_allowlist']" name="privacy.domain_allowlist" rows="6" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.domainAllowlistHelp') }}</small>
+          </div>
+        </PvTabPanel>
+      </PvTabPanels>
+    </PvTabs>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
-
-export default Vue.extend({
+export default {
   props: {
     form: {
       type: Object, default: () => { },
@@ -84,7 +106,7 @@ export default Vue.extend({
   data() {
     return {
       data: this.form,
-      tab: 0,
+      tab: '0',
     };
   },
 
@@ -95,7 +117,7 @@ export default Vue.extend({
   },
 
   mounted() {
-    this.tab = this.$utils.getPref('settings.privacyDomainTab') || 0;
+    this.tab = String(this.$utils.getPref('settings.privacyDomainTab') || 0);
   },
 
   computed: {
@@ -112,5 +134,5 @@ export default Vue.extend({
       this.$utils.setPref('settings.privacyDomainTab', t);
     },
   },
-});
+};
 </script>

@@ -2,7 +2,7 @@
   <section class="section">
     <div class="content has-text-grey has-text-centered">
       <p>
-        <b-icon :icon="!icon ? 'plus' : icon" size="is-large" />
+        <i :class="'pi ' + (!icon ? 'pi-plus' : icon)" style="font-size:2rem" />
       </p>
       <p>{{ !label ? $t('globals.messages.emptyState') : label }}</p>
     </div>

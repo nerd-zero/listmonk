@@ -1,6 +1,8 @@
 <template>
   <section class="log-view">
-    <b-loading :active="loading" :is-full-page="false" />
+    <div v-if="loading" class="flex justify-center p-8">
+      <PvProgressSpinner style="width:2rem;height:2rem" />
+    </div>
     <div class="lines" ref="lines">
       <template v-for="(l, i) in lines">
         <template v-if="l">

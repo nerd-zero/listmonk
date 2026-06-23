@@ -1,45 +1,54 @@
 <template>
   <div class="items">
-    <b-tabs :animated="false" v-model="tab">
-      <b-tab-item :label="$t('settings.appearance.adminName')" label-position="on-border">
-        <div class="block">
-          {{ $t('settings.appearance.adminHelp') }}
-        </div>
+    <PvTabs :animated="false" v-model:value="tab">
+      <PvTabList>
+        <PvTab value="0">{{ $t('settings.appearance.adminName') }}</PvTab>
+        <PvTab value="1">{{ $t('settings.appearance.publicName') }}</PvTab>
+      </PvTabList>
+      <PvTabPanels>
+        <PvTabPanel value="0">
+          <div class="block">
+            {{ $t('settings.appearance.adminHelp') }}
+          </div>
 
-        <b-field :label="$t('settings.appearance.customCSS')" label-position="on-border">
-          <code-editor lang="css" v-model="data['appearance.admin.custom_css']" name="body" key="editor-admin-css" />
-        </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.appearance.customCSS') }}</label>
+            <code-editor lang="css" v-model="data['appearance.admin.custom_css']" name="body" key="editor-admin-css" />
+          </div>
 
-        <b-field :label="$t('settings.appearance.customJS')" label-position="on-border">
-          <code-editor lang="javascript" v-model="data['appearance.admin.custom_js']" name="body"
-            key="editor-admin-js" />
-        </b-field>
-      </b-tab-item><!-- admin -->
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.appearance.customJS') }}</label>
+            <code-editor lang="javascript" v-model="data['appearance.admin.custom_js']" name="body"
+              key="editor-admin-js" />
+          </div>
+        </PvTabPanel><!-- admin -->
 
-      <b-tab-item :label="$t('settings.appearance.publicName')" label-position="on-border">
-        <div class="block">
-          {{ $t('settings.appearance.publicHelp') }}
-        </div>
+        <PvTabPanel value="1">
+          <div class="block">
+            {{ $t('settings.appearance.publicHelp') }}
+          </div>
 
-        <b-field :label="$t('settings.appearance.customCSS')" label-position="on-border">
-          <code-editor lang="css" v-model="data['appearance.public.custom_css']" name="body" key="editor-public-css" />
-        </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.appearance.customCSS') }}</label>
+            <code-editor lang="css" v-model="data['appearance.public.custom_css']" name="body" key="editor-public-css" />
+          </div>
 
-        <b-field :label="$t('settings.appearance.customJS')" label-position="on-border">
-          <code-editor lang="javascript" v-model="data['appearance.public.custom_js']" name="body"
-            key="editor-public-js" />
-        </b-field>
-      </b-tab-item><!-- public -->
-    </b-tabs>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.appearance.customJS') }}</label>
+            <code-editor lang="javascript" v-model="data['appearance.public.custom_js']" name="body"
+              key="editor-public-js" />
+          </div>
+        </PvTabPanel><!-- public -->
+      </PvTabPanels>
+    </PvTabs>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import CodeEditor from '../../components/CodeEditor.vue';
 
-export default Vue.extend({
+export default {
   components: {
     'code-editor': CodeEditor,
   },
@@ -53,12 +62,12 @@ export default Vue.extend({
   data() {
     return {
       data: this.form,
-      tab: 0,
+      tab: '0',
     };
   },
 
   mounted() {
-    this.tab = this.$utils.getPref('settings.apperanceTab') || 0;
+    this.tab = String(this.$utils.getPref('settings.apperanceTab') || '0');
   },
 
   watch: {
@@ -70,6 +79,6 @@ export default Vue.extend({
   computed: {
     ...mapState(['settings']),
   },
-});
+};
 
 </script>

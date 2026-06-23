@@ -8,84 +8,83 @@
         </h1>
       </div>
       <div class="column has-text-right">
-        <b-field v-if="$can('users:manage')" expanded>
-          <b-button expanded type="is-primary" icon-left="plus" class="btn-new" @click="showNewForm('user')"
-            data-cy="btn-new">
-            {{ $t('globals.buttons.new') }}
-          </b-button>
-        </b-field>
+        <div v-if="$can('users:manage')" class="field">
+          <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm('user')"
+            data-cy="btn-new" :label="$t('globals.buttons.new')" />
+        </div>
       </div>
     </header>
-    <b-table :data="roles" :loading="isLoading()" hoverable>
-      <b-table-column v-slot="props" field="role" :label="$tc('users.role')" sortable>
-        <a href="#" @click.prevent="showEditForm(props.row, 'user')">
-          <b-tag v-if="props.row.id === 1" class="enabled">
-            {{ props.row.name }}
-          </b-tag>
-          <template v-else>{{ props.row.name }}</template>
-        </a>
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="created_at" :label="$t('globals.fields.createdAt')"
-        header-class="cy-created_at" sortable>
-        {{ $utils.niceDate(props.row.createdAt) }}
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="updated_at" :label="$t('globals.fields.updatedAt')"
-        header-class="cy-updated_at" sortable>
-        {{ $utils.niceDate(props.row.updatedAt) }}
-      </b-table-column>
-
-      <b-table-column v-slot="props" cell-class="actions has-text-right">
-        <template v-if="$can('roles:manage')">
-          <a href="#" @click.prevent="$utils.prompt($t('globals.buttons.clone'),
-            {
-              placeholder: $t('globals.fields.name'),
-              value: $t('campaigns.copyOf', { name: props.row.name }),
-            },
-            (name) => onCloneRole(name, props.row))" data-cy="btn-clone" :aria-label="$t('globals.buttons.clone')">
-            <b-tooltip :label="$t('globals.buttons.clone')" type="is-dark">
-              <b-icon icon="file-multiple-outline" size="is-small" />
-            </b-tooltip>
+    <PvDataTable :value="roles" :loading="isLoading()" hoverable>
+      <PvColumn field="role" :header="$tc('users.role')" sortable>
+        <template #body="{ data }">
+          <a href="#" @click.prevent="showEditForm(data, 'user')">
+            <PvTag v-if="data.id === 1" class="enabled">
+              {{ data.name }}
+            </PvTag>
+            <template v-else>{{ data.name }}</template>
           </a>
+        </template>
+      </PvColumn>
 
-          <template v-if="props.row.id !== 1">
-            <a href="#" @click.prevent="showEditForm(props.row, 'user')" data-cy="btn-edit"
-              :aria-label="$t('globals.buttons.edit')">
-              <b-tooltip :label="$t('globals.buttons.edit')" type="is-dark">
-                <b-icon icon="pencil-outline" size="is-small" />
-              </b-tooltip>
+      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')"
+        header-class="cy-created_at" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.createdAt) }}
+        </template>
+      </PvColumn>
+
+      <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')"
+        header-class="cy-updated_at" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.updatedAt) }}
+        </template>
+      </PvColumn>
+
+      <PvColumn body-class="actions has-text-right">
+        <template #body="{ data }">
+          <template v-if="$can('roles:manage')">
+            <a href="#" @click.prevent="$utils.prompt($t('globals.buttons.clone'),
+              {
+                placeholder: $t('globals.fields.name'),
+                value: $t('campaigns.copyOf', { name: data.name }),
+              },
+              (name) => onCloneRole(name, data))" data-cy="btn-clone" :aria-label="$t('globals.buttons.clone')">
+              <i class="pi pi-copy" v-tooltip.bottom="$t('globals.buttons.clone')" />
             </a>
 
-            <a href="#" @click.prevent="onDeleteRole(props.row)" data-cy="btn-delete"
-              :aria-label="$t('globals.buttons.delete')">
-              <b-tooltip :label="$t('globals.buttons.delete')" type="is-dark">
-                <b-icon icon="trash-can-outline" size="is-small" />
-              </b-tooltip>
-            </a>
+            <template v-if="data.id !== 1">
+              <a href="#" @click.prevent="showEditForm(data, 'user')" data-cy="btn-edit"
+                :aria-label="$t('globals.buttons.edit')">
+                <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
+              </a>
+
+              <a href="#" @click.prevent="onDeleteRole(data)" data-cy="btn-delete"
+                :aria-label="$t('globals.buttons.delete')">
+                <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
+              </a>
+            </template>
           </template>
         </template>
-      </b-table-column>
+      </PvColumn>
 
       <template #empty v-if="!isLoading()">
         <empty-placeholder />
       </template>
-    </b-table>
+    </PvDataTable>
 
     <!-- Add / edit form modal -->
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isFormVisible" :width="700" @close="onFormClose">
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '700px' }" modal @hide="onFormClose">
       <role-form :data="curItem" :type="curType" :is-editing="isEditing" @finished="formFinished" />
-    </b-modal>
+    </PvDialog>
   </section>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import RoleForm from './RoleForm.vue';
 
-export default Vue.extend({
+export default {
   components: {
     EmptyPlaceholder,
     RoleForm,
@@ -189,5 +188,5 @@ export default Vue.extend({
     this.curType = this.$route.name === 'userRoles' ? 'user' : 'list';
     this.fetchRoles();
   },
-});
+};
 </script>

@@ -18,34 +18,48 @@
         </div>
       </div>
       <div class="column has-text-right">
-        <b-field v-if="$can('lists:manage_all')" expanded>
-          <b-button expanded type="is-primary" icon-left="plus" class="btn-new" @click="showNewForm" data-cy="btn-new">
-            {{ $t('globals.buttons.new') }}
-          </b-button>
-        </b-field>
+        <div v-if="$can('lists:manage_all')" class="field">
+          <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm" data-cy="btn-new"
+            :label="$t('globals.buttons.new')" />
+        </div>
       </div>
     </header>
 
-    <b-table :data="lists.results" :loading="loading.listsFull" @check-all="onTableCheck" @check="onTableCheck"
-      :checked-rows.sync="bulk.checked" hoverable default-sort="createdAt" paginated backend-pagination
-      pagination-position="both" @page-change="onPageChange" :current-page="queryParams.page" :per-page="lists.perPage"
-      :total="lists.total" checkable backend-sorting @sort="onSort">
-      <template #top-left>
+    <PvDataTable :value="lists.results" :loading="loading.listsFull"
+      v-model:selection="bulk.checked"
+      selection-mode="checkbox"
+      data-key="id"
+      :paginator="true"
+      paginator-position="both"
+      :rows="lists.perPage"
+      :total-records="lists.total"
+      :lazy="true"
+      @page="(e) => onPageChange(e.page + 1)"
+      sort-field="createdAt"
+      :sort-order="1"
+      @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
+      @row-select="onTableCheck"
+      @row-unselect="onTableCheck"
+      @row-select-all="onTableCheck"
+      @row-unselect-all="onTableCheck">
+<template #header>
         <div class="columns">
           <div class="column is-6">
             <form @submit.prevent="getLists">
-              <b-field>
-                <b-input v-model="queryParams.query" name="query" expanded icon="magnify" ref="query" data-cy="query" />
-                <p class="controls">
-                  <b-button native-type="submit" type="is-primary" icon-left="magnify" data-cy="btn-query" />
-                </p>
-              </b-field>
+              <div class="field has-addons">
+                <div class="control is-expanded">
+                  <PvInputText v-model="queryParams.query" name="query" ref="query" data-cy="query" class="w-full" />
+                </div>
+                <div class="control">
+                  <PvButton type="submit" severity="primary" icon="pi pi-search" data-cy="btn-query" />
+                </div>
+              </div>
             </form>
           </div>
         </div>
         <div class="actions" v-if="bulk.checked.length > 0">
           <a class="a" href="#" @click.prevent="deleteLists" data-cy="btn-delete-lists">
-            <b-icon icon="trash-can-outline" size="is-small" /> {{ $t('globals.buttons.delete') }}
+            <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
           </a>
           <span class="a">
             {{ $tc('globals.messages.numSelected', numSelectedLists, { num: numSelectedLists }) }}
@@ -59,138 +73,135 @@
         </div>
       </template>
 
-      <b-table-column v-slot="props" field="name" :label="$t('globals.fields.name')" header-class="cy-name" sortable
-        width="25%" paginated backend-pagination pagination-position="both" :td-attrs="$utils.tdID"
-        @page-change="onPageChange">
-        <div>
-          <a :href="`/lists/${props.row.id}`" @click.prevent="showEditForm(props.row)">
-            {{ props.row.name }}
-          </a>
-          <b-taglist>
-            <b-tag class="is-small" v-for="t in props.row.tags" :key="t">
-              {{ t }}
-            </b-tag>
-          </b-taglist>
-        </div>
-      </b-table-column>
+      <PvColumn selection-mode="multiple" header-style="width:3rem" />
 
-      <b-table-column v-slot="props" field="type" :label="$t('globals.fields.type')" header-class="cy-type" sortable
-        width="15%">
-        <div class="tags">
-          <b-tag :class="props.row.type" :data-cy="`type-${props.row.type}`">
-            {{ $t(`lists.types.${props.row.type}`) }}
-          </b-tag>
-          {{ ' ' }}
+      <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" sortable style="width:25%">
+        <template #body="{ data }">
+          <div>
+            <a :href="`/lists/${data.id}`" @click.prevent="showEditForm(data)">
+              {{ data.name }}
+            </a>
+            <div class="tags">
+              <PvTag v-for="t in data.tags" :key="t" :value="t" class="is-small" />
+            </div>
+          </div>
+        </template>
+      </PvColumn>
 
-          <b-tag :class="props.row.optin" :data-cy="`optin-${props.row.optin}`">
-            <b-icon :icon="props.row.optin === 'double' ? 'account-check-outline' : 'account-off-outline'"
-              size="is-small" />
+      <PvColumn field="type" :header="$t('globals.fields.type')" header-class="cy-type" sortable style="width:15%">
+        <template #body="{ data }">
+          <div class="tags">
+            <PvTag :class="data.type" :data-cy="`type-${data.type}`" :value="$t(`lists.types.${data.type}`)" />
             {{ ' ' }}
-            {{ $t(`lists.optins.${props.row.optin}`) }}
-          </b-tag>{{ ' ' }}
 
-          <a v-if="props.row.optin === 'double'" class="is-size-7 send-optin" href="#"
-            @click="$utils.confirm(null, () => createOptinCampaign(props.row))" data-cy="btn-send-optin-campaign">
-            <b-tooltip :label="$t('lists.sendOptinCampaign')" type="is-dark">
-              <b-icon icon="rocket-launch-outline" size="is-small" />
+            <PvTag :class="data.optin" :data-cy="`optin-${data.optin}`">
+              <i :class="data.optin === 'double' ? 'pi pi-user-plus' : 'pi pi-user-minus'" />
+              {{ ' ' }}
+              {{ $t(`lists.optins.${data.optin}`) }}
+            </PvTag>{{ ' ' }}
+
+            <a v-if="data.optin === 'double'" class="is-size-7 send-optin" href="#"
+              @click="$utils.confirm(null, () => createOptinCampaign(data))" data-cy="btn-send-optin-campaign">
+              <i class="pi pi-send" v-tooltip.bottom="$t('lists.sendOptinCampaign')" />
               {{ $t('lists.sendOptinCampaign') }}
-            </b-tooltip>
-          </a>
-        </div>
-      </b-table-column>
-
-      <b-table-column v-slot="props" field="subscriber_count" :label="$t('globals.terms.subscribers')"
-        header-class="cy-subscribers" numeric sortable centered>
-        <template v-if="$can('subscribers:get_all', 'subscribers:get')">
-          <router-link :to="`/subscribers/lists/${props.row.id}`">
-            {{ $utils.formatNumber(props.row.subscriberCount) }}
-            <span class="is-size-7 view">{{ $t('globals.buttons.view') }}</span>
-          </router-link>
+            </a>
+          </div>
         </template>
-        <template v-else>
-          {{ $utils.formatNumber(props.row.subscriberCount) }}
-        </template>
-      </b-table-column>
+      </PvColumn>
 
-      <b-table-column v-slot="props" field="subscriber_counts" header-class="cy-subscribers" width="10%">
-        <div class="fields stats">
-          <p v-for="(count, status) in filterStatuses(props.row)" :key="status">
-            <label for="#">{{ $tc(`subscribers.status.${status}`, count) }}</label>
-            <router-link :to="`/subscribers/lists/${props.row.id}?subscription_status=${status}`" :class="status">
-              {{ $utils.formatNumber(count) }}
+      <PvColumn field="subscriber_count" :header="$t('globals.terms.subscribers')" header-class="cy-subscribers"
+        sortable>
+        <template #body="{ data }">
+          <template v-if="$can('subscribers:get_all', 'subscribers:get')">
+            <router-link :to="`/subscribers/lists/${data.id}`">
+              {{ $utils.formatNumber(data.subscriberCount) }}
+              <span class="is-size-7 view">{{ $t('globals.buttons.view') }}</span>
             </router-link>
-          </p>
-        </div>
-      </b-table-column>
+          </template>
+          <template v-else>
+            {{ $utils.formatNumber(data.subscriberCount) }}
+          </template>
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" field="created_at" :label="$t('globals.fields.createdAt')"
-        header-class="cy-created_at" sortable>
-        {{ $utils.niceDate(props.row.createdAt) }}
-      </b-table-column>
-      <b-table-column v-slot="props" field="updated_at" :label="$t('globals.fields.updatedAt')"
-        header-class="cy-updated_at" sortable>
-        {{ $utils.niceDate(props.row.updatedAt) }}
-      </b-table-column>
+      <PvColumn field="subscriber_counts" header-class="cy-subscribers" style="width:10%">
+        <template #body="{ data }">
+          <div class="fields stats">
+            <p v-for="(count, status) in filterStatuses(data)" :key="status">
+              <label for="#">{{ $tc(`subscribers.status.${status}`, count) }}</label>
+              <router-link :to="`/subscribers/lists/${data.id}?subscription_status=${status}`" :class="status">
+                {{ $utils.formatNumber(count) }}
+              </router-link>
+            </p>
+          </div>
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" cell-class="actions" align="right">
-        <div>
-          <router-link v-if="$can('campaigns:manage')" :to="`/campaigns/new?list_id=${props.row.id}`"
-            data-cy="btn-campaign">
-            <b-tooltip :label="$t('lists.sendCampaign')" type="is-dark">
-              <b-icon icon="rocket-launch-outline" size="is-small" />
-            </b-tooltip>
-          </router-link>
+      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.createdAt) }}
+        </template>
+      </PvColumn>
 
-          <a v-if="$can('lists:manage') || $canList(props.row.id, 'list:manage')" href="#"
-            @click.prevent="showEditForm(props.row)" data-cy="btn-edit" :aria-label="$t('globals.buttons.edit')">
-            <b-tooltip :label="$t('globals.buttons.edit')" type="is-dark">
-              <b-icon icon="pencil-outline" size="is-small" />
-            </b-tooltip>
-          </a>
+      <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable>
+        <template #body="{ data }">
+          {{ $utils.niceDate(data.updatedAt) }}
+        </template>
+      </PvColumn>
 
-          <router-link v-if="$can('subscribers:import')" :to="{ name: 'import', query: { list_id: props.row.id } }"
-            data-cy="btn-import">
-            <b-tooltip :label="$t('import.title')" type="is-dark">
-              <b-icon icon="file-upload-outline" size="is-small" />
-            </b-tooltip>
-          </router-link>
+      <PvColumn body-class="actions" style="text-align:right">
+        <template #body="{ data }">
+          <div>
+            <router-link v-if="$can('campaigns:manage')" :to="`/campaigns/new?list_id=${data.id}`"
+              data-cy="btn-campaign">
+              <i class="pi pi-send" v-tooltip.bottom="$t('lists.sendCampaign')" />
+            </router-link>
 
-          <a v-if="$can('lists:manage') || $canList(props.row.id, 'list:manage')" href="#"
-            @click.prevent="deleteList(props.row)" data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
-            <b-tooltip :label="$t('globals.buttons.delete')" type="is-dark">
-              <b-icon icon="trash-can-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-        </div>
-      </b-table-column>
+            <a v-if="$can('lists:manage') || $canList(data.id, 'list:manage')" href="#"
+              @click.prevent="showEditForm(data)" data-cy="btn-edit" :aria-label="$t('globals.buttons.edit')">
+              <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
+            </a>
+
+            <router-link v-if="$can('subscribers:import')" :to="{ name: 'import', query: { list_id: data.id } }"
+              data-cy="btn-import">
+              <i class="pi pi-upload" v-tooltip.bottom="$t('import.title')" />
+            </router-link>
+
+            <a v-if="$can('lists:manage') || $canList(data.id, 'list:manage')" href="#"
+              @click.prevent="deleteList(data)" data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
+              <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
+            </a>
+          </div>
+        </template>
+      </PvColumn>
 
       <template #empty v-if="!loading.listsFull">
         <empty-placeholder />
       </template>
-    </b-table>
+    </PvDataTable>
 
     <!-- Add / edit form modal -->
-    <b-modal scroll="keep" :aria-modal="true" :active.sync="isFormVisible" :width="600" @close="onFormClose">
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '600px' }" :closable="true" modal
+      @hide="onFormClose">
       <list-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
-    </b-modal>
+    </PvDialog>
 
     <p v-if="settings['app.cache_slow_queries']" class="has-text-grey">
       *{{ $t('globals.messages.slowQueriesCached') }}
       <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferer"
         class="has-text-grey">
-        <b-icon icon="link-variant" /> {{ $t('globals.buttons.learnMore') }}
+        <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}
       </a>
     </p>
   </section>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import ListForm from './ListForm.vue';
 
-export default Vue.extend({
+export default {
   components: {
     ListForm,
     EmptyPlaceholder,
@@ -367,7 +378,7 @@ export default Vue.extend({
     this.$root.$on('page.refresh', this.getLists);
   },
 
-  destroyed() {
+  unmounted() {
     this.$root.$off('page.refresh', this.getLists);
   },
 
@@ -380,5 +391,5 @@ export default Vue.extend({
       this.getLists();
     }
   },
-});
+};
 </script>

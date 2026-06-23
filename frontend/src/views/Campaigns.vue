@@ -8,31 +8,29 @@
         </h1>
       </div>
       <div class="column has-text-right">
-        <b-field v-if="$can('campaigns:manage')" expanded>
-          <b-button expanded :to="{ name: 'campaign', params: { id: 'new' } }" tag="router-link" class="btn-new"
-            type="is-primary" icon-left="plus" data-cy="btn-new">
-            {{ $t('globals.buttons.new') }}
-          </b-button>
-        </b-field>
+        <div v-if="$can('campaigns:manage')">
+          <router-link :to="{ name: 'campaign', params: { id: 'new' } }" class="btn-new" data-cy="btn-new">
+            <PvButton severity="primary" icon="pi pi-plus" :label="$t('globals.buttons.new')" />
+          </router-link>
+        </div>
       </div>
     </header>
 
-    <b-table :data="campaigns.results" :loading="loading.campaigns" :row-class="highlightedRow"
-      @check-all="onTableCheck" @check="onTableCheck" :checked-rows.sync="bulk.checked" paginated backend-pagination
-      pagination-position="both" @page-change="onPageChange" :current-page="queryParams.page"
-      :per-page="campaigns.perPage" :total="campaigns.total" hoverable checkable backend-sorting @sort="onSort">
-      <template #top-left>
+    <PvDataTable :value="campaigns.results" :loading="loading.campaigns" :row-class="highlightedRow"
+      :rows="campaigns.perPage" :total-records="campaigns.total" paginator paginator-position="both"
+      @page="(e) => onPageChange(e.page + 1)" :first="(queryParams.page - 1) * campaigns.perPage"
+      hoverable data-key="id"
+      v-model:selection="bulk.checked" selection-mode="multiple"
+      @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
+      lazy>
+      <template #header>
         <div class="columns">
           <div class="column is-6">
             <form @submit.prevent="getCampaigns">
-              <div>
-                <b-field>
-                  <b-input v-model="queryParams.query" name="query" expanded
-                    :placeholder="$t('campaigns.queryPlaceholder')" icon="magnify" ref="query" />
-                  <p class="controls">
-                    <b-button native-type="submit" type="is-primary" icon-left="magnify" />
-                  </p>
-                </b-field>
+              <div class="flex gap-2">
+                <PvInputText v-model="queryParams.query" name="query" class="flex-1"
+                  :placeholder="$t('campaigns.queryPlaceholder')" ref="query" />
+                <PvButton type="submit" severity="primary" icon="pi pi-search" />
               </div>
             </form>
           </div>
@@ -40,7 +38,7 @@
 
         <div class="actions" v-if="bulk.checked.length > 0">
           <a class="a" href="#" @click.prevent="deleteCampaigns" data-cy="btn-delete-campaigns">
-            <b-icon icon="trash-can-outline" size="is-small" /> Delete
+            <i class="pi pi-trash" /> Delete
           </a>
           <span class="a">
             {{ $tc('globals.messages.numSelected', numSelectedCampaigns, { num: numSelectedCampaigns }) }}
@@ -54,221 +52,215 @@
         </div>
       </template>
 
-      <b-table-column v-slot="props" cell-class="status" field="status" :label="$t('globals.fields.status')" width="10%"
-        sortable :td-attrs="$utils.tdID" header-class="cy-status">
-        <div>
-          <p>
-            <router-link :to="{ name: 'campaign', params: { id: props.row.id } }">
-              <b-tag :class="props.row.status">
-                {{ $t(`campaigns.status.${props.row.status}`) }}
-              </b-tag>
-              <span class="spinner is-tiny" v-if="isRunning(props.row.id)">
-                <b-loading :is-full-page="false" active />
-              </span>
-            </router-link>
-          </p>
-          <p v-if="isSheduled(props.row)">
-            <span class="is-size-7 has-text-grey scheduled">
-              <b-icon icon="alarm" size="is-small" />
-              <span v-if="!isDone(props.row) && !isRunning(props.row)">
-                {{ $utils.duration(new Date(), props.row.sendAt, true) }}
-                <br />
-              </span>
-              {{ $utils.niceDate(props.row.sendAt, true) }}
-            </span>
-          </p>
-        </div>
-      </b-table-column>
-      <b-table-column v-slot="props" field="name" :label="$t('globals.fields.name')" width="25%" sortable
-        header-class="cy-name">
-        <div>
-          <p>
-            <b-tag v-if="props.row.type === 'optin'" class="is-small">
-              {{ $t('lists.optin') }}
-            </b-tag>
-            <router-link :to="{ name: 'campaign', params: { id: props.row.id } }">
-              {{ props.row.name }}
-              <copy-text :text="props.row.name" hide-text />
-            </router-link>
-          </p>
-          <p class="is-size-7 has-text-grey">
-            <copy-text :text="props.row.subject" />
-          </p>
-          <b-taglist>
-            <b-tag class="is-small" v-for="t in props.row.tags" :key="t">
-              {{ t }}
-            </b-tag>
-          </b-taglist>
-        </div>
-      </b-table-column>
-      <b-table-column v-slot="props" cell-class="lists" field="lists" :label="$t('globals.terms.lists')" width="15%">
-        <ul>
-          <li v-for="l in props.row.lists" :key="l.id">
-            <router-link :to="{ name: 'subscribers_list', params: { listID: l.id } }">
-              {{ l.name }}
-            </router-link>
-          </li>
-        </ul>
-      </b-table-column>
-      <b-table-column v-slot="props" field="created_at" :label="$t('campaigns.timestamps')" width="19%" sortable
-        header-class="cy-timestamp">
-        <div class="fields timestamps" :set="stats = getCampaignStats(props.row)">
-          <p>
-            <label for="#">{{ $t('globals.fields.createdAt') }}</label>
-            <span>{{ $utils.niceDate(props.row.createdAt, true) }}</span>
-          </p>
-          <p v-if="stats.startedAt">
-            <label for="#">{{ $t('campaigns.startedAt') }}</label>
-            <span>{{ $utils.niceDate(stats.startedAt, true) }}</span>
-          </p>
-          <p v-if="isDone(props.row)">
-            <label for="#">{{ $t('campaigns.ended') }}</label>
-            <span>{{ $utils.niceDate(stats.updatedAt, true) }}</span>
-          </p>
-          <p v-if="stats.startedAt && stats.updatedAt" class="is-capitalized">
-            <label for="#"><b-icon icon="alarm" size="is-small" /></label>
-            <span>{{ $utils.duration(stats.startedAt, stats.updatedAt) }}</span>
-          </p>
-        </div>
-      </b-table-column>
+      <PvColumn selection-mode="multiple" header-style="width:3rem" />
 
-      <b-table-column v-slot="props" field="stats" :label="$t('campaigns.stats')" width="15%">
-        <div class="fields stats" :set="stats = getCampaignStats(props.row)">
-          <p>
-            <label for="#">{{ $t('campaigns.views') }}</label>
-            <span>{{ $utils.formatNumber(props.row.views) }}</span>
-          </p>
-          <p>
-            <label for="#">{{ $t('campaigns.clicks') }}</label>
-            <span>{{ $utils.formatNumber(props.row.clicks) }}</span>
-          </p>
-          <p>
-            <label for="#">{{ $t('campaigns.sent') }}</label>
-            <span>
-              {{ $utils.formatNumber(stats.sent) }} /
-              {{ $utils.formatNumber(stats.toSend) }}
-            </span>
-          </p>
-          <p>
-            <label for="#">{{ $t('globals.terms.bounces') }}</label>
-            <span>
-              <router-link :to="{ name: 'bounces', query: { campaign_id: props.row.id } }">
-                {{ $utils.formatNumber(props.row.bounces) }}
+      <PvColumn field="status" :header="$t('globals.fields.status')" header-class="cy-status" style="width:10%" sortable>
+        <template #body="{ data }">
+          <div>
+            <p>
+              <router-link :to="{ name: 'campaign', params: { id: data.id } }">
+                <PvTag :class="data.status">
+                  {{ $t(`campaigns.status.${data.status}`) }}
+                </PvTag>
+                <span class="spinner is-tiny" v-if="isRunning(data.id)">
+                  <PvProgressSpinner style="width:1rem;height:1rem" />
+                </span>
               </router-link>
-            </span>
-          </p>
-          <p v-if="stats.rate">
-            <label for="#"><b-icon icon="speedometer" size="is-small" /></label>
-            <span class="send-rate">
-              <b-tooltip
-                :label="`${stats.netRate} / ${$t('campaigns.rateMinuteShort')} @ ${$utils.duration(stats.startedAt, stats.updatedAt)}`"
-                type="is-dark">
-                {{ stats.rate.toFixed(0) }} / {{ $t('campaigns.rateMinuteShort') }}
-              </b-tooltip>
-            </span>
-          </p>
-          <p v-if="isRunning(props.row.id)">
-            <label for="#">
-              {{ $t('campaigns.progress') }}
-              <span class="spinner is-tiny">
-                <b-loading :is-full-page="false" active />
+            </p>
+            <p v-if="isSheduled(data)">
+              <span class="is-size-7 has-text-grey scheduled">
+                <i class="pi pi-clock" />
+                <span v-if="!isDone(data) && !isRunning(data)">
+                  {{ $utils.duration(new Date(), data.sendAt, true) }}
+                  <br />
+                </span>
+                {{ $utils.niceDate(data.sendAt, true) }}
               </span>
-            </label>
-            <span>
-              <b-progress :value="stats.sent / stats.toSend * 100" size="is-small" />
-            </span>
-          </p>
-        </div>
-      </b-table-column>
+            </p>
+          </div>
+        </template>
+      </PvColumn>
 
-      <b-table-column v-slot="props" cell-class="actions" width="15%" align="right">
-        <div>
-          <!-- start / pause / resume / scheduled -->
-          <template v-if="$can('campaigns:send')">
-            <a v-if="canStart(props.row)" href="#"
-              @click.prevent="$utils.confirm(null, () => changeCampaignStatus(props.row, 'running'))"
-              data-cy="btn-start" :aria-label="$t('campaigns.start')">
-              <b-tooltip :label="$t('campaigns.start')" type="is-dark">
-                <b-icon icon="rocket-launch-outline" size="is-small" />
-              </b-tooltip>
-            </a>
+      <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" style="width:25%" sortable>
+        <template #body="{ data }">
+          <div>
+            <p>
+              <PvTag v-if="data.type === 'optin'" class="is-small">
+                {{ $t('lists.optin') }}
+              </PvTag>
+              <router-link :to="{ name: 'campaign', params: { id: data.id } }">
+                {{ data.name }}
+                <copy-text :text="data.name" hide-text />
+              </router-link>
+            </p>
+            <p class="is-size-7 has-text-grey">
+              <copy-text :text="data.subject" />
+            </p>
+            <div class="flex flex-wrap gap-1">
+              <PvTag class="is-small" v-for="t in data.tags" :key="t" :value="t" />
+            </div>
+          </div>
+        </template>
+      </PvColumn>
 
-            <a v-if="canPause(props.row)" href="#"
-              @click.prevent="$utils.confirm(null, () => changeCampaignStatus(props.row, 'paused'))" data-cy="btn-pause"
-              :aria-label="$t('campaigns.pause')">
-              <b-tooltip :label="$t('campaigns.pause')" type="is-dark">
-                <b-icon icon="pause-circle-outline" size="is-small" />
-              </b-tooltip>
-            </a>
+      <PvColumn field="lists" :header="$t('globals.terms.lists')" style="width:15%">
+        <template #body="{ data }">
+          <ul>
+            <li v-for="l in data.lists" :key="l.id">
+              <router-link :to="{ name: 'subscribers_list', params: { listID: l.id } }">
+                {{ l.name }}
+              </router-link>
+            </li>
+          </ul>
+        </template>
+      </PvColumn>
 
-            <a v-if="canResume(props.row)" href="#"
-              @click.prevent="$utils.confirm(null, () => changeCampaignStatus(props.row, 'running'))"
-              data-cy="btn-resume" :aria-label="$t('campaigns.send')">
-              <b-tooltip :label="$t('campaigns.send')" type="is-dark">
-                <b-icon icon="rocket-launch-outline" size="is-small" />
-              </b-tooltip>
-            </a>
+      <PvColumn field="created_at" :header="$t('campaigns.timestamps')" header-class="cy-timestamp" style="width:19%" sortable>
+        <template #body="{ data }">
+          <div class="fields timestamps" :set="stats = getCampaignStats(data)">
+            <p>
+              <label for="#">{{ $t('globals.fields.createdAt') }}</label>
+              <span>{{ $utils.niceDate(data.createdAt, true) }}</span>
+            </p>
+            <p v-if="stats.startedAt">
+              <label for="#">{{ $t('campaigns.startedAt') }}</label>
+              <span>{{ $utils.niceDate(stats.startedAt, true) }}</span>
+            </p>
+            <p v-if="isDone(data)">
+              <label for="#">{{ $t('campaigns.ended') }}</label>
+              <span>{{ $utils.niceDate(stats.updatedAt, true) }}</span>
+            </p>
+            <p v-if="stats.startedAt && stats.updatedAt" class="is-capitalized">
+              <label for="#"><i class="pi pi-clock" /></label>
+              <span>{{ $utils.duration(stats.startedAt, stats.updatedAt) }}</span>
+            </p>
+          </div>
+        </template>
+      </PvColumn>
 
-            <a v-if="canSchedule(props.row)" href="#"
-              @click.prevent="$utils.confirm($t('campaigns.confirmSchedule'), () => changeCampaignStatus(props.row, 'scheduled'))"
-              data-cy="btn-schedule" :aria-label="$t('campaigns.schedule')">
-              <b-tooltip :label="$t('campaigns.schedule')" type="is-dark">
-                <b-icon icon="clock-start" size="is-small" />
-              </b-tooltip>
-            </a>
+      <PvColumn field="stats" :header="$t('campaigns.stats')" style="width:15%">
+        <template #body="{ data }">
+          <div class="fields stats" :set="stats = getCampaignStats(data)">
+            <p>
+              <label for="#">{{ $t('campaigns.views') }}</label>
+              <span>{{ $utils.formatNumber(data.views) }}</span>
+            </p>
+            <p>
+              <label for="#">{{ $t('campaigns.clicks') }}</label>
+              <span>{{ $utils.formatNumber(data.clicks) }}</span>
+            </p>
+            <p>
+              <label for="#">{{ $t('campaigns.sent') }}</label>
+              <span>
+                {{ $utils.formatNumber(stats.sent) }} /
+                {{ $utils.formatNumber(stats.toSend) }}
+              </span>
+            </p>
+            <p>
+              <label for="#">{{ $t('globals.terms.bounces') }}</label>
+              <span>
+                <router-link :to="{ name: 'bounces', query: { campaign_id: data.id } }">
+                  {{ $utils.formatNumber(data.bounces) }}
+                </router-link>
+              </span>
+            </p>
+            <p v-if="stats.rate">
+              <label for="#"><i class="pi pi-gauge" /></label>
+              <span class="send-rate">
+                <span v-tooltip.bottom="`${stats.netRate} / ${$t('campaigns.rateMinuteShort')} @ ${$utils.duration(stats.startedAt, stats.updatedAt)}`">
+                  {{ stats.rate.toFixed(0) }} / {{ $t('campaigns.rateMinuteShort') }}
+                </span>
+              </span>
+            </p>
+            <p v-if="isRunning(data.id)">
+              <label for="#">
+                {{ $t('campaigns.progress') }}
+                <span class="spinner is-tiny">
+                  <PvProgressSpinner style="width:1rem;height:1rem" />
+                </span>
+              </label>
+              <span>
+                <PvProgressBar :value="stats.sent / stats.toSend * 100" style="height:6px" />
+              </span>
+            </p>
+          </div>
+        </template>
+      </PvColumn>
 
-            <!-- placeholder for finished campaigns -->
-            <a v-if="!canCancel(props.row) && !canSchedule(props.row) && !canStart(props.row)" href="#" data-disabled
-              aria-label=" ">
-              <b-icon icon="rocket-launch-outline" size="is-small" />
-            </a>
+      <PvColumn style="width:15%" align-frozen="right">
+        <template #body="{ data }">
+          <div>
+            <!-- start / pause / resume / scheduled -->
+            <template v-if="$can('campaigns:send')">
+              <a v-if="canStart(data)" href="#"
+                @click.prevent="$utils.confirm(null, () => changeCampaignStatus(data, 'running'))"
+                data-cy="btn-start" :aria-label="$t('campaigns.start')">
+                <i class="pi pi-send" v-tooltip.bottom="$t('campaigns.start')" />
+              </a>
 
-            <a v-if="canCancel(props.row)" href="#"
-              @click.prevent="$utils.confirm(null, () => changeCampaignStatus(props.row, 'cancelled'))"
-              data-cy="btn-cancel" :aria-label="$t('globals.buttons.cancel')">
-              <b-tooltip :label="$t('globals.buttons.cancel')" type="is-dark">
-                <b-icon icon="cancel" size="is-small" />
-              </b-tooltip>
-            </a>
-            <a v-else href="#" data-disabled aria-label=" ">
-              <b-icon icon="cancel" size="is-small" />
-            </a>
-          </template>
+              <a v-if="canPause(data)" href="#"
+                @click.prevent="$utils.confirm(null, () => changeCampaignStatus(data, 'paused'))" data-cy="btn-pause"
+                :aria-label="$t('campaigns.pause')">
+                <i class="pi pi-pause" v-tooltip.bottom="$t('campaigns.pause')" />
+              </a>
 
-          <a href="#" @click.prevent="previewCampaign(props.row)" data-cy="btn-preview"
-            :aria-label="$t('campaigns.preview')">
-            <b-tooltip :label="$t('campaigns.preview')" type="is-dark">
-              <b-icon icon="file-find-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-          <a v-if="$can('campaigns:manage')" href="#" @click.prevent="$utils.prompt($t('globals.buttons.clone'),
-            {
-              placeholder: $t('globals.fields.name'),
-              value: $t('campaigns.copyOf', { name: props.row.name }),
-            },
-            (name) => cloneCampaign(name, props.row))" data-cy="btn-clone" :aria-label="$t('globals.buttons.clone')">
-            <b-tooltip :label="$t('globals.buttons.clone')" type="is-dark">
-              <b-icon icon="file-multiple-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-          <router-link v-if="$can('campaigns:get_analytics')"
-            :to="{ name: 'campaignAnalytics', query: { id: props.row.id } }">
-            <b-tooltip :label="$t('globals.terms.analytics')" type="is-dark">
-              <b-icon icon="chart-bar" size="is-small" />
-            </b-tooltip>
-          </router-link>
-          <a v-if="$can('campaigns:manage')" href="#"
-            @click.prevent="$utils.confirm($t('campaigns.confirmDelete', { name: props.row.name }), () => deleteCampaign(props.row))"
-            data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
-            <b-icon icon="trash-can-outline" size="is-small" />
-          </a>
-        </div>
-      </b-table-column>
+              <a v-if="canResume(data)" href="#"
+                @click.prevent="$utils.confirm(null, () => changeCampaignStatus(data, 'running'))"
+                data-cy="btn-resume" :aria-label="$t('campaigns.send')">
+                <i class="pi pi-send" v-tooltip.bottom="$t('campaigns.send')" />
+              </a>
+
+              <a v-if="canSchedule(data)" href="#"
+                @click.prevent="$utils.confirm($t('campaigns.confirmSchedule'), () => changeCampaignStatus(data, 'scheduled'))"
+                data-cy="btn-schedule" :aria-label="$t('campaigns.schedule')">
+                <i class="pi pi-clock" v-tooltip.bottom="$t('campaigns.schedule')" />
+              </a>
+
+              <!-- placeholder for finished campaigns -->
+              <a v-if="!canCancel(data) && !canSchedule(data) && !canStart(data)" href="#" data-disabled
+                aria-label=" ">
+                <i class="pi pi-send" />
+              </a>
+
+              <a v-if="canCancel(data)" href="#"
+                @click.prevent="$utils.confirm(null, () => changeCampaignStatus(data, 'cancelled'))"
+                data-cy="btn-cancel" :aria-label="$t('globals.buttons.cancel')">
+                <i class="pi pi-times-circle" v-tooltip.bottom="$t('globals.buttons.cancel')" />
+              </a>
+              <a v-else href="#" data-disabled aria-label=" ">
+                <i class="pi pi-times-circle" />
+              </a>
+            </template>
+
+            <a href="#" @click.prevent="previewCampaign(data)" data-cy="btn-preview"
+              :aria-label="$t('campaigns.preview')">
+              <i class="pi pi-eye" v-tooltip.bottom="$t('campaigns.preview')" />
+            </a>
+            <a v-if="$can('campaigns:manage')" href="#" @click.prevent="$utils.prompt($t('globals.buttons.clone'),
+              {
+                placeholder: $t('globals.fields.name'),
+                value: $t('campaigns.copyOf', { name: data.name }),
+              },
+              (name) => cloneCampaign(name, data))" data-cy="btn-clone" :aria-label="$t('globals.buttons.clone')">
+              <i class="pi pi-copy" v-tooltip.bottom="$t('globals.buttons.clone')" />
+            </a>
+            <router-link v-if="$can('campaigns:get_analytics')"
+              :to="{ name: 'campaignAnalytics', query: { id: data.id } }">
+              <i class="pi pi-chart-bar" v-tooltip.bottom="$t('globals.terms.analytics')" />
+            </router-link>
+            <a v-if="$can('campaigns:manage')" href="#"
+              @click.prevent="$utils.confirm($t('campaigns.confirmDelete', { name: data.name }), () => deleteCampaign(data))"
+              data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
+              <i class="pi pi-trash" />
+            </a>
+          </div>
+        </template>
+      </PvColumn>
 
       <template #empty v-if="!loading.campaigns">
         <empty-placeholder />
       </template>
-    </b-table>
+    </PvDataTable>
 
     <campaign-preview v-if="previewItem" type="campaign" :id="previewItem.id" :title="previewItem.name"
       @close="closePreview" />
@@ -277,13 +269,12 @@
 
 <script>
 import dayjs from 'dayjs';
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CopyText from '../components/CopyText.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default Vue.extend({
+export default {
   components: {
     CampaignPreview,
     EmptyPlaceholder,
@@ -541,9 +532,9 @@ export default Vue.extend({
     this.pollStats();
   },
 
-  destroyed() {
+  unmounted() {
     this.$root.$off('page.refresh', this.getCampaigns);
     clearInterval(this.pollID);
   },
-});
+};
 </script>

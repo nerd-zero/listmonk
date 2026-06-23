@@ -5,7 +5,9 @@
     </h1>
     <hr />
 
-    <b-loading v-if="loading.lists" :active="loading.lists" :is-full-page="false" />
+    <div v-if="loading.lists" class="flex justify-center p-8">
+      <PvProgressSpinner style="width:2rem;height:2rem" />
+    </div>
     <p v-else-if="publicLists.length === 0">
       {{ $t('forms.noPublicLists') }}
     </p>
@@ -14,12 +16,12 @@
         <h4>{{ $t('forms.publicLists') }}</h4>
         <p>{{ $t('forms.selectHelp') }}</p>
 
-        <b-loading :active="loading.lists" :is-full-page="false" />
         <ul class="no" data-cy="lists">
           <li v-for="(l, i) in publicLists" :key="l.id">
-            <b-checkbox v-model="checked" :native-value="i">
-              {{ l.name }}
-            </b-checkbox>
+            <div class="flex items-center gap-2">
+              <PvCheckbox v-model="checked" :value="i" :input-id="`list-${l.id}`" />
+              <label :for="`list-${l.id}`">{{ l.name }}</label>
+            </div>
           </li>
         </ul>
 
@@ -41,14 +43,16 @@
         </p>
         <ul v-if="redirectURLs.length > 0" class="no" data-cy="redirect-urls">
           <li>
-            <b-radio v-model="selectedRedirectURL" native-value="">
-              {{ $t('globals.terms.none') }}
-            </b-radio>
+            <div class="flex items-center gap-2">
+              <PvRadioButton v-model="selectedRedirectURL" value="" input-id="redirect-none" />
+              <label for="redirect-none">{{ $t('globals.terms.none') }}</label>
+            </div>
           </li>
           <li v-for="url in redirectURLs" :key="url">
-            <b-radio v-model="selectedRedirectURL" :native-value="url">
-              {{ url }}
-            </b-radio>
+            <div class="flex items-center gap-2">
+              <PvRadioButton v-model="selectedRedirectURL" :value="url" :input-id="`redirect-${url}`" />
+              <label :for="`redirect-${url}`">{{ url }}</label>
+            </div>
           </li>
         </ul>
       </div>
@@ -65,11 +69,10 @@
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import CodeEditor from '../components/CodeEditor.vue';
 
-export default Vue.extend({
+export default {
   name: 'ListForm',
 
   components: {
@@ -172,5 +175,5 @@ export default Vue.extend({
       this.renderHTML();
     },
   },
-});
+};
 </script>

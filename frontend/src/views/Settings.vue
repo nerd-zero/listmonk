@@ -1,7 +1,9 @@
 <template>
   <form @submit.prevent="onSubmit">
     <section class="settings">
-      <b-loading :is-full-page="true" v-if="loading.settings || isLoading" active />
+      <div v-if="loading.settings || isLoading" class="flex justify-center p-8">
+        <PvProgressSpinner />
+      </div>
       <header class="columns page-header">
         <div class="column is-half">
           <h1 class="title is-4">
@@ -10,65 +12,68 @@
           </h1>
         </div>
         <div class="column has-text-right">
-          <b-field v-if="$can('settings:manage')" expanded>
-            <b-button expanded :disabled="!hasFormChanged" type="is-primary" icon-left="content-save-outline"
-              native-type="submit" class="isSaveEnabled" data-cy="btn-save">
-              {{ $t('globals.buttons.save') }}
-            </b-button>
-          </b-field>
+          <div v-if="$can('settings:manage')">
+            <PvButton :disabled="!hasFormChanged" severity="primary" icon="pi pi-save"
+              type="submit" class="isSaveEnabled" data-cy="btn-save"
+              :label="$t('globals.buttons.save')" />
+          </div>
         </div>
       </header>
       <hr />
 
       <section class="wrap settings-wrap" v-if="form">
-        <b-tabs class="settings-tabs" vertical :animated="false" v-model="tab">
-          <b-tab-item :label="$t('settings.general.name')">
-            <general-settings :form="form" :key="key" />
-          </b-tab-item><!-- general -->
-
-          <b-tab-item :label="$t('settings.performance.name')">
-            <performance-settings :form="form" :key="key" />
-          </b-tab-item><!-- performance -->
-
-          <b-tab-item :label="$t('settings.privacy.name')">
-            <privacy-settings :form="form" :key="key" />
-          </b-tab-item><!-- privacy -->
-
-          <b-tab-item :label="$t('settings.security.name')">
-            <security-settings :form="form" :key="key" />
-          </b-tab-item><!-- security -->
-
-          <b-tab-item :label="$t('settings.media.title')">
-            <media-settings :form="form" :key="key" />
-          </b-tab-item><!-- media -->
-
-          <b-tab-item :label="$t('settings.smtp.name')">
-            <smtp-settings :form="form" :key="key" />
-          </b-tab-item><!-- mail servers -->
-
-          <b-tab-item :label="$t('settings.bounces.name')">
-            <bounce-settings :form="form" :key="key" />
-          </b-tab-item><!-- bounces -->
-
-          <b-tab-item :label="$t('settings.messengers.name')">
-            <messenger-settings :form="form" :key="key" />
-          </b-tab-item><!-- messengers -->
-
-          <b-tab-item :label="$t('settings.appearance.name')">
-            <appearance-settings :form="form" :key="key" />
-          </b-tab-item><!-- appearance -->
-
-          <b-tab-item :label="$t('settings.scrub.name')">
-            <scrub-settings :form="form" :key="key" />
-          </b-tab-item><!-- mail validation -->
-        </b-tabs>
+        <PvTabs class="settings-tabs" v-model:value="tab">
+          <PvTabList>
+            <PvTab value="0">{{ $t('settings.general.name') }}</PvTab><!-- general -->
+            <PvTab value="1">{{ $t('settings.performance.name') }}</PvTab><!-- performance -->
+            <PvTab value="2">{{ $t('settings.privacy.name') }}</PvTab><!-- privacy -->
+            <PvTab value="3">{{ $t('settings.security.name') }}</PvTab><!-- security -->
+            <PvTab value="4">{{ $t('settings.media.title') }}</PvTab><!-- media -->
+            <PvTab value="5">{{ $t('settings.smtp.name') }}</PvTab><!-- mail servers -->
+            <PvTab value="6">{{ $t('settings.bounces.name') }}</PvTab><!-- bounces -->
+            <PvTab value="7">{{ $t('settings.messengers.name') }}</PvTab><!-- messengers -->
+            <PvTab value="8">{{ $t('settings.appearance.name') }}</PvTab><!-- appearance -->
+            <PvTab value="9">{{ $t('settings.scrub.name') }}</PvTab><!-- mail validation -->
+          </PvTabList>
+          <PvTabPanels>
+            <PvTabPanel value="0">
+              <general-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="1">
+              <performance-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="2">
+              <privacy-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="3">
+              <security-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="4">
+              <media-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="5">
+              <smtp-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="6">
+              <bounce-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="7">
+              <messenger-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="8">
+              <appearance-settings :form="form" :key="key" />
+            </PvTabPanel>
+            <PvTabPanel value="9">
+              <scrub-settings :form="form" :key="key" />
+            </PvTabPanel>
+          </PvTabPanels>
+        </PvTabs>
       </section>
     </section>
   </form>
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import AppearanceSettings from './settings/appearance.vue';
 import ScrubSettings from './settings/scrub.vue';
@@ -81,7 +86,7 @@ import PrivacySettings from './settings/privacy.vue';
 import SecuritySettings from './settings/security.vue';
 import SmtpSettings from './settings/smtp.vue';
 
-export default Vue.extend({
+export default {
   components: {
     GeneralSettings,
     PerformanceSettings,
@@ -107,7 +112,7 @@ export default Vue.extend({
       // form is compared to detect changes.
       formCopy: '',
       form: null,
-      tab: 0,
+      tab: '0',
     };
   },
 
@@ -291,7 +296,7 @@ export default Vue.extend({
   },
 
   mounted() {
-    this.tab = this.$utils.getPref('settings.tab') || 0;
+    this.tab = String(this.$utils.getPref('settings.tab') || '0');
     this.getSettings();
   },
 
@@ -300,5 +305,5 @@ export default Vue.extend({
       this.$utils.setPref('settings.tab', t);
     },
   },
-});
+};
 </script>

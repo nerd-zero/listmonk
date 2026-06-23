@@ -15,25 +15,17 @@
       </h4><br />
       <div class="columns">
         <div class="column is-4">
-          <b-field label="Data" :message="$t('maintenance.orphanHelp')">
-            <b-select v-model="subscriberType" expanded>
-              <option value="orphan">
-                {{ $t('dashboard.orphanSubs') }}
-              </option>
-              <option value="blocklisted">
-                {{ $t('subscribers.status.blocklisted') }}
-              </option>
-            </b-select>
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">Data</label>
+            <PvSelect v-model="subscriberType" :options="subscriberTypeOptions" option-label="label" option-value="value" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('maintenance.orphanHelp') }}</small>
+          </div>
         </div>
         <div class="column is-5" />
         <div class="column">
           <br />
-          <b-field>
-            <b-button class="is-primary" :loading="loading.maintenance" @click="deleteSubscribers" expanded>
-              {{ $t('globals.buttons.delete') }}
-            </b-button>
-          </b-field>
+          <PvButton severity="primary" :loading="loading.maintenance" @click="deleteSubscribers" class="w-full"
+            :label="$t('globals.buttons.delete')" />
         </div>
       </div>
     </div><!-- subscribers -->
@@ -44,28 +36,22 @@
       </h4><br />
       <div class="columns">
         <div class="column is-4">
-          <b-field label="Data">
-            <b-select v-model="subscriptionType" expanded>
-              <option value="optin">
-                {{ $t('maintenance.maintenance.unconfirmedOptins') }}
-              </option>
-            </b-select>
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">Data</label>
+            <PvSelect v-model="subscriptionType" :options="subscriptionTypeOptions" option-label="label" option-value="value" class="w-full" />
+          </div>
         </div>
         <div class="column is-4">
-          <b-field :label="$t('maintenance.olderThan')">
-            <b-datepicker v-model="subscriptionDate" required expanded icon="calendar-clock"
-              :date-formatter="formatDateTime" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('maintenance.olderThan') }}</label>
+            <PvDatePicker v-model="subscriptionDate" required class="w-full" :date-format="'yy-mm-dd'" />
+          </div>
         </div>
         <div class="column is-1" />
         <div class="column">
           <br />
-          <b-field>
-            <b-button class="is-primary" :loading="loading.maintenance" @click="deleteSubscriptions" expanded>
-              {{ $t('globals.buttons.delete') }}
-            </b-button>
-          </b-field>
+          <PvButton severity="primary" :loading="loading.maintenance" @click="deleteSubscriptions" class="w-full"
+            :label="$t('globals.buttons.delete')" />
         </div>
       </div>
     </div><!-- subscriptions -->
@@ -76,34 +62,22 @@
       </h4><br />
       <div class="columns">
         <div class="column is-4">
-          <b-field label="Data">
-            <b-select v-model="analyticsType" expanded>
-              <option selected value="all">
-                {{ $t('globals.terms.all') }}
-              </option>
-              <option value="views">
-                {{ $t('dashboard.campaignViews') }}
-              </option>
-              <option value="clicks">
-                {{ $t('dashboard.linkClicks') }}
-              </option>
-            </b-select>
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">Data</label>
+            <PvSelect v-model="analyticsType" :options="analyticsTypeOptions" option-label="label" option-value="value" class="w-full" />
+          </div>
         </div>
         <div class="column is-4">
-          <b-field :label="$t('maintenance.olderThan')">
-            <b-datepicker v-model="analyticsDate" required expanded icon="calendar-clock"
-              :date-formatter="formatDateTime" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('maintenance.olderThan') }}</label>
+            <PvDatePicker v-model="analyticsDate" required class="w-full" :date-format="'yy-mm-dd'" />
+          </div>
         </div>
         <div class="column is-1" />
         <div class="column">
           <br />
-          <b-field>
-            <b-button expanded class="is-primary" :loading="loading.maintenance" @click="deleteAnalytics">
-              {{ $t('globals.buttons.delete') }}
-            </b-button>
-          </b-field>
+          <PvButton severity="primary" :loading="loading.maintenance" @click="deleteAnalytics" class="w-full"
+            :label="$t('globals.buttons.delete')" />
         </div>
       </div>
 
@@ -114,32 +88,24 @@
       <br />
       <div class="columns">
         <div class="column is-4">
-          <b-field label="Data">
-            <b-select v-model="exportType" expanded>
-              <option value="views">
-                {{ $t('dashboard.campaignViews') }}
-              </option>
-              <option value="clicks">
-                {{ $t('dashboard.linkClicks') }}
-              </option>
-            </b-select>
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">Data</label>
+            <PvSelect v-model="exportType" :options="exportTypeOptions" option-label="label" option-value="value" class="w-full" />
+          </div>
         </div>
         <div class="column is-4">
-          <b-field :label="$t('analytics.fromDate')">
-            <b-datepicker v-model="exportDate" required expanded icon="calendar-clock"
-              :date-formatter="formatDateTime" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('analytics.fromDate') }}</label>
+            <PvDatePicker v-model="exportDate" required class="w-full" :date-format="'yy-mm-dd'" />
+          </div>
         </div>
         <div class="column is-1" />
         <div class="column">
           <br />
-          <b-field>
-            <b-button expanded class="is-primary" tag="a" icon-left="download"
-              :href="exportURL">
-              {{ $t('subscribers.export') }}
-            </b-button>
-          </b-field>
+          <a :href="exportURL" class="w-full">
+            <PvButton severity="primary" icon="pi pi-download" class="w-full"
+              :label="$t('subscribers.export')" />
+          </a>
         </div>
       </div>
     </div><!-- analytics -->
@@ -155,36 +121,40 @@
       <br />
       <div class="columns">
         <div class="column is-2">
-          <b-field :label="$t('globals.buttons.enabled')">
-            <b-switch v-model="dbSettings.vacuum" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('globals.buttons.enabled') }}</label>
+            <div class="flex items-center gap-2">
+              <PvToggleSwitch v-model="dbSettings.vacuum" />
+            </div>
+          </div>
         </div>
         <div class="column is-4" :class="{ disabled: !dbSettings.vacuum }">
-          <b-field :label="$t('settings.maintenance.cron')">
-            <b-input v-model="dbSettings.vacuum_cron_interval" placeholder="0 2 * * *" :disabled="!dbSettings.vacuum"
-              pattern="((\*|[0-9,\-\/]+)\s+){4}(\*|[0-9,\-\/]+)" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.maintenance.cron') }}</label>
+            <PvInputText v-model="dbSettings.vacuum_cron_interval" placeholder="0 2 * * *" :disabled="!dbSettings.vacuum"
+              pattern="((\*|[0-9,\-\/]+)\s+){4}(\*|[0-9,\-\/]+)" class="w-full" />
+          </div>
         </div>
         <div class="column is-3" />
         <div class="column is-3">
           <br />
-          <b-button type="is-primary" native-type="submit" :loading="loading.settings" expanded>
-            {{ $t('globals.buttons.save') }}
-          </b-button>
+          <PvButton severity="primary" type="submit" :loading="loading.settings" class="w-full"
+            :label="$t('globals.buttons.save')" />
         </div>
       </div>
     </form><!-- database -->
 
-    <b-loading :is-full-page="true" v-if="isLoading" active />
+    <div v-if="isLoading" class="flex justify-center p-8">
+      <PvProgressSpinner />
+    </div>
   </section>
 </template>
 
 <script>
 import dayjs from 'dayjs';
-import Vue from 'vue';
 import { mapState } from 'vuex';
 
-export default Vue.extend({
+export default {
   components: {
   },
 
@@ -277,7 +247,34 @@ export default Vue.extend({
       const since = encodeURIComponent(dayjs(this.exportDate).toISOString());
       return `/api/maintenance/analytics/${this.exportType}/export?since=${since}`;
     },
-  },
 
-});
+    subscriberTypeOptions() {
+      return [
+        { label: this.$t('dashboard.orphanSubs'), value: 'orphan' },
+        { label: this.$t('subscribers.status.blocklisted'), value: 'blocklisted' },
+      ];
+    },
+
+    subscriptionTypeOptions() {
+      return [
+        { label: this.$t('maintenance.maintenance.unconfirmedOptins'), value: 'optin' },
+      ];
+    },
+
+    analyticsTypeOptions() {
+      return [
+        { label: this.$t('globals.terms.all'), value: 'all' },
+        { label: this.$t('dashboard.campaignViews'), value: 'views' },
+        { label: this.$t('dashboard.linkClicks'), value: 'clicks' },
+      ];
+    },
+
+    exportTypeOptions() {
+      return [
+        { label: this.$t('dashboard.campaignViews'), value: 'views' },
+        { label: this.$t('dashboard.linkClicks'), value: 'clicks' },
+      ];
+    },
+  },
+};
 </script>

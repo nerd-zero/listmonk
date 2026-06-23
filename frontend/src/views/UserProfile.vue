@@ -1,48 +1,53 @@
 <template>
   <section class="user-profile section-mini">
-    <b-loading v-if="loading.users" :active="loading.users" :is-full-page="false" />
+    <div v-if="loading.users" class="flex justify-center p-8">
+      <PvProgressSpinner />
+    </div>
 
     <h1 class="title">
       @{{ data.username }}
     </h1>
-    <b-tag v-if="data.userRole">{{ data.userRole.name }}</b-tag>
+    <PvTag v-if="data.userRole">{{ data.userRole.name }}</PvTag>
 
     <br /><br /><br />
     <form @submit.prevent="onSubmit">
-      <b-field v-if="data.type !== 'api'" :label="$t('subscribers.email')" label-position="on-border">
-        <b-input :maxlength="200" v-model="form.email" name="email" :placeholder="$t('subscribers.email')"
+      <div v-if="data.type !== 'api'" class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('subscribers.email') }}</label>
+        <PvInputText :maxlength="200" v-model="form.email" name="email" :placeholder="$t('subscribers.email')"
           :disabled="!data.passwordLogin" required autofocus />
-      </b-field>
+      </div>
 
-      <b-field :label="$t('globals.fields.name')" label-position="on-border">
-        <b-input :maxlength="200" v-model="form.name" name="name" :placeholder="$t('globals.fields.name')" />
-      </b-field>
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+        <PvInputText :maxlength="200" v-model="form.name" name="name" :placeholder="$t('globals.fields.name')" />
+      </div>
 
       <div v-if="data.passwordLogin" class="columns">
         <div class="column is-6">
-          <b-field :label="$t('users.password')" label-position="on-border">
-            <b-input minlength="8" :maxlength="200" v-model="form.password" type="password" name="password"
-              :placeholder="$t('users.password')" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('users.password') }}</label>
+            <PvPassword minlength="8" :maxlength="200" v-model="form.password" name="password"
+              :placeholder="$t('users.password')" :feedback="false" />
+          </div>
         </div>
         <div class="column is-6">
-          <b-field :label="$t('users.passwordRepeat')" label-position="on-border">
-            <b-input minlength="8" :maxlength="200" v-model="form.password2" type="password" name="password2" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('users.passwordRepeat') }}</label>
+            <PvPassword minlength="8" :maxlength="200" v-model="form.password2" name="password2" :feedback="false" />
+          </div>
         </div>
       </div>
 
-      <b-field expanded>
-        <b-button type="is-primary" icon-left="content-save-outline" native-type="submit" data-cy="btn-save">
-          {{ $t('globals.buttons.save') }}
-        </b-button>
-      </b-field>
+      <div class="field">
+        <PvButton severity="primary" icon="pi pi-save" type="submit" data-cy="btn-save"
+          :label="$t('globals.buttons.save')" />
+      </div>
     </form>
 
     <br /><br />
 
     <!-- 2FA -->
-    <section v-if="this.data.passwordLogin" class="twofa-section">
+    <section v-if="data.passwordLogin" class="twofa-section">
       <!-- TOTP disabled -->
       <div v-if="data.twofaType === 'none'" class="box">
         <div class="columns is-vcentered mb-4">
@@ -50,7 +55,9 @@
             <h3 class="title is-size-5 mb-0">{{ $t('users.twoFA') }}</h3>
           </div>
           <div class="column is-narrow">
-            <b-switch v-if="!isTotpVisible" v-model="twofaEnabled" @input="onToggleEnableTotp" />
+            <div v-if="!isTotpVisible" class="flex items-center gap-2">
+              <PvToggleSwitch v-model="twofaEnabled" @change="onToggleEnableTotp" />
+            </div>
           </div>
         </div>
 
@@ -72,17 +79,14 @@
 
             <br /><br />
             <form @submit.prevent="confirmTOTP">
-              <b-field :label="$t('users.totpCode')" label-position="on-border">
-                <b-input ref="totpCodeInput" v-model="totpCode" maxlength="6" pattern="[0-9]{6}" placeholder="000000"
-                  required />
-              </b-field>
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('users.totpCode') }}</label>
+                <PvInputText ref="totpCodeInput" v-model="totpCode" maxlength="6" pattern="[0-9]{6}"
+                  placeholder="000000" required />
+              </div>
               <div class="buttons">
-                <b-button type="is-primary" native-type="submit">
-                  {{ $t('globals.buttons.enable') }}
-                </b-button>
-                <b-button type="button" @click="onCancelTOTPSetup">
-                  {{ $t('globals.buttons.cancel') }}
-                </b-button>
+                <PvButton severity="primary" type="submit" :label="$t('globals.buttons.enable')" />
+                <PvButton type="button" @click="onCancelTOTPSetup" :label="$t('globals.buttons.cancel')" />
               </div>
             </form>
           </div>
@@ -94,11 +98,13 @@
         <div class="columns is-vcentered">
           <div class="column">
             <h3 class="title is-size-5">
-              <b-icon icon="check-circle-outline" type="is-success" /> {{ $t('users.twoFAEnabled') }}
+              <i class="pi pi-check-circle text-green-500" /> {{ $t('users.twoFAEnabled') }}
             </h3>
           </div>
           <div class="column is-narrow">
-            <b-switch v-if="!showDisableTOTP" v-model="twofaEnabled" @input="toggleDisableTOTP" />
+            <div v-if="!showDisableTOTP" class="flex items-center gap-2">
+              <PvToggleSwitch v-model="twofaEnabled" @change="toggleDisableTOTP" />
+            </div>
           </div>
         </div>
 
@@ -106,16 +112,14 @@
 
         <!-- Disable TOTP Flow -->
         <form v-if="showDisableTOTP" class="disable-totp mt-5" @submit.prevent="confirmDisableTOTP">
-          <b-field :label="$t('users.password')" label-position="on-border">
-            <b-input ref="disablePasswordInput" v-model="disableTOTPPassword" type="password" minlength="8" required />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('users.password') }}</label>
+            <PvPassword ref="disablePasswordInput" v-model="disableTOTPPassword" minlength="8" required
+              :feedback="false" />
+          </div>
           <div class="buttons">
-            <b-button type="is-danger" native-type="submit">
-              {{ $t('globals.buttons.disable') }}
-            </b-button>
-            <b-button type="button" @click="onCancelTOTPSetup">
-              {{ $t('globals.buttons.cancel') }}
-            </b-button>
+            <PvButton severity="danger" type="submit" :label="$t('globals.buttons.disable')" />
+            <PvButton type="button" @click="onCancelTOTPSetup" :label="$t('globals.buttons.cancel')" />
           </div>
         </form>
       </div>
@@ -124,11 +128,10 @@
 </template>
 
 <script>
-import Vue from 'vue';
 import { mapState } from 'vuex';
 import CopyText from '../components/CopyText.vue';
 
-export default Vue.extend({
+export default {
   name: 'UserProfile',
 
   components: {
@@ -273,6 +276,5 @@ export default Vue.extend({
   computed: {
     ...mapState(['loading']),
   },
-
-});
+};
 </script>

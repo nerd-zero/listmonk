@@ -2,78 +2,81 @@
   <div>
     <div class="items messengers">
       <div class="block box" v-for="(item, n) in data.messengers" :key="n">
-        <b-field>
-          <b-switch v-model="item.enabled" name="enabled" :native-value="true">
-            {{ $t('globals.buttons.enabled') }}
-          </b-switch>
-        </b-field>
-        <b-field>
+        <div class="field">
+          <div class="flex items-center gap-2">
+            <PvToggleSwitch v-model="item.enabled" name="enabled" />
+            <span>{{ $t('globals.buttons.enabled') }}</span>
+          </div>
+        </div>
+        <div class="field">
           <a @click.prevent="$utils.confirm(null, () => removeMessenger(n))" href="#" class="is-size-7">
-            <b-icon icon="trash-can-outline" size="is-small" />
+            <i class="pi pi-trash" />
             {{ $t('globals.buttons.delete') }}
           </a>
-        </b-field>
+        </div>
 
         <div :class="{ disabled: !item.enabled }">
-          <b-field :label="$t('globals.fields.name')" label-position="on-border"
-            :message="$t('settings.messengers.nameHelp')">
-            <b-input v-model="item.name" name="name" placeholder="mymessenger" :maxlength="200" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+            <PvInputText v-model="item.name" name="name" placeholder="mymessenger" :maxlength="200" />
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.messengers.nameHelp') }}</small>
+          </div>
 
-          <b-field :label="$t('settings.messengers.url')" label-position="on-border"
-            :message="$t('settings.messengers.urlHelp')">
-            <b-input v-model="item.root_url" name="root_url" placeholder="https://postback.messenger.net/path"
-              :maxlength="200" expanded type="url" pattern="https?://.*" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.url') }}</label>
+            <PvInputText v-model="item.root_url" name="root_url" placeholder="https://postback.messenger.net/path"
+              :maxlength="200" type="url" :pattern="'https?://.*'" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.messengers.urlHelp') }}</small>
+          </div>
 
-          <b-field :label="$t('settings.messengers.username')" label-position="on-border" expanded>
-            <b-input v-model="item.username" name="username" :maxlength="200" />
-          </b-field>
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.username') }}</label>
+            <PvInputText v-model="item.username" name="username" :maxlength="200" />
+          </div>
 
-          <b-field :label="$t('settings.messengers.password')" label-position="on-border" expanded
-            :message="$t('globals.messages.passwordChange')">
-            <b-input v-model="item.password" name="password" type="password"
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.password') }}</label>
+            <PvPassword v-model="item.password" name="password" :feedback="false"
               :placeholder="$t('globals.messages.passwordChange')" :maxlength="200" />
-          </b-field>
+            <small class="block mt-1 text-color-secondary">{{ $t('globals.messages.passwordChange') }}</small>
+          </div>
 
           <div class="columns">
             <div class="column is-4">
-              <b-field :label="$t('settings.messengers.maxConns')" label-position="on-border"
-                :message="$t('settings.messengers.maxConnsHelp')">
-                <b-numberinput v-model="item.max_conns" name="max_conns" type="is-light" controls-position="compact"
-                  placeholder="25" min="1" max="65535" />
-              </b-field>
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.maxConns') }}</label>
+                <PvInputNumber v-model="item.max_conns" name="max_conns" placeholder="25" :min="1" :max="65535" />
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.messengers.maxConnsHelp') }}</small>
+              </div>
             </div>
             <div class="column is-4">
-              <b-field :label="$t('settings.messengers.retries')" label-position="on-border"
-                :message="$t('settings.messengers.retriesHelp')">
-                <b-numberinput v-model="item.max_msg_retries" name="max_msg_retries" type="is-light"
-                  controls-position="compact" placeholder="2" min="1" max="1000" />
-              </b-field>
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.retries') }}</label>
+                <PvInputNumber v-model="item.max_msg_retries" name="max_msg_retries" placeholder="2" :min="1" :max="1000" />
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.messengers.retriesHelp') }}</small>
+              </div>
             </div>
             <div class="column is-4">
-              <b-field :label="$t('settings.messengers.timeout')" label-position="on-border"
-                :message="$t('settings.messengers.timeoutHelp')">
-                <b-input v-model="item.timeout" name="timeout" placeholder="5s" :pattern="regDuration"
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.timeout') }}</label>
+                <PvInputText v-model="item.timeout" name="timeout" placeholder="5s" :pattern="regDuration"
                   :maxlength="10" />
-              </b-field>
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.messengers.timeoutHelp') }}</small>
+              </div>
             </div>
           </div>
         </div>
       </div><!-- block -->
     </div><!-- mail-servers -->
 
-    <b-button @click="addMessenger" icon-left="plus" type="is-primary">
-      {{ $t('globals.buttons.addNew') }}
-    </b-button>
+    <PvButton @click="addMessenger" icon="pi pi-plus" severity="primary" :label="$t('globals.buttons.addNew')" />
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 import { regDuration } from '../../constants';
 
-export default Vue.extend({
+export default {
   props: {
     form: {
       type: Object, default: () => { },
@@ -110,5 +113,5 @@ export default Vue.extend({
       this.data.messengers.splice(i, 1);
     },
   },
-});
+};
 </script>
