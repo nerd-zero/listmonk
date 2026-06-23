@@ -1,199 +1,217 @@
 <template>
-  <section class="lists">
-    <header class="grid page-header">
-      <div class="col-10">
-        <h1 class="title is-4 mb-2">
+  <div class="lists-page">
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">
           {{ $t('globals.terms.lists') }}
-          <span v-if="queryParams.status === 'archived'" class="has-text-grey-light">/ {{ queryParams.status }} </span>
-          <span v-if="!isNaN(lists.total)">({{ lists.total }})</span>
+          <span v-if="queryParams.status === 'archived'" class="page-title-sub">/ {{ queryParams.status }}</span>
+          <span v-if="!isNaN(lists.total)" class="page-title-count">{{ lists.total }}</span>
         </h1>
-
-        <div class="is-size-7">
-          <router-link v-if="queryParams.status !== 'archived'" :to="{ name: 'lists', query: { status: 'archived' } }">
-            {{ $t('globals.buttons.view') }} {{ $t('lists.archived').toLowerCase() }} &rarr;
-          </router-link>
-          <router-link v-else :to="{ name: 'lists' }">
-            {{ $t('globals.buttons.view') }} {{ $t('menu.allLists').toLowerCase() }} &rarr;
-          </router-link>
-        </div>
+        <router-link
+          v-if="queryParams.status !== 'archived'"
+          :to="{ name: 'lists', query: { status: 'archived' } }"
+          class="page-sub-link"
+        >{{ $t('globals.buttons.view') }} {{ $t('lists.archived').toLowerCase() }} &rarr;</router-link>
+        <router-link v-else :to="{ name: 'lists' }" class="page-sub-link">
+          {{ $t('globals.buttons.view') }} {{ $t('menu.allLists').toLowerCase() }} &rarr;
+        </router-link>
       </div>
-      <div class="col has-text-right">
-        <div v-if="$can('lists:manage_all')" class="field">
-          <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm" data-cy="btn-new"
-            :label="$t('globals.buttons.new')" />
-        </div>
-      </div>
-    </header>
+      <PvButton
+        v-if="$can('lists:manage_all')"
+        severity="primary"
+        icon="pi pi-plus"
+        :label="$t('globals.buttons.new')"
+        data-cy="btn-new"
+        @click="showNewForm"
+      />
+    </div>
 
-    <PvDataTable :value="lists.results" :loading="loading.listsFull"
-      v-model:selection="bulk.checked"
-      selection-mode="checkbox"
-      data-key="id"
-      :paginator="true"
-      paginator-position="both"
-      :rows="lists.perPage"
-      :total-records="lists.total"
-      :lazy="true"
-      @page="(e) => onPageChange(e.page + 1)"
-      sort-field="createdAt"
-      :sort-order="1"
-      @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
-      @row-select="onTableCheck"
-      @row-unselect="onTableCheck"
-      @row-select-all="onTableCheck"
-      @row-unselect-all="onTableCheck">
-<template #header>
-        <div class="grid">
-          <div class="col-6">
-            <form @submit.prevent="getLists">
-              <div class="field has-addons">
-                <div class="control is-expanded">
-                  <PvInputText v-model="queryParams.query" name="query" ref="query" data-cy="query" class="w-full" />
-                </div>
-                <div class="control">
-                  <PvButton type="submit" severity="primary" icon="pi pi-search" data-cy="btn-query" />
-                </div>
-              </div>
+    <!-- Table card -->
+    <div class="table-card">
+      <PvDataTable
+        :value="lists.results"
+        :loading="loading.listsFull"
+        v-model:selection="bulk.checked"
+        selection-mode="checkbox"
+        data-key="id"
+        :paginator="true"
+        paginator-position="both"
+        :rows="lists.perPage"
+        :total-records="lists.total"
+        :lazy="true"
+        @page="(e) => onPageChange(e.page + 1)"
+        sort-field="createdAt"
+        :sort-order="1"
+        @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
+        @row-select="onTableCheck"
+        @row-unselect="onTableCheck"
+        @row-select-all="onTableCheck"
+        @row-unselect-all="onTableCheck"
+      >
+        <template #header>
+          <div class="table-toolbar">
+            <form class="search-form" @submit.prevent="getLists">
+              <PvIconField>
+                <PvInputIcon class="pi pi-search" />
+                <PvInputText
+                  v-model="queryParams.query"
+                  name="query"
+                  ref="query"
+                  data-cy="query"
+                  placeholder="Search lists…"
+                  class="search-input"
+                />
+              </PvIconField>
             </form>
-          </div>
-        </div>
-        <div class="actions" v-if="bulk.checked.length > 0">
-          <a class="a" href="#" @click.prevent="deleteLists" data-cy="btn-delete-lists">
-            <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
-          </a>
-          <span class="a">
-            {{ $tc('globals.messages.numSelected', numSelectedLists, { num: numSelectedLists }) }}
-            <span v-if="!bulk.all && lists.total > lists.perPage">
-              &mdash;
-              <a href="#" @click.prevent="onSelectAll" data-cy="select-all-lists">
-                {{ $tc('globals.messages.selectAll', lists.total, { num: lists.total }) }}
-              </a>
-            </span>
-          </span>
-        </div>
-      </template>
 
-      <PvColumn selection-mode="multiple" header-style="width:3rem" />
-
-      <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" sortable style="width:25%">
-        <template #body="{ data }">
-          <div>
-            <a :href="`/lists/${data.id}`" @click.prevent="showEditForm(data)">
-              {{ data.name }}
-            </a>
-            <div class="tags">
-              <PvTag v-for="t in data.tags" :key="t" :value="t" class="is-small" />
+            <div v-if="bulk.checked.length > 0" class="bulk-bar">
+              <span class="bulk-count">
+                {{ $tc('globals.messages.numSelected', numSelectedLists, { num: numSelectedLists }) }}
+                <template v-if="!bulk.all && lists.total > lists.perPage">
+                  &mdash;
+                  <a href="#" @click.prevent="onSelectAll" data-cy="select-all-lists">
+                    {{ $tc('globals.messages.selectAll', lists.total, { num: lists.total }) }}
+                  </a>
+                </template>
+              </span>
+              <button type="button" class="bulk-btn bulk-btn--danger" @click.prevent="deleteLists" data-cy="btn-delete-lists">
+                <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
+              </button>
             </div>
           </div>
         </template>
-      </PvColumn>
 
-      <PvColumn field="type" :header="$t('globals.fields.type')" header-class="cy-type" sortable style="width:15%">
-        <template #body="{ data }">
-          <div class="tags">
-            <PvTag :class="data.type" :data-cy="`type-${data.type}`" :value="$t(`lists.types.${data.type}`)" />
-            {{ ' ' }}
+        <PvColumn selection-mode="multiple" header-style="width:3rem" />
 
-            <PvTag :class="data.optin" :data-cy="`optin-${data.optin}`">
-              <i :class="data.optin === 'double' ? 'pi pi-user-plus' : 'pi pi-user-minus'" />
-              {{ ' ' }}
-              {{ $t(`lists.optins.${data.optin}`) }}
-            </PvTag>{{ ' ' }}
-
-            <a v-if="data.optin === 'double'" class="is-size-7 send-optin" href="#"
-              @click="$utils.confirm(null, () => createOptinCampaign(data))" data-cy="btn-send-optin-campaign">
-              <i class="pi pi-send" v-tooltip.bottom="$t('lists.sendOptinCampaign')" />
-              {{ $t('lists.sendOptinCampaign') }}
-            </a>
-          </div>
-        </template>
-      </PvColumn>
-
-      <PvColumn field="subscriber_count" :header="$t('globals.terms.subscribers')" header-class="cy-subscribers"
-        sortable>
-        <template #body="{ data }">
-          <template v-if="$can('subscribers:get_all', 'subscribers:get')">
-            <router-link :to="`/subscribers/lists/${data.id}`">
-              {{ $utils.formatNumber(data.subscriberCount) }}
-              <span class="is-size-7 view">{{ $t('globals.buttons.view') }}</span>
-            </router-link>
+        <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" sortable>
+          <template #body="{ data }">
+            <a class="row-name" :href="`/lists/${data.id}`" @click.prevent="showEditForm(data)">{{ data.name }}</a>
+            <div v-if="data.tags?.length" class="row-tags">
+              <PvTag v-for="t in data.tags" :key="t" :value="t" severity="secondary" />
+            </div>
           </template>
-          <template v-else>
-            {{ $utils.formatNumber(data.subscriberCount) }}
+        </PvColumn>
+
+        <PvColumn field="type" :header="$t('globals.fields.type')" header-class="cy-type" sortable style="width:20%">
+          <template #body="{ data }">
+            <div class="type-cell">
+              <PvTag
+                :severity="data.type === 'public' ? 'info' : 'secondary'"
+                :data-cy="`type-${data.type}`"
+                :value="$t(`lists.types.${data.type}`)"
+              />
+              <PvTag :severity="data.optin === 'double' ? 'warn' : 'secondary'" :data-cy="`optin-${data.optin}`">
+                <i :class="['pi', data.optin === 'double' ? 'pi-user-plus' : 'pi-user-minus']" />
+                {{ $t(`lists.optins.${data.optin}`) }}
+              </PvTag>
+              <a
+                v-if="data.optin === 'double'"
+                class="optin-send"
+                href="#"
+                @click.prevent="$utils.confirm(null, () => createOptinCampaign(data))"
+                data-cy="btn-send-optin-campaign"
+                v-tooltip.bottom="$t('lists.sendOptinCampaign')"
+              >
+                <i class="pi pi-send" /> {{ $t('lists.sendOptinCampaign') }}
+              </a>
+            </div>
           </template>
-        </template>
-      </PvColumn>
+        </PvColumn>
 
-      <PvColumn field="subscriber_counts" header-class="cy-subscribers" style="width:10%">
-        <template #body="{ data }">
-          <div class="fields stats">
-            <p v-for="(count, status) in filterStatuses(data)" :key="status">
-              <label for="#">{{ $tc(`subscribers.status.${status}`, count) }}</label>
-              <router-link :to="`/subscribers/lists/${data.id}?subscription_status=${status}`" :class="status">
-                {{ $utils.formatNumber(count) }}
-              </router-link>
-            </p>
-          </div>
-        </template>
-      </PvColumn>
-
-      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable>
-        <template #body="{ data }">
-          {{ $utils.niceDate(data.createdAt) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable>
-        <template #body="{ data }">
-          {{ $utils.niceDate(data.updatedAt) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn body-class="actions" style="text-align:right">
-        <template #body="{ data }">
-          <div>
-            <router-link v-if="$can('campaigns:manage')" :to="`/campaigns/new?list_id=${data.id}`"
-              data-cy="btn-campaign">
-              <i class="pi pi-send" v-tooltip.bottom="$t('lists.sendCampaign')" />
+        <PvColumn field="subscriber_count" :header="$t('globals.terms.subscribers')" header-class="cy-subscribers" sortable style="width:12%">
+          <template #body="{ data }">
+            <router-link v-if="$can('subscribers:get_all', 'subscribers:get')" class="sub-count-link" :to="`/subscribers/lists/${data.id}`">
+              <span class="sub-count">{{ $utils.formatNumber(data.subscriberCount) }}</span>
+              <span class="sub-view">{{ $t('globals.buttons.view') }}</span>
             </router-link>
+            <span v-else class="sub-count">{{ $utils.formatNumber(data.subscriberCount) }}</span>
+          </template>
+        </PvColumn>
 
-            <a v-if="$can('lists:manage') || $canList(data.id, 'list:manage')" href="#"
-              @click.prevent="showEditForm(data)" data-cy="btn-edit" :aria-label="$t('globals.buttons.edit')">
-              <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
-            </a>
+        <PvColumn field="subscriber_counts" style="width:14%">
+          <template #body="{ data }">
+            <div class="status-breakdown">
+              <span v-for="(count, status) in filterStatuses(data)" :key="status" class="status-item">
+                <router-link :to="`/subscribers/lists/${data.id}?subscription_status=${status}`" :class="`status-link status-link--${status}`">
+                  {{ $utils.formatNumber(count) }}
+                </router-link>
+                <span class="status-label">{{ $tc(`subscribers.status.${status}`, count) }}</span>
+              </span>
+            </div>
+          </template>
+        </PvColumn>
 
-            <router-link v-if="$can('subscribers:import')" :to="{ name: 'import', query: { list_id: data.id } }"
-              data-cy="btn-import">
-              <i class="pi pi-upload" v-tooltip.bottom="$t('import.title')" />
-            </router-link>
+        <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable style="width:11%">
+          <template #body="{ data }">
+            <span class="date-cell">{{ $utils.niceDate(data.createdAt) }}</span>
+          </template>
+        </PvColumn>
 
-            <a v-if="$can('lists:manage') || $canList(data.id, 'list:manage')" href="#"
-              @click.prevent="deleteList(data)" data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
-              <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
-            </a>
-          </div>
+        <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable style="width:11%">
+          <template #body="{ data }">
+            <span class="date-cell">{{ $utils.niceDate(data.updatedAt) }}</span>
+          </template>
+        </PvColumn>
+
+        <PvColumn style="width:8rem; text-align:right">
+          <template #body="{ data }">
+            <div class="row-actions">
+              <router-link
+                v-if="$can('campaigns:manage')"
+                :to="`/campaigns/new?list_id=${data.id}`"
+                class="row-action-btn"
+                data-cy="btn-campaign"
+                v-tooltip.bottom="$t('lists.sendCampaign')"
+              ><i class="pi pi-send" /></router-link>
+
+              <button
+                v-if="$can('lists:manage') || $canList(data.id, 'list:manage')"
+                type="button"
+                class="row-action-btn"
+                data-cy="btn-edit"
+                v-tooltip.bottom="$t('globals.buttons.edit')"
+                @click="showEditForm(data)"
+              ><i class="pi pi-pencil" /></button>
+
+              <router-link
+                v-if="$can('subscribers:import')"
+                :to="{ name: 'import', query: { list_id: data.id } }"
+                class="row-action-btn"
+                data-cy="btn-import"
+                v-tooltip.bottom="$t('import.title')"
+              ><i class="pi pi-upload" /></router-link>
+
+              <button
+                v-if="$can('lists:manage') || $canList(data.id, 'list:manage')"
+                type="button"
+                class="row-action-btn row-action-btn--danger"
+                data-cy="btn-delete"
+                v-tooltip.bottom="$t('globals.buttons.delete')"
+                @click="deleteList(data)"
+              ><i class="pi pi-trash" /></button>
+            </div>
+          </template>
+        </PvColumn>
+
+        <template #empty v-if="!loading.listsFull">
+          <empty-placeholder />
         </template>
-      </PvColumn>
-
-      <template #empty v-if="!loading.listsFull">
-        <empty-placeholder />
-      </template>
-    </PvDataTable>
+      </PvDataTable>
+    </div>
 
     <!-- Add / edit form modal -->
-    <PvDialog v-model:visible="isFormVisible" :style="{ width: '600px' }" :closable="true" modal
-      @hide="onFormClose">
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '600px' }" :closable="true" modal @hide="onFormClose">
       <list-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
     </PvDialog>
 
-    <p v-if="settings['app.cache_slow_queries']" class="has-text-grey">
+    <p v-if="settings['app.cache_slow_queries']" class="cache-note">
       *{{ $t('globals.messages.slowQueriesCached') }}
-      <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferer"
-        class="has-text-grey">
+      <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferrer">
         <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}
       </a>
     </p>
-  </section>
+  </div>
 </template>
 
 <script>
@@ -390,3 +408,145 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.lists-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+// Page header
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.page-header-left { display: flex; flex-direction: column; gap: 0.25rem; }
+.page-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.page-title-sub { color: #94a3b8; font-weight: 400; }
+.page-title-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+}
+.page-sub-link { font-size: 0.8rem; color: #64748b; text-decoration: none; &:hover { color: #3b82f6; } }
+
+// Table card
+.table-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+// Toolbar
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.search-form { flex: 1; min-width: 220px; max-width: 360px; }
+:deep(.search-input) { width: 100%; }
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+.bulk-count { font-size: 0.85rem; color: #64748b; a { color: #3b82f6; } }
+.bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid;
+  cursor: pointer;
+  background: #fff;
+  &--danger { color: #ef4444; border-color: #fecaca; &:hover { background: #fef2f2; } }
+}
+
+// Row cells
+.row-name {
+  font-weight: 500;
+  color: #3b82f6;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+.row-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
+
+.type-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.optin-send {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  &:hover { color: #3b82f6; }
+}
+
+.sub-count-link { text-decoration: none; display: flex; flex-direction: column; }
+.sub-count { font-weight: 600; color: #0f172a; font-size: 0.95rem; }
+.sub-view { font-size: 0.72rem; color: #94a3b8; }
+
+.status-breakdown { display: flex; flex-direction: column; gap: 0.15rem; }
+.status-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; }
+.status-link { font-weight: 600; color: #0f172a; text-decoration: none; &:hover { color: #3b82f6; } }
+.status-label { color: #94a3b8; }
+
+.date-cell { font-size: 0.82rem; color: #64748b; }
+
+// Row action buttons
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+:deep(tr:hover) .row-actions { opacity: 1; }
+
+.row-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  i { font-size: 0.8rem; }
+  &:hover { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
+  &--danger:hover { background: #fef2f2; border-color: #fecaca; color: #ef4444; }
+}
+
+.cache-note {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  a { color: #94a3b8; text-decoration: underline; }
+}
+</style>
