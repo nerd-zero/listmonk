@@ -73,27 +73,84 @@
                 </div>
               </article><!-- campaigns -->
 
-              <article class="tile is-child notification" v-if="settings && settings.scrub">
-                <div class="columns is-mobile is-vcentered">
-                  <div class="column is-6">
-                    <p class="title">
-                      <b-icon :icon="scrubStatus === 'active' ? 'email-check-outline' : 'email-off-outline'" />
-                    </p>
-                    <p class="is-size-6 has-text-grey">
+              <!-- Mail Validation (Scrub) widget -->
+              <article class="tile is-child notification scrub-widget" v-if="settings && settings.scrub">
+                <div class="scrub-header columns is-mobile is-vcentered mb-2">
+                  <div class="column">
+                    <span class="is-size-6 has-text-weight-semibold">
+                      <b-icon :icon="scrubStatus === 'active' ? 'email-check-outline' : 'email-off-outline'"
+                        size="is-small" class="mr-1" />
                       {{ $t('settings.scrub.name') }}
-                    </p>
+                    </span>
                   </div>
-                  <div class="column is-6">
-                    <b-tag :type="scrubStatusType" size="is-medium">
+                  <div class="column is-narrow">
+                    <b-tag :type="scrubStatusType" size="is-small">
                       {{ $t(`dashboard.scrub.${scrubStatus}`) }}
                     </b-tag>
-                    <p class="is-size-7 mt-2">
-                      <router-link to="/settings" class="has-text-grey">
-                        {{ $t('dashboard.scrub.configure') }} →
-                      </router-link>
-                    </p>
+                  </div>
+                  <div class="column is-narrow">
+                    <router-link to="/settings" class="has-text-grey is-size-7">
+                      {{ $t('dashboard.scrub.configure') }} →
+                    </router-link>
                   </div>
                 </div>
+
+                <!-- Usage breakdown (last 30 days) -->
+                <div v-if="scrubData && scrubData.usage" class="scrub-breakdown">
+                  <p class="is-size-7 has-text-grey mb-1">{{ $t('dashboard.scrub.last30Days') }}</p>
+                  <div class="columns is-mobile is-gapless scrub-breakdown-cols">
+                    <div class="column has-text-centered">
+                      <p class="scrub-count has-text-success">{{ $utils.niceNumber(scrubData.usage.deliverable) }}</p>
+                      <p class="is-size-7 has-text-grey">{{ $t('dashboard.scrub.deliverable') }}</p>
+                    </div>
+                    <div class="column has-text-centered">
+                      <p class="scrub-count has-text-warning">{{ $utils.niceNumber(scrubData.usage.risky) }}</p>
+                      <p class="is-size-7 has-text-grey">{{ $t('dashboard.scrub.risky') }}</p>
+                    </div>
+                    <div class="column has-text-centered">
+                      <p class="scrub-count has-text-danger">
+                        {{ $utils.niceNumber(scrubData.usage.undeliverable_syntax + scrubData.usage.undeliverable_domain) }}
+                      </p>
+                      <p class="is-size-7 has-text-grey">{{ $t('dashboard.scrub.undeliverable') }}</p>
+                    </div>
+                    <div class="column has-text-centered">
+                      <p class="scrub-count has-text-grey">{{ $utils.niceNumber(scrubData.usage.total) }}</p>
+                      <p class="is-size-7 has-text-grey">{{ $t('dashboard.scrub.total') }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Active jobs -->
+                <div v-if="scrubData && scrubData.active_jobs && scrubData.active_jobs.length > 0"
+                  class="scrub-active-jobs mt-3">
+                  <p class="is-size-7 has-text-grey mb-1">
+                    <b-icon icon="progress-clock" size="is-small" />
+                    {{ $t('dashboard.scrub.activeJobs') }}
+                    <b-tag type="is-warning is-light" size="is-small" rounded>
+                      {{ scrubData.active_jobs.length }}
+                    </b-tag>
+                  </p>
+                  <div v-for="job in scrubData.active_jobs" :key="job.request_id" class="scrub-job mb-2">
+                    <div class="columns is-mobile is-vcentered is-gapless">
+                      <div class="column">
+                        <span class="is-size-7">
+                          {{ job.list_name || job.job_type }}
+                        </span>
+                      </div>
+                      <div class="column is-narrow">
+                        <span class="is-size-7 has-text-grey">{{ job.progress_percentage }}%</span>
+                      </div>
+                    </div>
+                    <b-progress :value="job.progress_percentage" size="is-small"
+                      :type="job.status === 'running' ? 'is-info' : 'is-warning'" />
+                  </div>
+                </div>
+
+                <!-- No data placeholder when configured but Scrub unreachable -->
+                <p v-if="scrubData && scrubData.configured && !scrubData.usage"
+                  class="is-size-7 has-text-grey mt-2">
+                  {{ $t('dashboard.scrub.unavailable') }}
+                </p>
               </article><!-- mail validation -->
             </div><!-- block -->
 
@@ -189,6 +246,7 @@ export default Vue.extend({
       isCountsLoading: true,
       campaignViews: null,
       campaignClicks: null,
+      scrubData: null,
       counts: {
         lists: {},
         subscribers: {},
@@ -214,10 +272,15 @@ export default Vue.extend({
         this.campaignClicks = this.makeChart(data.linkClicks);
       });
 
-      // Load settings to display Scrub widget (only if not already loaded).
+      // Load settings for the Scrub widget visibility check.
       if (!this.settings || !this.settings.scrub) {
         this.$api.getSettings();
       }
+
+      // Fetch Scrub status (usage breakdown + active jobs).
+      this.$api.getScrubStatus().then((data) => {
+        this.scrubData = data;
+      }).catch(() => {});
     },
 
     makeChart(data) {
@@ -272,3 +335,20 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.scrub-count {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.scrub-breakdown-cols .column {
+  border-right: 1px solid #f0f0f0;
+}
+.scrub-breakdown-cols .column:last-child {
+  border-right: none;
+}
+.scrub-job .b-progress {
+  margin-top: 2px;
+}
+</style>

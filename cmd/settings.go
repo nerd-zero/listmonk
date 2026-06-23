@@ -487,6 +487,91 @@ func (a *App) TestScrubSettings(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{true})
 }
 
+// scrubUsageBreakdown mirrors the Scrub API /usage/breakdown response.
+type scrubUsageBreakdown struct {
+	Deliverable         int `json:"deliverable"`
+	UndeliverableSyntax int `json:"undeliverable_syntax"`
+	UndeliverableDomain int `json:"undeliverable_domain"`
+	Risky               int `json:"risky"`
+	Error               int `json:"error"`
+	Total               int `json:"total"`
+}
+
+// scrubActiveJob mirrors a single item from Scrub API /jobs/active.
+type scrubActiveJob struct {
+	RequestID          string  `json:"request_id"`
+	JobType            string  `json:"job_type"`
+	Status             string  `json:"status"`
+	ListName           *string `json:"list_name"`
+	TotalItems         int     `json:"total_items"`
+	ProcessedItems     int     `json:"processed_items"`
+	ProgressPercentage int     `json:"progress_percentage"`
+	CreatedAt          string  `json:"created_at"`
+}
+
+// scrubStatusResponse is returned by GET /api/scrub/status.
+type scrubStatusResponse struct {
+	Enabled    bool                 `json:"enabled"`
+	Configured bool                 `json:"configured"`
+	Usage      *scrubUsageBreakdown `json:"usage,omitempty"`
+	ActiveJobs []scrubActiveJob     `json:"active_jobs"`
+}
+
+// GetScrubStatus returns Scrub usage breakdown and active jobs for the dashboard.
+func (a *App) GetScrubStatus(c echo.Context) error {
+	s, err := a.core.GetSettings()
+	if err != nil {
+		return err
+	}
+
+	out := scrubStatusResponse{
+		Enabled:    s.Scrub.Enabled,
+		Configured: s.Scrub.Enabled && s.Scrub.URL != "" && s.Scrub.APIKey != "",
+		ActiveJobs: []scrubActiveJob{},
+	}
+
+	if !out.Configured {
+		return c.JSON(http.StatusOK, okResp{out})
+	}
+
+	baseURL := strings.TrimRight(strings.TrimSpace(s.Scrub.URL), "/")
+	apiKey := s.Scrub.APIKey
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	doRequest := func(path string) (*http.Response, error) {
+		req, e := http.NewRequestWithContext(c.Request().Context(), http.MethodGet, baseURL+path, nil)
+		if e != nil {
+			return nil, e
+		}
+		req.Header.Set("X-API-Key", apiKey)
+		return client.Do(req)
+	}
+
+	// Fetch usage breakdown (last 30 days).
+	if resp, e := doRequest("/usage/breakdown"); e == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var breakdown scrubUsageBreakdown
+			if e2 := json.NewDecoder(resp.Body).Decode(&breakdown); e2 == nil {
+				out.Usage = &breakdown
+			}
+		}
+	}
+
+	// Fetch active jobs.
+	if resp, e := doRequest("/jobs/active"); e == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var jobs []scrubActiveJob
+			if e2 := json.NewDecoder(resp.Body).Decode(&jobs); e2 == nil && jobs != nil {
+				out.ActiveJobs = jobs
+			}
+		}
+	}
+
+	return c.JSON(http.StatusOK, okResp{out})
+}
+
 func (a *App) GetAboutInfo(c echo.Context) error {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
