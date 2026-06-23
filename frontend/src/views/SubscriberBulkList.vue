@@ -47,7 +47,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import ListSelector from '../components/ListSelector.vue';
 
 export default {
@@ -78,7 +79,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['lists', 'loading']),
+    ...mapState(useMainStore, ['lists', 'loading']),
 
     hasOptinList() {
       return this.form.lists.some((l) => l.optin === 'double');

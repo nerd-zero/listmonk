@@ -164,7 +164,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import ListSelector from '../components/ListSelector.vue';
 import LogView from '../components/LogView.vue';
 
@@ -376,7 +377,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['lists']),
+    ...mapState(useMainStore, ['lists']),
 
     // Import progress bar value.
     progress() {

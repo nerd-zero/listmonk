@@ -88,7 +88,8 @@
 <script>
 import { html as beautifyHTML } from 'js-beautify';
 import TurndownService from 'turndown';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 
 import CampaignPreview from './CampaignPreview.vue';
 import VisualEditor from './VisualEditor.vue';
@@ -351,7 +352,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['serverConfig', 'loading']),
+    ...mapState(useMainStore, ['serverConfig', 'loading']),
 
     // This is a clone of the incoming `value` prop that's mutated here.
     self: {

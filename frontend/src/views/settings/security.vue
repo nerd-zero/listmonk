@@ -153,7 +153,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../../store';
 import CopyText from '../../components/CopyText.vue';
 
 const OIDC_PROVIDERS = {
@@ -175,7 +176,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['serverConfig', 'userRoles', 'listRoles']),
+    ...mapState(useMainStore, ['serverConfig', 'userRoles', 'listRoles']),
 
     listRoleOptions() {
       return [{ id: null, name: `— ${this.$t('globals.terms.none')} —` }, ...this.listRoles];

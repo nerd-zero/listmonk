@@ -69,7 +69,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import CopyText from '../components/CopyText.vue';
 
 export default {
@@ -125,7 +126,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['loading', 'profile']),
+    ...mapState(useMainStore, ['loading', 'profile']),
 
     isArchived: {
       get() {

@@ -115,7 +115,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../../store';
 
 export default {
   props: {
@@ -131,7 +132,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['serverConfig', 'loading']),
+    ...mapState(useMainStore, ['serverConfig', 'loading']),
   },
 
 };

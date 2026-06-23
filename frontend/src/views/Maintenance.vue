@@ -152,7 +152,8 @@
 
 <script>
 import dayjs from 'dayjs';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 
 export default {
   components: {
@@ -241,7 +242,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['loading']),
+    ...mapState(useMainStore, ['loading']),
 
     exportURL() {
       const since = encodeURIComponent(dayjs(this.exportDate).toISOString());

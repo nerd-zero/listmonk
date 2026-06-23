@@ -269,7 +269,8 @@
 
 <script>
 import dayjs from 'dayjs';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CopyText from '../components/CopyText.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
@@ -515,16 +516,16 @@ export default {
     },
   },
 
+  watch: {
+    refreshTick() { this.getCampaigns(); },
+  },
+
   computed: {
-    ...mapState(['campaigns', 'loading']),
+    ...mapState(useMainStore, ['refreshTick', 'campaigns', 'loading']),
 
     numSelectedCampaigns() {
       return this.bulk.all ? this.campaigns.total : this.bulk.checked.length;
     },
-  },
-
-  created() {
-    this.$root.$on('page.refresh', this.getCampaigns);
   },
 
   mounted() {
@@ -533,7 +534,6 @@ export default {
   },
 
   unmounted() {
-    this.$root.$off('page.refresh', this.getCampaigns);
     clearInterval(this.pollID);
   },
 };

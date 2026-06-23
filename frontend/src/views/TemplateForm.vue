@@ -81,7 +81,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CodeEditor from '../components/CodeEditor.vue';
 import VisualEditor from '../components/VisualEditor.vue';
@@ -178,7 +179,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['loading']),
+    ...mapState(useMainStore, ['loading']),
   },
 
   mounted() {

@@ -1,12 +1,13 @@
 import { createApp } from 'vue';
+import { createPinia } from 'pinia';
 import { createI18n } from 'vue-i18n';
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
+import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
 
-// PrimeVue components registered globally (mirrors Buefy's global install).
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
@@ -52,9 +53,10 @@ import InputIcon from 'primevue/inputicon';
 
 import App from './App.vue';
 import router from './router';
-import store from './store';
 import * as api from './api';
 import Utils from './utils';
+
+const pinia = createPinia();
 
 const i18n = createI18n({
   legacy: true,
@@ -64,23 +66,20 @@ const i18n = createI18n({
 
 const app = createApp(App);
 
+app.use(pinia);
 app.use(router);
-app.use(store);
 app.use(i18n);
 
 app.use(PrimeVue, {
   theme: {
     preset: Aura,
-    options: {
-      darkModeSelector: '.app-dark',
-    },
+    options: { darkModeSelector: '.app-dark' },
   },
   ripple: true,
 });
 app.use(ToastService);
 app.use(ConfirmationService);
 
-// Register PrimeVue components globally.
 app.component('PvButton', Button);
 app.component('PvInputText', InputText);
 app.component('PvTextarea', Textarea);
@@ -125,7 +124,6 @@ app.component('PvInputIcon', InputIcon);
 
 app.directive('tooltip', Tooltip);
 
-// Setup the router lifecycle hooks.
 router.beforeEach((to, from, next) => {
   if (to.matched.length === 0) {
     next('/404');
@@ -172,11 +170,15 @@ async function initConfig(instance) {
     if (can) {
       return true;
     }
-    return profile.listRole.lists.some((list) => list.id === id && list.permissions.includes(perm));
+    return profile.listRole.lists.some(
+      (list) => list.id === id && list.permissions.includes(perm),
+    );
   };
 
   const currentRoute = router.currentRoute.value;
-  const routeTitle = currentRoute.meta.title ? `${i18n.global.tc(currentRoute.meta.title, 0)} /` : '';
+  const routeTitle = currentRoute.meta.title
+    ? `${i18n.global.tc(currentRoute.meta.title, 0)} /`
+    : '';
   document.title = `${routeTitle} listmonk`;
 
   instance.mount('#app');

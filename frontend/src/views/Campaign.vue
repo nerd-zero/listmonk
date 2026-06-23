@@ -345,7 +345,8 @@
 <script>
 import dayjs from 'dayjs';
 import htmlToPlainText from 'textversionjs';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CopyText from '../components/CopyText.vue';
@@ -709,7 +710,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['serverConfig', 'loading', 'lists', 'templates']),
+    ...mapState(useMainStore, ['serverConfig', 'loading', 'lists', 'templates']),
 
     canManage() {
       return this.$can('campaigns:manage_all', 'campaigns:manage');

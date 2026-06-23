@@ -186,7 +186,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import ListSelector from '../components/ListSelector.vue';
 import CopyText from '../components/CopyText.vue';
 import SubscriberActivity from '../components/SubscriberActivity.vue';
@@ -355,7 +356,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['lists', 'loading']),
+    ...mapState(useMainStore, ['lists', 'loading']),
 
     hasOptinList() {
       return this.form.lists.some((l) => l.optin === 'double');

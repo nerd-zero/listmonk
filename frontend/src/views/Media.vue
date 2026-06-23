@@ -133,7 +133,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
 export default {
@@ -243,8 +244,12 @@ export default {
     },
   },
 
+  watch: {
+    refreshTick() { this.getMedia(); },
+  },
+
   computed: {
-    ...mapState(['loading', 'media', 'serverConfig']),
+    ...mapState(useMainStore, ['refreshTick', 'loading', 'media', 'serverConfig']),
 
     isProcessing() {
       if (this.toUpload > 0 && this.uploaded < this.toUpload) {
@@ -252,14 +257,6 @@ export default {
       }
       return false;
     },
-  },
-
-  created() {
-    this.$root.$on('page.refresh', this.getMedia);
-  },
-
-  unmounted() {
-    this.$root.$off('page.refresh', this.getMedia);
   },
 
   mounted() {

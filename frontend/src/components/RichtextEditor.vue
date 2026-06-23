@@ -40,10 +40,10 @@
 </template>
 
 <script>
-import { html } from 'js-beautify';
-import { mapState } from 'vuex';
-
 import TinyMce from '@tinymce/tinymce-vue';
+import { html } from 'js-beautify';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import 'tinymce';
 import 'tinymce/icons/default';
 import 'tinymce/plugins/anchor';
@@ -375,7 +375,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['serverConfig']),
+    ...mapState(useMainStore, ['serverConfig']),
 
     computedValue: {
       get() {

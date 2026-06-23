@@ -80,7 +80,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import RoleForm from './RoleForm.vue';
 
@@ -169,7 +170,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['loading', 'userRoles', 'listRoles']),
+    ...mapState(useMainStore, ['loading', 'userRoles', 'listRoles']),
 
     isUser() {
       return this.curType === 'user';

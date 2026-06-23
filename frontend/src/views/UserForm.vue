@@ -124,7 +124,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import CopyText from '../components/CopyText.vue';
 
 export default {
@@ -218,7 +219,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['loading', 'userRoles', 'listRoles']),
+    ...mapState(useMainStore, ['loading', 'userRoles', 'listRoles']),
 
     listRoleOptions() {
       return [{ name: `— ${this.$t('globals.terms.none')} —`, id: '' }, ...this.listRoles];

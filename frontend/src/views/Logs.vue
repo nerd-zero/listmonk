@@ -9,7 +9,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import LogView from '../components/LogView.vue';
 
 export default {
@@ -33,7 +34,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['logs', 'loading']),
+    ...mapState(useMainStore, ['logs', 'loading']),
   },
 
   mounted() {

@@ -234,7 +234,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../../store';
 import { regDuration } from '../../constants';
 
 const smtpTemplates = {
@@ -396,7 +397,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['settings']),
+    ...mapState(useMainStore, ['settings']),
   },
 };
 </script>

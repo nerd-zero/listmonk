@@ -107,7 +107,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
@@ -191,15 +192,11 @@ export default {
   },
 
   computed: {
-    ...mapState(['templates', 'loading']),
+    ...mapState(useMainStore, ['refreshTick', 'templates', 'loading']),
   },
 
-  created() {
-    this.$root.$on('page.refresh', this.fetchTemplates);
-  },
-
-  unmounted() {
-    this.$root.$off('page.refresh', this.fetchTemplates);
+  watch: {
+    refreshTick() { this.fetchTemplates(); },
   },
 
   mounted() {

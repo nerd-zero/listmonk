@@ -197,7 +197,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import ListForm from './ListForm.vue';
 
@@ -366,20 +367,16 @@ export default {
     },
   },
 
+  watch: {
+    refreshTick() { this.getLists(); },
+  },
+
   computed: {
-    ...mapState(['loading', 'settings']),
+    ...mapState(useMainStore, ['refreshTick', 'loading', 'settings']),
 
     numSelectedLists() {
       return this.bulk.all ? this.lists.total : this.bulk.checked.length;
     },
-  },
-
-  created() {
-    this.$root.$on('page.refresh', this.getLists);
-  },
-
-  unmounted() {
-    this.$root.$off('page.refresh', this.getLists);
   },
 
   mounted() {

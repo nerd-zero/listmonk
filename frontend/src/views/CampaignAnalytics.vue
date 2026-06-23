@@ -76,7 +76,8 @@
 
 <script>
 import dayjs from 'dayjs';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import { colors } from '../constants';
 import Chart from '../components/Chart.vue';
 
@@ -295,7 +296,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['serverConfig']),
+    ...mapState(useMainStore, ['serverConfig']),
   },
 
   created() {

@@ -203,7 +203,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import { uris } from '../constants';
 import SubscriberBulkList from './SubscriberBulkList.vue';
@@ -516,7 +517,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['subscribers', 'lists', 'loading']),
+    ...mapState(useMainStore, ['refreshTick', 'subscribers', 'lists', 'loading']),
 
     numSelectedSubscribers() {
       if (this.bulk.all) {
@@ -535,12 +536,8 @@ export default {
     },
   },
 
-  created() {
-    this.$root.$on('page.refresh', this.querySubscribers);
-  },
-
-  unmounted() {
-    this.$root.$off('page.refresh', this.querySubscribers);
+  watch: {
+    refreshTick() { this.querySubscribers(); },
   },
 
   mounted() {

@@ -74,7 +74,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import AppearanceSettings from './settings/appearance.vue';
 import ScrubSettings from './settings/scrub.vue';
 import BounceSettings from './settings/bounces.vue';
@@ -277,7 +278,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['serverConfig', 'loading']),
+    ...mapState(useMainStore, ['serverConfig', 'loading']),
 
     hasFormChanged() {
       if (!this.formCopy) {

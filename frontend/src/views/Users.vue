@@ -134,7 +134,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
 import UserForm from './UserForm.vue';
@@ -224,15 +225,11 @@ export default {
   },
 
   computed: {
-    ...mapState(['loading', 'settings']),
+    ...mapState(useMainStore, ['refreshTick', 'loading', 'settings']),
   },
 
-  created() {
-    this.$root.$on('page.refresh', this.getUsers);
-  },
-
-  unmounted() {
-    this.$root.$off('page.refresh', this.getUsers);
+  watch: {
+    refreshTick() { this.getUsers(); },
   },
 
   mounted() {

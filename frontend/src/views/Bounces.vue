@@ -113,7 +113,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
 export default {
@@ -221,22 +222,18 @@ export default {
     },
   },
 
+  watch: {
+    refreshTick() { this.getBounces(); },
+  },
+
   computed: {
-    ...mapState(['templates', 'loading']),
+    ...mapState(useMainStore, ['refreshTick', 'templates', 'loading']),
     numSelectedBounces() {
       if (this.bulk.all) {
         return this.bounces.total;
       }
       return this.bulk.checked.length;
     },
-  },
-
-  created() {
-    this.$root.$on('page.refresh', this.getBounces);
-  },
-
-  unmounted() {
-    this.$root.$off('page.refresh', this.getBounces);
   },
 
   mounted() {

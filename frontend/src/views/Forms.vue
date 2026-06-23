@@ -69,7 +69,8 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import CodeEditor from '../components/CodeEditor.vue';
 
 export default {
@@ -149,7 +150,7 @@ export default {
   },
 
   computed: {
-    ...mapState(['loading', 'lists', 'serverConfig']),
+    ...mapState(useMainStore, ['loading', 'lists', 'serverConfig']),
 
     publicLists() {
       if (!this.lists.results) {
