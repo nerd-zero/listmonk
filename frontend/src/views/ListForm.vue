@@ -1,69 +1,76 @@
 <template>
-  <form @submit.prevent="onSubmit">
-    <div class="modal-card content" style="width: auto">
-      <header class="modal-card-head">
-        <p v-if="isEditing" class="has-text-grey-light is-size-7">
-          {{ $t('globals.fields.id') }}: <copy-text :text="`${data.id}`" />
-          {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
-        </p>
-        <PvTag v-if="isEditing" :class="[data.type, 'is-pulled-right']"
+  <form class="lm-form" @submit.prevent="onSubmit">
+    <!-- Dialog header -->
+    <div class="lm-form-header">
+      <div class="lm-form-title-row">
+        <h3 class="lm-form-title">{{ isEditing ? data.name : $t('lists.newList') }}</h3>
+        <PvTag v-if="isEditing" :severity="data.type === 'public' ? 'info' : 'secondary'"
           :value="$t(`lists.types.${data.type}`)" />
-        <h4 v-if="isEditing">
-          {{ data.name }}
-        </h4>
-        <h4 v-else>
-          {{ $t('lists.newList') }}
-        </h4>
-      </header>
-      <section expanded class="modal-card-body">
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
-          <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
-            :placeholder="$t('globals.fields.name')" required />
-        </div>
+      </div>
+      <p v-if="isEditing" class="lm-form-meta">
+        ID: <copy-text :text="`${data.id}`" /> &nbsp;·&nbsp;
+        UUID: <copy-text :text="data.uuid" />
+      </p>
+    </div>
 
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('lists.type') }}</label>
-          <PvSelect v-model="form.type" name="type" :placeholder="$t('lists.typeHelp')" required
+    <!-- Fields -->
+    <div class="lm-form-body">
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('globals.fields.name') }}</label>
+        <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
+          :placeholder="$t('globals.fields.name')" class="w-full" required />
+      </div>
+
+      <div class="lm-field-row">
+        <div class="lm-field">
+          <label class="lm-label">{{ $t('lists.type') }}</label>
+          <PvSelect v-model="form.type" name="type" required class="w-full"
             :options="[{ label: $t('lists.types.private'), value: 'private' }, { label: $t('lists.types.public'), value: 'public' }]"
             option-label="label" option-value="value" />
-          <small class="block mt-1 text-color-secondary">{{ $t('lists.typeHelp') }}</small>
+          <small class="lm-help">{{ $t('lists.typeHelp') }}</small>
         </div>
 
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('lists.optin') }}</label>
-          <PvSelect v-model="form.optin" name="optin" placeholder="Opt-in type" required
+        <div class="lm-field">
+          <label class="lm-label">{{ $t('lists.optin') }}</label>
+          <PvSelect v-model="form.optin" name="optin" required class="w-full"
             :options="[{ label: $t('lists.optins.single'), value: 'single' }, { label: $t('lists.optins.double'), value: 'double' }]"
             option-label="label" option-value="value" />
-          <small class="block mt-1 text-color-secondary">{{ $t('lists.optinHelp') }}</small>
+          <small class="lm-help">{{ $t('lists.optinHelp') }}</small>
         </div>
+      </div>
 
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.tags') }}</label>
-          <PvAutoComplete v-model="form.tags" name="tags"
-            :placeholder="$t('globals.terms.tags')" multiple />
-        </div>
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('globals.terms.tags') }}</label>
+        <PvAutoComplete v-model="form.tags" name="tags"
+          :placeholder="$t('globals.terms.tags')" multiple class="w-full" />
+      </div>
 
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.description') }}</label>
-          <PvTextarea :maxlength="2000" v-model="form.description" name="description"
-            :placeholder="$t('globals.fields.description')" />
-        </div>
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('globals.fields.description') }}</label>
+        <PvTextarea :maxlength="2000" v-model="form.description" name="description"
+          :placeholder="$t('globals.fields.description')" class="w-full" rows="3" />
+      </div>
 
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('lists.archived') }}</label>
-          <div class="flex items-center gap-2">
-            <PvToggleSwitch v-model="isArchived" name="status" />
-          </div>
-          <small class="block mt-1 text-color-secondary">{{ $t('lists.archivedHelp') }}</small>
+      <div class="lm-field lm-field--inline">
+        <div>
+          <label class="lm-label">{{ $t('lists.archived') }}</label>
+          <small class="lm-help">{{ $t('lists.archivedHelp') }}</small>
         </div>
-      </section>
-      <footer class="modal-card-foot has-text-right">
-        <PvButton @click="$parent.close()" :label="$t('globals.buttons.close')" />
-        <PvButton v-if="$can('lists:manage_all') || $canList(data.id, 'list:manage')" type="submit"
-          severity="primary" :loading="loading.lists" data-cy="btn-save"
-          :label="$t('globals.buttons.save')" />
-      </footer>
+        <PvToggleSwitch v-model="isArchived" name="status" />
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="lm-form-footer">
+      <PvButton severity="secondary" :label="$t('globals.buttons.close')" @click="$emit('close')" />
+      <PvButton
+        v-if="$can('lists:manage_all') || $canList(data.id, 'list:manage')"
+        type="submit"
+        severity="primary"
+        :loading="loading.lists"
+        data-cy="btn-save"
+        :label="$t('globals.buttons.save')"
+      />
     </div>
   </form>
 </template>
@@ -76,14 +83,14 @@ import CopyText from '../components/CopyText.vue';
 export default {
   name: 'ListForm',
 
-  components: {
-    CopyText,
-  },
+  components: { CopyText },
 
   props: {
     data: { type: Object, default: () => ({}) },
     isEditing: { type: Boolean, default: false },
   },
+
+  emits: ['finished', 'close'],
 
   data() {
     return {
@@ -111,7 +118,7 @@ export default {
     createList() {
       this.$api.createList(this.form).then((data) => {
         this.$emit('finished');
-        this.$parent.close();
+        this.$emit('close');
         this.$utils.toast(this.$t('globals.messages.created', { name: data.name }));
       });
     },
@@ -119,7 +126,7 @@ export default {
     updateList() {
       this.$api.updateList({ id: this.data.id, ...this.form }).then((data) => {
         this.$emit('finished');
-        this.$parent.close();
+        this.$emit('close');
         this.$utils.toast(this.$t('globals.messages.updated', { name: data.name }));
       });
     },
@@ -140,10 +147,77 @@ export default {
 
   mounted() {
     this.form = { ...this.form, ...this.$props.data };
-
-    this.$nextTick(() => {
-      this.$refs.focus.$el.focus();
-    });
+    this.$nextTick(() => { this.$refs.focus.$el.focus(); });
   },
 };
 </script>
+
+<style scoped lang="scss">
+.lm-form { display: flex; flex-direction: column; }
+
+.lm-form-header {
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.lm-form-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+.lm-form-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+.lm-form-meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.lm-form-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.lm-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.lm-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.lm-field--inline {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.lm-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+.lm-help {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.lm-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+</style>

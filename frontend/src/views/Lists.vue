@@ -201,8 +201,8 @@
     </div>
 
     <!-- Add / edit form modal -->
-    <PvDialog v-model:visible="isFormVisible" :style="{ width: '600px' }" :closable="true" modal @hide="onFormClose">
-      <list-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '580px' }" :closable="true" :show-header="false" modal @hide="onFormClose">
+      <list-form :data="curItem" :is-editing="isEditing" @finished="formFinished" @close="isFormVisible = false" />
     </PvDialog>
 
     <p v-if="settings['app.cache_slow_queries']" class="cache-note">
