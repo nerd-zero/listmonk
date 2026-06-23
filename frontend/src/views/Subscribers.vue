@@ -1,205 +1,205 @@
 <template>
-  <section class="subscribers">
-    <header class="grid page-header">
-      <div class="col-10">
-        <h1 class="title is-4">
+  <div class="subs-page">
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">
           {{ $t('globals.terms.subscribers') }}
-          <span v-if="!isNaN(subscribers.total)">
-            (<span data-cy="count">{{ subscribers.total }}</span>)
-          </span>
-          <span v-if="currentList">
-            &raquo; {{ currentList.name }}
-            <span v-if="queryParams.subStatus" class="has-text-grey has-text-weight-normal is-capitalized">({{
-              queryParams.subStatus }})</span>
-          </span>
+          <span v-if="!isNaN(subscribers.total)" class="page-title-count">{{ subscribers.total }}</span>
+          <template v-if="currentList">
+            <span class="page-title-sub">/ {{ currentList.name }}</span>
+            <span v-if="queryParams.subStatus" class="page-title-sub is-capitalized">({{ queryParams.subStatus }})</span>
+          </template>
         </h1>
       </div>
-      <div class="col has-text-right">
-        <div v-if="$can('subscribers:manage')" class="field">
-          <PvButton severity="primary" icon="pi pi-plus" @click="showNewForm" data-cy="btn-new" class="btn-new w-full"
-            :label="$t('globals.buttons.new')" />
-        </div>
+      <PvButton
+        v-if="$can('subscribers:manage')"
+        severity="primary"
+        icon="pi pi-plus"
+        :label="$t('globals.buttons.new')"
+        data-cy="btn-new"
+        @click="showNewForm"
+      />
+    </div>
+
+    <!-- Table card -->
+    <div class="table-card">
+      <!-- Search toolbar (outside table header for cleaner layout) -->
+      <div class="search-toolbar">
+        <form class="search-form" @submit.prevent="onSubmit">
+          <PvIconField class="search-field">
+            <PvInputIcon class="pi pi-search" />
+            <PvInputText
+              @input="onSimpleQueryInput"
+              v-model="queryInput"
+              :placeholder="$t('subscribers.queryPlaceholder')"
+              ref="query"
+              :disabled="isSearchAdvanced"
+              data-cy="search"
+              class="search-input"
+            />
+          </PvIconField>
+        </form>
+
+        <a href="#" class="advanced-toggle" @click.prevent="toggleAdvancedSearch" data-cy="btn-advanced-search">
+          <i :class="['pi', isSearchAdvanced ? 'pi-times' : 'pi-sliders-h']" />
+          {{ isSearchAdvanced ? $t('subscribers.reset') : $t('subscribers.advancedQuery') }}
+        </a>
+
+        <button type="button" class="toolbar-btn" @click.prevent="exportSubscribers" data-cy="btn-export-subscribers">
+          <i class="pi pi-download" /> {{ $t('subscribers.export') }}
+        </button>
       </div>
-    </header>
 
-    <section class="subscribers-controls">
-      <div class="grid">
-        <div class="col-8">
-          <form @submit.prevent="onSubmit">
-            <div>
-              <div class="field has-addons">
-                <div class="control is-expanded">
-                  <PvInputText @input="onSimpleQueryInput" v-model="queryInput" class="w-full"
-                    :placeholder="$t('subscribers.queryPlaceholder')" ref="query"
-                    :disabled="isSearchAdvanced" data-cy="search" />
-                </div>
-                <p class="controls">
-                  <PvButton type="submit" severity="primary" icon="pi pi-search" :disabled="isSearchAdvanced"
-                    data-cy="btn-search" />
-                </p>
-              </div>
-
-              <div v-if="isSearchAdvanced">
-                <PvTextarea v-model="queryParams.queryExp" @keydown="onAdvancedQueryEnter" rows="3"
-                  ref="queryExp" placeholder="subscribers.name LIKE '%user%' or subscribers.status='blocklisted'"
-                  class="w-full" data-cy="query" />
-                <span class="is-size-6 has-text-grey">
-                  {{ $t('subscribers.advancedQueryHelp') }}.{{ ' ' }}
-                  <a href="https://listmonk.app/docs/querying-and-segmentation" target="_blank"
-                    rel="noopener noreferrer">
-                    {{ $t('globals.buttons.learnMore') }}.
-                  </a>
-                </span>
-                <div class="buttons">
-                  <PvButton type="submit" severity="primary" icon="pi pi-search" data-cy="btn-query"
-                    :label="$t('subscribers.query')" />
-                  <PvButton @click.prevent="toggleAdvancedSearch" icon="pi pi-times" data-cy="btn-query-reset"
-                    :label="$t('subscribers.reset')" />
-                </div>
-              </div><!-- advanced query -->
-            </div>
-          </form>
-          <div v-if="!isSearchAdvanced" class="toggle-advanced">
-            <a href="#" @click.prevent="toggleAdvancedSearch" data-cy="btn-advanced-search">
-              <i class="pi pi-cog" />
-              {{ $t('subscribers.advancedQuery') }}
-            </a>
+      <!-- Advanced query panel -->
+      <div v-if="isSearchAdvanced" class="advanced-panel">
+        <form @submit.prevent="onSubmit">
+          <PvTextarea
+            v-model="queryParams.queryExp"
+            @keydown="onAdvancedQueryEnter"
+            rows="3"
+            placeholder="subscribers.name LIKE '%user%' or subscribers.status='blocklisted'"
+            class="w-full"
+            data-cy="query"
+          />
+          <div class="advanced-footer">
+            <span class="advanced-help">
+              {{ $t('subscribers.advancedQueryHelp') }}.
+              <a href="https://listmonk.app/docs/querying-and-segmentation" target="_blank" rel="noopener noreferrer">
+                {{ $t('globals.buttons.learnMore') }}
+              </a>
+            </span>
+            <PvButton type="submit" severity="primary" size="small" icon="pi pi-search" :label="$t('subscribers.query')" data-cy="btn-query" />
           </div>
-        </div><!-- search -->
+        </form>
       </div>
-    </section><!-- control -->
 
-    <br />
-    <PvDataTable :value="subscribers.results ?? []" :loading="loading.subscribers"
-      data-key="id"
-      :rows="subscribers.perPage" :paginator="true" paginator-position="both"
-      :total-records="subscribers.total" :lazy="true"
-      @page="(e) => onPageChange(e.page + 1)"
-      @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
-      selection-mode="checkbox" v-model:selection="bulk.checked"
-      @row-select="onTableCheck" @row-unselect="onTableCheck"
-      @row-select-all="onTableCheck" @row-unselect-all="onTableCheck"
-      :current-page-report-template="'{first} - {last} of {totalRecords}'"
-      hoverable>
-      <template #header>
-        <div class="actions">
-          <a class="a" href="#" @click.prevent="exportSubscribers" data-cy="btn-export-subscribers">
-            <i class="pi pi-download" />
-            {{ $t('subscribers.export') }}
-          </a>
-          <template v-if="bulk.checked.length > 0">
-            <a class="a" href="#" @click.prevent="showBulkListForm" data-cy="btn-manage-lists">
-              <i class="pi pi-list" /> Manage lists
-            </a>
-            <a class="a" href="#" @click.prevent="deleteSubscribers" data-cy="btn-delete-subscribers">
-              <i class="pi pi-trash" /> Delete
-            </a>
-            <a class="a" href="#" @click.prevent="blocklistSubscribers" data-cy="btn-manage-blocklist">
-              <i class="pi pi-user-minus" /> Blocklist
-            </a>
-            <span class="a">
+      <PvDataTable
+        :value="subscribers.results ?? []"
+        :loading="loading.subscribers"
+        data-key="id"
+        :rows="subscribers.perPage"
+        :paginator="true"
+        paginator-position="bottom"
+        :total-records="subscribers.total"
+        :lazy="true"
+        @page="(e) => onPageChange(e.page + 1)"
+        @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
+        selection-mode="checkbox"
+        v-model:selection="bulk.checked"
+        @row-select="onTableCheck"
+        @row-unselect="onTableCheck"
+        @row-select-all="onTableCheck"
+        @row-unselect-all="onTableCheck"
+      >
+        <template #header>
+          <div v-if="bulk.checked.length > 0" class="bulk-bar">
+            <span class="bulk-count">
               {{ $t('globals.messages.numSelected', { num: numSelectedSubscribers }) }}
-              <span v-if="!bulk.all && subscribers.total > subscribers.perPage">
+              <template v-if="!bulk.all && subscribers.total > subscribers.perPage">
                 &mdash;
                 <a href="#" @click.prevent="selectAllSubscribers">
                   {{ $t('globals.messages.selectAll', { num: subscribers.total }) }}
                 </a>
-              </span>
+              </template>
             </span>
-          </template>
-        </div>
-      </template>
-
-      <PvColumn selection-mode="multiple" header-style="width:3rem" />
-
-      <PvColumn field="email" :header="$t('subscribers.email')" header-class="cy-email" sortable>
-        <template #body="{ data }">
-          <a :href="`/subscribers/${data.id}`" @click.prevent="showEditForm(data)"
-            :class="{ 'blocklisted': data.status === 'blocklisted' }">
-            {{ data.email }}
-            <copy-text :text="`${data.email}`" hide-text />
-          </a>
-          <PvTag v-if="data.status !== 'enabled'" :class="data.status" data-cy="blocklisted"
-            :value="$t(`subscribers.status.${data.status}`)" />
-          <span class="tags">
-            <template v-for="l in data.lists" :key="l.id">
-              <router-link :to="`/subscribers/lists/${l.id}`" style="padding-right:0.5em;">
-                <PvTag :class="l.subscriptionStatus" size="small">
-                  {{ l.name }}
-                  <sup v-if="l.optin === 'double' || l.subscriptionStatus == 'unsubscribed'">
-                    {{ $t(`subscribers.status.${l.subscriptionStatus}`) }}
-                  </sup>
-                </PvTag>
-              </router-link>
-            </template>
-          </span>
-        </template>
-      </PvColumn>
-
-      <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" sortable>
-        <template #body="{ data }">
-          <a :href="`/subscribers/${data.id}`" @click.prevent="showEditForm(data)"
-            :class="{ 'blocklisted': data.status === 'blocklisted' }">
-            {{ data.name }}
-            <copy-text :text="`${data.name}`" hide-text />
-          </a>
-        </template>
-      </PvColumn>
-
-      <PvColumn field="lists" :header="$t('globals.terms.lists')" header-class="cy-lists" style="text-align:center">
-        <template #body="{ data }">
-          {{ listCount(data.lists) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable>
-        <template #body="{ data }">
-          {{ $utils.niceDate(data.createdAt) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable>
-        <template #body="{ data }">
-          {{ $utils.niceDate(data.updatedAt) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn body-class="actions" style="text-align:right">
-        <template #body="{ data }">
-          <div>
-            <a :href="`/api/subscribers/${data.id}/export`" data-cy="btn-download"
-              :aria-label="$t('subscribers.downloadData')">
-              <i class="pi pi-download" v-tooltip.bottom="$t('subscribers.downloadData')" />
-            </a>
-            <a v-if="$can('subscribers:manage')" :href="`/subscribers/${data.id}`"
-              @click.prevent="showEditForm(data)" data-cy="btn-edit" :aria-label="$t('globals.buttons.edit')">
-              <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
-            </a>
-            <a v-if="$can('subscribers:manage')" href="#" @click.prevent="deleteSubscriber(data)"
-              data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
-              <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
-            </a>
+            <button type="button" class="bulk-btn" @click.prevent="showBulkListForm" data-cy="btn-manage-lists">
+              <i class="pi pi-list" /> Manage lists
+            </button>
+            <button type="button" class="bulk-btn bulk-btn--danger" @click.prevent="deleteSubscribers" data-cy="btn-delete-subscribers">
+              <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
+            </button>
+            <button type="button" class="bulk-btn bulk-btn--warn" @click.prevent="blocklistSubscribers" data-cy="btn-manage-blocklist">
+              <i class="pi pi-user-minus" /> Blocklist
+            </button>
           </div>
         </template>
-      </PvColumn>
 
-      <template #empty v-if="!loading.subscribers">
-        <empty-placeholder />
-      </template>
-    </PvDataTable>
+        <PvColumn selection-mode="multiple" header-style="width:3rem" />
+
+        <PvColumn field="email" :header="$t('subscribers.email')" header-class="cy-email" sortable>
+          <template #body="{ data }">
+            <div class="email-cell">
+              <a class="row-name" :class="{ 'row-name--blocked': data.status === 'blocklisted' }"
+                :href="`/subscribers/${data.id}`" @click.prevent="showEditForm(data)">
+                {{ data.email }}
+                <copy-text :text="`${data.email}`" hide-text />
+              </a>
+              <PvTag v-if="data.status !== 'enabled'" severity="danger" size="small" data-cy="blocklisted"
+                :value="$t(`subscribers.status.${data.status}`)" />
+            </div>
+            <div v-if="data.lists?.length" class="list-tags">
+              <router-link v-for="l in data.lists" :key="l.id" :to="`/subscribers/lists/${l.id}`">
+                <PvTag severity="secondary" size="small">
+                  {{ l.name }}<sup v-if="l.optin === 'double' || l.subscriptionStatus === 'unsubscribed'"> {{ $t(`subscribers.status.${l.subscriptionStatus}`) }}</sup>
+                </PvTag>
+              </router-link>
+            </div>
+          </template>
+        </PvColumn>
+
+        <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" sortable style="width:18%">
+          <template #body="{ data }">
+            <a class="row-name" :class="{ 'row-name--blocked': data.status === 'blocklisted' }"
+              :href="`/subscribers/${data.id}`" @click.prevent="showEditForm(data)">
+              {{ data.name }}
+            </a>
+          </template>
+        </PvColumn>
+
+        <PvColumn field="lists" :header="$t('globals.terms.lists')" header-class="cy-lists" style="width:6rem; text-align:center">
+          <template #body="{ data }">
+            <span class="list-count">{{ listCount(data.lists) }}</span>
+          </template>
+        </PvColumn>
+
+        <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable style="width:11%">
+          <template #body="{ data }">
+            <span class="date-cell">{{ $utils.niceDate(data.createdAt) }}</span>
+          </template>
+        </PvColumn>
+
+        <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable style="width:11%">
+          <template #body="{ data }">
+            <span class="date-cell">{{ $utils.niceDate(data.updatedAt) }}</span>
+          </template>
+        </PvColumn>
+
+        <PvColumn style="width:7rem; text-align:right">
+          <template #body="{ data }">
+            <div class="row-actions">
+              <a :href="`/api/subscribers/${data.id}/export`" class="row-action-btn"
+                data-cy="btn-download" v-tooltip.bottom="$t('subscribers.downloadData')">
+                <i class="pi pi-download" />
+              </a>
+              <button v-if="$can('subscribers:manage')" type="button" class="row-action-btn"
+                data-cy="btn-edit" v-tooltip.bottom="$t('globals.buttons.edit')" @click="showEditForm(data)">
+                <i class="pi pi-pencil" />
+              </button>
+              <button v-if="$can('subscribers:manage')" type="button" class="row-action-btn row-action-btn--danger"
+                data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')" @click="deleteSubscriber(data)">
+                <i class="pi pi-trash" />
+              </button>
+            </div>
+          </template>
+        </PvColumn>
+
+        <template #empty v-if="!loading.subscribers">
+          <empty-placeholder />
+        </template>
+      </PvDataTable>
+    </div>
 
     <!-- Manage list modal -->
-    <PvDialog v-model:visible="isBulkListFormVisible" :style="{ width: '500px' }" :closable="true" modal
-      class="has-overflow">
-      <subscriber-bulk-list :num-subscribers="this.numSelectedSubscribers" @finished="bulkChangeLists" />
+    <PvDialog v-model:visible="isBulkListFormVisible" :style="{ width: '500px' }" :closable="true" modal>
+      <subscriber-bulk-list :num-subscribers="numSelectedSubscribers" @finished="bulkChangeLists" />
     </PvDialog>
 
     <!-- Add / edit form modal -->
-    <PvDialog v-model:visible="isFormVisible" :style="{ width: '850px' }" :closable="true" modal
-      @hide="onFormClose">
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '850px' }" :closable="true" modal @hide="onFormClose">
       <subscriber-form :data="curItem" :is-editing="isEditing" @finished="querySubscribers" />
     </PvDialog>
-  </section>
+  </div>
 </template>
 
 <script>
@@ -553,9 +553,92 @@ export default {
         this.showEditForm(data);
       });
     } else {
-      // Get subscribers on load.
       this.querySubscribers();
     }
   },
 };
 </script>
+
+<style scoped lang="scss">
+.subs-page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+// Page header
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.page-header-left { display: flex; flex-direction: column; gap: 0.25rem; }
+.page-title {
+  font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0;
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+}
+.page-title-count {
+  font-size: 0.85rem; font-weight: 600; background: #f1f5f9; color: #64748b;
+  border: 1px solid #e2e8f0; border-radius: 999px; padding: 0.1rem 0.55rem;
+}
+.page-title-sub { color: #94a3b8; font-weight: 400; font-size: 1rem; }
+
+// Table card
+.table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+
+// Search toolbar
+.search-toolbar {
+  display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1rem 0;
+  flex-wrap: wrap; border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 1rem;
+}
+.search-form { flex: 1; min-width: 220px; max-width: 400px; }
+:deep(.search-input) { width: 100%; }
+.advanced-toggle {
+  font-size: 0.8rem; color: #64748b; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;
+  &:hover { color: #3b82f6; }
+}
+.toolbar-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.75rem;
+  border: 1px solid #e2e8f0; border-radius: 7px; background: #fff; color: #64748b;
+  font-size: 0.8rem; cursor: pointer; white-space: nowrap;
+  &:hover { background: #f8fafc; color: #0f172a; }
+}
+
+// Advanced panel
+.advanced-panel {
+  padding: 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+}
+.advanced-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; }
+.advanced-help { font-size: 0.78rem; color: #94a3b8; a { color: #64748b; } }
+
+// Bulk bar
+.bulk-bar {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+}
+.bulk-count { font-size: 0.85rem; color: #64748b; a { color: #3b82f6; } }
+.bulk-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.65rem;
+  border-radius: 6px; font-size: 0.8rem; font-weight: 500; border: 1px solid; cursor: pointer; background: #fff;
+  color: #64748b; border-color: #e2e8f0;
+  &:hover { background: #f8fafc; }
+  &--danger { color: #ef4444; border-color: #fecaca; &:hover { background: #fef2f2; } }
+  &--warn { color: #f59e0b; border-color: #fde68a; &:hover { background: #fffbeb; } }
+}
+
+// Row cells
+.email-cell { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.row-name { font-weight: 500; color: #3b82f6; text-decoration: none; &:hover { text-decoration: underline; } }
+.row-name--blocked { color: #ef4444; text-decoration: line-through; }
+.list-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.3rem; a { text-decoration: none; } }
+.list-count { font-weight: 600; color: #0f172a; }
+.date-cell { font-size: 0.82rem; color: #64748b; }
+
+// Row actions
+.row-actions {
+  display: flex; align-items: center; justify-content: flex-end; gap: 0.25rem;
+  opacity: 0; transition: opacity 0.15s;
+}
+:deep(tr:hover) .row-actions { opacity: 1; }
+.row-action-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 6px; border: 1px solid #e2e8f0;
+  background: #fff; color: #64748b; text-decoration: none; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  i { font-size: 0.8rem; }
+  &:hover { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
+  &--danger:hover { background: #fef2f2; border-color: #fecaca; color: #ef4444; }
+}
+</style>
