@@ -72,6 +72,7 @@ func (a *App) GetSettings(c echo.Context) error {
 		s.Messengers[i].Password = strings.Repeat(pwdMask, utf8.RuneCountInString(s.Messengers[i].Password))
 	}
 
+	s.Scrub.APIKey = strings.Repeat(pwdMask, utf8.RuneCountInString(s.Scrub.APIKey))
 	s.UploadS3AwsSecretAccessKey = strings.Repeat(pwdMask, utf8.RuneCountInString(s.UploadS3AwsSecretAccessKey))
 	s.SendgridKey = strings.Repeat(pwdMask, utf8.RuneCountInString(s.SendgridKey))
 	s.BounceAzure.SharedSecret = strings.Repeat(pwdMask, utf8.RuneCountInString(s.BounceAzure.SharedSecret))
@@ -226,6 +227,17 @@ func (a *App) UpdateSettings(c echo.Context) error {
 
 		set.Messengers[i].Name = name
 		names[name] = true
+	}
+
+	// Scrub API key — preserve if masked or empty.
+	if set.Scrub.APIKey == "" || strings.Contains(set.Scrub.APIKey, pwdMask) {
+		set.Scrub.APIKey = cur.Scrub.APIKey
+	}
+	if set.Scrub.Enabled && set.Scrub.URL != "" {
+		if u, err := url.ParseRequestURI(set.Scrub.URL); err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+			return echo.NewHTTPError(http.StatusBadRequest,
+				a.i18n.Ts("globals.messages.invalidData")+": invalid Scrub URL")
+		}
 	}
 
 	// S3 password?
@@ -422,6 +434,57 @@ func (a *App) TestSMTPSettings(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, okResp{a.bufLog.Lines()})
+}
+
+// TestScrubSettings verifies that the Scrub URL and API key are reachable.
+func (a *App) TestScrubSettings(c echo.Context) error {
+	var req struct {
+		URL    string `json:"url"`
+		APIKey string `json:"api_key"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("globals.messages.invalidData"))
+	}
+
+	req.URL = strings.TrimRight(strings.TrimSpace(req.URL), "/")
+	if req.URL == "" || req.APIKey == "" {
+		return echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.Ts("globals.messages.missingFields", "name", "url / api_key"))
+	}
+
+	// Use the current stored key if the UI sent back a masked placeholder.
+	if strings.Contains(req.APIKey, pwdMask) {
+		s, err := a.core.GetSettings()
+		if err != nil {
+			return err
+		}
+		req.APIKey = s.Scrub.APIKey
+	}
+
+	httpReq, err := http.NewRequestWithContext(c.Request().Context(), http.MethodGet, req.URL+"/usage/daily", nil)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.Ts("globals.messages.errorCreating", "name", "request", "error", err.Error()))
+	}
+	httpReq.Header.Set("X-API-Key", req.APIKey)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", err.Error()))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("settings.scrub.invalidKey"))
+	}
+	if resp.StatusCode >= 400 {
+		return echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", resp.Status))
+	}
+
+	return c.JSON(http.StatusOK, okResp{true})
 }
 
 func (a *App) GetAboutInfo(c echo.Context) error {

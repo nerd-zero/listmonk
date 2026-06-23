@@ -165,4 +165,10 @@ type Settings struct {
 	AdminCustomJS   string `json:"appearance.admin.custom_js"`
 	PublicCustomCSS string `json:"appearance.public.custom_css"`
 	PublicCustomJS  string `json:"appearance.public.custom_js"`
+
+	Scrub struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+		APIKey  string `json:"api_key"`
+	} `json:"scrub"`
 }

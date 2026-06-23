@@ -57,6 +57,10 @@
           <b-tab-item :label="$t('settings.appearance.name')">
             <appearance-settings :form="form" :key="key" />
           </b-tab-item><!-- appearance -->
+
+          <b-tab-item :label="$t('settings.scrub.name')">
+            <scrub-settings :form="form" :key="key" />
+          </b-tab-item><!-- mail validation -->
         </b-tabs>
       </section>
     </section>
@@ -67,6 +71,7 @@
 import Vue from 'vue';
 import { mapState } from 'vuex';
 import AppearanceSettings from './settings/appearance.vue';
+import ScrubSettings from './settings/scrub.vue';
 import BounceSettings from './settings/bounces.vue';
 import GeneralSettings from './settings/general.vue';
 import MediaSettings from './settings/media.vue';
@@ -87,6 +92,7 @@ export default Vue.extend({
     BounceSettings,
     MessengerSettings,
     AppearanceSettings,
+    ScrubSettings,
   },
 
   data() {
@@ -188,6 +194,12 @@ export default Vue.extend({
         form['bounce.lettermint'].key = '';
       } else if (this.hasDummy(form['bounce.lettermint'].key)) {
         hasDummy = 'lettermint';
+      }
+
+      if (this.isDummy(form.scrub.api_key)) {
+        form.scrub.api_key = '';
+      } else if (this.hasDummy(form.scrub.api_key)) {
+        hasDummy = 'scrub';
       }
 
       for (let i = 0; i < form.messengers.length; i += 1) {

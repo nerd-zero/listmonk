@@ -298,7 +298,8 @@ INSERT INTO settings (key, value) VALUES
     ('appearance.admin.custom_js', '""'),
     ('appearance.public.custom_css', '""'),
     ('appearance.public.custom_js', '""'),
-    ('maintenance.db', '{"vacuum": false, "vacuum_cron_interval": "0 2 * * *"}');
+    ('maintenance.db', '{"vacuum": false, "vacuum_cron_interval": "0 2 * * *"}'),
+    ('scrub', '{"enabled": false, "url": "", "api_key": ""}');
 
 -- bounces
 DROP TABLE IF EXISTS bounces CASCADE;
