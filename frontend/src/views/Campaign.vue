@@ -1,7 +1,7 @@
 <template>
   <section class="campaign">
-    <header class="columns page-header">
-      <div class="column is-6">
+    <header class="grid page-header">
+      <div class="col-6">
         <p v-if="isEditing && data.status" class="tags">
           <PvTag v-if="isEditing" :class="data.status" :value="$t(`campaigns.status.${data.status}`)" />
           <PvTag v-if="data.type === 'optin'" :class="data.type" :value="$t('lists.optin')" />
@@ -18,7 +18,7 @@
         </h4>
       </div>
 
-      <div class="column is-6">
+      <div class="col-6">
         <div v-if="canManage || canSend" class="buttons">
           <div class="field is-grouped" v-if="isEditing && canEdit">
             <div class="field" v-if="canManage">
@@ -68,8 +68,8 @@
         <!-- campaign tab -->
         <PvTabPanel value="campaign">
           <section class="wrap">
-            <div class="columns">
-              <div class="column is-7">
+            <div class="grid">
+              <div class="col-7">
                 <form @submit.prevent="() => onSubmit(isNew ? 'create' : 'update')">
                   <div class="field">
                     <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
@@ -92,8 +92,8 @@
                   <list-selector v-model="form.lists" :selected="form.lists" :all="lists.results" :disabled="!canEdit"
                     :label="$t('globals.terms.lists')" :placeholder="$t('campaigns.sendToLists')" />
 
-                  <div class="columns">
-                    <div class="column is-6">
+                  <div class="grid">
+                    <div class="col-6">
                       <div class="field">
                         <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.messenger') }}</label>
                         <select v-model="form.messenger" name="messenger" :disabled="!canEdit" required
@@ -112,7 +112,7 @@
                         </select>
                       </div>
                     </div>
-                    <div class="column is-6">
+                    <div class="col-6">
                       <div class="field mr-4 mb-0">
                         <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.format') }}</label>
                         <select v-model="form.content.contentType" :disabled="!canEdit || isEditing"
@@ -133,8 +133,8 @@
                   </div>
                   <hr />
 
-                  <div class="columns">
-                    <div class="column is-4">
+                  <div class="grid">
+                    <div class="col-4">
                       <div class="field" data-cy="btn-send-later">
                         <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.sendLater') }}</label>
                         <div class="flex items-center gap-2">
@@ -142,7 +142,7 @@
                         </div>
                       </div>
                     </div>
-                    <div class="column">
+                    <div class="col">
                       <br />
                       <div class="field" v-if="form.sendLater" data-cy="send_at">
                         <small class="block mt-1 text-color-secondary">{{ form.sendAtDate ? $utils.duration(Date(), form.sendAtDate) : '' }}</small>
@@ -174,7 +174,7 @@
                   </div>
                 </form>
               </div>
-              <div v-if="canManage" class="column is-4 is-offset-1">
+              <div v-if="canManage" class="col-4 col-offset-1">
                 <br />
                 <div class="box">
                   <h3 class="title is-size-6">
@@ -200,8 +200,8 @@
           <editor v-if="data.id" v-model="form.content" :id="data.id" :title="data.name" :disabled="!canEdit"
             :templates="templates" :content-types="contentTypes" />
 
-          <div class="columns">
-            <div class="column is-6">
+          <div class="grid">
+            <div class="col-6">
               <p v-if="!isAttachFieldVisible" class="is-size-6 has-text-grey">
                 <a href="#" @click.prevent="onShowAttachField()" data-cy="btn-attach">
                   <i class="pi pi-upload" />
@@ -215,7 +215,7 @@
                   @focus="onOpenAttach" :disabled="!canEdit" multiple />
               </div>
             </div>
-            <div class="column has-text-right">
+            <div class="col has-text-right">
               <a href="https://listmonk.app/docs/templating/#template-expressions" target="_blank"
                 rel="noopener noreferer">
                 <i class="pi pi-code" /> {{ $t('campaigns.templatingRef') }}</a>
@@ -250,18 +250,18 @@
         <!-- archive tab -->
         <PvTabPanel value="archive">
           <section class="wrap">
-            <div class="columns">
-              <div class="column is-4">
+            <div class="grid">
+              <div class="col-4">
                 <div class="field" data-cy="btn-archive">
                   <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.archiveEnable') }}</label>
                   <small class="block mt-1 text-color-secondary">{{ $t('campaigns.archiveHelp') }}</small>
-                  <div class="columns">
-                    <div class="column">
+                  <div class="grid">
+                    <div class="col">
                       <div class="flex items-center gap-2">
                         <PvToggleSwitch data-cy="btn-archive" v-model="form.archive" :disabled="!canArchive" />
                       </div>
                     </div>
-                    <div class="column is-12">
+                    <div class="col-12">
                       <a :href="`${serverConfig.root_url}/archive/${data.uuid}`" target="_blank" rel="noopener noreferer"
                         :class="{ 'has-text-grey-light': !form.archive }" aria-label="$t('campaigns.archive')">
                         <i class="pi pi-external-link" />
@@ -270,7 +270,7 @@
                   </div>
                 </div>
               </div>
-              <div class="column is-8">
+              <div class="col-8">
                 <div class="field is-grouped" style="justify-content: flex-end;">
                   <div class="field" v-if="!canEdit && canArchive">
                     <PvButton @click="onUpdateCampaignArchive" :loading="loading.campaigns" severity="primary"
@@ -280,8 +280,8 @@
               </div>
             </div>
 
-            <div class="columns">
-              <div class="column is-6">
+            <div class="grid">
+              <div class="col-6">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
                   <select v-model="form.archiveTemplateId" name="template"
@@ -296,7 +296,7 @@
                 </div>
               </div>
 
-              <div class="column is-6">
+              <div class="col-6">
                 <div class="field is-grouped" style="justify-content: flex-end;">
                   <div class="field" v-if="form.archive && (!this.form.archiveMetaStr || this.form.archiveMetaStr === '{}')">
                     <a class="button is-primary" href="#" @click.prevent="onFillArchiveMeta" aria-label="{}"><i class="pi pi-code" /></a>

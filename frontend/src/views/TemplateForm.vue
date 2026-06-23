@@ -16,15 +16,15 @@
           </h4>
         </header>
         <section expanded class="modal-card-body mb-0 pb-0">
-          <div class="columns">
-            <div class="column is-9">
+          <div class="grid">
+            <div class="col-9">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
                 <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
                   :placeholder="$t('globals.fields.name')" required />
               </div>
             </div>
-            <div class="column is-3">
+            <div class="col-3">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.type') }}</label>
                 <PvSelect v-model="form.type" :disabled="isEditing"
@@ -37,8 +37,8 @@
               </div>
             </div>
           </div>
-          <div class="columns" v-if="form.type === 'tx'">
-            <div class="column is-12">
+          <div class="grid" v-if="form.type === 'tx'">
+            <div class="col-12">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('templates.subject') }}</label>
                 <PvInputText :maxlength="200" ref="focus" v-model="form.subject" name="name"

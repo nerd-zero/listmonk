@@ -1,7 +1,7 @@
 <template>
   <section class="lists">
-    <header class="columns page-header">
-      <div class="column is-10">
+    <header class="grid page-header">
+      <div class="col-10">
         <h1 class="title is-4 mb-2">
           {{ $t('globals.terms.lists') }}
           <span v-if="queryParams.status === 'archived'" class="has-text-grey-light">/ {{ queryParams.status }} </span>
@@ -17,7 +17,7 @@
           </router-link>
         </div>
       </div>
-      <div class="column has-text-right">
+      <div class="col has-text-right">
         <div v-if="$can('lists:manage_all')" class="field">
           <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm" data-cy="btn-new"
             :label="$t('globals.buttons.new')" />
@@ -43,8 +43,8 @@
       @row-select-all="onTableCheck"
       @row-unselect-all="onTableCheck">
 <template #header>
-        <div class="columns">
-          <div class="column is-6">
+        <div class="grid">
+          <div class="col-6">
             <form @submit.prevent="getLists">
               <div class="field has-addons">
                 <div class="control is-expanded">

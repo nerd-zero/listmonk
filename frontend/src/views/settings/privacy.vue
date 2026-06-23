@@ -1,7 +1,7 @@
 <template>
   <div class="items">
-    <div class="columns">
-      <div class="column is-6">
+    <div class="grid">
+      <div class="col-6">
         <div class="field">
           <div class="flex items-center gap-2">
             <PvToggleSwitch v-model="data['privacy.disable_tracking']" name="privacy.disable_tracking" />
@@ -10,7 +10,7 @@
           <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.disableTrackingHelp') }}</small>
         </div>
       </div>
-      <div class="column is-6" :class="{ 'is-disabled': data['privacy.disable_tracking'] }">
+      <div class="col-6" :class="{ 'is-disabled': data['privacy.disable_tracking'] }">
         <div class="field">
           <div class="flex items-center gap-2">
             <PvToggleSwitch v-model="data['privacy.individual_tracking']" :disabled="data['privacy.disable_tracking']"

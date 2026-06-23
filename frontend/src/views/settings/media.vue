@@ -1,7 +1,7 @@
 <template>
   <div class="items">
-    <div class="columns">
-      <div class="column">
+    <div class="grid">
+      <div class="col">
         <div class="field">
           <label class="block mb-1 text-sm font-medium">{{ $t('settings.media.provider') }}</label>
           <PvSelect v-model="data['upload.provider']" name="upload.provider"
@@ -9,7 +9,7 @@
             option-label="label" option-value="value" />
         </div>
       </div>
-      <div class="column is-10">
+      <div class="col-10">
         <div class="field">
           <label class="block mb-1 text-sm font-medium">{{ $t('settings.media.upload.extensions') }}</label>
           <PvAutoComplete v-model="data['upload.extensions']" name="tags"

@@ -29,8 +29,8 @@
     </div>
 
     <div>
-      <div class="columns">
-        <div class="column is-6">
+      <div class="grid">
+        <div class="col-6">
           <div class="field">
             <div class="flex items-center gap-2">
               <PvToggleSwitch v-model="data['app.message_sliding_window']" name="app.message_sliding_window" />
@@ -40,7 +40,7 @@
           </div>
         </div>
 
-        <div class="column is-3" :class="{ disabled: !data['app.message_sliding_window'] }">
+        <div class="col-3" :class="{ disabled: !data['app.message_sliding_window'] }">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('settings.performance.slidingWindowRate') }}</label>
             <PvInputNumber v-model="data['app.message_sliding_window_rate']" name="sliding_window_rate"
@@ -50,7 +50,7 @@
           </div>
         </div>
 
-        <div class="column is-3" :class="{ disabled: !data['app.message_sliding_window'] }">
+        <div class="col-3" :class="{ disabled: !data['app.message_sliding_window'] }">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('settings.performance.slidingWindowDuration') }}</label>
             <PvInputText v-model="data['app.message_sliding_window_duration']" name="sliding_window_duration"
@@ -63,8 +63,8 @@
 
     <div>
       <hr />
-      <div class="columns">
-        <div class="column is-4">
+      <div class="grid">
+        <div class="col-4">
           <div class="field">
             <div class="flex items-center gap-2">
               <PvToggleSwitch v-model="data['app.cache_slow_queries']" name="app.cache_slow_queries" />
@@ -73,14 +73,14 @@
             <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.cacheSlowQueriesHelp') }}</small>
           </div>
         </div>
-        <div class="column is-4" :class="{ disabled: !data['app.cache_slow_queries'] }">
+        <div class="col-4" :class="{ disabled: !data['app.cache_slow_queries'] }">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('settings.maintenance.cron') }}</label>
             <PvInputText v-model="data['app.cache_slow_queries_interval']" :disabled="!data['app.cache_slow_queries']"
               placeholder="0 3 * * *" />
           </div>
         </div>
-        <div class="column">
+        <div class="col">
           <br /><br />
           <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferer">
             <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}

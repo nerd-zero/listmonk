@@ -1,13 +1,13 @@
 <template>
   <section class="users">
-    <header class="columns page-header">
-      <div class="column is-10">
+    <header class="grid page-header">
+      <div class="col-10">
         <h1 class="title is-4">
           {{ $t('globals.terms.users') }}
           <span v-if="!isNaN(users.length)">({{ users.length }})</span>
         </h1>
       </div>
-      <div class="column has-text-right">
+      <div class="col has-text-right">
         <div v-if="$can('users:manage')" class="field">
           <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm" data-cy="btn-new"
             :label="$t('globals.buttons.new')" />
@@ -20,8 +20,8 @@
       v-model:selection="checked"
       data-key="id">
       <template #header>
-        <div class="columns">
-          <div class="column is-6">
+        <div class="grid">
+          <div class="col-6">
             <form @submit.prevent="getUsers">
               <div class="field">
                 <div class="p-inputgroup">

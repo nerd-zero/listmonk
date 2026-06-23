@@ -41,22 +41,22 @@
             <small class="block mt-1 text-color-secondary">{{ $t('globals.messages.passwordChange') }}</small>
           </div>
 
-          <div class="columns">
-            <div class="column is-4">
+          <div class="grid">
+            <div class="col-4">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.maxConns') }}</label>
                 <PvInputNumber v-model="item.max_conns" name="max_conns" placeholder="25" :min="1" :max="65535" />
                 <small class="block mt-1 text-color-secondary">{{ $t('settings.messengers.maxConnsHelp') }}</small>
               </div>
             </div>
-            <div class="column is-4">
+            <div class="col-4">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.retries') }}</label>
                 <PvInputNumber v-model="item.max_msg_retries" name="max_msg_retries" placeholder="2" :min="1" :max="1000" />
                 <small class="block mt-1 text-color-secondary">{{ $t('settings.messengers.retriesHelp') }}</small>
               </div>
             </div>
-            <div class="column is-4">
+            <div class="col-4">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('settings.messengers.timeout') }}</label>
                 <PvInputText v-model="item.timeout" name="timeout" placeholder="5s" :pattern="regDuration"

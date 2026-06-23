@@ -1,13 +1,13 @@
 <template>
   <section class="campaigns">
-    <header class="columns page-header">
-      <div class="column is-10">
+    <header class="grid page-header">
+      <div class="col-10">
         <h1 class="title is-4">
           {{ $t('globals.terms.campaigns') }}
           <span v-if="!isNaN(campaigns.total)">({{ campaigns.total }})</span>
         </h1>
       </div>
-      <div class="column has-text-right">
+      <div class="col has-text-right">
         <div v-if="$can('campaigns:manage')">
           <router-link :to="{ name: 'campaign', params: { id: 'new' } }" class="btn-new" data-cy="btn-new">
             <PvButton severity="primary" icon="pi pi-plus" :label="$t('globals.buttons.new')" />
@@ -24,8 +24,8 @@
       @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
       lazy>
       <template #header>
-        <div class="columns">
-          <div class="column is-6">
+        <div class="grid">
+          <div class="col-6">
             <form @submit.prevent="getCampaigns">
               <div class="flex gap-2">
                 <PvInputText v-model="queryParams.query" name="query" class="flex-1"

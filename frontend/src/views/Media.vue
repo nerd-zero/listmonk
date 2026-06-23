@@ -11,8 +11,8 @@
     </div>
 
     <section class="wrap gallery mt-6">
-      <div class="columns mb-4">
-        <div class="column">
+      <div class="grid mb-4">
+        <div class="col">
           <form @submit.prevent="onQueryMedia" class="search">
             <div>
               <div class="field">
@@ -24,7 +24,7 @@
             </div>
           </form>
         </div>
-        <div v-if="$can('media:manage')" class="column is-narrow">
+        <div v-if="$can('media:manage')" class="col-auto">
           <PvButton @click="onToggleForm" icon="pi pi-upload" data-cy="btn-toggle-upload"
             :label="$t('media.upload')" />
         </div>

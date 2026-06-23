@@ -82,52 +82,7 @@ ul.no {
   margin: 0;
 }
 
-// ============================================================
-// Grid system  (Bulma-compatible column classes)
-// ============================================================
-.columns {
-  display: flex;
-  flex-wrap: wrap;
-  margin-left: -0.75rem;
-  margin-right: -0.75rem;
-  margin-top: -0.75rem;
-
-  &:not(:last-child) { margin-bottom: calc(1.5rem - 0.75rem); }
-  &:last-child { margin-bottom: -0.75rem; }
-  &.is-multiline { flex-wrap: wrap; }
-  &.is-vcentered { align-items: center; }
-  &.is-centered { justify-content: center; }
-  &.is-vertical { flex-direction: column; }
-  &.is-mobile { flex-wrap: nowrap; }
-}
-
-.column {
-  display: block;
-  flex: 1 1 0;
-  padding: 0.75rem;
-
-  &.is-narrow { flex: 0 0 auto; }
-  &.is-full   { flex: 0 0 100%; max-width: 100%; }
-  &.is-half         { flex: 0 0 50%;       max-width: 50%; }
-  &.is-one-third    { flex: 0 0 33.333%;   max-width: 33.333%; }
-  &.is-two-thirds   { flex: 0 0 66.666%;   max-width: 66.666%; }
-  &.is-one-quarter  { flex: 0 0 25%;       max-width: 25%; }
-  &.is-three-quarters { flex: 0 0 75%;     max-width: 75%; }
-  &.is-1  { flex: 0 0 8.333%;   max-width: 8.333%; }
-  &.is-2  { flex: 0 0 16.666%;  max-width: 16.666%; }
-  &.is-3  { flex: 0 0 25%;      max-width: 25%; }
-  &.is-4  { flex: 0 0 33.333%;  max-width: 33.333%; }
-  &.is-5  { flex: 0 0 41.666%;  max-width: 41.666%; }
-  &.is-6  { flex: 0 0 50%;      max-width: 50%; }
-  &.is-7  { flex: 0 0 58.333%;  max-width: 58.333%; }
-  &.is-8  { flex: 0 0 66.666%;  max-width: 66.666%; }
-  &.is-9  { flex: 0 0 75%;      max-width: 75%; }
-  &.is-10 { flex: 0 0 83.333%;  max-width: 83.333%; }
-  &.is-11 { flex: 0 0 91.666%;  max-width: 91.666%; }
-  &.is-12 { flex: 0 0 100%;     max-width: 100%; }
-  &.is-expanded { flex: 1 1 auto; }
-  &.is-offset-1 { margin-left: 8.333%; }
-}
+// Grid is provided by PrimeFlex (imported in main.js)
 
 // ============================================================
 // Flexbox / layout utilities  (Tailwind-like, used by migrated templates)
@@ -556,17 +511,11 @@ select { height: auto; padding: 0.5rem 0.75rem; }
   .level-item  { display: flex; align-items: center; }
 }
 
-// ============================================================
-// Tile layout
-// ============================================================
-.tile {
-  flex: 1 1 0;
-  display: flex;
-  &.is-ancestor { flex-wrap: wrap; gap: 1rem; }
-  &.is-parent { flex-direction: column; gap: 0.5rem; }
-  &.is-child { display: block; }
-  &.is-vertical { flex-direction: column; }
-  &.notification { @extend %box; padding: 10px; }
+// Tile notification variant
+.tile.notification {
+  @extend %box;
+  padding: 10px;
+  border-left-width: 0;
 }
 
 // ============================================================

@@ -11,8 +11,8 @@
     <p v-else-if="publicLists.length === 0">
       {{ $t('forms.noPublicLists') }}
     </p>
-    <div class="columns" v-else-if="publicLists.length > 0">
-      <div class="column is-4">
+    <div class="grid" v-else-if="publicLists.length > 0">
+      <div class="col-4">
         <h4>{{ $t('forms.publicLists') }}</h4>
         <p>{{ $t('forms.selectHelp') }}</p>
 
@@ -56,7 +56,7 @@
           </li>
         </ul>
       </div>
-      <div class="column" data-cy="form">
+      <div class="col" data-cy="form">
         <h4>{{ $t('forms.formHTML') }}</h4>
         <p>
           {{ $t('forms.formHTMLHelp') }}
@@ -64,7 +64,7 @@
 
         <code-editor lang="html" v-if="checked.length > 0" v-model="html" disabled />
       </div>
-    </div><!-- columns -->
+    </div><!-- grid -->
   </section>
 </template>
 

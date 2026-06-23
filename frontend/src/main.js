@@ -4,6 +4,7 @@ import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
+import 'primeflex/primeflex.css';
 
 // PrimeVue components registered globally (mirrors Buefy's global install).
 import Button from 'primevue/button';

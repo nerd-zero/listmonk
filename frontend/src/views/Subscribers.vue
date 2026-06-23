@@ -1,7 +1,7 @@
 <template>
   <section class="subscribers">
-    <header class="columns page-header">
-      <div class="column is-10">
+    <header class="grid page-header">
+      <div class="col-10">
         <h1 class="title is-4">
           {{ $t('globals.terms.subscribers') }}
           <span v-if="!isNaN(subscribers.total)">
@@ -14,7 +14,7 @@
           </span>
         </h1>
       </div>
-      <div class="column has-text-right">
+      <div class="col has-text-right">
         <div v-if="$can('subscribers:manage')" class="field">
           <PvButton severity="primary" icon="pi pi-plus" @click="showNewForm" data-cy="btn-new" class="btn-new w-full"
             :label="$t('globals.buttons.new')" />
@@ -23,8 +23,8 @@
     </header>
 
     <section class="subscribers-controls">
-      <div class="columns">
-        <div class="column is-8">
+      <div class="grid">
+        <div class="col-8">
           <form @submit.prevent="onSubmit">
             <div>
               <div class="field has-addons">

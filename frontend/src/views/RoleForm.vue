@@ -23,8 +23,8 @@
         <div v-if="type === 'list'" class="box">
           <h5>{{ $t('users.listPerms') }}</h5>
           <div class="mb-5">
-            <div class="columns">
-              <div class="column is-9">
+            <div class="grid">
+              <div class="col-9">
                 <PvSelect v-model="form.curList" name="list"
                   :placeholder="$tc('globals.terms.list')"
                   :disabled="disabled || filteredLists.length < 1"
@@ -34,7 +34,7 @@
                   class="mb-3"
                   style="width:100%" />
               </div>
-              <div class="column">
+              <div class="col">
                 <PvButton @click="onAddListPerm" :disabled="!form.curList" severity="primary" style="width:100%"
                   :label="$t('globals.buttons.add')" />
               </div>
@@ -81,13 +81,13 @@
         </div>
 
         <template v-if="type === 'user'">
-          <div class="columns">
-            <div class="column is-7">
+          <div class="grid">
+            <div class="col-7">
               <h5 class="mb-0">
                 {{ $t('users.perms') }}
               </h5>
             </div>
-            <div class="column has-text-right" v-if="!disabled">
+            <div class="col has-text-right" v-if="!disabled">
               <a href="#" @click.prevent="onToggleSelect">{{ $t('globals.buttons.toggleSelect') }}</a>
             </div>
           </div>

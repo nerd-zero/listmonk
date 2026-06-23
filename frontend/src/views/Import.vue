@@ -10,8 +10,8 @@
     <section v-if="isFree()" class="wrap">
       <form @submit.prevent="onUpload" class="box">
         <div>
-          <div class="columns">
-            <div class="column">
+          <div class="grid">
+            <div class="col">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('import.mode') }}</label>
                 <div>
@@ -27,7 +27,7 @@
                 </div>
               </div>
             </div>
-            <div class="column">
+            <div class="col">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
                 <template v-if="form.mode === 'subscribe'">
@@ -51,7 +51,7 @@
               </div>
             </div>
 
-            <div class="column">
+            <div class="col">
               <div class="field delimiter">
                 <label class="block mb-1 text-sm font-medium">{{ $t('import.csvDelim') }}</label>
                 <PvInputText v-model="form.delim" name="delim" placeholder="," :maxlength="1" required />
@@ -60,8 +60,8 @@
             </div>
           </div>
 
-          <div class="columns">
-            <div class="column is-4">
+          <div class="grid">
+            <div class="col-4">
               <div v-if="form.mode === 'subscribe'" class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('import.overwriteUserInfo') }}</label>
                 <div>
@@ -74,7 +74,7 @@
               </div>
             </div>
 
-            <div class="column">
+            <div class="col">
               <div v-if="form.mode === 'subscribe'" class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('import.overwriteSubStatus') }}</label>
                 <div>

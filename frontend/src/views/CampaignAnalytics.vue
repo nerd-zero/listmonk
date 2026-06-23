@@ -15,8 +15,8 @@
     <hr />
 
     <form @submit.prevent="onSubmit">
-      <div class="columns">
-        <div class="column is-6">
+      <div class="grid">
+        <div class="col-6">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.campaigns') }}</label>
             <PvAutoComplete v-model="form.campaigns" :suggestions="queriedCampaigns" name="campaigns"
@@ -26,16 +26,16 @@
           </div>
         </div>
 
-        <div class="column is-5">
-          <div class="columns">
-            <div class="column is-6">
+        <div class="col-5">
+          <div class="grid">
+            <div class="col-6">
               <div class="field" data-cy="from">
                 <label class="block mb-1 text-sm font-medium">{{ $t('analytics.fromDate') }}</label>
                 <PvDatePicker v-model="form.from" show-time hour-format="24"
                   :date-format="'yy-mm-dd'" @date-select="onFromDateChange" @update:model-value="onFromDateChange" />
               </div>
             </div>
-            <div class="column is-6">
+            <div class="col-6">
               <div class="field" data-cy="to">
                 <label class="block mb-1 text-sm font-medium">{{ $t('analytics.toDate') }}</label>
                 <PvDatePicker v-model="form.to" show-time hour-format="24"
@@ -45,7 +45,7 @@
           </div><!-- columns -->
         </div><!-- columns -->
 
-        <div class="column is-1">
+        <div class="col-1">
           <PvButton type="submit" severity="primary" icon="pi pi-search" :disabled="form.campaigns.length === 0"
             data-cy="btn-search" />
         </div>
@@ -54,8 +54,8 @@
 
     <section class="charts mt-5">
       <div class="chart" v-for="(v, k) in charts" :key="k">
-        <div class="columns">
-          <div class="column is-9">
+        <div class="grid">
+          <div class="col-9">
             <div v-if="v.loading" class="flex justify-center p-8">
               <PvProgressSpinner style="width:2rem;height:2rem" />
             </div>
@@ -65,7 +65,7 @@
             </h4>
             <chart :type="v.type" v-if="!v.loading" :data="v.data" :on-click="v.onClick" />
           </div>
-          <div class="column is-2 donut-container">
+          <div class="col-2 donut-container">
             <chart type="donut" v-if="!v.loading" :data="v.donutData" />
           </div>
         </div>

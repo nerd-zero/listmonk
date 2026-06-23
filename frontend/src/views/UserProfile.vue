@@ -22,15 +22,15 @@
         <PvInputText :maxlength="200" v-model="form.name" name="name" :placeholder="$t('globals.fields.name')" />
       </div>
 
-      <div v-if="data.passwordLogin" class="columns">
-        <div class="column is-6">
+      <div v-if="data.passwordLogin" class="grid">
+        <div class="col-6">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('users.password') }}</label>
             <PvPassword minlength="8" :maxlength="200" v-model="form.password" name="password"
               :placeholder="$t('users.password')" :feedback="false" />
           </div>
         </div>
-        <div class="column is-6">
+        <div class="col-6">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('users.passwordRepeat') }}</label>
             <PvPassword minlength="8" :maxlength="200" v-model="form.password2" name="password2" :feedback="false" />
@@ -50,11 +50,11 @@
     <section v-if="data.passwordLogin" class="twofa-section">
       <!-- TOTP disabled -->
       <div v-if="data.twofaType === 'none'" class="box">
-        <div class="columns is-vcentered mb-4">
-          <div class="column">
+        <div class="grid align-items-center mb-4">
+          <div class="col">
             <h3 class="title is-size-5 mb-0">{{ $t('users.twoFA') }}</h3>
           </div>
-          <div class="column is-narrow">
+          <div class="col-auto">
             <div v-if="!isTotpVisible" class="flex items-center gap-2">
               <PvToggleSwitch v-model="twofaEnabled" @change="onToggleEnableTotp" />
             </div>
@@ -95,13 +95,13 @@
 
       <!-- TOTP Enabled -->
       <div v-if="data.twofaType === 'totp'" class="box">
-        <div class="columns is-vcentered">
-          <div class="column">
+        <div class="grid align-items-center">
+          <div class="col">
             <h3 class="title is-size-5">
               <i class="pi pi-check-circle text-green-500" /> {{ $t('users.twoFAEnabled') }}
             </h3>
           </div>
-          <div class="column is-narrow">
+          <div class="col-auto">
             <div v-if="!showDisableTOTP" class="flex items-center gap-2">
               <PvToggleSwitch v-model="twofaEnabled" @change="toggleDisableTOTP" />
             </div>

@@ -13,8 +13,8 @@
         </h4>
       </header>
       <section expanded class="modal-card-body">
-        <div class="columns">
-          <div class="column is-6">
+        <div class="grid">
+          <div class="col-6">
             <div class="field mb-6">
               <div class="flex gap-2">
                 <label class="flex items-center gap-2 cursor-pointer">
@@ -30,7 +30,7 @@
               </div>
             </div>
           </div>
-          <div class="column is-6">
+          <div class="col-6">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
               <PvSelect v-model="form.status" name="status" required
@@ -68,8 +68,8 @@
               </div>
             </div>
 
-            <div class="columns">
-              <div class="column is-6">
+            <div class="grid">
+              <div class="col-6">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('users.password') }}</label>
                   <PvPassword :disabled="!form.passwordLogin" :minlength="8" :maxlength="200" v-model="form.password"
@@ -77,7 +77,7 @@
                     :required="form.passwordLogin && !isEditing" :feedback="false" class="w-full" />
                 </div>
               </div>
-              <div class="column is-6">
+              <div class="col-6">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('users.passwordRepeat') }}</label>
                   <PvPassword :disabled="!form.passwordLogin" :minlength="8" :maxlength="200" v-model="form.password2"
@@ -90,8 +90,8 @@
 
         <h5>{{ $tc('users.roles') }}</h5>
         <div class="box">
-          <div class="columns">
-            <div class="column is-6">
+          <div class="grid">
+            <div class="col-6">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $tc('users.userRole') }}</label>
                 <PvSelect v-model="form.userRoleId" name="user_role" required
@@ -99,7 +99,7 @@
               </div>
             </div>
 
-            <div class="column is-6">
+            <div class="col-6">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $tc('users.listRole', 0) }}</label>
                 <PvSelect v-model="form.listRoleId" name="list_role"

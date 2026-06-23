@@ -1,7 +1,7 @@
 <template>
   <section class="dashboard content">
-    <header class="columns">
-      <div class="column is-two-thirds">
+    <header class="grid">
+      <div class="col-8">
         <h1 class="title is-5">
           {{ $utils.niceDate(new Date()) }}
         </h1>
@@ -9,16 +9,16 @@
     </header>
 
     <section class="counts wrap">
-      <div class="tile is-ancestor">
-        <div class="tile is-vertical is-12">
-          <div class="tile">
-            <div class="tile is-parent is-vertical relative">
+      <div class="grid">
+        <div class="col-12 grid flex-column">
+          <div class="grid">
+            <div class="col grid flex-column relative">
               <div v-if="isCountsLoading" class="flex justify-center p-8">
                 <PvProgressSpinner style="width:2rem;height:2rem" />
               </div>
-              <article class="tile is-child notification" data-cy="lists">
-                <div class="columns is-mobile">
-                  <div class="column is-6">
+              <article class="col notification" data-cy="lists">
+                <div class="grid">
+                  <div class="col-6">
                     <p class="title">
                       <i class="pi pi-list" />
                       {{ $utils.niceNumber(counts.lists.total) }}
@@ -27,7 +27,7 @@
                       {{ $tc('globals.terms.list', counts.lists.total) }}
                     </p>
                   </div>
-                  <div class="column is-6">
+                  <div class="col-6">
                     <ul class="no has-text-grey">
                       <li>
                         <label for="#">{{ $utils.niceNumber(counts.lists.public) }}</label>
@@ -50,9 +50,9 @@
                 </div>
               </article><!-- lists -->
 
-              <article class="tile is-child notification" data-cy="campaigns">
-                <div class="columns is-mobile">
-                  <div class="column is-6">
+              <article class="col notification" data-cy="campaigns">
+                <div class="grid">
+                  <div class="col-6">
                     <p class="title">
                       <i class="pi pi-send" />
                       {{ $utils.niceNumber(counts.campaigns.total) }}
@@ -61,7 +61,7 @@
                       {{ $tc('globals.terms.campaign', counts.campaigns.total) }}
                     </p>
                   </div>
-                  <div class="column is-6">
+                  <div class="col-6">
                     <ul class="no has-text-grey">
                       <li v-for="(num, status) in counts.campaigns.byStatus" :key="status">
                         <label for="#" :data-cy="`campaigns-${status}`">{{ num }}</label>
@@ -76,13 +76,13 @@
               </article><!-- campaigns -->
             </div><!-- block -->
 
-            <div class="tile is-parent relative">
+            <div class="col relative">
               <div v-if="isCountsLoading" class="flex justify-center p-8">
                 <PvProgressSpinner style="width:2rem;height:2rem" />
               </div>
-              <article class="tile is-child notification" data-cy="subscribers">
-                <div class="columns is-mobile">
-                  <div class="column is-6">
+              <article class="col notification" data-cy="subscribers">
+                <div class="grid">
+                  <div class="col-6">
                     <p class="title">
                       <i class="pi pi-users" />
                       {{ $utils.niceNumber(counts.subscribers.total) }}
@@ -92,7 +92,7 @@
                     </p>
                   </div>
 
-                  <div class="column is-6">
+                  <div class="col-6">
                     <ul class="no has-text-grey">
                       <li>
                         <label for="#">{{ $utils.niceNumber(counts.subscribers.blocklisted) }}</label>
@@ -106,8 +106,8 @@
                   </div><!-- subscriber breakdown -->
                 </div><!-- subscriber columns -->
                 <hr />
-                <div class="columns" data-cy="messages">
-                  <div class="column is-12">
+                <div class="grid" data-cy="messages">
+                  <div class="col-12">
                     <p class="title">
                       <i class="pi pi-envelope" />
                       {{ $utils.niceNumber(counts.messages) }}
@@ -120,19 +120,19 @@
               </article><!-- subscribers -->
             </div>
           </div>
-          <div class="tile is-parent relative">
+          <div class="col relative">
             <div v-if="isChartsLoading" class="flex justify-center p-8">
               <PvProgressSpinner style="width:2rem;height:2rem" />
             </div>
-            <article class="tile is-child notification charts">
-              <div class="columns">
-                <div class="column is-6">
+            <article class="col notification charts">
+              <div class="grid">
+                <div class="col-6">
                   <h3 class="title is-size-6">
                     {{ $t('dashboard.campaignViews') }}
                   </h3><br />
                   <chart type="line" v-if="campaignViews" :data="campaignViews" />
                 </div>
-                <div class="column is-6">
+                <div class="col-6">
                   <h3 class="title is-size-6 has-text-right">
                     {{ $t('dashboard.linkClicks') }}
                   </h3><br />

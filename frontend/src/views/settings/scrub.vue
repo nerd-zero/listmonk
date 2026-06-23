@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="block box">
-      <div class="columns">
-        <div class="column is-2">
+      <div class="grid">
+        <div class="col-2">
           <div class="field">
             <div class="flex items-center gap-2">
               <PvToggleSwitch v-model="data.scrub.enabled" name="scrub.enabled" />
@@ -11,7 +11,7 @@
           </div>
         </div>
 
-        <div class="column" :class="{ disabled: !data.scrub.enabled }">
+        <div class="col" :class="{ disabled: !data.scrub.enabled }">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('settings.scrub.url') }}</label>
             <PvInputText v-model="data.scrub.url" name="scrub.url"

@@ -1,8 +1,8 @@
 <template>
   <!-- Two-way Data-Binding -->
   <section class="editor">
-    <div class="columns">
-      <div class="column is-three-quarters is-inline-flex">
+    <div class="grid">
+      <div class="col-9 is-inline-flex">
         <div class="field mr-4 mb-0">
           <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.format') }}</label>
           <select v-model="contentTypeSel" :disabled="disabled" name="content_type">
@@ -54,7 +54,7 @@
           </div>
         </div>
       </div>
-      <div class="column is- has-text-right">
+      <div class="col has-text-right">
         <PvButton @click="onTogglePreview" severity="primary" icon="pi pi-file-find" data-cy="btn-preview"
           aria-keyshortcuts="F9">
           <span class="has-kbd">{{ $t('campaigns.preview') }} <span class="kbd">F9</span></span>

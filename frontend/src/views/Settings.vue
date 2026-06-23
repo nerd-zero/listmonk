@@ -4,14 +4,14 @@
       <div v-if="loading.settings || isLoading" class="flex justify-center p-8">
         <PvProgressSpinner />
       </div>
-      <header class="columns page-header">
-        <div class="column is-half">
+      <header class="grid page-header">
+        <div class="col-6">
           <h1 class="title is-4">
             {{ $t('settings.title') }}
             <span class="has-text-grey-light">({{ serverConfig.version }})</span>
           </h1>
         </div>
-        <div class="column has-text-right">
+        <div class="col has-text-right">
           <div v-if="$can('settings:manage')">
             <PvButton :disabled="!hasFormChanged" severity="primary" icon="pi pi-save"
               type="submit" class="isSaveEnabled" data-cy="btn-save"

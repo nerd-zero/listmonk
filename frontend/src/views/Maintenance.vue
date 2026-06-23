@@ -13,16 +13,16 @@
       <h4 class="is-size-4">
         {{ $t('globals.terms.subscribers') }}
       </h4><br />
-      <div class="columns">
-        <div class="column is-4">
+      <div class="grid">
+        <div class="col-4">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">Data</label>
             <PvSelect v-model="subscriberType" :options="subscriberTypeOptions" option-label="label" option-value="value" class="w-full" />
             <small class="block mt-1 text-color-secondary">{{ $t('maintenance.orphanHelp') }}</small>
           </div>
         </div>
-        <div class="column is-5" />
-        <div class="column">
+        <div class="col-5" />
+        <div class="col">
           <br />
           <PvButton severity="primary" :loading="loading.maintenance" @click="deleteSubscribers" class="w-full"
             :label="$t('globals.buttons.delete')" />
@@ -34,21 +34,21 @@
       <h4 class="is-size-4">
         {{ $tc('globals.terms.subscriptions', 2) }}
       </h4><br />
-      <div class="columns">
-        <div class="column is-4">
+      <div class="grid">
+        <div class="col-4">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">Data</label>
             <PvSelect v-model="subscriptionType" :options="subscriptionTypeOptions" option-label="label" option-value="value" class="w-full" />
           </div>
         </div>
-        <div class="column is-4">
+        <div class="col-4">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('maintenance.olderThan') }}</label>
             <PvDatePicker v-model="subscriptionDate" required class="w-full" :date-format="'yy-mm-dd'" />
           </div>
         </div>
-        <div class="column is-1" />
-        <div class="column">
+        <div class="col-1" />
+        <div class="col">
           <br />
           <PvButton severity="primary" :loading="loading.maintenance" @click="deleteSubscriptions" class="w-full"
             :label="$t('globals.buttons.delete')" />
@@ -60,21 +60,21 @@
       <h4 class="is-size-4">
         {{ $t('globals.terms.analytics') }}
       </h4><br />
-      <div class="columns">
-        <div class="column is-4">
+      <div class="grid">
+        <div class="col-4">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">Data</label>
             <PvSelect v-model="analyticsType" :options="analyticsTypeOptions" option-label="label" option-value="value" class="w-full" />
           </div>
         </div>
-        <div class="column is-4">
+        <div class="col-4">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('maintenance.olderThan') }}</label>
             <PvDatePicker v-model="analyticsDate" required class="w-full" :date-format="'yy-mm-dd'" />
           </div>
         </div>
-        <div class="column is-1" />
-        <div class="column">
+        <div class="col-1" />
+        <div class="col">
           <br />
           <PvButton severity="primary" :loading="loading.maintenance" @click="deleteAnalytics" class="w-full"
             :label="$t('globals.buttons.delete')" />
@@ -86,21 +86,21 @@
         {{ $t('subscribers.export') }}
       </h5>
       <br />
-      <div class="columns">
-        <div class="column is-4">
+      <div class="grid">
+        <div class="col-4">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">Data</label>
             <PvSelect v-model="exportType" :options="exportTypeOptions" option-label="label" option-value="value" class="w-full" />
           </div>
         </div>
-        <div class="column is-4">
+        <div class="col-4">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('analytics.fromDate') }}</label>
             <PvDatePicker v-model="exportDate" required class="w-full" :date-format="'yy-mm-dd'" />
           </div>
         </div>
-        <div class="column is-1" />
-        <div class="column">
+        <div class="col-1" />
+        <div class="col">
           <br />
           <a :href="exportURL" class="w-full">
             <PvButton severity="primary" icon="pi pi-download" class="w-full"
@@ -119,8 +119,8 @@
         {{ $t('maintenance.database.vacuumHelp') }}
       </p>
       <br />
-      <div class="columns">
-        <div class="column is-2">
+      <div class="grid">
+        <div class="col-2">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('globals.buttons.enabled') }}</label>
             <div class="flex items-center gap-2">
@@ -128,15 +128,15 @@
             </div>
           </div>
         </div>
-        <div class="column is-4" :class="{ disabled: !dbSettings.vacuum }">
+        <div class="col-4" :class="{ disabled: !dbSettings.vacuum }">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('settings.maintenance.cron') }}</label>
             <PvInputText v-model="dbSettings.vacuum_cron_interval" placeholder="0 2 * * *" :disabled="!dbSettings.vacuum"
               pattern="((\*|[0-9,\-\/]+)\s+){4}(\*|[0-9,\-\/]+)" class="w-full" />
           </div>
         </div>
-        <div class="column is-3" />
-        <div class="column is-3">
+        <div class="col-3" />
+        <div class="col-3">
           <br />
           <PvButton severity="primary" type="submit" :loading="loading.settings" class="w-full"
             :label="$t('globals.buttons.save')" />

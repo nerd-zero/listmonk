@@ -24,15 +24,15 @@
             :placeholder="$t('subscribers.email')" required />
         </div>
 
-        <div class="columns">
-          <div class="column is-8">
+        <div class="grid">
+          <div class="col-8">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
               <PvInputText :maxlength="200" v-model="form.name" name="name"
                 :placeholder="$t('globals.fields.name')" />
             </div>
           </div>
-          <div class="column is-4">
+          <div class="col-4">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
               <PvSelect v-model="form.status" name="status" :placeholder="$t('globals.fields.status')" required
@@ -54,8 +54,8 @@
             <PvTabPanel value="0">
               <list-selector :label="$t('subscribers.lists')" :placeholder="$t('subscribers.listsPlaceholder')"
                 :message="$t('subscribers.listsHelp')" v-model="form.lists" :selected="form.lists" :all="lists.results" />
-              <div class="columns">
-                <div class="column is-7">
+              <div class="grid">
+                <div class="col-7">
                   <div class="field">
                     <small class="block mt-1 text-color-secondary">{{ $t('subscribers.preconfirmHelp') }}</small>
                     <div class="flex items-center gap-2">
@@ -64,7 +64,7 @@
                     </div>
                   </div>
                 </div>
-                <div v-if="$can('subscribers:manage') && isEditing" class="column is-5 has-text-right">
+                <div v-if="$can('subscribers:manage') && isEditing" class="col-5 has-text-right">
                   <a href="#" @click.prevent="sendOptinConfirmation" :class="{ 'is-disabled': !hasOptinList }">
                     <i class="pi pi-envelope" />
                     {{ $t('subscribers.sendOptinConfirm') }}</a>

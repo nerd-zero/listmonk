@@ -1,7 +1,7 @@
 <template>
   <div class="items">
-    <div class="columns">
-      <div class="column is-3">
+    <div class="grid">
+      <div class="col-3">
         <div class="field">
           <div class="flex items-center gap-2">
             <PvToggleSwitch v-model="data['security.oidc']['enabled']" name="security.oidc" />
@@ -10,7 +10,7 @@
           <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCHelp') }}</small>
         </div>
       </div>
-      <div class="column is-9">
+      <div class="col-9">
         <div class="field">
           <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCURL') }}</label>
           <div>
@@ -87,8 +87,8 @@
     </div>
 
     <hr />
-    <div class="columns">
-      <div class="column is-3">
+    <div class="grid">
+      <div class="col-3">
         <div class="field">
           <div class="flex items-center gap-2">
             <PvToggleSwitch v-model="captchaEnabled" name="security.captcha" />
@@ -97,7 +97,7 @@
           <small class="block mt-1 text-color-secondary">{{ $t('settings.security.enableCaptchaHelp') }}</small>
         </div>
       </div>
-      <div class="column is-9" v-if="captchaEnabled">
+      <div class="col-9" v-if="captchaEnabled">
         <div class="field">
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
@@ -139,8 +139,8 @@
     <hr />
 
     <!-- CORS -->
-    <div class="columns">
-      <div class="column is-12">
+    <div class="grid">
+      <div class="col-12">
         <h3 class="is-size-6"><strong>{{ $t('settings.security.trustedURLs') }} / CORS</strong></h3><br />
         <div class="field">
           <PvTextarea v-model="trustedURLs" name="trusted_urls" rows="5"

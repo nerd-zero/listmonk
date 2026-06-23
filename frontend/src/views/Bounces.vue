@@ -1,7 +1,7 @@
 <template>
   <section class="bounces">
-    <header class="page-header columns">
-      <div class="column is-two-thirds">
+    <header class="page-header grid">
+      <div class="col-8">
         <h1 class="title is-4">
           {{ $t('globals.terms.bounces') }}
           <span v-if="bounces.total > 0">({{ bounces.total }})</span>

@@ -2,8 +2,8 @@
   <div>
     <div class="items mail-servers">
       <div class="block box" v-for="(item, n) in form.smtp" :key="n">
-        <div class="columns">
-          <div class="column is-2">
+        <div class="grid">
+          <div class="col-2">
             <div class="field">
               <div class="flex items-center gap-2">
                 <PvToggleSwitch v-model="item.enabled" name="enabled" data-cy="btn-enable-smtp" />
@@ -18,16 +18,16 @@
             </div>
           </div><!-- first column -->
 
-          <div class="column" :class="{ disabled: !item.enabled }">
-            <div class="columns">
-              <div class="column is-9">
+          <div class="col" :class="{ disabled: !item.enabled }">
+            <div class="grid">
+              <div class="col-9">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.host') }}</label>
                   <PvInputText v-model="item.host" name="host" placeholder="smtp.yourmailserver.net" :maxlength="200" />
                   <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.hostHelp') }}</small>
                 </div>
               </div>
-              <div class="column">
+              <div class="col">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.port') }}</label>
                   <PvInputNumber v-model="item.port" name="port" placeholder="25" :min="1" :max="65535" />
@@ -36,8 +36,8 @@
               </div>
             </div><!-- host -->
 
-            <div class="columns">
-              <div class="column is-3">
+            <div class="grid">
+              <div class="col-3">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.authProtocol') }}</label>
                   <PvSelect v-model="item.auth_protocol" name="auth_protocol"
@@ -45,16 +45,16 @@
                     option-label="label" option-value="value" />
                 </div>
               </div>
-              <div class="column">
-                <div class="columns">
-                  <div class="column">
+              <div class="col">
+                <div class="grid">
+                  <div class="col">
                     <div class="field">
                       <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.username') }}</label>
                       <PvInputText v-model="item.username" :class="`smtp-username-${n}`"
                         :disabled="item.auth_protocol === 'none'" name="username" placeholder="mysmtp" :maxlength="200" />
                     </div>
                   </div>
-                  <div class="column">
+                  <div class="col">
                     <div class="field">
                       <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.password') }}</label>
                       <PvPassword v-model="item.password" :disabled="item.auth_protocol === 'none'" name="password"
@@ -79,17 +79,17 @@
             </div>
             <hr />
 
-            <div class="columns">
-              <div class="column is-6">
+            <div class="grid">
+              <div class="col-6">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.heloHost') }}</label>
                   <PvInputText v-model="item.hello_hostname" name="hello_hostname" placeholder="" :maxlength="200" />
                   <small class="block mt-1 text-color-secondary">{{ $t('settings.smtp.heloHostHelp') }}</small>
                 </div>
               </div>
-              <div class="column">
-                <div class="columns">
-                  <div class="column">
+              <div class="col">
+                <div class="grid">
+                  <div class="col">
                     <div class="field">
                       <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.tls') }}</label>
                       <PvSelect v-model="item.tls_type" name="items.tls_type"
@@ -98,7 +98,7 @@
                       <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.tlsHelp') }}</small>
                     </div>
                   </div>
-                  <div class="column">
+                  <div class="col">
                     <div class="field">
                       <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.skipTLSHelp') }}</small>
                       <div class="flex items-center gap-2">
@@ -113,15 +113,15 @@
             </div><!-- TLS -->
             <hr />
 
-            <div class="columns">
-              <div class="column is-4">
+            <div class="grid">
+              <div class="col-4">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.maxConns') }}</label>
                   <PvInputNumber v-model="item.max_conns" name="max_conns" placeholder="25" :min="1" :max="65535" />
                   <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.maxConnsHelp') }}</small>
                 </div>
               </div>
-              <div class="column is-4">
+              <div class="col-4">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.idleTimeout') }}</label>
                   <PvInputText v-model="item.idle_timeout" name="idle_timeout" placeholder="15s" :pattern="regDuration"
@@ -129,7 +129,7 @@
                   <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.idleTimeoutHelp') }}</small>
                 </div>
               </div>
-              <div class="column is-4">
+              <div class="col-4">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.waitTimeout') }}</label>
                   <PvInputText v-model="item.wait_timeout" name="wait_timeout" placeholder="5s" :pattern="regDuration"
@@ -139,15 +139,15 @@
               </div>
             </div>
 
-            <div class="columns">
-              <div class="column is-4">
+            <div class="grid">
+              <div class="col-4">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.retries') }}</label>
                   <PvInputNumber v-model="item.max_msg_retries" name="max_msg_retries" placeholder="2" :min="1" :max="1000" />
                   <small class="block mt-1 text-color-secondary">{{ $t('settings.smtp.retriesHelp') }}</small>
                 </div>
               </div>
-              <div class="column is-4">
+              <div class="col-4">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.retryDelay') }}</label>
                   <PvInputText v-model="item.msg_retry_delay" name="msg_retry_delay" placeholder="0s" :pattern="regDuration"
@@ -158,15 +158,15 @@
             </div>
 
             <hr />
-            <div class="columns">
-              <div class="column is-6">
+            <div class="grid">
+              <div class="col-6">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
                   <PvInputText v-model="item.name" name="name" placeholder="email-primary" :maxlength="100" />
                   <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.nameHelp') }}</small>
                 </div>
               </div>
-              <div class="column is-6">
+              <div class="col-6">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.fromAddresses') }}</label>
                   <PvAutoComplete v-model="item.from_addresses" name="from_addresses" multiple
@@ -176,8 +176,8 @@
               </div>
             </div>
 
-            <div class="columns">
-              <div class="column">
+            <div class="grid">
+              <div class="col">
                 <p v-if="item.email_headers.length === 0 && !item.showHeaders">
                   <a href="#" @click.prevent="() => showSMTPHeaders(n)">
                     <i class="pi pi-plus" />{{ $t('settings.smtp.setCustomHeaders') }}</a>
@@ -192,14 +192,14 @@
             <hr />
 
             <form @submit.prevent="() => doSMTPTest(item, n)">
-              <div class="columns">
+              <div class="grid">
                 <template v-if="smtpTestItem === n">
-                  <div class="column is-5">
+                  <div class="col-5">
                     <strong>{{ $t('settings.general.fromEmail') }}</strong>
                     <br />
                     {{ settings['app.from_email'] }}
                   </div>
-                  <div class="column is-4">
+                  <div class="col-4">
                     <div class="field">
                       <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.toEmail') }}</label>
                       <PvInputText type="email" required v-model="testEmail" :ref="'testEmailTo'"
@@ -207,15 +207,15 @@
                     </div>
                   </div>
                 </template>
-                <div class="column has-text-right">
+                <div class="col has-text-right">
                   <PvButton v-if="smtpTestItem === n" severity="primary" @click.prevent="() => doSMTPTest(item, n)"
                     :label="$t('settings.smtp.sendTest')" />
                   <a href="#" v-else class="is-primary" @click.prevent="showTestForm(n)">
                     <i class="pi pi-send" /> {{ $t('settings.smtp.testConnection') }}
                   </a>
                 </div>
-                <div class="columns">
-                  <div class="column" />
+                <div class="grid">
+                  <div class="col" />
                 </div>
               </div>
               <div v-if="errMsg && smtpTestItem === n">

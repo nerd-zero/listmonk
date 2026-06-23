@@ -1,7 +1,7 @@
 <template>
   <div>
-    <div class="columns mb-6">
-      <div class="column is-4">
+    <div class="grid mb-6">
+      <div class="col-4">
         <div class="field" data-cy="btn-enable-bounce">
           <div class="flex items-center gap-2">
             <PvToggleSwitch v-model="data['bounce.enabled']" name="bounce.enabled" />
@@ -9,13 +9,13 @@
           </div>
         </div>
       </div>
-      <div class="column">
-        <div v-for="typ in bounceTypes" :key="typ" class="columns">
-          <div class="column is-2" :class="{ disabled: !data['bounce.enabled'] }" :label="$t('settings.bounces.count')"
+      <div class="col">
+        <div v-for="typ in bounceTypes" :key="typ" class="grid">
+          <div class="col-2" :class="{ disabled: !data['bounce.enabled'] }" :label="$t('settings.bounces.count')"
             label-position="on-border">
             {{ $t(`bounces.${typ}`) }}
           </div>
-          <div class="column is-4" :class="{ disabled: !data['bounce.enabled'] }">
+          <div class="col-4" :class="{ disabled: !data['bounce.enabled'] }">
             <div class="field" data-cy="btn-bounce-count">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.count') }}</label>
               <PvInputNumber v-model="data['bounce.actions'][typ]['count']" name="bounce.count"
@@ -23,7 +23,7 @@
               <small class="block mt-1 text-color-secondary">{{ $t('settings.bounces.countHelp') }}</small>
             </div>
           </div>
-          <div class="column is-4" :class="{ disabled: !data['bounce.enabled'] }">
+          <div class="col-4" :class="{ disabled: !data['bounce.enabled'] }">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.action') }}</label>
               <PvSelect v-model="data['bounce.actions'][typ]['action']" name="bounce.action"
@@ -32,7 +32,7 @@
           </div>
         </div>
       </div>
-    </div><!-- columns -->
+    </div><!-- grid -->
 
     <div class="mb-6">
       <div class="field" data-cy="btn-enable-bounce-webhook">
@@ -47,8 +47,8 @@
         </p>
       </div>
       <div class="box" v-if="data['bounce.webhooks_enabled']">
-        <div class="columns">
-          <div class="column">
+        <div class="grid">
+          <div class="col">
             <div class="field">
               <div class="flex items-center gap-2">
                 <PvToggleSwitch v-model="data['bounce.ses_enabled']" name="ses_enabled"
@@ -58,8 +58,8 @@
             </div>
           </div>
         </div>
-        <div class="columns">
-          <div class="column is-3">
+        <div class="grid">
+          <div class="col-3">
             <div class="field">
               <div class="flex items-center gap-2">
                 <PvToggleSwitch v-model="data['bounce.azure'].enabled" name="azure_enabled"
@@ -68,7 +68,7 @@
               </div>
             </div>
           </div>
-          <div class="column">
+          <div class="col">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.azureSharedSecret') }}</label>
               <PvPassword v-model="data['bounce.azure'].shared_secret" :feedback="false"
@@ -77,7 +77,7 @@
               <small class="block mt-1 text-color-secondary">{{ $t('settings.bounces.azureSharedSecretHelp') }}</small>
             </div>
           </div>
-          <div class="column">
+          <div class="col">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.azureSharedSecretHeader') }}</label>
               <PvInputText v-model="data['bounce.azure'].shared_secret_header" type="text"
@@ -87,8 +87,8 @@
             </div>
           </div>
         </div>
-        <div class="columns">
-          <div class="column is-3">
+        <div class="grid">
+          <div class="col-3">
             <div class="field">
               <div class="flex items-center gap-2">
                 <PvToggleSwitch v-model="data['bounce.sendgrid_enabled']" name="sendgrid_enabled"
@@ -97,7 +97,7 @@
               </div>
             </div>
           </div>
-          <div class="column">
+          <div class="col">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.sendgridKey') }}</label>
               <PvPassword v-model="data['bounce.sendgrid_key']" :feedback="false"
@@ -107,8 +107,8 @@
             </div>
           </div>
         </div>
-        <div class="columns">
-          <div class="column is-3">
+        <div class="grid">
+          <div class="col-3">
             <div class="field">
               <div class="flex items-center gap-2">
                 <PvToggleSwitch v-model="data['bounce.postmark'].enabled" name="postmark_enabled"
@@ -117,7 +117,7 @@
               </div>
             </div>
           </div>
-          <div class="column">
+          <div class="col">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.postmarkUsername') }}</label>
               <PvInputText v-model="data['bounce.postmark'].username" type="text"
@@ -126,7 +126,7 @@
               <small class="block mt-1 text-color-secondary">{{ $t('settings.bounces.postmarkUsernameHelp') }}</small>
             </div>
           </div>
-          <div class="column">
+          <div class="col">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.postmarkPassword') }}</label>
               <PvPassword v-model="data['bounce.postmark'].password" :feedback="false"
@@ -136,8 +136,8 @@
             </div>
           </div>
         </div>
-        <div class="columns">
-          <div class="column is-3">
+        <div class="grid">
+          <div class="col-3">
             <div class="field">
               <div class="flex items-center gap-2">
                 <PvToggleSwitch v-model="data['bounce.forwardemail'].enabled" name="forwardemail_enabled"
@@ -146,7 +146,7 @@
               </div>
             </div>
           </div>
-          <div class="column">
+          <div class="col">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.forwardemailKey') }}</label>
               <PvPassword v-model="data['bounce.forwardemail'].key" :feedback="false"
@@ -156,8 +156,8 @@
             </div>
           </div>
         </div>
-        <div class="columns">
-          <div class="column is-3">
+        <div class="grid">
+          <div class="col-3">
             <div class="field">
               <div class="flex items-center gap-2">
                 <PvToggleSwitch v-model="data['bounce.lettermint'].enabled" name="lettermint_enabled"
@@ -166,7 +166,7 @@
               </div>
             </div>
           </div>
-          <div class="column">
+          <div class="col">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.lettermintKey') }}</label>
               <PvPassword v-model="data['bounce.lettermint'].key" :feedback="false"
@@ -190,24 +190,24 @@
 
     <template v-if="data['bounce.enabled'] && data['bounce.mailboxes'][0].enabled">
       <div class="block box" v-for="(item, n) in data['bounce.mailboxes']" :key="n">
-        <div class="columns">
-          <div class="column" :class="{ disabled: !item.enabled }">
-            <div class="columns">
-              <div class="column is-3">
+        <div class="grid">
+          <div class="col" :class="{ disabled: !item.enabled }">
+            <div class="grid">
+              <div class="col-3">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.type') }}</label>
                   <PvSelect v-model="item.type" name="type"
                     :options="[{ label: 'POP', value: 'pop' }]" option-label="label" option-value="value" />
                 </div>
               </div>
-              <div class="column is-6">
+              <div class="col-6">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.host') }}</label>
                   <PvInputText v-model="item.host" name="host" placeholder="bounce.yourmailserver.net" :maxlength="200" />
                   <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.hostHelp') }}</small>
                 </div>
               </div>
-              <div class="column is-3">
+              <div class="col-3">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.port') }}</label>
                   <PvInputNumber v-model="item.port" name="port" placeholder="25" :min="1" :max="65535" />
@@ -216,24 +216,24 @@
               </div>
             </div><!-- host -->
 
-            <div class="columns">
-              <div class="column is-3">
+            <div class="grid">
+              <div class="col-3">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.authProtocol') }}</label>
                   <PvSelect v-model="item.auth_protocol" name="auth_protocol"
                     :options="getAuthProtocolOptions(item.type)" option-label="label" option-value="value" />
                 </div>
               </div>
-              <div class="column">
-                <div class="columns">
-                  <div class="column">
+              <div class="col">
+                <div class="grid">
+                  <div class="col">
                     <div class="field">
                       <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.username') }}</label>
                       <PvInputText v-model="item.username" :disabled="item.auth_protocol === 'none'" name="username"
                         placeholder="mysmtp" :maxlength="200" />
                     </div>
                   </div>
-                  <div class="column">
+                  <div class="col">
                     <div class="field">
                       <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.password') }}</label>
                       <PvPassword v-model="item.password" :disabled="item.auth_protocol === 'none'" name="password"
@@ -245,10 +245,10 @@
               </div>
             </div><!-- auth -->
 
-            <div class="columns">
-              <div class="column is-6">
-                <div class="columns">
-                  <div class="column">
+            <div class="grid">
+              <div class="col-6">
+                <div class="grid">
+                  <div class="col">
                     <div class="field">
                       <div class="flex items-center gap-2">
                         <PvToggleSwitch v-model="item.tls_enabled" name="item.tls_enabled" />
@@ -257,7 +257,7 @@
                       <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.tlsHelp') }}</small>
                     </div>
                   </div>
-                  <div class="column">
+                  <div class="col">
                     <div class="field">
                       <div class="flex items-center gap-2">
                         <PvToggleSwitch v-model="item.tls_skip_verify" :disabled="!item.tls_enabled"
@@ -269,8 +269,8 @@
                   </div>
                 </div>
               </div>
-              <div class="column" />
-              <div class="column is-4">
+              <div class="col" />
+              <div class="col-4">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.scanInterval') }}</label>
                   <PvInputText v-model="item.scan_interval" name="scan_interval" placeholder="15m"
@@ -280,7 +280,7 @@
               </div>
             </div><!-- TLS -->
           </div>
-        </div><!-- second container column -->
+        </div><!-- second container col -->
       </div><!-- block -->
     </template>
   </div>

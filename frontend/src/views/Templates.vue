@@ -1,13 +1,13 @@
 <template>
   <section class="templates">
-    <header class="columns page-header">
-      <div class="column is-10">
+    <header class="grid page-header">
+      <div class="col-10">
         <h1 class="title is-4">
           {{ $t('globals.terms.templates') }}
           <span v-if="templates.length > 0">({{ templates.length }})</span>
         </h1>
       </div>
-      <div class="column has-text-right">
+      <div class="col has-text-right">
         <div v-if="$can('templates:manage')" class="field">
           <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm"
             :label="$t('globals.buttons.new')" />
