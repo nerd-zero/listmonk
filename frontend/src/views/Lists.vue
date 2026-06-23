@@ -36,7 +36,7 @@
         selection-mode="checkbox"
         data-key="id"
         :paginator="true"
-        paginator-position="both"
+        paginator-position="bottom"
         :rows="lists.perPage"
         :total-records="lists.total"
         :lazy="true"
