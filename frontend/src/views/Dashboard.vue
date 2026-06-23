@@ -72,6 +72,29 @@
                   </div>
                 </div>
               </article><!-- campaigns -->
+
+              <article class="tile is-child notification" v-if="settings && settings.scrub">
+                <div class="columns is-mobile is-vcentered">
+                  <div class="column is-6">
+                    <p class="title">
+                      <b-icon :icon="scrubStatus === 'active' ? 'email-check-outline' : 'email-off-outline'" />
+                    </p>
+                    <p class="is-size-6 has-text-grey">
+                      {{ $t('settings.scrub.name') }}
+                    </p>
+                  </div>
+                  <div class="column is-6">
+                    <b-tag :type="scrubStatusType" size="is-medium">
+                      {{ $t(`dashboard.scrub.${scrubStatus}`) }}
+                    </b-tag>
+                    <p class="is-size-7 mt-2">
+                      <router-link to="/settings" class="has-text-grey">
+                        {{ $t('dashboard.scrub.configure') }} →
+                      </router-link>
+                    </p>
+                  </div>
+                </div>
+              </article><!-- mail validation -->
             </div><!-- block -->
 
             <div class="tile is-parent relative">
@@ -190,6 +213,11 @@ export default Vue.extend({
         this.campaignViews = this.makeChart(data.campaignViews);
         this.campaignClicks = this.makeChart(data.linkClicks);
       });
+
+      // Load settings to display Scrub widget (only if not already loaded).
+      if (!this.settings || !this.settings.scrub) {
+        this.$api.getSettings();
+      }
     },
 
     makeChart(data) {
@@ -215,6 +243,19 @@ export default Vue.extend({
     ...mapState(['settings']),
     dayjs() {
       return dayjs;
+    },
+
+    scrubStatus() {
+      const s = this.settings && this.settings.scrub;
+      if (!s || !s.enabled) return 'disabled';
+      if (!s.url || !s.api_key) return 'notConfigured';
+      return 'active';
+    },
+
+    scrubStatusType() {
+      if (this.scrubStatus === 'active') return 'is-success';
+      if (this.scrubStatus === 'notConfigured') return 'is-warning';
+      return '';
     },
   },
 
