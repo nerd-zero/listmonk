@@ -1,11 +1,12 @@
 <template>
-  <section class="logs content relative">
-    <h1 class="title is-4">
-      {{ $t('logs.title') }}
-    </h1>
-    <hr />
-    <log-view :loading="loading.logs" :lines="lines" />
-  </section>
+  <div class="logs-page">
+    <div class="page-header">
+      <h1 class="page-title">{{ $t('logs.title') }}</h1>
+    </div>
+    <div class="table-card">
+      <log-view :loading="loading.logs" :lines="lines" />
+    </div>
+  </div>
 </template>
 
 <script>
@@ -49,3 +50,10 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.logs-page { display: flex; flex-direction: column; gap: 1.5rem; }
+.page-header { display: flex; align-items: center; }
+.page-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0; }
+.table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+</style>

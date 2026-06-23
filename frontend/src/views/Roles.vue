@@ -1,82 +1,68 @@
 <template>
-  <section class="roles">
-    <header class="grid page-header">
-      <div class="col-10">
-        <h1 class="title is-4">
-          {{ $t(isUser ? 'users.userRoles' : 'users.listRoles') }}
-          <span v-if="!isNaN(roles.length)">({{ roles.length }})</span>
-        </h1>
-      </div>
-      <div class="col has-text-right">
-        <div v-if="$can('users:manage')" class="field">
-          <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm('user')"
-            data-cy="btn-new" :label="$t('globals.buttons.new')" />
-        </div>
-      </div>
-    </header>
-    <PvDataTable :value="roles" :loading="isLoading()" hoverable>
-      <PvColumn field="role" :header="$tc('users.role')" sortable>
-        <template #body="{ data }">
-          <a href="#" @click.prevent="showEditForm(data, 'user')">
-            <PvTag v-if="data.id === 1" class="enabled">
-              {{ data.name }}
-            </PvTag>
-            <template v-else>{{ data.name }}</template>
-          </a>
-        </template>
-      </PvColumn>
+  <div class="roles-page">
+    <div class="page-header">
+      <h1 class="page-title">
+        {{ $t(isUser ? 'users.userRoles' : 'users.listRoles') }}
+        <span v-if="!isNaN(roles.length)" class="page-title-count">{{ roles.length }}</span>
+      </h1>
+      <PvButton v-if="$can('users:manage')" severity="primary" icon="pi pi-plus"
+        data-cy="btn-new" @click="showNewForm('user')" :label="$t('globals.buttons.new')" />
+    </div>
 
-      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')"
-        header-class="cy-created_at" sortable>
-        <template #body="{ data }">
-          {{ $utils.niceDate(data.createdAt) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')"
-        header-class="cy-updated_at" sortable>
-        <template #body="{ data }">
-          {{ $utils.niceDate(data.updatedAt) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn body-class="actions has-text-right">
-        <template #body="{ data }">
-          <template v-if="$can('roles:manage')">
-            <a href="#" @click.prevent="$utils.prompt($t('globals.buttons.clone'),
-              {
-                placeholder: $t('globals.fields.name'),
-                value: $t('campaigns.copyOf', { name: data.name }),
-              },
-              (name) => onCloneRole(name, data))" data-cy="btn-clone" :aria-label="$t('globals.buttons.clone')">
-              <i class="pi pi-copy" v-tooltip.bottom="$t('globals.buttons.clone')" />
-            </a>
-
-            <template v-if="data.id !== 1">
-              <a href="#" @click.prevent="showEditForm(data, 'user')" data-cy="btn-edit"
-                :aria-label="$t('globals.buttons.edit')">
-                <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
-              </a>
-
-              <a href="#" @click.prevent="onDeleteRole(data)" data-cy="btn-delete"
-                :aria-label="$t('globals.buttons.delete')">
-                <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
-              </a>
-            </template>
+    <div class="table-card">
+      <PvDataTable :value="roles" :loading="isLoading()">
+        <PvColumn field="role" :header="$tc('users.role')" sortable>
+          <template #body="{ data }">
+            <div class="role-name-cell">
+              <a href="#" class="row-name" @click.prevent="showEditForm(data, 'user')">{{ data.name }}</a>
+              <PvTag v-if="data.id === 1" severity="success" size="small" value="Default" />
+            </div>
           </template>
-        </template>
-      </PvColumn>
+        </PvColumn>
 
-      <template #empty v-if="!isLoading()">
-        <empty-placeholder />
-      </template>
-    </PvDataTable>
+        <PvColumn field="created_at" :header="$t('globals.fields.createdAt')"
+          header-class="cy-created_at" sortable style="width:11rem">
+          <template #body="{ data }">{{ $utils.niceDate(data.createdAt) }}</template>
+        </PvColumn>
+
+        <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')"
+          header-class="cy-updated_at" sortable style="width:11rem">
+          <template #body="{ data }">{{ $utils.niceDate(data.updatedAt) }}</template>
+        </PvColumn>
+
+        <PvColumn style="width:7rem; text-align:right">
+          <template #body="{ data }">
+            <div v-if="$can('roles:manage')" class="row-actions">
+              <button type="button" class="row-action-btn" data-cy="btn-clone"
+                v-tooltip.bottom="$t('globals.buttons.clone')"
+                @click="$utils.prompt($t('globals.buttons.clone'), { placeholder: $t('globals.fields.name'), value: $t('campaigns.copyOf', { name: data.name }) }, (name) => onCloneRole(name, data))">
+                <i class="pi pi-copy" />
+              </button>
+              <template v-if="data.id !== 1">
+                <button type="button" class="row-action-btn" data-cy="btn-edit"
+                  v-tooltip.bottom="$t('globals.buttons.edit')" @click="showEditForm(data, 'user')">
+                  <i class="pi pi-pencil" />
+                </button>
+                <button type="button" class="row-action-btn row-action-btn--danger" data-cy="btn-delete"
+                  v-tooltip.bottom="$t('globals.buttons.delete')" @click="onDeleteRole(data)">
+                  <i class="pi pi-trash" />
+                </button>
+              </template>
+            </div>
+          </template>
+        </PvColumn>
+
+        <template #empty v-if="!isLoading()">
+          <empty-placeholder />
+        </template>
+      </PvDataTable>
+    </div>
 
     <!-- Add / edit form modal -->
     <PvDialog v-model:visible="isFormVisible" :style="{ width: '700px' }" modal @hide="onFormClose">
       <role-form :data="curItem" :type="curType" :is-editing="isEditing" @finished="formFinished" />
     </PvDialog>
-  </section>
+  </div>
 </template>
 
 <script>
@@ -191,3 +177,38 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.roles-page { display: flex; flex-direction: column; gap: 1.5rem; }
+.page-header { display: flex; align-items: center; justify-content: space-between; }
+.page-title {
+  font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.page-title-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #e2e8f0; color: #475569; font-size: 0.85rem; font-weight: 600;
+  border-radius: 999px; padding: 0.1rem 0.65rem;
+}
+.table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+
+.role-name-cell { display: flex; align-items: center; gap: 0.5rem; }
+.row-name { color: #0f172a; font-weight: 500; text-decoration: none; &:hover { color: #3b82f6; } }
+
+.row-actions {
+  display: flex; align-items: center; justify-content: flex-end; gap: 0.2rem;
+  opacity: 0; transition: opacity 0.15s;
+}
+:deep(tr:hover) .row-actions { opacity: 1; }
+
+.row-action-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border: none; border-radius: 6px;
+  background: transparent; color: #64748b; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  i { font-size: 0.85rem; }
+  &:hover { background: #f1f5f9; color: #0f172a; }
+  &--danger:hover { background: #fef2f2; color: #ef4444; }
+}
+</style>

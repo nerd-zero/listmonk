@@ -1,136 +1,114 @@
 <template>
-  <section class="users">
-    <header class="grid page-header">
-      <div class="col-10">
-        <h1 class="title is-4">
-          {{ $t('globals.terms.users') }}
-          <span v-if="!isNaN(users.length)">({{ users.length }})</span>
-        </h1>
-      </div>
-      <div class="col has-text-right">
-        <div v-if="$can('users:manage')" class="field">
-          <PvButton severity="primary" icon="pi pi-plus" class="btn-new" @click="showNewForm" data-cy="btn-new"
-            :label="$t('globals.buttons.new')" />
-        </div>
-      </div>
-    </header>
+  <div class="users-page">
+    <div class="page-header">
+      <h1 class="page-title">
+        {{ $t('globals.terms.users') }}
+        <span v-if="!isNaN(users.length)" class="page-title-count">{{ users.length }}</span>
+      </h1>
+      <PvButton v-if="$can('users:manage')" severity="primary" icon="pi pi-plus"
+        data-cy="btn-new" @click="showNewForm" :label="$t('globals.buttons.new')" />
+    </div>
 
-    <PvDataTable :value="users" :loading="loading.users" :rows="20"
-      sort-field="createdAt" sort-order="1"
-      v-model:selection="checked"
-      data-key="id">
-      <template #header>
-        <div class="grid">
-          <div class="col-6">
-            <form @submit.prevent="getUsers">
-              <div class="field">
-                <div class="p-inputgroup">
-                  <PvInputText v-model="queryParams.query" name="query" ref="query"
-                    data-cy="query" />
-                  <PvButton type="submit" severity="primary" icon="pi pi-search" data-cy="btn-query" />
-                </div>
-              </div>
+    <div class="table-card">
+      <PvDataTable :value="users" :loading="loading.users" :rows="20"
+        sort-field="createdAt" sort-order="1" v-model:selection="checked" data-key="id">
+        <template #header>
+          <div class="table-toolbar">
+            <form class="search-form" @submit.prevent="getUsers">
+              <PvIconField>
+                <PvInputIcon class="pi pi-search" />
+                <PvInputText v-model="queryParams.query" name="query" ref="query"
+                  class="search-input" placeholder="Search users…" data-cy="query" />
+              </PvIconField>
             </form>
           </div>
-        </div>
-      </template>
-
-      <PvColumn selection-mode="multiple" header-style="width:3rem" />
-
-      <PvColumn field="username" :header="$t('users.username')" header-class="cy-username" sortable>
-        <template #body="{ data }">
-          <a :href="`/users/${data.id}`" @click.prevent="showEditForm(data)"
-            :class="{ 'has-text-grey': data.status === 'disabled' }">
-            {{ data.username }}
-          </a>
-          <PvTag v-if="data.status === 'disabled'" class="ml-1">
-            {{ $t(`users.status.${data.status}`) }}
-          </PvTag>
-          <PvTag v-if="data.type === 'api'" class="api ml-1">
-            <i class="pi pi-code mr-1" />
-            {{ $t(`users.type.${data.type}`) }}
-          </PvTag>
-          <div class="has-text-grey is-size-7 mt-2">
-            {{ data.name }}
-          </div>
         </template>
-      </PvColumn>
 
-      <PvColumn field="status" :header="$tc('users.role')" header-class="cy-status" sortable>
-        <template #body="{ data }">
-          <router-link :to="{ name: 'userRoles' }">
-            <PvTag :class="data.userRole.id === 1 ? 'enabled' : 'primary'">
-              <i class="pi pi-user mr-1" />
-              {{ data.userRole.name }}
-            </PvTag>
-          </router-link>
-          <router-link :to="{ name: 'listRoles' }">
-            <PvTag v-if="data.listRole" class="ml-1">
-              <i class="pi pi-list mr-1" />
-              {{ data.listRole.name }}
-            </PvTag>
-          </router-link>
-        </template>
-      </PvColumn>
+        <PvColumn selection-mode="multiple" header-style="width:3rem" />
 
-      <PvColumn field="name" :header="$t('subscribers.email')" header-class="cy-name" sortable>
-        <template #body="{ data }">
-          <div>
-            <a v-if="data.email" :href="`/users/${data.id}`" @click.prevent="showEditForm(data)"
-              :class="{ 'has-text-grey': data.status === 'disabled' }">
+        <PvColumn field="username" :header="$t('users.username')" header-class="cy-username" sortable>
+          <template #body="{ data }">
+            <div class="user-cell">
+              <div class="user-name-row">
+                <a class="row-name" :class="{ 'row-name--disabled': data.status === 'disabled' }"
+                  :href="`/users/${data.id}`" @click.prevent="showEditForm(data)">
+                  {{ data.username }}
+                </a>
+                <PvTag v-if="data.status === 'disabled'" severity="secondary" size="small"
+                  :value="$t(`users.status.${data.status}`)" />
+                <PvTag v-if="data.type === 'api'" severity="info" size="small">
+                  <i class="pi pi-code" /> {{ $t(`users.type.${data.type}`) }}
+                </PvTag>
+              </div>
+              <span v-if="data.name" class="user-fullname">{{ data.name }}</span>
+            </div>
+          </template>
+        </PvColumn>
+
+        <PvColumn field="status" :header="$tc('users.role')" header-class="cy-status" sortable>
+          <template #body="{ data }">
+            <div class="role-cell">
+              <router-link :to="{ name: 'userRoles' }">
+                <PvTag :severity="data.userRole.id === 1 ? 'success' : 'info'" size="small">
+                  <i class="pi pi-user" /> {{ data.userRole.name }}
+                </PvTag>
+              </router-link>
+              <router-link v-if="data.listRole" :to="{ name: 'listRoles' }">
+                <PvTag severity="secondary" size="small">
+                  <i class="pi pi-list" /> {{ data.listRole.name }}
+                </PvTag>
+              </router-link>
+            </div>
+          </template>
+        </PvColumn>
+
+        <PvColumn field="name" :header="$t('subscribers.email')" header-class="cy-name" sortable>
+          <template #body="{ data }">
+            <a v-if="data.email" class="row-name" :href="`/users/${data.id}`" @click.prevent="showEditForm(data)">
               {{ data.email }}
             </a>
-            <template v-else>
-              —
-            </template>
-          </div>
+            <span v-else class="text-muted">—</span>
+          </template>
+        </PvColumn>
+
+        <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable style="width:10rem">
+          <template #body="{ data }">{{ $utils.niceDate(data.createdAt) }}</template>
+        </PvColumn>
+
+        <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable style="width:10rem">
+          <template #body="{ data }">{{ $utils.niceDate(data.updatedAt) }}</template>
+        </PvColumn>
+
+        <PvColumn field="last_login" :header="$t('users.lastLogin')" header-class="cy-updated_at" sortable style="width:10rem">
+          <template #body="{ data }">{{ data.loggedinAt ? $utils.niceDate(data.loggedinAt, true) : '—' }}</template>
+        </PvColumn>
+
+        <PvColumn style="width:6rem; text-align:right" align-frozen="right">
+          <template #body="{ data }">
+            <div class="row-actions">
+              <button v-if="$can('users:manage')" type="button" class="row-action-btn"
+                data-cy="btn-edit" v-tooltip.bottom="$t('globals.buttons.edit')" @click="showEditForm(data)">
+                <i class="pi pi-pencil" />
+              </button>
+              <button v-if="$can('users:manage')" type="button" class="row-action-btn row-action-btn--danger"
+                data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')" @click="deleteUser(data)">
+                <i class="pi pi-trash" />
+              </button>
+            </div>
+          </template>
+        </PvColumn>
+
+        <template #empty v-if="!loading.users">
+          <empty-placeholder />
         </template>
-      </PvColumn>
-
-      <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" header-class="cy-created_at" sortable>
-        <template #body="{ data }">
-          {{ $utils.niceDate(data.createdAt) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn field="updated_at" :header="$t('globals.fields.updatedAt')" header-class="cy-updated_at" sortable>
-        <template #body="{ data }">
-          {{ $utils.niceDate(data.updatedAt) }}
-        </template>
-      </PvColumn>
-
-      <PvColumn field="last_login" :header="$t('users.lastLogin')" header-class="cy-updated_at" sortable>
-        <template #body="{ data }">
-          {{ data.loggedinAt ? $utils.niceDate(data.loggedinAt, true) : '—' }}
-        </template>
-      </PvColumn>
-
-      <PvColumn header-class="actions" body-class="actions" align-frozen="right">
-        <template #body="{ data }">
-          <div>
-            <a v-if="$can('users:manage')" href="#" @click.prevent="showEditForm(data)" data-cy="btn-edit"
-              :aria-label="$t('globals.buttons.edit')">
-              <i class="pi pi-pencil" v-tooltip.bottom="$t('globals.buttons.edit')" />
-            </a>
-
-            <a v-if="$can('users:manage')" href="#" @click.prevent="deleteUser(data)" data-cy="btn-delete"
-              :aria-label="$t('globals.buttons.delete')">
-              <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
-            </a>
-          </div>
-        </template>
-      </PvColumn>
-
-      <template #empty v-if="!loading.users">
-        <empty-placeholder />
-      </template>
-    </PvDataTable>
+      </PvDataTable>
+    </div>
 
     <!-- Add / edit form modal -->
     <PvDialog v-model:visible="isFormVisible" :style="{ width: '600px' }" :closable="true" modal @hide="onFormClose">
       <user-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
     </PvDialog>
-  </section>
+  </div>
 </template>
 
 <script>
@@ -243,3 +221,45 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.users-page { display: flex; flex-direction: column; gap: 1.5rem; }
+.page-header { display: flex; align-items: center; justify-content: space-between; }
+.page-title {
+  font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.page-title-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #e2e8f0; color: #475569; font-size: 0.85rem; font-weight: 600;
+  border-radius: 999px; padding: 0.1rem 0.65rem;
+}
+.table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+.table-toolbar { display: flex; align-items: center; gap: 1rem; }
+.search-form { flex: 0 0 260px; }
+.search-input { width: 100%; }
+
+.user-cell { display: flex; flex-direction: column; gap: 0.2rem; }
+.user-name-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.user-fullname { font-size: 0.78rem; color: #94a3b8; }
+.role-cell { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.row-name { color: #0f172a; font-weight: 500; text-decoration: none; &:hover { color: #3b82f6; } &--disabled { color: #94a3b8; } }
+.text-muted { color: #94a3b8; }
+
+.row-actions {
+  display: flex; align-items: center; justify-content: flex-end; gap: 0.2rem;
+  opacity: 0; transition: opacity 0.15s;
+}
+:deep(tr:hover) .row-actions { opacity: 1; }
+
+.row-action-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border: none; border-radius: 6px;
+  background: transparent; color: #64748b; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  i { font-size: 0.85rem; }
+  &:hover { background: #f1f5f9; color: #0f172a; }
+  &--danger:hover { background: #fef2f2; color: #ef4444; }
+}
+</style>

@@ -1,153 +1,125 @@
 <template>
-  <section class="maintenance wrap">
-    <h1 class="title is-4">
-      {{ $t('maintenance.title') }}
-    </h1>
-    <hr />
-    <p class="has-text-grey">
-      {{ $t('maintenance.help') }}
-    </p>
-    <br />
+  <div class="maintenance-page">
+    <div class="page-header">
+      <h1 class="page-title">{{ $t('maintenance.title') }}</h1>
+    </div>
 
-    <div class="box">
-      <h4 class="is-size-4">
-        {{ $t('globals.terms.subscribers') }}
-      </h4><br />
-      <div class="grid">
-        <div class="col-4">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">Data</label>
-            <PvSelect v-model="subscriberType" :options="subscriberTypeOptions" option-label="label" option-value="value" class="w-full" />
-            <small class="block mt-1 text-color-secondary">{{ $t('maintenance.orphanHelp') }}</small>
-          </div>
+    <p class="page-desc">{{ $t('maintenance.help') }}</p>
+
+    <div class="maintenance-grid">
+      <!-- Subscribers -->
+      <div class="maint-card">
+        <div class="maint-card-header">
+          <i class="pi pi-users maint-icon" />
+          <h4 class="maint-title">{{ $t('globals.terms.subscribers') }}</h4>
         </div>
-        <div class="col-5" />
-        <div class="col">
-          <br />
-          <PvButton severity="primary" :loading="loading.maintenance" @click="deleteSubscribers" class="w-full"
-            :label="$t('globals.buttons.delete')" />
+        <div class="maint-field">
+          <label class="maint-label">Data</label>
+          <PvSelect v-model="subscriberType" :options="subscriberTypeOptions" option-label="label" option-value="value" class="w-full" />
+          <small class="maint-help">{{ $t('maintenance.orphanHelp') }}</small>
+        </div>
+        <div class="maint-footer">
+          <PvButton severity="danger" :loading="loading.maintenance" @click="deleteSubscribers"
+            icon="pi pi-trash" :label="$t('globals.buttons.delete')" />
         </div>
       </div>
-    </div><!-- subscribers -->
 
-    <div class="box mt-6">
-      <h4 class="is-size-4">
-        {{ $tc('globals.terms.subscriptions', 2) }}
-      </h4><br />
-      <div class="grid">
-        <div class="col-4">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">Data</label>
+      <!-- Subscriptions -->
+      <div class="maint-card">
+        <div class="maint-card-header">
+          <i class="pi pi-list maint-icon" />
+          <h4 class="maint-title">{{ $tc('globals.terms.subscriptions', 2) }}</h4>
+        </div>
+        <div class="maint-field-row">
+          <div class="maint-field">
+            <label class="maint-label">Data</label>
             <PvSelect v-model="subscriptionType" :options="subscriptionTypeOptions" option-label="label" option-value="value" class="w-full" />
           </div>
-        </div>
-        <div class="col-4">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('maintenance.olderThan') }}</label>
+          <div class="maint-field">
+            <label class="maint-label">{{ $t('maintenance.olderThan') }}</label>
             <PvDatePicker v-model="subscriptionDate" required class="w-full" :date-format="'yy-mm-dd'" />
           </div>
         </div>
-        <div class="col-1" />
-        <div class="col">
-          <br />
-          <PvButton severity="primary" :loading="loading.maintenance" @click="deleteSubscriptions" class="w-full"
-            :label="$t('globals.buttons.delete')" />
+        <div class="maint-footer">
+          <PvButton severity="danger" :loading="loading.maintenance" @click="deleteSubscriptions"
+            icon="pi pi-trash" :label="$t('globals.buttons.delete')" />
         </div>
       </div>
-    </div><!-- subscriptions -->
 
-    <div class="box mt-6">
-      <h4 class="is-size-4">
-        {{ $t('globals.terms.analytics') }}
-      </h4><br />
-      <div class="grid">
-        <div class="col-4">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">Data</label>
+      <!-- Analytics -->
+      <div class="maint-card">
+        <div class="maint-card-header">
+          <i class="pi pi-chart-bar maint-icon" />
+          <h4 class="maint-title">{{ $t('globals.terms.analytics') }}</h4>
+        </div>
+        <div class="maint-field-row">
+          <div class="maint-field">
+            <label class="maint-label">Data</label>
             <PvSelect v-model="analyticsType" :options="analyticsTypeOptions" option-label="label" option-value="value" class="w-full" />
           </div>
-        </div>
-        <div class="col-4">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('maintenance.olderThan') }}</label>
+          <div class="maint-field">
+            <label class="maint-label">{{ $t('maintenance.olderThan') }}</label>
             <PvDatePicker v-model="analyticsDate" required class="w-full" :date-format="'yy-mm-dd'" />
           </div>
         </div>
-        <div class="col-1" />
-        <div class="col">
-          <br />
-          <PvButton severity="primary" :loading="loading.maintenance" @click="deleteAnalytics" class="w-full"
-            :label="$t('globals.buttons.delete')" />
+        <div class="maint-footer">
+          <PvButton severity="danger" :loading="loading.maintenance" @click="deleteAnalytics"
+            icon="pi pi-trash" :label="$t('globals.buttons.delete')" />
         </div>
       </div>
 
-      <hr />
-      <h5 class="is-size-5">
-        {{ $t('subscribers.export') }}
-      </h5>
-      <br />
-      <div class="grid">
-        <div class="col-4">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">Data</label>
+      <!-- Analytics Export -->
+      <div class="maint-card">
+        <div class="maint-card-header">
+          <i class="pi pi-download maint-icon" />
+          <h4 class="maint-title">{{ $t('subscribers.export') }}</h4>
+        </div>
+        <div class="maint-field-row">
+          <div class="maint-field">
+            <label class="maint-label">Data</label>
             <PvSelect v-model="exportType" :options="exportTypeOptions" option-label="label" option-value="value" class="w-full" />
           </div>
-        </div>
-        <div class="col-4">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('analytics.fromDate') }}</label>
+          <div class="maint-field">
+            <label class="maint-label">{{ $t('analytics.fromDate') }}</label>
             <PvDatePicker v-model="exportDate" required class="w-full" :date-format="'yy-mm-dd'" />
           </div>
         </div>
-        <div class="col-1" />
-        <div class="col">
-          <br />
-          <a :href="exportURL" class="w-full">
-            <PvButton severity="primary" icon="pi pi-download" class="w-full"
-              :label="$t('subscribers.export')" />
+        <div class="maint-footer">
+          <a :href="exportURL">
+            <PvButton severity="primary" icon="pi pi-download" :label="$t('subscribers.export')" />
           </a>
         </div>
       </div>
-    </div><!-- analytics -->
 
-    <form @submit.prevent="onUpdateDBSettings" class="box mt-6">
-      <h4 class="is-size-4">
-        {{ $t('maintenance.database.title') }}
-      </h4><br />
-      <h5 class="is-size-5">Vacuum</h5>
-      <p class="has-text-grey is-size-7">
-        {{ $t('maintenance.database.vacuumHelp') }}
-      </p>
-      <br />
-      <div class="grid">
-        <div class="col-2">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('globals.buttons.enabled') }}</label>
-            <div class="flex items-center gap-2">
+      <!-- Database -->
+      <form class="maint-card maint-card--wide" @submit.prevent="onUpdateDBSettings">
+        <div class="maint-card-header">
+          <i class="pi pi-database maint-icon" />
+          <h4 class="maint-title">{{ $t('maintenance.database.title') }}</h4>
+        </div>
+        <div class="maint-db-section">
+          <h5 class="maint-subtitle">Vacuum</h5>
+          <p class="maint-help">{{ $t('maintenance.database.vacuumHelp') }}</p>
+          <div class="maint-field-row">
+            <div class="maint-field maint-field--inline">
+              <label class="maint-label">{{ $t('globals.buttons.enabled') }}</label>
               <PvToggleSwitch v-model="dbSettings.vacuum" />
+            </div>
+            <div class="maint-field" :class="{ 'maint-field--disabled': !dbSettings.vacuum }">
+              <label class="maint-label">{{ $t('settings.maintenance.cron') }}</label>
+              <PvInputText v-model="dbSettings.vacuum_cron_interval" placeholder="0 2 * * *"
+                :disabled="!dbSettings.vacuum"
+                pattern="((\*|[0-9,\-\/]+)\s+){4}(\*|[0-9,\-\/]+)" class="w-full" />
             </div>
           </div>
         </div>
-        <div class="col-4" :class="{ disabled: !dbSettings.vacuum }">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('settings.maintenance.cron') }}</label>
-            <PvInputText v-model="dbSettings.vacuum_cron_interval" placeholder="0 2 * * *" :disabled="!dbSettings.vacuum"
-              pattern="((\*|[0-9,\-\/]+)\s+){4}(\*|[0-9,\-\/]+)" class="w-full" />
-          </div>
-        </div>
-        <div class="col-3" />
-        <div class="col-3">
-          <br />
-          <PvButton severity="primary" type="submit" :loading="loading.settings" class="w-full"
+        <div class="maint-footer">
+          <PvButton severity="primary" type="submit" :loading="loading.settings || isLoading"
             :label="$t('globals.buttons.save')" />
         </div>
-      </div>
-    </form><!-- database -->
-
-    <div v-if="isLoading" class="flex justify-center p-8">
-      <PvProgressSpinner />
+      </form>
     </div>
-  </section>
+  </div>
 </template>
 
 <script>
@@ -279,3 +251,45 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.maintenance-page { display: flex; flex-direction: column; gap: 1.5rem; }
+.page-header { display: flex; align-items: center; }
+.page-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0; }
+.page-desc { font-size: 0.875rem; color: #64748b; margin: 0; }
+
+.maintenance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+
+  @media (max-width: 900px) { grid-template-columns: 1fr; }
+}
+
+.maint-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  &--wide { grid-column: 1 / -1; }
+}
+
+.maint-card-header { display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; }
+.maint-icon { font-size: 1rem; color: #3b82f6; }
+.maint-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin: 0; }
+.maint-subtitle { font-size: 0.9rem; font-weight: 600; color: #374151; margin: 0; }
+
+.maint-field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; }
+.maint-field--inline { flex-direction: row; align-items: center; justify-content: space-between; }
+.maint-field--disabled { opacity: 0.45; pointer-events: none; }
+.maint-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.maint-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+.maint-help { font-size: 0.75rem; color: #94a3b8; line-height: 1.4; margin: 0; }
+.maint-footer { display: flex; justify-content: flex-end; }
+
+.maint-db-section { display: flex; flex-direction: column; gap: 0.75rem; }
+</style>
