@@ -27,33 +27,22 @@
     </div>
 
     <template v-else-if="rows.length">
-      <!-- Summary cards -->
-      <div class="scrub-stats-grid">
-        <div class="scrub-stat-card">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.periodTotal') }}</div>
-          <div class="scrub-stat-value">{{ fmt(periodTotal) }}</div>
-          <div class="scrub-stat-sub">Last 30 days</div>
-        </div>
-        <div class="scrub-stat-card scrub-stat-card--today">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.today') }}</div>
-          <div class="scrub-stat-value">{{ fmt(todayCount) }}</div>
-          <div class="scrub-stat-sub">{{ todayDate }}</div>
-        </div>
-        <div class="scrub-stat-card">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.peak') }}</div>
-          <div class="scrub-stat-value">{{ fmt(peakDay.emailScrubs) }}</div>
-          <div class="scrub-stat-sub">{{ peakDay.date || '—' }}</div>
-        </div>
-        <div class="scrub-stat-card">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.activeDays') }}</div>
-          <div class="scrub-stat-value">{{ activeDays }}</div>
-          <div class="scrub-stat-sub">of {{ rows.length }} days</div>
-        </div>
-      </div>
-
-      <!-- Activity bar chart -->
+      <!-- Activity chart with inline summary -->
       <div class="settings-card">
-        <p class="settings-section-label mb-4">Daily Activity — Last 30 Days</p>
+        <div class="scrub-chart-header">
+          <span class="settings-section-label">Daily Activity — Last 30 Days</span>
+          <div class="scrub-summary">
+            <span><strong>{{ fmt(periodTotal) }}</strong> total</span>
+            <span class="scrub-summary-sep">·</span>
+            <span><strong>{{ fmt(todayCount) }}</strong> today</span>
+            <span class="scrub-summary-sep">·</span>
+            <span><strong>{{ activeDays }}</strong> of {{ rows.length }} active days</span>
+            <template v-if="peakDay.emailScrubs > 0">
+              <span class="scrub-summary-sep">·</span>
+              <span>peak <strong>{{ fmt(peakDay.emailScrubs) }}</strong> on {{ peakDay.date }}</span>
+            </template>
+          </div>
+        </div>
         <div class="scrub-chart">
           <div v-for="row in rows" :key="row.date" class="scrub-chart-col"
             v-tooltip.top="row.date + ': ' + fmt(row.emailScrubs)">
@@ -200,42 +189,27 @@ export default {
   gap: 0.75rem;
 }
 
-// Stat cards
-.scrub-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+// Chart header with inline summary
+.scrub-chart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
 }
 
-.scrub-stat-card {
-  background: var(--lm-surface);
-  border: 1px solid var(--lm-border);
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
+.scrub-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--lm-text-muted);
 
-  &--today { border-top: 3px solid var(--lm-primary); }
-
-  .scrub-stat-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--lm-text-muted);
-    margin-bottom: 0.35rem;
-  }
-  .scrub-stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--lm-text);
-    line-height: 1;
-  }
-  .scrub-stat-sub {
-    font-size: 0.75rem;
-    color: var(--lm-text-subtle);
-    margin-top: 0.3rem;
-  }
+  strong { color: var(--lm-text); font-weight: 600; }
 }
+
+.scrub-summary-sep { color: var(--lm-border); }
 
 // Bar chart
 .scrub-chart {
