@@ -173,6 +173,16 @@
         <i class="pi pi-align-left nav-icon" />
         <span>{{ $t('menu.logs') }}</span>
       </router-link>
+      <router-link
+        v-if="$can('settings:manage')"
+        :to="{ name: 'scrub' }"
+        class="nav-item"
+        exact-active-class="nav-item--active"
+        data-cy="scrub"
+      >
+        <i class="pi pi-envelope nav-icon" />
+        <span>{{ $t('settings.scrub.name') }}</span>
+      </router-link>
     </div>
   </div>
 </template>

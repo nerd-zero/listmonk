@@ -434,6 +434,11 @@ export const testScrub = async (data) => http.post(
   { loading: models.settings, disableToast: true },
 );
 
+export const getScrubStats = async () => http.get(
+  '/api/settings/scrub/stats',
+  { loading: models.settings, disableToast: true },
+);
+
 export const getLogs = async () => http.get(
   '/api/logs',
   { loading: models.logs, camelCase: false },
