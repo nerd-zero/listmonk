@@ -9,7 +9,7 @@
     <div class="lm-form-body">
         <div class="grid">
           <div class="col-6">
-            <div class="field mb-6">
+            <div class="field">
               <div class="flex gap-2">
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input type="radio" v-model="form.type" name="type" value="user" :disabled="isEditing" />
@@ -54,11 +54,11 @@
         </div>
 
         <template v-if="form.type !== 'api'">
-          <div class="box">
+          <div class="form-section">
             <div class="field">
               <div class="flex items-center gap-2">
                 <PvCheckbox v-model="form.passwordLogin" :binary="true" name="password_login" input-id="passwordLogin" />
-                <label for="passwordLogin">{{ $t('users.passwordEnable') }}</label>
+                <label for="passwordLogin" class="cursor-pointer">{{ $t('users.passwordEnable') }}</label>
               </div>
             </div>
 
@@ -82,8 +82,8 @@
           </div>
         </template>
 
-        <h5>{{ $tc('users.roles') }}</h5>
-        <div class="box">
+        <p class="form-section-label">{{ $tc('users.roles') }}</p>
+        <div class="form-section">
           <div class="grid">
             <div class="col-6">
               <div class="field">
@@ -240,6 +240,23 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.form-section {
+  border: 1px solid var(--lm-border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-section-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--lm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0.25rem 0 -0.25rem;
+}
 
 .user-api-token {
   background: var(--lm-success-bg);

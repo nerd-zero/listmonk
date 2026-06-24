@@ -235,5 +235,4 @@ export default {
 .role-cell { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .row-name { color: var(--lm-text); font-weight: 500; text-decoration: none; &:hover { color: var(--lm-primary); } &--disabled { color: var(--lm-text-subtle); } }
 .text-muted { color: var(--lm-text-subtle); }
-}
 </style>
