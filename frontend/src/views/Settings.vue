@@ -308,35 +308,36 @@ export default {
     border-bottom: none;
 
     .p-tablist-content {
-      background: transparent;
-      padding: 0;
+      background: #e2e8f0;
+      border-radius: 10px;
+      padding: 0.25rem;
     }
 
     .p-tablist-tab-list {
       background: transparent;
       border: none;
-      gap: 0.25rem;
+      gap: 0.15rem;
       flex-wrap: wrap;
     }
 
-    .p-tablist-active-bar { display: none; }
+      .p-tablist-active-bar { display: none; }
     .p-tablist-prev-button,
     .p-tablist-next-button { display: none; }
   }
 
   .p-tab {
-    border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 0.4rem 0.85rem;
+    border: none;
+    border-radius: 7px;
+    padding: 0.45rem 0.9rem;
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--lm-text-muted);
     background: transparent;
     margin: 0;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    transition: background 0.15s, color 0.15s;
 
     &:hover:not([aria-selected="true"]) {
-      background: var(--lm-bg-subtle);
+      background: rgba(255, 255, 255, 0.6);
       color: var(--lm-text);
     }
 
@@ -344,14 +345,13 @@ export default {
       background: var(--lm-surface);
       color: var(--lm-primary);
       font-weight: 600;
-      border-color: var(--lm-border);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     }
   }
 
   .p-tabpanels {
     background: transparent;
-    padding: 1rem 0 0;
+    padding: 1.25rem 0 0;
   }
 
   .p-tabpanel { padding: 0; }
