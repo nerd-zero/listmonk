@@ -10,111 +10,98 @@
     </div>
 
     <div class="lm-form-body">
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
-          <PvInputText autofocus :disabled="disabled" :maxlength="200" v-model="form.name" name="name" ref="focus"
-            required />
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+        <PvInputText :disabled="disabled" :maxlength="200" v-model="form.name" name="name" ref="focus"
+          required class="w-full" />
+      </div>
+
+      <div v-if="type === 'list'" class="form-section">
+        <p class="section-label">{{ $t('users.listPerms') }}</p>
+
+        <div class="list-add-row">
+          <PvSelect v-model="form.curList" name="list"
+            :placeholder="$tc('globals.terms.list')"
+            :disabled="disabled || filteredLists.length < 1"
+            :options="filteredLists"
+            option-label="name"
+            option-value="id"
+            class="w-full" />
+          <PvButton @click="onAddListPerm" :disabled="!form.curList" severity="primary"
+            :label="$t('globals.buttons.add')" />
         </div>
 
-        <div v-if="type === 'list'" class="box">
-          <h5>{{ $t('users.listPerms') }}</h5>
-          <div class="mb-5">
-            <div class="grid">
-              <div class="col-9">
-                <PvSelect v-model="form.curList" name="list"
-                  :placeholder="$tc('globals.terms.list')"
-                  :disabled="disabled || filteredLists.length < 1"
-                  :options="filteredLists"
-                  option-label="name"
-                  option-value="id"
-                  class="mb-3"
-                  style="width:100%" />
-              </div>
-              <div class="col">
-                <PvButton @click="onAddListPerm" :disabled="!form.curList" severity="primary" style="width:100%"
-                  :label="$t('globals.buttons.add')" />
-              </div>
-            </div>
-            <span
-              v-if="form.lists.length > 0 && (form.permissions['lists:get_all'] || form.permissions['lists:manage_all'])"
-              class="is-size-6 has-text-danger">
-              <i class="pi pi-exclamation-triangle" />
-              {{ $t('users.listPermsWarning') }}
-            </span>
-          </div>
-
-          <PvDataTable :value="form.lists">
-            <PvColumn field="name" :header="$tc('globals.terms.list')">
-              <template #body="{ data }">
-                <router-link :to="`/lists/${data.id}`" target="_blank">
-                  {{ data.name }}
-                </router-link>
-              </template>
-            </PvColumn>
-
-            <PvColumn field="permissions" :header="$t('users.perms')" style="width:40%">
-              <template #body="{ data }">
-                <div class="flex items-center gap-2">
-                  <PvCheckbox v-model="data.permissions" value="list:get" :input-id="`list-get-${data.id}`" />
-                  <label :for="`list-get-${data.id}`">{{ $t('globals.buttons.view') }}</label>
-                </div>
-                <div class="flex items-center gap-2">
-                  <PvCheckbox v-model="data.permissions" value="list:manage" :input-id="`list-manage-${data.id}`" />
-                  <label :for="`list-manage-${data.id}`">{{ $t('globals.buttons.manage') }}</label>
-                </div>
-              </template>
-            </PvColumn>
-
-            <PvColumn style="width:10%">
-              <template #body="{ data }">
-                <a href="#" @click.prevent="onDeleteListPerm(data.id)" data-cy="btn-delete"
-                  :aria-label="$t('globals.buttons.delete')">
-                  <i class="pi pi-trash" v-tooltip.bottom="$t('globals.buttons.delete')" />
-                </a>
-              </template>
-            </PvColumn>
-          </PvDataTable>
+        <div v-if="form.lists.length > 0 && (form.permissions['lists:get_all'] || form.permissions['lists:manage_all'])"
+          class="perms-warning">
+          <i class="pi pi-exclamation-triangle" />
+          {{ $t('users.listPermsWarning') }}
         </div>
 
-        <template v-if="type === 'user'">
-          <div class="grid">
-            <div class="col-7">
-              <h5 class="mb-0">
-                {{ $t('users.perms') }}
-              </h5>
-            </div>
-            <div v-if="!disabled" style="text-align:right">
-              <a href="#" @click.prevent="onToggleSelect">{{ $t('globals.buttons.toggleSelect') }}</a>
-            </div>
-          </div>
+        <PvDataTable v-if="form.lists.length > 0" :value="form.lists">
+          <PvColumn field="name" :header="$tc('globals.terms.list')">
+            <template #body="{ data }">
+              <router-link :to="`/lists/${data.id}`" target="_blank">{{ data.name }}</router-link>
+            </template>
+          </PvColumn>
+          <PvColumn field="permissions" :header="$t('users.perms')" style="width:40%">
+            <template #body="{ data }">
+              <div class="flex items-center gap-2">
+                <PvCheckbox v-model="data.permissions" value="list:get" :input-id="`list-get-${data.id}`" />
+                <label :for="`list-get-${data.id}`">{{ $t('globals.buttons.view') }}</label>
+              </div>
+              <div class="flex items-center gap-2 mt-1">
+                <PvCheckbox v-model="data.permissions" value="list:manage" :input-id="`list-manage-${data.id}`" />
+                <label :for="`list-manage-${data.id}`">{{ $t('globals.buttons.manage') }}</label>
+              </div>
+            </template>
+          </PvColumn>
+          <PvColumn style="width:3rem">
+            <template #body="{ data }">
+              <button type="button" class="row-action-btn row-action-btn--danger"
+                @click="onDeleteListPerm(data.id)" v-tooltip.bottom="$t('globals.buttons.delete')">
+                <i class="pi pi-trash" />
+              </button>
+            </template>
+          </PvColumn>
+        </PvDataTable>
+      </div>
 
-          <PvDataTable :value="serverConfig.permissions">
-            <PvColumn field="group" :header="$t('users.roleGroup')">
-              <template #body="{ data }">
-                {{ $tc(`globals.terms.${data.group}`) }}
-              </template>
-            </PvColumn>
+      <template v-if="type === 'user'">
+        <div class="perms-header">
+          <span class="section-label">{{ $t('users.perms') }}</span>
+          <a v-if="!disabled" href="#" class="toggle-link" @click.prevent="onToggleSelect">
+            {{ $t('globals.buttons.toggleSelect') }}
+          </a>
+        </div>
 
-            <PvColumn field="permissions" header="Permissions">
-              <template #body="{ data }">
-                <div v-for="p in data.permissions" :key="p" class="flex items-center gap-2 mb-1">
-                  <PvCheckbox v-model="form.permissions" :value="p" :input-id="`perm-${p}`" :disabled="disabled" />
-                  <label :for="`perm-${p}`">
-                    {{ p }}
-                    <a v-if="p === 'subscribers:sql_query'"
-                      href="https://listmonk.app/docs/roles-and-permissions/#subscriberssql_query" target="_blank"
-                      rel="noopener noreferrer" aria-label="Warning: high risk permission">
-                      <i class="pi pi-exclamation-triangle text-red-500" />
-                    </a>
-                  </label>
-                </div>
-              </template>
-            </PvColumn>
-          </PvDataTable>
-        </template>
-        <a href="https://listmonk.app/docs/roles-and-permissions" target="_blank" rel="noopener noreferrer">
-          <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}
-        </a>
+        <PvDataTable :value="serverConfig.permissions">
+          <PvColumn field="group" :header="$t('users.roleGroup')" style="width:160px">
+            <template #body="{ data }">
+              <span class="group-label">{{ $tc(`globals.terms.${data.group}`) }}</span>
+            </template>
+          </PvColumn>
+          <PvColumn field="permissions" :header="$t('users.perms')">
+            <template #body="{ data }">
+              <div v-for="p in data.permissions" :key="p" class="perm-row">
+                <PvCheckbox v-model="form.permissions" :value="p" :input-id="`perm-${p}`" :disabled="disabled" />
+                <label :for="`perm-${p}`" class="perm-label">
+                  {{ p }}
+                  <a v-if="p === 'subscribers:sql_query'"
+                    href="https://listmonk.app/docs/roles-and-permissions/#subscriberssql_query" target="_blank"
+                    rel="noopener noreferrer" aria-label="Warning: high risk permission">
+                    <i class="pi pi-exclamation-triangle text-red-500" />
+                  </a>
+                </label>
+              </div>
+            </template>
+          </PvColumn>
+        </PvDataTable>
+      </template>
+
+      <a href="https://listmonk.app/docs/roles-and-permissions" target="_blank" rel="noopener noreferrer"
+        class="learn-more">
+        <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}
+      </a>
     </div>
 
     <div class="lm-form-footer">
@@ -147,7 +134,6 @@ export default {
 
   data() {
     return {
-      // Binds form input values.
       form: {
         curList: null,
         lists: [],
@@ -163,7 +149,6 @@ export default {
     onAddListPerm() {
       const list = this.lists.results.find((l) => l.id === this.form.curList);
       this.form.lists.push({ id: list.id, name: list.name, permissions: ['list:get', 'list:manage'] });
-
       this.form.curList = (this.filteredLists.length > 0) ? this.filteredLists[0].id : null;
     },
 
@@ -177,7 +162,6 @@ export default {
         this.updateRole();
         return;
       }
-
       this.createRole();
     },
 
@@ -186,13 +170,10 @@ export default {
         this.form.permissions = [];
       } else {
         this.form.permissions = this.serverConfig.permissions.reduce((acc, item) => {
-          item.permissions.forEach((p) => {
-            acc.push(p);
-          });
+          item.permissions.forEach((p) => { acc.push(p); });
           return acc;
         }, []);
       }
-
       this.hasToggle = !this.hasToggle;
     },
 
@@ -244,32 +225,25 @@ export default {
   computed: {
     ...mapState(useMainStore, ['loading', 'serverConfig', 'lists']),
 
-    // Return the list of unselected lists.
     filteredLists() {
       if (!this.lists.results || this.type !== 'list') {
         return [];
       }
-
       const subIDs = this.form.lists.reduce((obj, item) => ({ ...obj, [item.id]: true }), {});
       return this.lists.results.filter((l) => (!(l.id in subIDs)));
     },
-
   },
 
   mounted() {
     if (this.isEditing) {
       this.form = { ...this.form, ...this.$props.data };
-
-      // It's the superadmin role. Disable the form.
       if (this.$props.data.id === 1 || !this.$can('roles:manage')) {
         this.disabled = true;
       }
     } else {
       const skip = ['admin', 'users'];
       this.form.permissions = this.serverConfig.permissions.reduce((acc, item) => {
-        if (skip.includes(item.group)) {
-          return acc;
-        }
+        if (skip.includes(item.group)) return acc;
         item.permissions.forEach((p) => {
           if (p !== 'subscribers:sql_query' && !p.startsWith('lists:') && !p.startsWith('settings:')) {
             acc.push(p);
@@ -290,5 +264,85 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.section-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--lm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
+.perms-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-link {
+  font-size: 0.8rem;
+  color: var(--lm-primary);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.form-section {
+  border: 1px solid var(--lm-border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.list-add-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.perms-warning {
+  font-size: 0.85rem;
+  color: var(--p-red-500);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.perm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+
+.perm-label {
+  font-size: 0.85rem;
+  font-family: monospace;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.group-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--lm-text);
+}
+
+.learn-more {
+  font-size: 0.8rem;
+  color: var(--lm-primary);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.row-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: 4px;
+  color: var(--lm-text-subtle);
+  &--danger:hover { color: var(--p-red-500); background: var(--lm-danger-bg, #fef2f2); }
+}
 </style>

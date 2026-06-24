@@ -10,7 +10,7 @@
           <small class="block mt-1 text-color-secondary">{{ $t('settings.privacy.disableTrackingHelp') }}</small>
         </div>
       </div>
-      <div class="col-6" :class="{ 'is-disabled': data['privacy.disable_tracking'] }">
+      <div class="col-6" :class="{ disabled: data['privacy.disable_tracking'] }">
         <div class="field">
           <div class="flex items-center gap-2">
             <PvToggleSwitch v-model="data['privacy.individual_tracking']" :disabled="data['privacy.disable_tracking']"
@@ -98,16 +98,11 @@
 <script>
 export default {
   props: {
-    form: {
-      type: Object, default: () => { },
-    },
+    form: { type: Object, default: () => {} },
   },
 
   data() {
-    return {
-      data: this.form,
-      tab: '0',
-    };
+    return { data: this.form, tab: '0' };
   },
 
   methods: {
@@ -121,18 +116,12 @@ export default {
   },
 
   computed: {
-    numBlocked() {
-      return this.countItems(this.form['privacy.domain_blocklist']);
-    },
-    numAllowed() {
-      return this.countItems(this.form['privacy.domain_allowlist']);
-    },
+    numBlocked() { return this.countItems(this.form['privacy.domain_blocklist']); },
+    numAllowed() { return this.countItems(this.form['privacy.domain_allowlist']); },
   },
 
   watch: {
-    tab(t) {
-      this.$utils.setPref('settings.privacyDomainTab', t);
-    },
+    tab(t) { this.$utils.setPref('settings.privacyDomainTab', t); },
   },
 };
 </script>

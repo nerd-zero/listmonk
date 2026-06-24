@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div class="block box">
+  <div class="items">
+    <div class="settings-card">
       <div class="grid">
         <div class="col-2">
           <div class="field">
@@ -11,12 +11,12 @@
           </div>
         </div>
 
-        <div class="col" :class="{ disabled: !data.scrub.enabled }">
+        <div class="col-10" :class="{ disabled: !data.scrub.enabled }">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('settings.scrub.url') }}</label>
             <PvInputText v-model="data.scrub.url" name="scrub.url"
               placeholder="https://api.thescrub.app" :maxlength="300"
-              :disabled="!data.scrub.enabled" />
+              :disabled="!data.scrub.enabled" class="w-full" />
             <small class="block mt-1 text-color-secondary">{{ $t('settings.scrub.urlHelp') }}</small>
           </div>
 
@@ -25,7 +25,7 @@
             <PvPassword v-model="data.scrub.api_key" name="scrub.api_key"
               :maxlength="300" :feedback="false"
               :placeholder="$t('settings.scrub.apiKeyPlaceholder')"
-              :disabled="!data.scrub.enabled" />
+              :disabled="!data.scrub.enabled" class="w-full" />
             <small class="block mt-1 text-color-secondary">{{ $t('settings.scrub.apiKeyHelp') }}</small>
           </div>
 
@@ -44,33 +44,21 @@
 <script>
 export default {
   props: {
-    form: {
-      type: Object,
-      default: () => {},
-    },
+    form: { type: Object, default: () => {} },
   },
 
   data() {
-    return {
-      data: this.form,
-      isTesting: false,
-    };
+    return { data: this.form, isTesting: false };
   },
 
   methods: {
     async testConnection() {
       this.isTesting = true;
       try {
-        await this.$api.testScrub({
-          url: this.data.scrub.url,
-          api_key: this.data.scrub.api_key,
-        });
+        await this.$api.testScrub({ url: this.data.scrub.url, api_key: this.data.scrub.api_key });
         this.$utils.toast(this.$t('settings.scrub.testSuccess'), 'is-success');
       } catch (e) {
-        this.$utils.toast(
-          e.response?.data?.message || this.$t('settings.scrub.testError'),
-          'is-danger',
-        );
+        this.$utils.toast(e.response?.data?.message || this.$t('settings.scrub.testError'), 'is-danger');
       } finally {
         this.isTesting = false;
       }
@@ -78,3 +66,8 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+:deep(.p-password) { width: 100%; }
+:deep(.p-password-input) { width: 100%; }
+</style>

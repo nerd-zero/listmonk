@@ -1176,6 +1176,51 @@ section {
 }
 
 // ============================================================
+// Settings page shared styles
+// ============================================================
+.settings-card {
+  background: var(--lm-surface);
+  border: 1px solid var(--lm-border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.settings-section-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--lm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.settings-link {
+  font-size: 0.8rem;
+  color: var(--lm-primary);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  a {
+    font-size: 0.78rem;
+    color: var(--lm-primary);
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+// ============================================================
 // Shared row actions (hover-reveal)
 // ============================================================
 .row-actions {

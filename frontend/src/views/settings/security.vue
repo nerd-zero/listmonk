@@ -13,16 +13,13 @@
       <div class="col-9">
         <div class="field">
           <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCURL') }}</label>
-          <div>
-            <PvInputText v-model="data['security.oidc']['provider_url']" name="oidc.provider_url"
-              placeholder="https://login.yoursite.com" :disabled="!data['security.oidc']['enabled']" :maxlength="300"
-              required type="url" pattern="https?://.*" class="w-full" />
-
-            <div class="spaced-links is-size-7 mt-2" :class="{ 'disabled': !data['security.oidc']['enabled'] }">
-              <a href="#" @click.prevent="() => setProvider('google')">Google</a>
-              <a href="#" @click.prevent="() => setProvider('microsoft')">Microsoft</a>
-              <a href="#" @click.prevent="() => setProvider('apple')">Apple</a>
-            </div>
+          <PvInputText v-model="data['security.oidc']['provider_url']" name="oidc.provider_url"
+            placeholder="https://login.yoursite.com" :disabled="!data['security.oidc']['enabled']" :maxlength="300"
+            required type="url" pattern="https?://.*" class="w-full" />
+          <div class="quick-links mt-2" :class="{ disabled: !data['security.oidc']['enabled'] }">
+            <a href="#" @click.prevent="() => setProvider('google')">Google</a>
+            <a href="#" @click.prevent="() => setProvider('microsoft')">Microsoft</a>
+            <a href="#" @click.prevent="() => setProvider('apple')">Apple</a>
           </div>
         </div>
 
@@ -79,7 +76,7 @@
           <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCRedirectURL') }}</label>
           <code><copy-text :text="`${serverConfig.root_url}/auth/oidc`" /></code>
         </div>
-        <p v-if="data['security.oidc']['enabled'] && !isURLOk" class="has-text-danger">
+        <p v-if="data['security.oidc']['enabled'] && !isURLOk" class="text-red-500 text-sm mt-1">
           <i class="pi pi-exclamation-triangle" />
           {{ $t('settings.security.OIDCRedirectWarning') }}
         </p>
@@ -87,6 +84,7 @@
     </div>
 
     <hr />
+
     <div class="grid">
       <div class="col-3">
         <div class="field">
@@ -101,17 +99,16 @@
         <div class="field">
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
-              <input type="radio" v-model="selectedProvider" value="altcha" name="captcha_provider" id="captcha-altcha" />
+              <PvRadioButton v-model="selectedProvider" value="altcha" name="captcha_provider" input-id="captcha-altcha" />
               <label for="captcha-altcha">ALTCHA</label>
             </div>
             <div class="flex items-center gap-2">
-              <input type="radio" v-model="selectedProvider" value="hcaptcha" name="captcha_provider" id="captcha-hcaptcha" />
+              <PvRadioButton v-model="selectedProvider" value="hcaptcha" name="captcha_provider" input-id="captcha-hcaptcha" />
               <label for="captcha-hcaptcha">hCaptcha (deprecated)</label>
             </div>
           </div>
         </div>
 
-        <!-- captcha settings -->
         <div v-if="selectedProvider === 'altcha'">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.altchaComplexity') }}</label>
@@ -134,21 +131,16 @@
           </div>
         </div>
       </div>
-    </div><!-- captcha -->
+    </div>
 
     <hr />
 
-    <!-- CORS -->
-    <div class="grid">
-      <div class="col-12">
-        <h3 class="is-size-6"><strong>{{ $t('settings.security.trustedURLs') }} / CORS</strong></h3><br />
-        <div class="field">
-          <PvTextarea v-model="trustedURLs" name="trusted_urls" rows="5"
-            placeholder="https://example.com" class="w-full" />
-          <small class="block mt-1 text-color-secondary">{{ $t('settings.security.trustedURLsHelp') }}</small>
-        </div>
-      </div>
-    </div><!-- cors -->
+    <p class="settings-section-label">{{ $t('settings.security.trustedURLs') }} / CORS</p>
+    <div class="field">
+      <PvTextarea v-model="trustedURLs" name="trusted_urls" rows="5"
+        placeholder="https://example.com" class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.security.trustedURLsHelp') }}</small>
+    </div>
   </div>
 </template>
 
@@ -165,14 +157,14 @@ const OIDC_PROVIDERS = {
 };
 
 export default {
-  components: {
-    CopyText,
-  },
+  components: { CopyText },
 
   props: {
-    form: {
-      type: Object, default: () => { },
-    },
+    form: { type: Object, default: () => {} },
+  },
+
+  data() {
+    return { data: this.form };
   },
 
   computed: {
@@ -184,7 +176,6 @@ export default {
 
     trustedURLs: {
       get() {
-        // Convert array to newline-separated string.
         const domains = this.data['security.trusted_urls'];
         return domains && Array.isArray(domains) ? domains.join('\n') : '';
       },
@@ -205,24 +196,12 @@ export default {
 
     selectedProvider: {
       get() {
-        if (this.data['security.captcha'].hcaptcha.enabled) {
-          return 'hcaptcha';
-        }
-
-        return 'altcha';
+        return this.data['security.captcha'].hcaptcha.enabled ? 'hcaptcha' : 'altcha';
       },
       set(value) {
         this.data['security.captcha'].hcaptcha.enabled = value === 'hcaptcha';
         this.data['security.captcha'].altcha.enabled = value === 'altcha';
       },
-    },
-
-    version() {
-      return import.meta.env.VUE_APP_VERSION;
-    },
-
-    isMobile() {
-      return this.windowWidth <= 768;
     },
 
     isURLOk() {
@@ -246,17 +225,8 @@ export default {
     setProvider(provider) {
       this.data['security.oidc'].provider_url = OIDC_PROVIDERS[provider];
       this.data['security.oidc'].provider_name = provider.charAt(0).toUpperCase() + provider.slice(1);
-
-      this.$nextTick(() => {
-        this.$refs.client_id.$el.focus();
-      });
+      this.$nextTick(() => { this.$refs.client_id.$el.focus(); });
     },
-  },
-
-  data() {
-    return {
-      data: this.form,
-    };
   },
 };
 </script>
