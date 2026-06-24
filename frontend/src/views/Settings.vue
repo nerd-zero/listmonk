@@ -351,7 +351,7 @@ export default {
 
   .p-tabpanels {
     background: transparent;
-    padding: 1.25rem 0 0;
+    padding: 1.75rem 0 0;
   }
 
   .p-tabpanel { padding: 0; }
