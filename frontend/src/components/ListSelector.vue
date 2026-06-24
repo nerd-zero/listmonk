@@ -17,8 +17,8 @@
       <label class="block mb-1 text-sm font-medium">{{ label + (selectedItems ? ` (${selectedItems.length})` : '') }}</label>
       <PvAutoComplete v-model="query" :placeholder="placeholder"
         :disabled="all.length === 0 || $props.disabled"
-        :suggestions="filteredLists" @item-select="onSelect" option-label="name"
-        :dropdown="true" force-selection />
+        :suggestions="suggestions" @complete="onSearch" @item-select="onSelect" option-label="name"
+        :dropdown="true" force-selection class="w-full" />
       <small v-if="message" class="block mt-1 text-color-secondary">{{ message }}</small>
     </div>
   </div>
@@ -53,10 +53,19 @@ export default {
     return {
       query: '',
       selectedItems: [],
+      suggestions: [],
     };
   },
 
   methods: {
+    onSearch(event) {
+      const q = (event.query || '').toLowerCase();
+      const subIDs = this.selectedItems.reduce((obj, item) => ({ ...obj, [item.id]: true }), {});
+      this.suggestions = this.$props.all.filter(
+        (l) => !(l.id in subIDs) && l.name.toLowerCase().includes(q),
+      );
+    },
+
     onSelect(event) {
       this.selectList(event.value);
     },
@@ -84,20 +93,7 @@ export default {
     },
   },
 
-  computed: {
-    // Return the list of unselected lists.
-    filteredLists() {
-      // Get a map of IDs of the user subscriptions. eg: {1: true, 2: true};
-      const subIDs = this.selectedItems.reduce((obj, item) => ({ ...obj, [item.id]: true }), {});
-
-      // Filter lists from the global lists whose IDs are not in the user's
-      // subscribed ist.
-      const q = typeof this.query === 'string' ? this.query.toLowerCase() : '';
-      return this.$props.all.filter(
-        (l) => (!(l.id in subIDs) && l.name.toLowerCase().indexOf(q) >= 0),
-      );
-    },
-  },
+  computed: {},
 
   watch: {
     // This is required to update the array of lists to propagate from parent
