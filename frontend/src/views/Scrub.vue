@@ -9,7 +9,7 @@
         :label="$t('globals.buttons.refresh')" @click="fetchStats" />
     </div>
 
-    <!-- Not configured state -->
+    <!-- Not configured -->
     <div v-if="notConfigured" class="scrub-empty">
       <i class="pi pi-shield scrub-empty-icon" />
       <p class="scrub-empty-title">{{ $t('settings.scrub.name') }}</p>
@@ -18,98 +18,78 @@
         @click="$router.push({ name: 'settings' })" />
     </div>
 
-    <!-- Error state -->
+    <!-- Error -->
     <div v-else-if="fetchError" class="scrub-error settings-card">
-      <i class="pi pi-exclamation-triangle text-orange-500" />
+      <i class="pi pi-exclamation-triangle" style="color:#f59e0b" />
       <span>{{ fetchError }}</span>
       <PvButton severity="secondary" outlined size="small" icon="pi pi-refresh"
         :label="$t('globals.buttons.retry')" @click="fetchStats" />
     </div>
 
-    <template v-else-if="stats">
-      <!-- Stat cards -->
+    <template v-else-if="rows.length">
+      <!-- Summary cards -->
       <div class="scrub-stats-grid">
         <div class="scrub-stat-card">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.total') }}</div>
-          <div class="scrub-stat-value">{{ fmt(stats.total ?? stats.emails_checked ?? stats.checked) }}</div>
+          <div class="scrub-stat-label">{{ $t('settings.scrub.periodTotal') }}</div>
+          <div class="scrub-stat-value">{{ fmt(periodTotal) }}</div>
+          <div class="scrub-stat-sub">Last 30 days</div>
         </div>
-        <div class="scrub-stat-card scrub-stat-card--valid">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.valid') }}</div>
-          <div class="scrub-stat-value">{{ fmt(stats.valid) }}</div>
-          <div v-if="total > 0" class="scrub-stat-pct">{{ pct(stats.valid) }}%</div>
+        <div class="scrub-stat-card scrub-stat-card--today">
+          <div class="scrub-stat-label">{{ $t('settings.scrub.today') }}</div>
+          <div class="scrub-stat-value">{{ fmt(todayCount) }}</div>
+          <div class="scrub-stat-sub">{{ todayDate }}</div>
         </div>
-        <div class="scrub-stat-card scrub-stat-card--invalid">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.invalid') }}</div>
-          <div class="scrub-stat-value">{{ fmt(stats.invalid) }}</div>
-          <div v-if="total > 0" class="scrub-stat-pct">{{ pct(stats.invalid) }}%</div>
+        <div class="scrub-stat-card">
+          <div class="scrub-stat-label">{{ $t('settings.scrub.peak') }}</div>
+          <div class="scrub-stat-value">{{ fmt(peakDay.emailScrubs) }}</div>
+          <div class="scrub-stat-sub">{{ peakDay.date || '—' }}</div>
         </div>
-        <div class="scrub-stat-card scrub-stat-card--risky">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.risky') }}</div>
-          <div class="scrub-stat-value">{{ fmt(stats.risky ?? stats.catch_all) }}</div>
-          <div v-if="total > 0" class="scrub-stat-pct">{{ pct(stats.risky ?? stats.catch_all) }}%</div>
-        </div>
-        <div v-if="stats.unknown != null" class="scrub-stat-card scrub-stat-card--unknown">
-          <div class="scrub-stat-label">{{ $t('settings.scrub.unknown') }}</div>
-          <div class="scrub-stat-value">{{ fmt(stats.unknown) }}</div>
-          <div v-if="total > 0" class="scrub-stat-pct">{{ pct(stats.unknown) }}%</div>
+        <div class="scrub-stat-card">
+          <div class="scrub-stat-label">{{ $t('settings.scrub.activeDays') }}</div>
+          <div class="scrub-stat-value">{{ activeDays }}</div>
+          <div class="scrub-stat-sub">of {{ rows.length }} days</div>
         </div>
       </div>
 
-      <!-- Breakdown bar -->
-      <div v-if="total > 0" class="settings-card">
-        <p class="settings-section-label mb-3">Breakdown</p>
-        <div class="scrub-bar">
-          <div class="scrub-bar-segment scrub-bar--valid" :style="{ width: pct(stats.valid) + '%' }"
-            v-tooltip="$t('settings.scrub.valid') + ': ' + pct(stats.valid) + '%'" />
-          <div class="scrub-bar-segment scrub-bar--risky" :style="{ width: pct(stats.risky ?? stats.catch_all) + '%' }"
-            v-tooltip="$t('settings.scrub.risky') + ': ' + pct(stats.risky ?? stats.catch_all) + '%'" />
-          <div class="scrub-bar-segment scrub-bar--invalid" :style="{ width: pct(stats.invalid) + '%' }"
-            v-tooltip="$t('settings.scrub.invalid') + ': ' + pct(stats.invalid) + '%'" />
-          <div v-if="stats.unknown" class="scrub-bar-segment scrub-bar--unknown"
-            :style="{ width: pct(stats.unknown) + '%' }"
-            v-tooltip="$t('settings.scrub.unknown') + ': ' + pct(stats.unknown) + '%'" />
+      <!-- Activity bar chart -->
+      <div class="settings-card">
+        <p class="settings-section-label mb-4">Daily Activity — Last 30 Days</p>
+        <div class="scrub-chart">
+          <div v-for="row in rows" :key="row.date" class="scrub-chart-col"
+            v-tooltip.top="row.date + ': ' + fmt(row.emailScrubs)">
+            <div class="scrub-chart-bar"
+              :style="{ height: barHeight(row.emailScrubs) }"
+              :class="{ 'scrub-chart-bar--today': row.date === todayDate }" />
+          </div>
         </div>
-        <div class="scrub-bar-legend">
-          <span class="scrub-legend-item scrub-legend--valid">{{ $t('settings.scrub.valid') }}</span>
-          <span class="scrub-legend-item scrub-legend--risky">{{ $t('settings.scrub.risky') }}</span>
-          <span class="scrub-legend-item scrub-legend--invalid">{{ $t('settings.scrub.invalid') }}</span>
-          <span v-if="stats.unknown" class="scrub-legend-item scrub-legend--unknown">{{ $t('settings.scrub.unknown') }}</span>
+        <div class="scrub-chart-labels">
+          <span>{{ rows[0]?.date }}</span>
+          <span>{{ rows[rows.length - 1]?.date }}</span>
         </div>
       </div>
 
-      <!-- Quota card -->
-      <div v-if="stats.quota" class="settings-card">
-        <p class="settings-section-label mb-3">{{ $t('settings.scrub.quota') }}</p>
-        <div class="scrub-quota-row">
-          <div class="scrub-quota-item">
-            <span class="scrub-quota-label">{{ $t('settings.scrub.used') }}</span>
-            <span class="scrub-quota-val">{{ fmt(stats.quota - (stats.remaining ?? 0)) }}</span>
-          </div>
-          <div class="scrub-quota-item">
-            <span class="scrub-quota-label">{{ $t('settings.scrub.remaining') }}</span>
-            <span class="scrub-quota-val">{{ fmt(stats.remaining) }}</span>
-          </div>
-          <div class="scrub-quota-item">
-            <span class="scrub-quota-label">{{ $t('settings.scrub.quota') }}</span>
-            <span class="scrub-quota-val">{{ fmt(stats.quota) }}</span>
-          </div>
-        </div>
-        <PvProgressBar :value="quotaUsedPct" class="scrub-progress mt-3" />
-        <small class="block mt-1 text-color-secondary">{{ quotaUsedPct }}% of daily quota used</small>
-      </div>
-
-      <!-- Date / raw fields -->
-      <div class="settings-card scrub-meta">
-        <span v-if="stats.date" class="text-sm text-color-secondary">
-          <i class="pi pi-calendar mr-1" />{{ $t('settings.scrub.lastUpdated') }}: {{ stats.date }}
-        </span>
-        <!-- Any extra fields the API returns that aren't already displayed -->
-        <template v-for="(val, key) in extraFields" :key="key">
-          <span class="scrub-extra-field">
-            <span class="scrub-extra-key">{{ key }}</span>
-            <span class="scrub-extra-val">{{ val }}</span>
-          </span>
-        </template>
+      <!-- Last 14 days table -->
+      <div class="settings-card">
+        <p class="settings-section-label mb-3">Recent Activity</p>
+        <PvDataTable :value="recentRows" size="small" striped-rows>
+          <PvColumn field="date" header="Date" />
+          <PvColumn field="emailScrubs" header="Emails Scrubbed">
+            <template #body="{ data }">
+              <span :class="{ 'font-semibold': data.emailScrubs > 0 }">
+                {{ fmt(data.emailScrubs) }}
+              </span>
+            </template>
+          </PvColumn>
+          <PvColumn header="Activity">
+            <template #body="{ data }">
+              <div v-if="data.emailScrubs > 0" class="scrub-inline-bar">
+                <div class="scrub-inline-bar-fill"
+                  :style="{ width: Math.round((data.emailScrubs / (peakDay.emailScrubs || 1)) * 100) + '%' }" />
+              </div>
+              <span v-else class="text-color-secondary text-sm">—</span>
+            </template>
+          </PvColumn>
+        </PvDataTable>
       </div>
     </template>
   </section>
@@ -119,15 +99,12 @@
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 
-const KNOWN_FIELDS = new Set(['date', 'total', 'emails_checked', 'checked', 'valid', 'invalid',
-  'risky', 'catch_all', 'unknown', 'quota', 'remaining']);
-
 export default {
   name: 'ScrubDashboard',
 
   data() {
     return {
-      stats: null,
+      rows: [],
       notConfigured: false,
       fetchError: null,
     };
@@ -136,22 +113,28 @@ export default {
   computed: {
     ...mapState(useMainStore, ['loading']),
 
-    total() {
-      if (!this.stats) return 0;
-      return this.stats.total ?? this.stats.emails_checked ?? this.stats.checked ?? 0;
+    todayDate() {
+      return new Date().toISOString().slice(0, 10);
     },
 
-    quotaUsedPct() {
-      if (!this.stats?.quota || !this.stats.remaining) return 0;
-      const used = this.stats.quota - this.stats.remaining;
-      return Math.round((used / this.stats.quota) * 100);
+    periodTotal() {
+      return this.rows.reduce((s, r) => s + (r.emailScrubs || 0), 0);
     },
 
-    extraFields() {
-      if (!this.stats) return {};
-      return Object.fromEntries(
-        Object.entries(this.stats).filter(([k]) => !KNOWN_FIELDS.has(k)),
-      );
+    todayCount() {
+      return this.rows.find((r) => r.date === this.todayDate)?.emailScrubs ?? 0;
+    },
+
+    peakDay() {
+      return this.rows.reduce((best, r) => (r.emailScrubs > (best.emailScrubs || 0) ? r : best), {});
+    },
+
+    activeDays() {
+      return this.rows.filter((r) => r.emailScrubs > 0).length;
+    },
+
+    recentRows() {
+      return [...this.rows].reverse().slice(0, 14);
     },
   },
 
@@ -161,10 +144,10 @@ export default {
       this.notConfigured = false;
       try {
         const data = await this.$api.getScrubStats();
-        this.stats = data;
+        this.rows = Array.isArray(data) ? data : (data.data ?? [data]);
       } catch (e) {
         const msg = e.response?.data?.message || '';
-        if (e.response?.status === 400 && msg.includes('not enabled')) {
+        if (e.response?.status === 400 && msg.toLowerCase().includes('not enabled')) {
           this.notConfigured = true;
         } else {
           this.fetchError = msg || this.$t('settings.scrub.statsError');
@@ -177,9 +160,10 @@ export default {
       return Number(n).toLocaleString();
     },
 
-    pct(n) {
-      if (!n || !this.total) return 0;
-      return Math.round((n / this.total) * 100);
+    barHeight(val) {
+      const max = this.peakDay.emailScrubs || 1;
+      const h = Math.max(2, Math.round((val / max) * 100));
+      return h + '%';
     },
   },
 
@@ -191,10 +175,9 @@ export default {
 
 <style scoped lang="scss">
 .scrub-dashboard {
-  max-width: 900px;
+  max-width: 960px;
 }
 
-// Empty / not-configured state
 .scrub-empty {
   display: flex;
   flex-direction: column;
@@ -207,35 +190,20 @@ export default {
   border: 1px solid var(--lm-border);
   border-radius: 12px;
 }
-.scrub-empty-icon {
-  font-size: 3rem;
-  color: var(--lm-text-subtle);
-}
-.scrub-empty-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--lm-text);
-  margin: 0;
-}
-.scrub-empty-desc {
-  color: var(--lm-text-muted);
-  font-size: 0.9rem;
-  max-width: 380px;
-  margin: 0;
-}
+.scrub-empty-icon { font-size: 3rem; color: var(--lm-text-subtle); }
+.scrub-empty-title { font-size: 1.1rem; font-weight: 600; color: var(--lm-text); margin: 0; }
+.scrub-empty-desc { color: var(--lm-text-muted); font-size: 0.9rem; max-width: 380px; margin: 0; }
 
-// Error state
 .scrub-error {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--lm-text);
 }
 
-// Stat cards grid
+// Stat cards
 .scrub-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -246,124 +214,76 @@ export default {
   border-radius: 10px;
   padding: 1.25rem 1.5rem;
 
+  &--today { border-top: 3px solid var(--lm-primary); }
+
   .scrub-stat-label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     color: var(--lm-text-muted);
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.35rem;
   }
   .scrub-stat-value {
-    font-size: 1.75rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--lm-text);
     line-height: 1;
   }
-  .scrub-stat-pct {
-    font-size: 0.8rem;
-    color: var(--lm-text-muted);
-    margin-top: 0.25rem;
+  .scrub-stat-sub {
+    font-size: 0.75rem;
+    color: var(--lm-text-subtle);
+    margin-top: 0.3rem;
   }
-
-  &--valid   { border-top: 3px solid #22c55e; }
-  &--invalid { border-top: 3px solid #ef4444; }
-  &--risky   { border-top: 3px solid #f59e0b; }
-  &--unknown { border-top: 3px solid #94a3b8; }
 }
 
-// Breakdown bar
-.scrub-bar {
+// Bar chart
+.scrub-chart {
   display: flex;
-  height: 12px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--lm-bg-subtle);
+  align-items: flex-end;
+  gap: 3px;
+  height: 120px;
+  padding-bottom: 0;
 }
-.scrub-bar-segment {
+.scrub-chart-col {
+  flex: 1;
   height: 100%;
-  transition: width 0.3s ease;
-  min-width: 2px;
-}
-.scrub-bar--valid   { background: #22c55e; }
-.scrub-bar--risky   { background: #f59e0b; }
-.scrub-bar--invalid { background: #ef4444; }
-.scrub-bar--unknown { background: #94a3b8; }
-
-.scrub-bar-legend {
   display: flex;
-  gap: 1rem;
-  margin-top: 0.75rem;
-  flex-wrap: wrap;
+  align-items: flex-end;
+  cursor: default;
 }
-.scrub-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.8rem;
-  color: var(--lm-text-muted);
+.scrub-chart-bar {
+  width: 100%;
+  background: var(--lm-primary-border);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition: background 0.15s;
 
-  &::before {
-    content: '';
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-  }
-  &.scrub-legend--valid::before   { background: #22c55e; }
-  &.scrub-legend--risky::before   { background: #f59e0b; }
-  &.scrub-legend--invalid::before { background: #ef4444; }
-  &.scrub-legend--unknown::before { background: #94a3b8; }
+  &--today { background: var(--lm-primary); }
+
+  .scrub-chart-col:hover & { background: var(--lm-primary); }
 }
 
-// Quota
-.scrub-quota-row {
+.scrub-chart-labels {
   display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-.scrub-quota-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-.scrub-quota-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--lm-text-muted);
-}
-.scrub-quota-val {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--lm-text);
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--lm-text-subtle);
 }
 
-:deep(.scrub-progress.p-progressbar) {
-  height: 8px;
-  border-radius: 4px;
+// Inline bar in table
+.scrub-inline-bar {
+  height: 6px;
+  background: var(--lm-border);
+  border-radius: 3px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 200px;
 }
-
-// Meta / extra fields
-.scrub-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-  font-size: 0.85rem;
-}
-.scrub-extra-field {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-}
-.scrub-extra-key {
-  font-weight: 600;
-  color: var(--lm-text-muted);
-  text-transform: capitalize;
-}
-.scrub-extra-val {
-  color: var(--lm-text);
+.scrub-inline-bar-fill {
+  height: 100%;
+  background: var(--lm-primary);
+  border-radius: 3px;
 }
 </style>
