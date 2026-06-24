@@ -1,7 +1,7 @@
 <template>
   <form @submit.prevent="onSubmit">
     <section class="settings">
-      <div v-if="loading.settings || isLoading" class="flex justify-center p-8">
+      <div v-if="loading.settings && !form" class="flex justify-center p-8">
         <PvProgressSpinner />
       </div>
       <div class="page-header" style="margin-bottom:1.5rem">
@@ -9,8 +9,8 @@
           {{ $t('settings.title') }}
           <span style="font-size:0.85rem;font-weight:400;color:#94a3b8">({{ serverConfig.version }})</span>
         </h1>
-        <PvButton v-if="$can('settings:manage')" :disabled="!hasFormChanged" severity="primary" icon="pi pi-save"
-          type="submit" class="isSaveEnabled" data-cy="btn-save"
+        <PvButton v-if="$can('settings:manage')" :disabled="!hasFormChanged || isLoading" :loading="isLoading"
+          severity="primary" icon="pi pi-save" type="submit" class="isSaveEnabled" data-cy="btn-save"
           :label="$t('globals.buttons.save')" />
       </div>
 
@@ -221,8 +221,8 @@ export default {
 
       this.isLoading = true;
       try {
-        const data = await this.$api.updateSettings(form);
-        await this.$root.awaitRestart(data);
+        await this.$api.updateSettings(form);
+        await this.$api.getServerConfig();
         this.getSettings();
       } finally {
         this.isLoading = false;

@@ -207,9 +207,12 @@ export default {
 
     async onUpdateDBSettings() {
       this.isLoading = true;
-      const data = await this.$api.updateSettingsByKey('maintenance.db', this.dbSettings);
-      await this.$root.awaitRestart(data);
-      this.isLoading = false;
+      try {
+        await this.$api.updateSettingsByKey('maintenance.db', this.dbSettings);
+        await this.$api.getServerConfig();
+      } finally {
+        this.isLoading = false;
+      }
     },
   },
 

@@ -20,7 +20,7 @@
             <small class="block mt-1 text-color-secondary">{{ $t('settings.scrub.urlHelp') }}</small>
           </div>
 
-          <div class="field">
+          <div class="field mt-4">
             <label class="block mb-1 text-sm font-medium">{{ $t('settings.scrub.apiKey') }}</label>
             <PvPassword v-model="data.scrub.api_key" name="scrub.api_key"
               :maxlength="300" :feedback="false"
@@ -29,7 +29,7 @@
             <small class="block mt-1 text-color-secondary">{{ $t('settings.scrub.apiKeyHelp') }}</small>
           </div>
 
-          <div class="field">
+          <div class="field mt-4">
             <PvButton severity="primary" :loading="isTesting"
               :disabled="!data.scrub.enabled || !data.scrub.url || !data.scrub.api_key"
               icon="pi pi-link" :label="$t('settings.scrub.testConnection')"
