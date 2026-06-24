@@ -1,48 +1,34 @@
 <template>
   <section class="campaign">
-    <header class="grid page-header">
-      <div class="col-6">
-        <p v-if="isEditing && data.status" class="tags">
-          <PvTag v-if="isEditing" :class="data.status" :value="$t(`campaigns.status.${data.status}`)" />
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">
+          <template v-if="isEditing">{{ data.name }}</template>
+          <template v-else>{{ $t('campaigns.newCampaign') }}</template>
+        </h1>
+        <div v-if="isEditing && data.status" class="header-meta">
+          <PvTag :class="data.status" :value="$t(`campaigns.status.${data.status}`)" />
           <PvTag v-if="data.type === 'optin'" :class="data.type" :value="$t('lists.optin')" />
-          <span v-if="isEditing" class="has-text-grey-light is-size-7" :data-campaign-id="data.id">
+          <span class="id-meta" :data-campaign-id="data.id">
             {{ $t('globals.fields.id') }}: <copy-text :text="`${data.id}`" />
-            {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
+            &nbsp;{{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
           </span>
-        </p>
-        <h4 v-if="isEditing" class="page-title">
-          {{ data.name }}
-        </h4>
-        <h4 v-else class="page-title">
-          {{ $t('campaigns.newCampaign') }}
-        </h4>
-      </div>
-
-      <div class="col-6">
-        <div v-if="canManage || canSend" class="buttons">
-          <div class="field is-grouped" v-if="isEditing && canEdit">
-            <div class="field" v-if="canManage">
-              <PvButton @click="() => onSubmit('update')" :loading="loading.campaigns" severity="primary"
-                icon="pi pi-save" data-cy="btn-save" aria-keyshortcuts="ctrl+s">
-                <span class="has-kbd">{{ $t('globals.buttons.saveChanges') }} <span class="kbd">Ctrl+S</span></span>
-              </PvButton>
-            </div>
-            <div class="field" v-if="canSend && canStart">
-              <PvButton @click="startCampaign" :loading="loading.campaigns" severity="primary"
-                icon="pi pi-send" data-cy="btn-start" :label="$t('campaigns.start')" />
-            </div>
-            <div class="field" v-if="canSend && canSchedule">
-              <PvButton @click="startCampaign" :loading="loading.campaigns" severity="primary"
-                icon="pi pi-clock" data-cy="btn-schedule" :label="$t('campaigns.schedule')" />
-            </div>
-            <div class="field" v-if="canSend && canUnSchedule">
-              <PvButton @click="$utils.confirm(null, unscheduleCampaign)" :loading="loading.campaigns"
-                severity="primary" icon="pi pi-clock" data-cy="btn-unschedule" :label="$t('campaigns.unSchedule')" />
-            </div>
-          </div>
         </div>
       </div>
-    </header>
+      <div v-if="(canManage || canSend) && isEditing && canEdit" class="header-actions">
+        <PvButton v-if="canManage" @click="() => onSubmit('update')" :loading="loading.campaigns"
+          severity="primary" icon="pi pi-save" data-cy="btn-save" aria-keyshortcuts="ctrl+s">
+          <span class="has-kbd">{{ $t('globals.buttons.saveChanges') }} <span class="kbd">Ctrl+S</span></span>
+        </PvButton>
+        <PvButton v-if="canSend && canStart" @click="startCampaign" :loading="loading.campaigns"
+          severity="primary" icon="pi pi-send" data-cy="btn-start" :label="$t('campaigns.start')" />
+        <PvButton v-if="canSend && canSchedule" @click="startCampaign" :loading="loading.campaigns"
+          severity="primary" icon="pi pi-clock" data-cy="btn-schedule" :label="$t('campaigns.schedule')" />
+        <PvButton v-if="canSend && canUnSchedule" @click="$utils.confirm(null, unscheduleCampaign)"
+          :loading="loading.campaigns" severity="primary" icon="pi pi-clock"
+          data-cy="btn-unschedule" :label="$t('campaigns.unSchedule')" />
+      </div>
+    </div>
 
     <div v-if="loading.campaigns" class="flex justify-center p-8">
       <PvProgressSpinner />
@@ -96,32 +82,16 @@
                     <div class="col-6">
                       <div class="field">
                         <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.messenger') }}</label>
-                        <select v-model="form.messenger" name="messenger" :disabled="!canEdit" required
-                          class="w-full">
-                          <template v-if="emailMessengers.length > 1">
-                            <optgroup label="email">
-                              <option v-for="m in emailMessengers" :value="m" :key="m">
-                                {{ m }}
-                              </option>
-                            </optgroup>
-                          </template>
-                          <template v-else>
-                            <option value="email">email</option>
-                          </template>
-                          <option v-for="m in otherMessengers" :value="m" :key="m">{{ m }}</option>
-                        </select>
+                        <PvSelect v-model="form.messenger" :options="allMessengers" :disabled="!canEdit"
+                          required class="w-full" />
                       </div>
                     </div>
                     <div class="col-6">
                       <div class="field mr-4 mb-0">
                         <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.format') }}</label>
-                        <select v-model="form.content.contentType" :disabled="!canEdit || isEditing"
-                          class="w-full">
-                          <option v-for="(name, f) in contentTypes" :key="f" name="format" :value="f"
-                            :data-cy="`check-${f}`">
-                            {{ name }}
-                          </option>
-                        </select>
+                        <PvSelect v-model="form.content.contentType" :options="contentTypeOptions"
+                          option-label="label" option-value="value"
+                          :disabled="!canEdit || isEditing" class="w-full" />
                       </div>
                     </div>
                   </div>
@@ -175,19 +145,18 @@
                 </form>
               </div>
               <div v-if="canManage" class="col-4 col-offset-1">
-                <br />
-                <div class="box">
-                  <h3 class="title is-size-6">
-                    {{ $t('campaigns.sendTest') }}
-                  </h3>
-                  <div class="field">
-                    <small class="block mt-1 text-color-secondary">{{ $t('campaigns.sendTestHelp') }}</small>
-                    <PvAutoComplete v-model="form.testEmails" :disabled="isNew"
-                      :placeholder="$t('campaigns.testEmails')" multiple />
+                <div class="test-message-card">
+                  <div class="test-message-card__header">
+                    <i class="pi pi-envelope" />
+                    <span>{{ $t('campaigns.sendTest') }}</span>
                   </div>
-                  <div class="field">
+                  <div class="test-message-card__body">
+                    <small class="block mb-2 text-color-secondary">{{ $t('campaigns.sendTestHelp') }}</small>
+                    <PvAutoComplete v-model="form.testEmails" :disabled="isNew"
+                      :placeholder="$t('campaigns.testEmails')" multiple class="w-full mb-3" />
                     <PvButton @click="() => onSubmit('test')" :loading="loading.campaigns" :disabled="isNew"
-                      severity="primary" icon="pi pi-envelope" :label="$t('campaigns.send')" />
+                      severity="primary" icon="pi pi-send" :label="$t('campaigns.send')" class="w-full"
+                      justify="center" />
                   </div>
                 </div>
               </div>
@@ -284,15 +253,10 @@
               <div class="col-6">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
-                  <select v-model="form.archiveTemplateId" name="template"
-                    :disabled="!canArchive || !form.archive || form.content.contentType === 'visual'" required
-                    class="w-full">
-                    <template v-for="t in templates">
-                      <option v-if="t.type === 'campaign'" :value="t.id" :key="t.id">
-                        {{ t.name }}
-                      </option>
-                    </template>
-                  </select>
+                  <PvSelect v-model="form.archiveTemplateId" :options="campaignTemplates"
+                    option-label="name" option-value="id"
+                    :disabled="!canArchive || !form.archive || form.content.contentType === 'visual'"
+                    required class="w-full" />
                 </div>
               </div>
 
@@ -329,7 +293,7 @@
     </PvTabs>
 
     <PvDialog v-model:visible="isAttachModalOpen" :style="{ width: '900px' }" :closable="true" modal>
-      <media is-modal @selected="onAttachSelect" />
+      <media is-modal @selected="onAttachSelect" @close="isAttachModalOpen = false" />
     </PvDialog>
 
     <campaign-preview v-if="isPreviewingArchive" @close="onToggleArchivePreview" type="campaign" :id="data.id"
@@ -752,6 +716,18 @@ export default {
     otherMessengers() {
       return this.serverConfig.messengers.filter((m) => m !== 'email' && !m.startsWith('email-'));
     },
+
+    allMessengers() {
+      return [...this.emailMessengers, ...this.otherMessengers];
+    },
+
+    contentTypeOptions() {
+      return Object.entries(this.contentTypes).map(([value, label]) => ({ value, label }));
+    },
+
+    campaignTemplates() {
+      return (this.templates || []).filter((t) => t.type === 'campaign');
+    },
   },
 
   beforeRouteLeave(to, from, next) {
@@ -846,3 +822,121 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.campaign {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+// Header
+.page-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.id-meta {
+  font-size: 0.75rem;
+  color: var(--lm-text-subtle);
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+// Pill / segmented-control tabs
+:deep(.p-tabs) {
+  .p-tablist {
+    background: var(--lm-bg-subtle);
+    border: 1px solid var(--lm-border);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 2px;
+    width: fit-content;
+    // hide the sliding ink bar and scroll nav buttons
+    .p-tablist-active-bar { display: none !important; }
+    .p-tablist-nav-button  { display: none !important; }
+    // let the pill container scroll internally if viewport is very narrow
+    overflow: visible;
+  }
+
+  .p-tab {
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--lm-text-muted);
+    margin-bottom: 0;
+    gap: 0.4rem;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover:not([aria-selected='true']):not([data-p-disabled='true']) {
+      background: rgba(255, 255, 255, 0.65);
+      color: var(--lm-text-secondary);
+    }
+
+    &[aria-selected='true'] {
+      background: var(--lm-surface);
+      color: var(--lm-primary);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+      border-bottom: none;
+    }
+
+    &[data-p-disabled='true'] {
+      opacity: 0.4;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+  }
+
+  .p-tabpanels {
+    border: none;
+    box-shadow: none;
+    padding: 1.5rem 0 0 0;
+    background: transparent;
+  }
+}
+
+// Send test message card
+.test-message-card {
+  border: 1px solid var(--lm-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--lm-surface);
+  margin-top: 1.75rem;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--lm-bg-subtle);
+    border-bottom: 1px solid var(--lm-border);
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--lm-text-secondary);
+
+    .pi { color: var(--lm-primary); font-size: 0.9rem; }
+  }
+
+  &__body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+</style>

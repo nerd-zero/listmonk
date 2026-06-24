@@ -3,6 +3,7 @@ import { createPinia } from 'pinia';
 import { createI18n } from 'vue-i18n';
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
+import { definePreset } from '@primeuix/themes';
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
 import 'primeicons/primeicons.css';
@@ -50,11 +51,30 @@ import Card from 'primevue/card';
 import Avatar from 'primevue/avatar';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
+import FileUpload from 'primevue/fileupload';
 
 import App from './App.vue';
 import router from './router';
 import * as api from './api';
 import Utils from './utils';
+
+const BluePreset = definePreset(Aura, {
+  semantic: {
+    primary: {
+      50: '{blue.50}',
+      100: '{blue.100}',
+      200: '{blue.200}',
+      300: '{blue.300}',
+      400: '{blue.400}',
+      500: '{blue.500}',
+      600: '{blue.600}',
+      700: '{blue.700}',
+      800: '{blue.800}',
+      900: '{blue.900}',
+      950: '{blue.950}',
+    },
+  },
+});
 
 const pinia = createPinia();
 
@@ -72,7 +92,7 @@ app.use(i18n);
 
 app.use(PrimeVue, {
   theme: {
-    preset: Aura,
+    preset: BluePreset,
     options: { darkModeSelector: '.app-dark' },
   },
   ripple: true,
@@ -121,6 +141,7 @@ app.component('PvCard', Card);
 app.component('PvAvatar', Avatar);
 app.component('PvIconField', IconField);
 app.component('PvInputIcon', InputIcon);
+app.component('PvFileUpload', FileUpload);
 
 app.directive('tooltip', Tooltip);
 
@@ -139,7 +160,16 @@ router.afterEach((to) => {
 });
 
 async function initConfig(instance) {
-  const [profile, cfg] = await Promise.all([api.getUserProfile(), api.getServerConfig()]);
+  let profile;
+  let cfg;
+  try {
+    [profile, cfg] = await Promise.all([api.getUserProfile(), api.getServerConfig()]);
+  } catch (err) {
+    if (err.response && err.response.status === 403) {
+      window.location.href = '/admin/login';
+    }
+    return;
+  }
 
   const lang = await api.getLang(cfg.lang);
   i18n.global.locale = cfg.lang;
