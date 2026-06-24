@@ -57,6 +57,7 @@ import App from './App.vue';
 import router from './router';
 import * as api from './api';
 import Utils from './utils';
+import eventBus from './eventBus';
 
 const BluePreset = definePreset(Aura, {
   semantic: {
@@ -178,6 +179,7 @@ async function initConfig(instance) {
   const props = instance.config.globalProperties;
   props.$utils = new Utils(i18n.global);
   props.$api = api;
+  props.$events = eventBus;
 
   props.$can = (...perms) => {
     if (profile.userRole.id === 1) {
