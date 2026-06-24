@@ -32,14 +32,26 @@
         <div class="scrub-chart-header">
           <span class="settings-section-label">Daily Activity — Last 30 Days</span>
           <div class="scrub-summary">
-            <span><strong>{{ fmt(periodTotal) }}</strong> total</span>
+            <div class="scrub-summary-item">
+              <span class="scrub-n">{{ fmt(periodTotal) }}</span>
+              <span class="scrub-l">total</span>
+            </div>
             <span class="scrub-summary-sep">·</span>
-            <span><strong>{{ fmt(todayCount) }}</strong> today</span>
+            <div class="scrub-summary-item">
+              <span class="scrub-n">{{ fmt(todayCount) }}</span>
+              <span class="scrub-l">today</span>
+            </div>
             <span class="scrub-summary-sep">·</span>
-            <span><strong>{{ activeDays }}</strong> of {{ rows.length }} active days</span>
+            <div class="scrub-summary-item">
+              <span class="scrub-n">{{ activeDays }}</span>
+              <span class="scrub-l">of {{ rows.length }} active days</span>
+            </div>
             <template v-if="peakDay.emailScrubs > 0">
               <span class="scrub-summary-sep">·</span>
-              <span>peak <strong>{{ fmt(peakDay.emailScrubs) }}</strong> on {{ peakDay.date }}</span>
+              <div class="scrub-summary-item">
+                <span class="scrub-n">{{ fmt(peakDay.emailScrubs) }}</span>
+                <span class="scrub-l">peak on {{ peakDay.date }}</span>
+              </div>
             </template>
           </div>
         </div>
@@ -201,15 +213,29 @@ export default {
 
 .scrub-summary {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
-  color: var(--lm-text-muted);
-
-  strong { color: var(--lm-text); font-weight: 600; }
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.scrub-summary-sep { color: var(--lm-border); }
+.scrub-summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+
+  .scrub-n {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--lm-text);
+    line-height: 1;
+  }
+  .scrub-l {
+    font-size: 0.8rem;
+    color: var(--lm-text-muted);
+  }
+}
+
+.scrub-summary-sep { color: var(--lm-border); font-size: 0.9rem; }
 
 // Bar chart
 .scrub-chart {
