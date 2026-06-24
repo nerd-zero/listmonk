@@ -17,8 +17,8 @@
       </div>
       <div v-if="(canManage || canSend) && isEditing && canEdit" class="header-actions">
         <PvButton v-if="canManage" @click="() => onSubmit('update')" :loading="loading.campaigns"
-          severity="primary" icon="pi pi-save" data-cy="btn-save" aria-keyshortcuts="ctrl+s">
-          <span class="has-kbd">{{ $t('globals.buttons.saveChanges') }} <span class="kbd">Ctrl+S</span></span>
+          severity="primary" data-cy="btn-save" aria-keyshortcuts="ctrl+s">
+          <i class="pi pi-save" /><span class="has-kbd">{{ $t('globals.buttons.saveChanges') }} <span class="kbd">Ctrl+S</span></span>
         </PvButton>
         <PvButton v-if="canSend && canStart" @click="startCampaign" :loading="loading.campaigns"
           severity="primary" icon="pi pi-send" data-cy="btn-start" :label="$t('campaigns.start')" />
