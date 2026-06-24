@@ -79,7 +79,7 @@ export default {
 
       // Propagate the items to the parent's v-model binding.
       this.$nextTick(() => {
-        this.$emit('input', this.selectedItems);
+        this.$emit('update:modelValue', this.selectedItems);
       });
     },
 
@@ -88,7 +88,7 @@ export default {
 
       // Propagate the items to the parent's v-model binding.
       this.$nextTick(() => {
-        this.$emit('input', this.selectedItems);
+        this.$emit('update:modelValue', this.selectedItems);
       });
     },
   },
