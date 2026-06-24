@@ -1548,8 +1548,9 @@ section.analytics {
   td .tag { min-width: 100px; }
 }
 .template-modal {
-  .p-dialog-content { padding: 0; }
-  .lm-form-body { max-height: 72vh; }
+  .p-dialog-content { padding: 0; overflow: hidden; }
+  // lm-form-header ~90px + lm-form-footer ~60px = ~150px overhead
+  .lm-form-body { max-height: calc(88vh - 150px); }
 }
 
 // ============================================================

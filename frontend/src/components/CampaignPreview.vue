@@ -1,13 +1,13 @@
 <template>
   <div>
-    <PvDialog :visible="isVisible" @update:visible="close" scroll="keep" :aria-modal="true"
-      :style="{ width: 'auto' }" :closable="true" modal>
+    <PvDialog :visible="isVisible" @update:visible="close" :aria-modal="true"
+      :style="{ width: '900px', maxWidth: '95vw' }" :closable="true" modal>
       <template #header>
-        <h4>{{ title }}</h4>
+        <h4 class="preview-title">{{ title }}</h4>
       </template>
 
-      <section expanded class="modal-card-body preview">
-        <div v-if="isLoading" class="flex justify-center p-8">
+      <div class="preview-body">
+        <div v-if="isLoading" class="preview-spinner">
           <PvProgressSpinner style="width:2rem;height:2rem" />
         </div>
         <form v-if="isPost" method="post" :action="previewURL" target="iframe" ref="form">
@@ -19,13 +19,11 @@
         </form>
 
         <iframe id="iframe" name="iframe" ref="iframe" :title="title" :src="isPost ? 'about:blank' : previewURL"
-          @load="onLoaded" sandbox="allow-scripts" />
-      </section>
+          @load="onLoaded" sandbox="allow-scripts" class="preview-iframe" />
+      </div>
 
       <template #footer>
-        <div class="has-text-right">
-          <PvButton @click="close" :label="$t('globals.buttons.close')" />
-        </div>
+        <PvButton @click="close" :label="$t('globals.buttons.close')" severity="secondary" />
       </template>
     </PvDialog>
   </div>
@@ -113,3 +111,32 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.preview-title { margin: 0; font-size: 1rem; font-weight: 600; }
+
+.preview-body {
+  position: relative;
+  width: 100%;
+  height: 72vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--lm-surface);
+  z-index: 1;
+}
+
+.preview-iframe {
+  width: 100%;
+  flex: 1;
+  border: none;
+  display: block;
+}
+</style>
