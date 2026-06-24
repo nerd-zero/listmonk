@@ -1248,10 +1248,12 @@ section {
   padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.1rem;
   overflow-y: auto;
   overflow-x: hidden;
   max-height: 65vh;
+
+  .field { margin-bottom: 0; }
 }
 
 .lm-form-footer {

@@ -8,35 +8,31 @@
     </div>
 
     <div class="lm-form-body">
-      <div class="grid">
-        <div class="col-6">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.type') }}</label>
-            <div class="flex gap-4 pt-1">
-              <div class="flex items-center gap-2">
-                <PvRadioButton v-model="form.type" name="type" value="user"
-                  input-id="type-user" :disabled="isEditing" />
-                <label for="type-user" class="cursor-pointer flex items-center gap-1">
-                  <i class="pi pi-user" /> {{ $t('users.type.user') }}
-                </label>
-              </div>
-              <div class="flex items-center gap-2">
-                <PvRadioButton v-model="form.type" name="type" value="api"
-                  input-id="type-api" :disabled="isEditing" />
-                <label for="type-api" class="cursor-pointer flex items-center gap-1">
-                  <i class="pi pi-code" /> {{ $t('users.type.api') }}
-                </label>
-              </div>
+      <div class="type-status-row">
+        <div class="field type-field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.type') }}</label>
+          <div class="radio-group">
+            <div class="flex items-center gap-2">
+              <PvRadioButton v-model="form.type" name="type" value="user"
+                input-id="type-user" :disabled="isEditing" />
+              <label for="type-user" class="cursor-pointer flex items-center gap-1">
+                <i class="pi pi-user" /> {{ $t('users.type.user') }}
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <PvRadioButton v-model="form.type" name="type" value="api"
+                input-id="type-api" :disabled="isEditing" />
+              <label for="type-api" class="cursor-pointer flex items-center gap-1">
+                <i class="pi pi-code" /> {{ $t('users.type.api') }}
+              </label>
             </div>
           </div>
         </div>
-        <div class="col-6">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
-            <PvSelect v-model="form.status" name="status" required
-              :options="[{ label: $t('users.status.enabled'), value: 'enabled' }, { label: $t('users.status.disabled'), value: 'disabled' }]"
-              option-label="label" option-value="value" class="w-full" />
-          </div>
+        <div class="field status-field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
+          <PvSelect v-model="form.status" name="status" required
+            :options="[{ label: $t('users.status.enabled'), value: 'enabled' }, { label: $t('users.status.disabled'), value: 'disabled' }]"
+            option-label="label" option-value="value" class="w-full" />
         </div>
       </div>
 
@@ -235,6 +231,20 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.type-status-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5rem;
+}
+.type-field { flex: 1; }
+.status-field { flex: 0 0 180px; }
+.radio-group {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  height: 2.375rem; // matches PvSelect height
+}
+
 .form-section {
   border: 1px solid var(--lm-border);
   border-radius: 8px;
