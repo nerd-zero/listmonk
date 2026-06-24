@@ -67,6 +67,8 @@ Static assets (frontend dist, schema, i18n files) are embedded into the binary a
 - `frontend/src/assets/style.scss` — global SCSS. CSS custom properties for the design system are defined here (`--lm-primary`, `--lm-surface`, `--lm-border`, `--lm-text`, `--lm-text-muted`, `--lm-bg`, `--lm-bg-subtle`).
 - `frontend/src/constants.js` — model names, URI prefixes, regex helpers (e.g. `regDuration`).
 
+**PrimeVue component API reference**: `Primevue.md` in the repo root documents the props, variants, design tokens, and PassThrough (PT) options for PrimeVue components used in this project. Check it before guessing at component APIs — it covers the exact prop names, severity values, variant strings, and CSS class names.
+
 **Component conventions (PrimeVue migration)**:
 - All PrimeVue components are registered globally and used with the `Pv` prefix.
 - Dialog/modal layout uses `.lm-form` / `.lm-form-header` / `.lm-form-body` / `.lm-form-footer` classes. `.lm-form-body` uses `flex-direction: column; gap: 1.1rem` — set `.field { margin-bottom: 0 }` inside it to avoid double spacing.
