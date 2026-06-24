@@ -565,7 +565,7 @@ select { height: auto; padding: 0.5rem 0.75rem; }
 
 $sidebar-w:     260px;
 $topbar-h:      56px;
-$sidebar-bg:    #eff6ff;   // blue-50 — matches app background
+$sidebar-bg:    #ffffff;   // white sidebar
 $sidebar-hover: rgba(37,99,235,0.07);
 $sidebar-active:#dbeafe;   // blue-100
 $nav-text:      #475569;   // slate-600
@@ -577,7 +577,7 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
 .app-shell {
   display: flex;
   min-height: 100vh;
-  background: #eff6ff;  // blue-50 content bg
+  background: #f8fafc;
 }
 
 // ─── Sidebar ──────────────────────────────────────────
@@ -590,6 +590,7 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
   height: 100vh;
   z-index: 100;
   background: $sidebar-bg;
+  border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   transition: transform 0.25s $ease, width 0.25s $ease;
@@ -601,7 +602,7 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
     align-items: center;
     padding: 0 1.25rem;
     flex-shrink: 0;
-    border-bottom: 1px solid #dbeafe;
+    border-bottom: 1px solid #e2e8f0;
   }
 
   .sidebar-brand {
@@ -617,15 +618,13 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
     width: 28px;
     height: 28px;
     object-fit: contain;
-    filter: brightness(0) invert(1);
-    opacity: 0.9;
   }
 
   .sidebar-brand-name {
     font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: #fff;
+    color: #1e293b;
     white-space: nowrap;
   }
 
@@ -637,52 +636,6 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
     &::-webkit-scrollbar { display: none; }
   }
 
-  .sidebar-footer {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    padding: 0.875rem 1.25rem;
-    border-top: 1px solid rgba(255,255,255,0.06);
-    flex-shrink: 0;
-  }
-
-  .sidebar-avatar {
-    width: 30px !important;
-    height: 30px !important;
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
-    flex-shrink: 0;
-    background: $primary !important;
-    color: #fff !important;
-  }
-
-  .sidebar-username {
-    font-size: 0.825rem;
-    color: $nav-text;
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .sidebar-logout {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: $nav-text;
-    padding: 0.375rem;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    transition: color 0.15s, background 0.15s;
-
-    i { font-size: 0.9rem; }
-
-    &:hover {
-      color: $nav-text-hover;
-      background: $sidebar-hover;
-    }
-  }
 }
 
 // Sidebar nav items
@@ -889,14 +842,11 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
     .app-sidebar { transform: none; width: 60px; }
     .sidebar-brand-name,
     .nav-label,
-    .nav-item span,
-    .sidebar-username { display: none; }
+    .nav-item span { display: none; }
     .app-main { margin-left: 60px; }
     .nav-item { justify-content: center; padding: 0.6rem 0; }
     .nav-item::before { display: none; }
     .nav-item .nav-icon { margin: 0; width: auto; }
-    .sidebar-footer { justify-content: center; padding: 0.875rem 0; }
-    .sidebar-footer .sidebar-logout { margin: 0; }
   }
 
   @media (max-width: 991px) {

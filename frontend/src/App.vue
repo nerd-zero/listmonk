@@ -17,18 +17,6 @@
           <navigation :active-item="activeItem" />
         </nav>
 
-        <div class="sidebar-footer">
-          <PvAvatar
-            v-if="profile.username"
-            :label="profile.username[0].toUpperCase()"
-            class="sidebar-avatar"
-            shape="circle"
-          />
-          <span v-if="profile.username" class="sidebar-username">{{ profile.username }}</span>
-          <button type="button" class="sidebar-logout" @click="doLogout" v-tooltip.top="$t('users.logout')">
-            <i class="pi pi-sign-out" />
-          </button>
-        </div>
       </aside>
 
       <!-- ─── Main ─── -->

@@ -12,7 +12,9 @@
           v-if="queryParams.status !== 'archived'"
           :to="{ name: 'lists', query: { status: 'archived' } }"
           class="page-sub-link"
-        >{{ $t('globals.buttons.view') }} {{ $t('lists.archived').toLowerCase() }} &rarr;</router-link>
+        >
+{{ $t('globals.buttons.view') }} {{ $t('lists.archived').toLowerCase() }} &rarr;
+</router-link>
         <router-link v-else :to="{ name: 'lists' }" class="page-sub-link">
           {{ $t('globals.buttons.view') }} {{ $t('menu.allLists').toLowerCase() }} &rarr;
         </router-link>
@@ -163,7 +165,9 @@
                 class="row-action-btn"
                 data-cy="btn-campaign"
                 v-tooltip.bottom="$t('lists.sendCampaign')"
-              ><i class="pi pi-send" /></router-link>
+              >
+<i class="pi pi-send" />
+</router-link>
 
               <button
                 v-if="$can('lists:manage') || $canList(data.id, 'list:manage')"
@@ -172,7 +176,9 @@
                 data-cy="btn-edit"
                 v-tooltip.bottom="$t('globals.buttons.edit')"
                 @click="showEditForm(data)"
-              ><i class="pi pi-pencil" /></button>
+              >
+<i class="pi pi-pencil" />
+</button>
 
               <router-link
                 v-if="$can('subscribers:import')"
@@ -180,7 +186,9 @@
                 class="row-action-btn"
                 data-cy="btn-import"
                 v-tooltip.bottom="$t('import.title')"
-              ><i class="pi pi-upload" /></router-link>
+              >
+<i class="pi pi-upload" />
+</router-link>
 
               <button
                 v-if="$can('lists:manage') || $canList(data.id, 'list:manage')"
@@ -189,7 +197,9 @@
                 data-cy="btn-delete"
                 v-tooltip.bottom="$t('globals.buttons.delete')"
                 @click="deleteList(data)"
-              ><i class="pi pi-trash" /></button>
+              >
+<i class="pi pi-trash" />
+</button>
             </div>
           </template>
         </PvColumn>
@@ -485,9 +495,6 @@ export default {
 .status-label { color: var(--lm-text-subtle); }
 
 .date-cell { font-size: 0.82rem; color: var(--lm-text-muted); }
-
-// Row action buttons
-}
 
 .cache-note {
   font-size: 0.78rem;
