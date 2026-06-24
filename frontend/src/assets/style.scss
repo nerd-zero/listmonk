@@ -1606,27 +1606,7 @@ section.analytics {
 // ============================================================
 .settings {
   .settings-wrap { max-width: 1240px; }
-
-  .settings-tabs {
-    display: flex;
-    flex-wrap: nowrap;
-
-    > .p-tabs-vertical, > .tabs-nav {
-      flex: 0 0 230px;
-      a { border: 0; }
-    }
-
-    > .tab-content-wrap {
-      border: 0;
-      box-shadow: none;
-      padding: 0 0 0 45px;
-      min-width: 0;
-      flex: 1 1 0;
-    }
-  }
-
   .disabled { opacity: 0.30; }
-  .box { margin-bottom: 30px; }
   .code-editor { height: 20vh; min-height: 350px; }
 }
 
@@ -1754,11 +1734,6 @@ th.role-toggle-select a { font-weight: normal; }
 
   .p-tabs .p-tabpanels { padding: 15px 0 0 0; }
 
-  .settings .settings-tabs {
-    display: block;
-    > .tabs-nav { margin-bottom: 20px; }
-    > .tab-content-wrap { padding: 0; }
-  }
 }
 
 @media screen and (min-width: 769px) {
