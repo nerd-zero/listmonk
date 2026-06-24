@@ -56,7 +56,7 @@
           <section class="wrap">
             <div class="grid">
               <div class="col-7">
-                <form @submit.prevent="() => onSubmit(isNew ? 'create' : 'update')">
+                <form class="campaign-form" @submit.prevent="() => onSubmit(isNew ? 'create' : 'update')">
                   <div class="field">
                     <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
                     <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name" :disabled="!canEdit"
@@ -87,7 +87,7 @@
                       </div>
                     </div>
                     <div class="col-6">
-                      <div class="field mr-4 mb-0">
+                      <div class="field">
                         <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.format') }}</label>
                         <PvSelect v-model="form.content.contentType" :options="contentTypeOptions"
                           option-label="label" option-value="value"
@@ -99,44 +99,38 @@
                   <div class="field">
                     <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.tags') }}</label>
                     <PvAutoComplete v-model="form.tags" name="tags" :disabled="!canEdit"
-                      :placeholder="$t('globals.terms.tags')" multiple />
+                      :placeholder="$t('globals.terms.tags')" multiple class="w-full" />
                   </div>
-                  <hr />
 
-                  <div class="grid">
-                    <div class="col-4">
-                      <div class="field" data-cy="btn-send-later">
-                        <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.sendLater') }}</label>
-                        <div class="flex items-center gap-2">
-                          <PvToggleSwitch v-model="form.sendLater" :disabled="!canEdit" />
-                        </div>
-                      </div>
+                  <div class="form-divider" />
+
+                  <div class="field" data-cy="btn-send-later">
+                    <div class="flex items-center gap-2 mb-1">
+                      <PvToggleSwitch v-model="form.sendLater" :disabled="!canEdit" />
+                      <span class="text-sm font-medium">{{ $t('campaigns.sendLater') }}</span>
                     </div>
-                    <div class="col">
-                      <br />
-                      <div class="field" v-if="form.sendLater" data-cy="send_at">
-                        <small class="block mt-1 text-color-secondary">{{ form.sendAtDate ? $utils.duration(Date(), form.sendAtDate) : '' }}</small>
-                        <!-- TODO: replace b-datetimepicker with a PrimeVue equivalent (PvDatePicker) -->
-                        <PvDatePicker v-model="form.sendAtDate" :disabled="!canEdit" show-time hour-format="24"
-                          :placeholder="$t('campaigns.dateAndTime')" required />
-                      </div>
+                    <div v-if="form.sendLater" data-cy="send_at" class="mt-2">
+                      <PvDatePicker v-model="form.sendAtDate" :disabled="!canEdit" show-time hour-format="24"
+                        :placeholder="$t('campaigns.dateAndTime')" required />
+                      <small v-if="form.sendAtDate" class="block mt-1 text-color-secondary">
+                        {{ $utils.duration(Date(), form.sendAtDate) }}
+                      </small>
                     </div>
                   </div>
 
-                  <div>
-                    <p style="text-align:right">
-                      <a href="#" @click.prevent="onShowHeaders" data-cy="btn-headers">
-                        <i class="pi pi-plus" />{{ $t('settings.smtp.setCustomHeaders') }}
-                      </a>
-                    </p>
-                    <div class="field" v-if="form.headersStr !== '[]' || isHeadersVisible">
-                      <small class="block mt-1 text-color-secondary">{{ $t('campaigns.customHeadersHelp') }}</small>
+                  <div class="field">
+                    <a href="#" class="form-link" @click.prevent="onShowHeaders" data-cy="btn-headers">
+                      <i class="pi pi-plus" />{{ $t('settings.smtp.setCustomHeaders') }}
+                    </a>
+                    <div v-if="form.headersStr !== '[]' || isHeadersVisible" class="mt-2">
                       <PvTextarea v-model="form.headersStr" name="headers"
                         placeholder="[{&quot;X-Custom&quot;: &quot;value&quot;}, {&quot;X-Custom2&quot;: &quot;value&quot;}]"
                         :disabled="!canEdit" class="w-full" />
+                      <small class="block mt-1 text-color-secondary">{{ $t('campaigns.customHeadersHelp') }}</small>
                     </div>
                   </div>
-                  <hr />
+
+                  <div class="form-divider" />
 
                   <div class="field" v-if="isNew">
                     <PvButton type="submit" severity="primary" :loading="loading.campaigns" data-cy="btn-continue"
@@ -908,6 +902,31 @@ export default {
     padding: 1.5rem 0 0 0;
     background: transparent;
   }
+}
+
+// Campaign form
+.campaign-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .field { margin-bottom: 0; }
+}
+
+.form-divider {
+  border-top: 1px solid var(--lm-border);
+  margin: 0.25rem 0;
+}
+
+.form-link {
+  font-size: 0.85rem;
+  color: var(--lm-primary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  &:hover { text-decoration: underline; }
 }
 
 // Send test message card
