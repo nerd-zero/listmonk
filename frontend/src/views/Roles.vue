@@ -183,5 +183,4 @@ export default {
 
 .role-name-cell { display: flex; align-items: center; gap: 0.5rem; }
 .row-name { color: var(--lm-text); font-weight: 500; text-decoration: none; &:hover { color: var(--lm-primary); } }
-}
 </style>

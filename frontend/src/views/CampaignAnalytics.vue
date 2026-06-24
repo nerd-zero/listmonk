@@ -38,22 +38,25 @@
         </form>
       </div>
 
-      <div class="charts-section">
+      <div v-if="hasChartData" class="charts-section">
         <div v-for="(v, k) in charts" :key="k" class="chart-block">
           <div class="chart-block-header">
             <span class="chart-block-title">{{ v.name }}</span>
-            <span v-if="v.type !== 'bar'" class="chart-block-count">({{ $utils.niceNumber(counts[k]) }})</span>
+            <span v-if="v.type !== 'bar' && v.data" class="chart-block-count">({{ $utils.niceNumber(counts[k]) }})</span>
           </div>
-          <div v-if="v.loading" class="flex justify-center p-8">
+          <div v-if="v.loading" class="chart-spinner">
             <PvProgressSpinner style="width:2rem;height:2rem" />
           </div>
-          <div v-else class="chart-block-body">
+          <div v-else-if="v.data" class="chart-block-body" :class="{ 'chart-block-body--bar': v.type === 'bar' }">
             <div class="chart-main">
               <chart :type="v.type" :data="v.data" :on-click="v.onClick" />
             </div>
-            <div class="chart-donut">
+            <div v-if="v.type !== 'bar'" class="chart-donut">
               <chart type="donut" :data="v.donutData" />
             </div>
+          </div>
+          <div v-else class="chart-empty">
+            <span class="chart-empty-text">{{ $t('globals.messages.emptyState') }}</span>
           </div>
         </div>
       </div>
@@ -284,6 +287,10 @@ export default {
 
   computed: {
     ...mapState(useMainStore, ['serverConfig']),
+
+    hasChartData() {
+      return Object.values(this.charts).some((c) => c.data !== null || c.loading);
+    },
   },
 
   created() {
@@ -347,12 +354,22 @@ export default {
 .filter-action { padding-bottom: 0; align-self: flex-end; }
 
 .charts-section { display: flex; flex-direction: column; }
-.chart-block { padding: 1.5rem; & + & { border-top: 1px solid var(--lm-bg-subtle); } }
-.chart-block-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+.chart-block { padding: 1.25rem 1.5rem; & + & { border-top: 1px solid var(--lm-border); } }
+.chart-block-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
 .chart-block-title { font-size: 0.95rem; font-weight: 600; color: var(--lm-text); }
 .chart-block-count { font-size: 0.85rem; color: var(--lm-text-subtle); }
 
-.chart-block-body { display: grid; grid-template-columns: 1fr 220px; gap: 1.5rem; align-items: center; }
-.chart-main { min-height: 200px; }
-.chart-donut { }
+.chart-block-body {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 1.5rem;
+  align-items: center;
+  &--bar { grid-template-columns: 1fr; }
+}
+.chart-main { height: 220px; position: relative; }
+.chart-donut { height: 200px; position: relative; }
+
+.chart-spinner { display: flex; justify-content: center; padding: 3rem; }
+.chart-empty { display: flex; justify-content: center; padding: 2rem; }
+.chart-empty-text { font-size: 0.875rem; color: var(--lm-text-subtle); }
 </style>
