@@ -33,12 +33,19 @@ Cypress.Commands.add('loginAndVisit', (url) => {
   const username = Cypress.env('LISTMONK_ADMIN_USER') || 'admin';
   const password = Cypress.env('LISTMONK_ADMIN_PASSWORD') || 'listmonk';
 
-  // Fill the username and passowrd and login.
+  // Fill the username and password and login.
   cy.get('input[name=username]').invoke('val', username);
   cy.get('input[name=password]').invoke('val', password);
 
   // Submit form.
   cy.get('button').click();
+
+  // Wait for login redirection to complete.
+  if (url.includes('/admin')) {
+    cy.get('.sidebar-username', { timeout: 10000 }).should('contain', username);
+  } else {
+    cy.wait(1000);
+  }
 });
 
 Cypress.Commands.add('clickMenu', (...selectors) => {

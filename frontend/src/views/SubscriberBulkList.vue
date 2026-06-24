@@ -86,33 +86,12 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.lm-form { display: flex; flex-direction: column; }
-
-.lm-form-header {
-  padding: 1.5rem 1.5rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-.lm-form-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
-
-.lm-form-body {
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
 
 .lm-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .lm-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
-.lm-help { font-size: 0.75rem; color: #94a3b8; line-height: 1.4; }
+.lm-help { font-size: 0.75rem; color: var(--lm-text-subtle); line-height: 1.4; }
 
 .radio-group { display: flex; flex-direction: column; gap: 0.5rem; }
 .radio-item { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; color: #374151; }
 
-.lm-form-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
-}
 </style>

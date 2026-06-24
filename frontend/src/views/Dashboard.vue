@@ -212,14 +212,14 @@ export default {
 .dash-greeting {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--lm-text);
   margin: 0 0 0.2rem;
   line-height: 1.2;
 }
 
 .dash-date {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--lm-text-muted);
   margin: 0;
 }
 
@@ -234,16 +234,14 @@ export default {
 }
 
 .stat-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--lm-surface);
+  border: 1px solid var(--lm-border);
   border-radius: 12px;
   padding: 1.5rem;
   display: flex;
   gap: 1rem;
   align-items: flex-start;
   transition: box-shadow 0.15s;
-
-  &:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
 }
 
 .stat-icon {
@@ -256,11 +254,8 @@ export default {
   flex-shrink: 0;
 
   i { font-size: 1.15rem; }
-
-  &--blue   { background: #eff6ff; color: #3b82f6; }
-  &--green  { background: #f0fdf4; color: #22c55e; }
-  &--purple { background: #f5f3ff; color: #8b5cf6; }
-  &--orange { background: #fff7ed; color: #f97316; }
+  &--green  { background: var(--lm-success-bg); color: var(--lm-success); }
+  &--orange { background: var(--lm-surface)7ed; color: #f97316; }
 }
 
 .stat-body {
@@ -271,7 +266,7 @@ export default {
 .stat-number {
   font-size: 2rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--lm-text);
   line-height: 1;
   margin-bottom: 0.25rem;
 }
@@ -279,7 +274,7 @@ export default {
 .stat-label {
   font-size: 0.8rem;
   font-weight: 500;
-  color: #64748b;
+  color: var(--lm-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 0.75rem;
@@ -292,7 +287,7 @@ export default {
 
   span {
     font-size: 0.8rem;
-    color: #94a3b8;
+    color: var(--lm-text-subtle);
   }
 }
 
@@ -306,8 +301,8 @@ export default {
 }
 
 .chart-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--lm-surface);
+  border: 1px solid var(--lm-border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -319,7 +314,7 @@ export default {
 .chart-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--lm-text);
 }
 
 .chart-body {
@@ -336,15 +331,15 @@ export default {
   align-items: center;
   justify-content: center;
   width: 100%;
-  color: #94a3b8;
+  color: var(--lm-text-subtle);
   font-size: 0.875rem;
 }
 
 .dash-cache-note {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--lm-text-subtle);
   margin: 0;
 
-  a { color: #94a3b8; text-decoration: underline; }
+  a { color: var(--lm-text-subtle); text-decoration: underline; }
 }
 </style>

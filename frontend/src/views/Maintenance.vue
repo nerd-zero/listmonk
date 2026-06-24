@@ -254,9 +254,8 @@ export default {
 
 <style scoped lang="scss">
 .maintenance-page { display: flex; flex-direction: column; gap: 1.5rem; }
-.page-header { display: flex; align-items: center; }
-.page-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0; }
-.page-desc { font-size: 0.875rem; color: #64748b; margin: 0; }
+
+.page-desc { font-size: 0.875rem; color: var(--lm-text-muted); margin: 0; }
 
 .maintenance-grid {
   display: grid;
@@ -267,20 +266,18 @@ export default {
 }
 
 .maint-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--lm-surface);
+  border: 1px solid var(--lm-border);
   border-radius: 12px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-
-  &--wide { grid-column: 1 / -1; }
 }
 
-.maint-card-header { display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; }
-.maint-icon { font-size: 1rem; color: #3b82f6; }
-.maint-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin: 0; }
+.maint-card-header { display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid var(--lm-bg-subtle); padding-bottom: 0.75rem; }
+.maint-icon { font-size: 1rem; color: var(--lm-primary); }
+.maint-title { font-size: 1rem; font-weight: 700; color: var(--lm-text); margin: 0; }
 .maint-subtitle { font-size: 0.9rem; font-weight: 600; color: #374151; margin: 0; }
 
 .maint-field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; }
@@ -288,7 +285,7 @@ export default {
 .maint-field--disabled { opacity: 0.45; pointer-events: none; }
 .maint-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .maint-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
-.maint-help { font-size: 0.75rem; color: #94a3b8; line-height: 1.4; margin: 0; }
+.maint-help { font-size: 0.75rem; color: var(--lm-text-subtle); line-height: 1.4; margin: 0; }
 .maint-footer { display: flex; justify-content: flex-end; }
 
 .maint-db-section { display: flex; flex-direction: column; gap: 0.75rem; }

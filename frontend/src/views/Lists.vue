@@ -417,41 +417,14 @@ export default {
 }
 
 // Page header
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
+
 .page-header-left { display: flex; flex-direction: column; gap: 0.25rem; }
-.page-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.page-title-sub { color: #94a3b8; font-weight: 400; }
-.page-title-count {
-  font-size: 0.85rem;
-  font-weight: 600;
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  padding: 0.1rem 0.55rem;
-}
-.page-sub-link { font-size: 0.8rem; color: #64748b; text-decoration: none; &:hover { color: #3b82f6; } }
+
+.page-title-sub { color: var(--lm-text-subtle); font-weight: 400; }
+
+.page-sub-link { font-size: 0.8rem; color: var(--lm-text-muted); text-decoration: none; &:hover { color: var(--lm-primary); } }
 
 // Table card
-.table-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-}
 
 // Toolbar
 .table-toolbar {
@@ -469,7 +442,7 @@ export default {
   gap: 0.75rem;
   margin-left: auto;
 }
-.bulk-count { font-size: 0.85rem; color: #64748b; a { color: #3b82f6; } }
+.bulk-count { font-size: 0.85rem; color: var(--lm-text-muted); a { color: var(--lm-primary); } }
 .bulk-btn {
   display: inline-flex;
   align-items: center;
@@ -480,73 +453,45 @@ export default {
   font-weight: 500;
   border: 1px solid;
   cursor: pointer;
-  background: #fff;
-  &--danger { color: #ef4444; border-color: #fecaca; &:hover { background: #fef2f2; } }
+  background: var(--lm-surface);
+  &--danger { color: var(--lm-danger); border-color: var(--lm-danger-border); &:hover { background: var(--lm-danger-bg); } }
 }
 
 // Row cells
 .row-name {
   font-weight: 500;
-  color: #3b82f6;
+  color: var(--lm-primary);
   text-decoration: none;
-  &:hover { text-decoration: underline; }
 }
 .row-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
 
 .type-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .optin-send {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--lm-text-muted);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  &:hover { color: #3b82f6; }
 }
 
 .sub-count-link { text-decoration: none; display: flex; flex-direction: column; }
-.sub-count { font-weight: 600; color: #0f172a; font-size: 0.95rem; }
-.sub-view { font-size: 0.72rem; color: #94a3b8; }
+.sub-count { font-weight: 600; color: var(--lm-text); font-size: 0.95rem; }
+.sub-view { font-size: 0.72rem; color: var(--lm-text-subtle); }
 
 .status-breakdown { display: flex; flex-direction: column; gap: 0.15rem; }
 .status-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; }
-.status-link { font-weight: 600; color: #0f172a; text-decoration: none; &:hover { color: #3b82f6; } }
-.status-label { color: #94a3b8; }
+.status-link { font-weight: 600; color: var(--lm-text); text-decoration: none; &:hover { color: var(--lm-primary); } }
+.status-label { color: var(--lm-text-subtle); }
 
-.date-cell { font-size: 0.82rem; color: #64748b; }
+.date-cell { font-size: 0.82rem; color: var(--lm-text-muted); }
 
 // Row action buttons
-.row-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.25rem;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-:deep(tr:hover) .row-actions { opacity: 1; }
-
-.row-action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #64748b;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-  i { font-size: 0.8rem; }
-  &:hover { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
-  &--danger:hover { background: #fef2f2; border-color: #fecaca; color: #ef4444; }
 }
 
 .cache-note {
   font-size: 0.78rem;
-  color: #94a3b8;
-  a { color: #94a3b8; text-decoration: underline; }
+  color: var(--lm-text-subtle);
+  a { color: var(--lm-text-subtle); text-decoration: underline; }
 }
 </style>

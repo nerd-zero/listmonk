@@ -290,30 +290,5 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.lm-form { display: flex; flex-direction: column; }
 
-.lm-form-header {
-  padding: 1.5rem 1.5rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-.lm-form-title-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.35rem; }
-.lm-form-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
-.lm-form-meta { font-size: 0.75rem; color: #94a3b8; margin: 0; }
-
-.lm-form-body {
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  overflow-y: auto;
-  max-height: 65vh;
-}
-
-.lm-form-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
-}
 </style>

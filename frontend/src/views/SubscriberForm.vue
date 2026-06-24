@@ -380,35 +380,9 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.lm-form { display: flex; flex-direction: column; }
-
-.lm-form-header {
-  padding: 1.5rem 1.5rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-.lm-form-title-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.35rem; }
-.lm-form-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
-.lm-form-meta { font-size: 0.75rem; color: #94a3b8; margin: 0; }
-
-.lm-form-body {
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  overflow-y: auto;
-  max-height: 65vh;
-}
-
-.lm-form-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
-}
 
 .attribs-field { display: flex; flex-direction: column; gap: 0.35rem; }
-.attribs-title { font-size: 0.9rem; font-weight: 600; color: #0f172a; margin: 0; }
-.attribs-help { font-size: 0.75rem; color: #94a3b8; }
-.learn-more-link { font-size: 0.78rem; color: #3b82f6; text-decoration: none; &:hover { text-decoration: underline; } }
+.attribs-title { font-size: 0.9rem; font-weight: 600; color: var(--lm-text); margin: 0; }
+.attribs-help { font-size: 0.75rem; color: var(--lm-text-subtle); }
+.learn-more-link { font-size: 0.78rem; color: var(--lm-primary); text-decoration: none; &:hover { text-decoration: underline; } }
 </style>

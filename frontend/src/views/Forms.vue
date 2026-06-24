@@ -1,67 +1,72 @@
 <template>
-  <div class="forms-page">
-    <div class="page-header">
-      <h1 class="page-title">{{ $t('forms.title') }}</h1>
-    </div>
+  <div class="flex flex-column gap-4">
+    <h1 class="text-3xl font-bold text-900 m-0">{{ $t('forms.title') }}</h1>
 
-    <div v-if="loading.lists" class="flex justify-center p-8">
+    <div v-if="loading.lists" class="flex justify-content-center p-8">
       <PvProgressSpinner style="width:2rem;height:2rem" />
     </div>
-    <div v-else-if="publicLists.length === 0" class="empty-notice">
+
+    <PvMessage v-else-if="publicLists.length === 0" severity="info" :closable="false">
       {{ $t('forms.noPublicLists') }}
-    </div>
-    <div v-else class="forms-layout">
+    </PvMessage>
+
+    <div v-else class="grid align-items-start">
       <!-- Left panel: controls -->
-      <div class="forms-panel table-card">
-        <div class="panel-section">
-          <h4 class="panel-title">{{ $t('forms.publicLists') }}</h4>
-          <p class="panel-help">{{ $t('forms.selectHelp') }}</p>
-          <ul class="check-list" data-cy="lists">
-            <li v-for="(l, i) in publicLists" :key="l.id" class="check-item">
-              <PvCheckbox v-model="checked" :value="i" :input-id="`list-${l.id}`" />
-              <label :for="`list-${l.id}`" class="check-label">{{ l.name }}</label>
-            </li>
-          </ul>
-        </div>
+      <div class="col-12 md:col-4" data-cy="lists">
+        <PvCard>
+          <template #title>{{ $t('forms.publicLists') }}</template>
+          <template #subtitle>{{ $t('forms.selectHelp') }}</template>
+          <template #content>
+            <div class="flex flex-column gap-3">
+              <div v-for="(l, i) in publicLists" :key="l.id" class="flex align-items-center gap-2">
+                <PvCheckbox v-model="checked" :value="i" :input-id="`list-${l.id}`" />
+                <label :for="`list-${l.id}`" class="cursor-pointer">{{ l.name }}</label>
+              </div>
+            </div>
 
-        <template v-if="serverConfig.public_subscription.enabled">
-          <div class="panel-section">
-            <h4 class="panel-title">{{ $t('forms.publicSubPage') }}</h4>
-            <a :href="`${serverConfig.root_url}/subscription/form`" target="_blank" rel="noopener noreferer"
-              class="sub-url" data-cy="url">
-              <i class="pi pi-external-link" />
-              {{ serverConfig.root_url }}/subscription/form
-            </a>
-          </div>
-        </template>
+            <template v-if="serverConfig.public_subscription?.enabled">
+              <PvDivider />
+              <p class="font-semibold text-sm text-900 mb-2">{{ $t('forms.publicSubPage') }}</p>
+              <a :href="`${serverConfig.root_url}/subscription/form`" target="_blank" rel="noopener noreferer"
+                class="text-primary text-sm flex align-items-center gap-1 no-underline hover:underline" data-cy="url">
+                <i class="pi pi-external-link" />
+                {{ serverConfig.root_url }}/subscription/form
+              </a>
+            </template>
 
-        <div class="panel-section">
-          <h4 class="panel-title">{{ $t('forms.redirectURL') }}</h4>
-          <p class="panel-help">{{ $t('forms.redirectURLHelp') }}</p>
-          <ul v-if="redirectURLs.length > 0" class="check-list" data-cy="redirect-urls">
-            <li class="check-item">
-              <PvRadioButton v-model="selectedRedirectURL" value="" input-id="redirect-none" />
-              <label for="redirect-none" class="check-label">{{ $t('globals.terms.none') }}</label>
-            </li>
-            <li v-for="url in redirectURLs" :key="url" class="check-item">
-              <PvRadioButton v-model="selectedRedirectURL" :value="url" :input-id="`redirect-${url}`" />
-              <label :for="`redirect-${url}`" class="check-label">{{ url }}</label>
-            </li>
-          </ul>
-        </div>
+            <template v-if="redirectURLs.length > 0">
+              <PvDivider />
+              <p class="font-semibold text-sm text-900 mb-1">{{ $t('forms.redirectURL') }}</p>
+              <p class="text-sm text-500 mb-3">{{ $t('forms.redirectURLHelp') }}</p>
+              <div class="flex flex-column gap-3" data-cy="redirect-urls">
+                <div class="flex align-items-center gap-2">
+                  <PvRadioButton v-model="selectedRedirectURL" value="" input-id="redirect-none" />
+                  <label for="redirect-none" class="cursor-pointer">{{ $t('globals.terms.none') }}</label>
+                </div>
+                <div v-for="url in redirectURLs" :key="url" class="flex align-items-center gap-2">
+                  <PvRadioButton v-model="selectedRedirectURL" :value="url" :input-id="`redirect-${url}`" />
+                  <label :for="`redirect-${url}`" class="cursor-pointer text-sm">{{ url }}</label>
+                </div>
+              </div>
+            </template>
+          </template>
+        </PvCard>
       </div>
 
       <!-- Right panel: generated HTML -->
-      <div class="forms-output table-card" data-cy="form">
-        <div class="panel-section">
-          <h4 class="panel-title">{{ $t('forms.formHTML') }}</h4>
-          <p class="panel-help">{{ $t('forms.formHTMLHelp') }}</p>
-          <div v-if="checked.length === 0" class="output-placeholder">
-            <i class="pi pi-code" />
-            <span>Select lists to generate the form HTML</span>
-          </div>
-          <code-editor v-else lang="html" v-model="html" disabled />
-        </div>
+      <div class="col-12 md:col-8" data-cy="form">
+        <PvCard>
+          <template #title>{{ $t('forms.formHTML') }}</template>
+          <template #subtitle>{{ $t('forms.formHTMLHelp') }}</template>
+          <template #content>
+            <div v-if="checked.length === 0"
+              class="flex flex-column align-items-center justify-content-center gap-3 py-6 text-500">
+              <i class="pi pi-code" style="font-size:2.5rem" />
+              <span class="text-sm">{{ $t('forms.selectHelp') }}</span>
+            </div>
+            <code-editor v-else lang="html" v-model="html" disabled />
+          </template>
+        </PvCard>
       </div>
     </div>
   </div>
@@ -126,7 +131,6 @@ export default {
         h += '    </p>\n';
       });
 
-      // Captcha?
       if (this.serverConfig.public_subscription.captcha_enabled) {
         if (this.serverConfig.public_subscription.captcha_provider === 'altcha') {
           h += '\n'
@@ -177,84 +181,3 @@ export default {
   },
 };
 </script>
-
-<style scoped lang="scss">
-.forms-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-.page-header { display: flex; align-items: center; }
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-}
-.empty-notice {
-  padding: 2rem;
-  color: #94a3b8;
-  text-align: center;
-}
-
-.forms-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 1.25rem;
-  align-items: start;
-
-  @media (max-width: 900px) { grid-template-columns: 1fr; }
-}
-
-.table-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-}
-.forms-panel, .forms-output { padding: 0; }
-
-.panel-section {
-  padding: 1.25rem 1.5rem;
-  & + & { border-top: 1px solid #f1f5f9; }
-}
-.panel-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 0.4rem;
-}
-.panel-help {
-  font-size: 0.8rem;
-  color: #94a3b8;
-  margin: 0 0 0.75rem;
-  line-height: 1.4;
-}
-
-.check-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-.check-item { display: flex; align-items: center; gap: 0.6rem; }
-.check-label { font-size: 0.875rem; color: #374151; cursor: pointer; }
-
-.sub-url {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.8rem;
-  color: #3b82f6;
-  text-decoration: none;
-  word-break: break-all;
-  &:hover { text-decoration: underline; }
-}
-
-.output-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 3rem 1rem;
-  color: #94a3b8;
-  font-size: 0.875rem;
-  i { font-size: 2rem; }
-}
-</style>

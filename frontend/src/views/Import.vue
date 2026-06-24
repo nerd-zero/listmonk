@@ -388,19 +388,17 @@ export default {
 
 <style scoped lang="scss">
 .import-page { display: flex; flex-direction: column; gap: 1.5rem; }
-.page-header { display: flex; align-items: center; }
-.page-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0; }
 
 .import-help-title { font-size: 0.95rem; font-weight: 600; color: #374151; margin: 0 0 0.5rem; }
 
 .import-status {
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+  background: var(--lm-surface); border: 1px solid var(--lm-border); border-radius: 12px;
   padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem;
   text-align: center;
 }
 .import-status-text { font-size: 1.25rem; font-weight: 600; text-transform: capitalize; color: #374151; margin: 0; }
-.import-status-text--success { color: #22c55e; }
-.import-status-text--danger { color: #ef4444; }
-.import-count { font-size: 0.875rem; color: #64748b; margin: 0; }
+.import-status-text--success { color: var(--lm-success); }
+.import-status-text--danger { color: var(--lm-danger); }
+.import-count { font-size: 0.875rem; color: var(--lm-text-muted); margin: 0; }
 .import-logs { width: 100%; }
 </style>

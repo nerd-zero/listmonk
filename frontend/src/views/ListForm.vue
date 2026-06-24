@@ -153,39 +153,6 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.lm-form { display: flex; flex-direction: column; }
-
-.lm-form-header {
-  padding: 1.5rem 1.5rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-.lm-form-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.35rem;
-}
-.lm-form-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-}
-.lm-form-meta {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  margin: 0;
-}
-
-.lm-form-body {
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-  overflow-y: auto;
-  max-height: 60vh;
-}
 
 .lm-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .lm-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -195,8 +162,8 @@ export default {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--lm-bg);
+  border: 1px solid var(--lm-border);
   border-radius: 8px;
 
   :deep(.p-toggleswitch) { flex-shrink: 0; }
@@ -211,15 +178,8 @@ export default {
 .lm-help {
   display: block;
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--lm-text-subtle);
   line-height: 1.4;
 }
 
-.lm-form-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
-}
 </style>

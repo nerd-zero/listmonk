@@ -497,39 +497,6 @@ export default {
   gap: 1.5rem;
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-.page-title-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #e2e8f0;
-  color: #475569;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border-radius: 999px;
-  padding: 0.1rem 0.65rem;
-}
-
-.table-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
 .table-toolbar {
   display: flex;
   align-items: center;
@@ -547,23 +514,22 @@ export default {
 }
 .bulk-count {
   font-size: 0.85rem;
-  color: #64748b;
-  a { color: #3b82f6; text-decoration: none; }
+  color: var(--lm-text-muted);
+  a { color: var(--lm-primary); text-decoration: none; }
 }
 .bulk-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--lm-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--lm-surface);
   font-size: 0.8rem;
   cursor: pointer;
-  color: #475569;
+  color: var(--lm-text-muted);
 
-  &--danger { color: #ef4444; border-color: #fecaca; &:hover { background: #fef2f2; } }
-  &:hover { background: #f8fafc; }
+  &--danger { color: var(--lm-danger); border-color: var(--lm-danger-border); &:hover { background: var(--lm-danger-bg); } }
 }
 
 // Status column
@@ -576,7 +542,7 @@ export default {
 .scheduled-info {
   margin-top: 0.35rem;
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--lm-text-subtle);
   display: flex;
   align-items: flex-start;
   gap: 0.25rem;
@@ -585,18 +551,18 @@ export default {
 // Name column
 .name-cell { display: flex; flex-direction: column; gap: 0.25rem; }
 .name-row { display: flex; align-items: center; gap: 0.4rem; }
-.row-name { color: #0f172a; font-weight: 500; text-decoration: none; &:hover { color: #3b82f6; } }
-.subject-row { font-size: 0.78rem; color: #94a3b8; }
+.row-name { color: var(--lm-text); font-weight: 500; text-decoration: none; &:hover { color: var(--lm-primary); } }
+.subject-row { font-size: 0.78rem; color: var(--lm-text-subtle); }
 .tag-row { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.2rem; }
 
 // Lists column
 .lists-cell { display: flex; flex-direction: column; gap: 0.2rem; }
-.list-link { font-size: 0.82rem; color: #3b82f6; text-decoration: none; &:hover { text-decoration: underline; } }
+.list-link { font-size: 0.82rem; color: var(--lm-primary); text-decoration: none; &:hover { text-decoration: underline; } }
 
 // Timestamps column
 .ts-cell { display: flex; flex-direction: column; gap: 0.2rem; }
 .ts-row { display: flex; align-items: baseline; gap: 0.4rem; font-size: 0.8rem; }
-.ts-label { font-size: 0.74rem; color: #94a3b8; white-space: nowrap; }
+.ts-label { font-size: 0.74rem; color: var(--lm-text-subtle); white-space: nowrap; }
 
 // Stats column
 .stats-cell { display: flex; flex-direction: column; gap: 0.2rem; }
@@ -605,41 +571,10 @@ export default {
   align-items: baseline;
   gap: 0.4rem;
   font-size: 0.8rem;
-
-  &--progress { align-items: center; }
 }
-.stats-label { font-size: 0.74rem; color: #94a3b8; white-space: nowrap; display: flex; align-items: center; gap: 0.2rem; }
+.stats-label { font-size: 0.74rem; color: var(--lm-text-subtle); white-space: nowrap; display: flex; align-items: center; gap: 0.2rem; }
 
 // Row actions
-.row-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.2rem;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-:deep(tr:hover) .row-actions { opacity: 1; }
+
 :deep(tr.running) .row-actions { opacity: 1; }
-
-.row-action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  text-decoration: none;
-
-  i { font-size: 0.85rem; }
-
-  &:hover { background: #f1f5f9; color: #0f172a; }
-  &--primary:hover { background: #eff6ff; color: #3b82f6; }
-  &--danger:hover  { background: #fef2f2; color: #ef4444; }
-}
 </style>

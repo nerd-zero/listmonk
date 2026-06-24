@@ -20,7 +20,7 @@ import { vsCodeLight } from './editor-theme';
 
 export default {
   props: {
-    value: { type: String, default: '' },
+    modelValue: { type: String, default: '' },
     lang: { type: String, default: 'html' },
     disabled: Boolean,
   },
@@ -40,7 +40,7 @@ export default {
     const onUpdate = EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         this.internalUpdate = true;
-        this.$emit('input', update.state.doc.toString());
+        this.$emit('update:modelValue', update.state.doc.toString());
       }
     });
 
@@ -66,7 +66,7 @@ export default {
     // Prepare the full config.
     const stateCfg = EditorState.create({
       // Initial value.
-      doc: this.value,
+      doc: this.modelValue,
 
       extensions: [
         EditorView.baseTheme({}),
@@ -118,7 +118,7 @@ export default {
   },
 
   watch: {
-    value(val) {
+    modelValue(val) {
       if (!this.internalUpdate) {
         this.editor.dispatch({
           changes: { from: 0, to: this.editor.state.doc.length, insert: val },

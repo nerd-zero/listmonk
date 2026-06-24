@@ -53,7 +53,5 @@ export default {
 
 <style scoped lang="scss">
 .logs-page { display: flex; flex-direction: column; gap: 1.5rem; }
-.page-header { display: flex; align-items: center; }
-.page-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0; }
-.table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+
 </style>
