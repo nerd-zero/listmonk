@@ -16,7 +16,7 @@
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
                 <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
-                  :placeholder="$t('globals.fields.name')" required />
+                  :placeholder="$t('globals.fields.name')" required class="w-full" />
               </div>
             </div>
             <div class="col-3">
@@ -28,7 +28,7 @@
                     { label: $tc('templates.typeCampaignVisual'), value: 'campaign_visual' },
                     { label: $tc('templates.typeTransactional'), value: 'tx' },
                   ]"
-                  option-label="label" option-value="value" />
+                  option-label="label" option-value="value" class="w-full" />
               </div>
             </div>
           </div>
@@ -36,8 +36,8 @@
             <div class="col-12">
               <div class="field">
                 <label class="block mb-1 text-sm font-medium">{{ $t('templates.subject') }}</label>
-                <PvInputText :maxlength="200" ref="focus" v-model="form.subject" name="name"
-                  :placeholder="$t('templates.subject')" required />
+                <PvInputText :maxlength="200" v-model="form.subject" name="subject"
+                  :placeholder="$t('templates.subject')" required class="w-full" />
               </div>
             </div>
           </div>
@@ -196,24 +196,6 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.lm-form { display: flex; flex-direction: column; }
 
-.lm-form-header {
-  padding: 1.25rem 1.5rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-.lm-form-title-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.35rem;
-}
-.lm-form-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
-.lm-form-meta { font-size: 0.75rem; color: #94a3b8; margin: 0; }
-
-.lm-form-body { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
-
-.lm-form-footer {
-  display: flex; justify-content: flex-end; gap: 0.5rem;
-  padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0;
-}
-
-.template-help { font-size: 0.78rem; color: #94a3b8; margin: 0; }
+.template-help { font-size: 0.78rem; color: var(--lm-text-subtle); margin: 0; }
 </style>

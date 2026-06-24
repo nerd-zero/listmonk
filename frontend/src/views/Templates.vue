@@ -192,37 +192,9 @@ export default {
 
 <style scoped lang="scss">
 .templates-page { display: flex; flex-direction: column; gap: 1.5rem; }
-.page-header { display: flex; align-items: center; justify-content: space-between; }
-.page-title {
-  font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0;
-  display: flex; align-items: center; gap: 0.6rem;
-}
-.page-title-count {
-  display: inline-flex; align-items: center; justify-content: center;
-  background: #e2e8f0; color: #475569; font-size: 0.85rem; font-weight: 600;
-  border-radius: 999px; padding: 0.1rem 0.65rem;
-}
-.table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
 
 .name-cell { display: flex; flex-direction: column; gap: 0.2rem; }
 .name-row { display: flex; align-items: center; gap: 0.5rem; }
-.row-name { color: #0f172a; font-weight: 500; text-decoration: none; &:hover { color: #3b82f6; } }
-.subject-text { font-size: 0.78rem; color: #94a3b8; }
-
-.row-actions {
-  display: flex; align-items: center; justify-content: flex-end; gap: 0.2rem;
-  opacity: 0; transition: opacity 0.15s;
-}
-:deep(tr:hover) .row-actions { opacity: 1; }
-
-.row-action-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; border: none; border-radius: 6px;
-  background: transparent; color: #64748b; cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-
-  i { font-size: 0.85rem; }
-  &:hover { background: #f1f5f9; color: #0f172a; }
-  &--danger:hover { background: #fef2f2; color: #ef4444; }
-}
+.row-name { color: var(--lm-text); font-weight: 500; text-decoration: none; &:hover { color: var(--lm-primary); } }
+.subject-text { font-size: 0.78rem; color: var(--lm-text-subtle); }
 </style>
