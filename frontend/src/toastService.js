@@ -38,8 +38,11 @@ export function showConfirm(msg, onConfirm, onCancel) {
   if (confirmInstance) {
     confirmInstance.require({
       message: msg,
+      header: 'Confirm',
+      icon: 'pi pi-exclamation-triangle',
       accept: onConfirm,
       reject: onCancel,
+      rejectProps: { severity: 'secondary', outlined: true },
     });
     return;
   }
