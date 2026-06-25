@@ -31,6 +31,19 @@ module.exports = {
     'vuejs-accessibility/click-events-have-key-events': 'off',
     'vuejs-accessibility/anchor-has-content': 'off',
     'import/no-unresolved': ['error', { ignore: ['@primeuix/themes'] }],
+    'import/extensions': ['error', 'ignorePackages', {
+      js: 'never',
+      ts: 'never',
+      vue: 'always',
+    }],
+  },
+  settings: {
+    'import/resolver': {
+      typescript: {
+        alwaysTryTypes: true,
+        project: './tsconfig.json',
+      },
+    },
   },
   ignorePatterns: ['src/email-builder.js'],
   overrides: [
