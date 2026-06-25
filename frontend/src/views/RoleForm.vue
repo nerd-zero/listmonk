@@ -10,8 +10,8 @@
     </div>
 
     <div class="lm-form-body">
-      <div class="field">
-        <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('globals.fields.name') }}</label>
         <PvInputText :disabled="disabled" :maxlength="200" v-model="form.name" name="name" ref="focus"
           required class="w-full" />
       </div>
@@ -45,13 +45,13 @@
           </PvColumn>
           <PvColumn field="permissions" :header="$t('users.perms')" style="width:40%">
             <template #body="{ data }">
-              <div class="flex items-center gap-2">
+              <div class="check-row">
                 <PvCheckbox v-model="data.permissions" value="list:get" :input-id="`list-get-${data.id}`" />
-                <label :for="`list-get-${data.id}`">{{ $t('globals.buttons.view') }}</label>
+                <label :for="`list-get-${data.id}`" class="check-label">{{ $t('globals.buttons.view') }}</label>
               </div>
-              <div class="flex items-center gap-2 mt-1">
+              <div class="check-row check-row--mt">
                 <PvCheckbox v-model="data.permissions" value="list:manage" :input-id="`list-manage-${data.id}`" />
-                <label :for="`list-manage-${data.id}`">{{ $t('globals.buttons.manage') }}</label>
+                <label :for="`list-manage-${data.id}`" class="check-label">{{ $t('globals.buttons.manage') }}</label>
               </div>
             </template>
           </PvColumn>
@@ -89,7 +89,7 @@
                   <a v-if="p === 'subscribers:sql_query'"
                     href="https://listmonk.app/docs/roles-and-permissions/#subscriberssql_query" target="_blank"
                     rel="noopener noreferrer" aria-label="Warning: high risk permission">
-                    <i class="pi pi-exclamation-triangle text-red-500" />
+                    <i class="pi pi-exclamation-triangle perm-warn-icon" />
                   </a>
                 </label>
               </div>
@@ -264,6 +264,12 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.lm-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0; }
+.lm-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
+.check-row { display: flex; align-items: center; gap: 0.5rem; &--mt { margin-top: 0.35rem; } }
+.check-label { font-size: 0.875rem; color: var(--lm-text); cursor: pointer; }
+.perm-warn-icon { color: var(--p-red-500); }
+
 .section-label {
   font-size: 0.78rem;
   font-weight: 600;
