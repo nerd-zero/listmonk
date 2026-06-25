@@ -1,121 +1,133 @@
 <template>
   <div class="items">
-    <b-field :label="$t('settings.general.siteName')" label-position="on-border">
-      <b-input v-model="data['app.site_name']" name="app.site_name" :label="$t('settings.general.siteName')"
-        :maxlength="300" required />
-    </b-field>
-
-    <b-field :label="$t('settings.general.rootURL')" label-position="on-border"
-      :message="$t('settings.general.rootURLHelp')">
-      <b-input v-model="data['app.root_url']" name="app.root_url" placeholder="https://listmonk.yoursite.com"
-        :maxlength="300" required type="url" pattern="https?://.*" />
-    </b-field>
-
-    <b-field :label="$t('settings.general.logoURL')" label-position="on-border"
-      :message="$t('settings.general.logoURLHelp')">
-      <b-input v-model="data['app.logo_url']" name="app.logo_url" placeholder="https://listmonk.yoursite.com/logo.png"
-        :maxlength="300" type="url" pattern="https?://.*" />
-    </b-field>
-    <b-field :label="$t('settings.general.faviconURL')" label-position="on-border"
-      :message="$t('settings.general.faviconURLHelp')">
-      <b-input v-model="data['app.favicon_url']" name="app.favicon_url"
-        placeholder="https://listmonk.yoursite.com/favicon.png" :maxlength="300" type="url" pattern="https?://.*" />
-    </b-field>
-
-    <hr />
-    <b-field :label="$t('settings.general.fromEmail')" label-position="on-border"
-      :message="$t('settings.general.fromEmailHelp')">
-      <b-input v-model="data['app.from_email']" name="app.from_email"
-        placeholder="Listmonk <noreply@listmonk.yoursite.com>" pattern="((.+?)\s)?<(.+?)@(.+?)>" :maxlength="300" />
-    </b-field>
-    <b-field :label="$t('settings.general.adminNotifEmails')" label-position="on-border"
-      :message="$t('settings.general.adminNotifEmailsHelp')">
-      <b-taginput v-model="data['app.notify_emails']" name="app.notify_emails"
-        :before-adding="(v) => v.match(/(.+?)@(.+?)/)" placeholder="you@yoursite.com" />
-    </b-field>
-
-    <hr />
-
-    <div>
-      <h2 class="is-size-4 mb-5">
-        {{ $tc('globals.terms.subscriptions', 2) }}
-      </h2>
-      <b-field :message="$t('settings.general.enablePublicSubPageHelp')">
-        <b-switch v-model="data['app.enable_public_subscription_page']" name="app.enable_public_subscription_page">
-          {{ $t('settings.general.enablePublicSubPage') }}
-        </b-switch>
-      </b-field>
-      <b-field :message="$t('settings.general.sendOptinConfirmHelp')">
-        <b-switch v-model="data['app.send_optin_confirmation']" name="app.send_optin_confirmation">
-          {{ $t('settings.general.sendOptinConfirm') }}
-        </b-switch>
-      </b-field>
-      <b-field :message="$t('settings.general.showOptinPageHelp')">
-        <b-switch v-model="data['app.show_optin_page']" name="app.show_optin_page">
-          {{ $t('settings.general.showOptinPage') }}
-        </b-switch>
-      </b-field>
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.general.siteName') }}</label>
+      <PvInputText v-model="data['app.site_name']" name="app.site_name" :maxlength="300" required class="w-full" />
     </div>
-    <hr />
 
-    <div>
-      <h2 class="is-size-4 mb-5">
-        {{ $t('campaigns.archive') }}
-      </h2>
-      <b-field :message="$t('settings.general.enablePublicArchiveHelp')">
-        <b-switch v-model="data['app.enable_public_archive']" name="app.enable_public_archive">
-          {{ $t('settings.general.enablePublicArchive') }}
-        </b-switch>
-      </b-field>
-      <b-field :message="$t('settings.general.enablePublicArchiveRSSContentHelp')">
-        <b-switch v-model="data['app.enable_public_archive_rss_content']" name="app.enable_public_archive_rss_content">
-          {{ $t('settings.general.enablePublicArchiveRSSContent') }}
-        </b-switch>
-      </b-field>
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.general.rootURL') }}</label>
+      <PvInputText v-model="data['app.root_url']" name="app.root_url" placeholder="https://listmonk.yoursite.com"
+        :maxlength="300" required type="url" pattern="https?://.*" class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.rootURLHelp') }}</small>
+    </div>
+
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.general.logoURL') }}</label>
+      <PvInputText v-model="data['app.logo_url']" name="app.logo_url" placeholder="https://listmonk.yoursite.com/logo.png"
+        :maxlength="300" type="url" pattern="https?://.*" class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.logoURLHelp') }}</small>
+    </div>
+
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.general.faviconURL') }}</label>
+      <PvInputText v-model="data['app.favicon_url']" name="app.favicon_url"
+        placeholder="https://listmonk.yoursite.com/favicon.png" :maxlength="300" type="url" pattern="https?://.*"
+        class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.faviconURLHelp') }}</small>
     </div>
 
     <hr />
-    <b-field :message="$t('settings.general.checkUpdatesHelp')">
-      <b-switch v-model="data['app.check_updates']" name="app.check_updates">
-        {{ $t('settings.general.checkUpdates') }}
-      </b-switch>
-    </b-field>
+
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.general.fromEmail') }}</label>
+      <PvInputText v-model="data['app.from_email']" name="app.from_email"
+        placeholder="Listmonk <noreply@listmonk.yoursite.com>" pattern="((.+?)\s)?<(.+?)@(.+?)>" :maxlength="300"
+        class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.fromEmailHelp') }}</small>
+    </div>
+
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.general.adminNotifEmails') }}</label>
+      <PvAutoComplete v-model="data['app.notify_emails']" name="app.notify_emails"
+        :suggestions="[]" multiple placeholder="you@yoursite.com"
+        @before-add="(v) => v.match(/(.+?)@(.+?)/)" class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.adminNotifEmailsHelp') }}</small>
+    </div>
 
     <hr />
-    <b-field :label="$t('settings.general.language')" label-position="on-border" :addons="false">
-      <b-select v-model="data['app.lang']" name="app.lang">
-        <option v-for="l in serverConfig.langs" :key="l.code" :value="l.code">
-          {{ l.name }}
-        </option>
-      </b-select>
+
+    <p class="settings-section-label">{{ $tc('globals.terms.subscriptions', 2) }}</p>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['app.enable_public_subscription_page']" name="app.enable_public_subscription_page" />
+        <span>{{ $t('settings.general.enablePublicSubPage') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.enablePublicSubPageHelp') }}</small>
+    </div>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['app.send_optin_confirmation']" name="app.send_optin_confirmation" />
+        <span>{{ $t('settings.general.sendOptinConfirm') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.sendOptinConfirmHelp') }}</small>
+    </div>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['app.show_optin_page']" name="app.show_optin_page" />
+        <span>{{ $t('settings.general.showOptinPage') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.showOptinPageHelp') }}</small>
+    </div>
+
+    <hr />
+
+    <p class="settings-section-label">{{ $t('campaigns.archive') }}</p>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['app.enable_public_archive']" name="app.enable_public_archive" />
+        <span>{{ $t('settings.general.enablePublicArchive') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.enablePublicArchiveHelp') }}</small>
+    </div>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['app.enable_public_archive_rss_content']" name="app.enable_public_archive_rss_content" />
+        <span>{{ $t('settings.general.enablePublicArchiveRSSContent') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.enablePublicArchiveRSSContentHelp') }}</small>
+    </div>
+
+    <hr />
+
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['app.check_updates']" name="app.check_updates" />
+        <span>{{ $t('settings.general.checkUpdates') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.general.checkUpdatesHelp') }}</small>
+    </div>
+
+    <hr />
+
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.general.language') }}</label>
+      <PvSelect v-model="data['app.lang']" name="app.lang"
+        :options="serverConfig.langs" option-label="name" option-value="code" class="w-full" />
       <p class="mt-2">
-        <a href="https://listmonk.app/docs/i18n/#additional-language-packs" target="_blank" rel="noopener noreferer">{{
-          $t('globals.buttons.more') }} &rarr;</a>
+        <a href="https://listmonk.app/docs/i18n/#additional-language-packs" target="_blank" rel="noopener noreferer">
+          {{ $t('globals.buttons.more') }} &rarr;
+        </a>
       </p>
-    </b-field>
+    </div>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../../store';
 
-export default Vue.extend({
+export default {
   props: {
-    form: {
-      type: Object, default: () => { },
-    },
+    form: { type: Object, default: () => {} },
   },
 
   data() {
-    return {
-      data: this.form,
-    };
+    return { data: this.form };
   },
 
   computed: {
-    ...mapState(['serverConfig', 'loading']),
+    ...mapState(useMainStore, ['serverConfig', 'loading']),
   },
-
-});
+};
 </script>

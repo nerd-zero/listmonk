@@ -1,32 +1,31 @@
 <template>
   <div>
-    <b-modal scroll="keep" @close="close" :aria-modal="true" :active="isVisible">
-      <div>
-        <div class="modal-card" style="width: auto">
-          <header class="modal-card-head">
-            <h4>{{ title }}</h4>
-          </header>
-        </div>
-        <section expanded class="modal-card-body preview">
-          <b-loading :active="isLoading" :is-full-page="false" />
-          <form v-if="isPost" method="post" :action="previewURL" target="iframe" ref="form">
-            <input v-if="templateId" type="hidden" name="template_id" :value="templateId" />
-            <input v-if="contentType" type="hidden" name="content_type" :value="contentType" />
-            <input v-if="templateType" type="hidden" name="template_type" :value="templateType" />
-            <input v-if="archiveMeta" type="hidden" name="archive_meta" :value="archiveMeta" />
-            <input v-if="body" type="hidden" name="body" :value="body" />
-          </form>
+    <PvDialog :visible="isVisible" @update:visible="close" :aria-modal="true"
+      :style="{ width: '900px', maxWidth: '95vw' }" :closable="true" modal>
+      <template #header>
+        <h4 class="preview-title">{{ title }}</h4>
+      </template>
 
-          <iframe id="iframe" name="iframe" ref="iframe" :title="title" :src="isPost ? 'about:blank' : previewURL"
-            @load="onLoaded" sandbox="allow-scripts" />
-        </section>
-        <footer class="modal-card-foot has-text-right">
-          <b-button @click="close">
-            {{ $t('globals.buttons.close') }}
-          </b-button>
-        </footer>
+      <div class="preview-body">
+        <div v-if="isLoading" class="preview-spinner">
+          <PvProgressSpinner style="width:2rem;height:2rem" />
+        </div>
+        <form v-if="isPost" method="post" :action="previewURL" target="iframe" ref="form">
+          <input v-if="templateId" type="hidden" name="template_id" :value="templateId" />
+          <input v-if="contentType" type="hidden" name="content_type" :value="contentType" />
+          <input v-if="templateType" type="hidden" name="template_type" :value="templateType" />
+          <input v-if="archiveMeta" type="hidden" name="archive_meta" :value="archiveMeta" />
+          <input v-if="body" type="hidden" name="body" :value="body" />
+        </form>
+
+        <iframe id="iframe" name="iframe" ref="iframe" :title="title" :src="isPost ? 'about:blank' : previewURL"
+          @load="onLoaded" sandbox="allow-scripts" class="preview-iframe" />
       </div>
-    </b-modal>
+
+      <template #footer>
+        <PvButton @click="close" :label="$t('globals.buttons.close')" severity="secondary" />
+      </template>
+    </PvDialog>
   </div>
 </template>
 
@@ -112,3 +111,32 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.preview-title { margin: 0; font-size: 1rem; font-weight: 600; }
+
+.preview-body {
+  position: relative;
+  width: 100%;
+  height: 72vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--lm-surface);
+  z-index: 1;
+}
+
+.preview-iframe {
+  width: 100%;
+  flex: 1;
+  border: none;
+  display: block;
+}
+</style>

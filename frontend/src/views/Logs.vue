@@ -1,19 +1,20 @@
 <template>
-  <section class="logs content relative">
-    <h1 class="title is-4">
-      {{ $t('logs.title') }}
-    </h1>
-    <hr />
-    <log-view :loading="loading.logs" :lines="lines" />
-  </section>
+  <div class="logs-page">
+    <div class="page-header">
+      <h1 class="page-title">{{ $t('logs.title') }}</h1>
+    </div>
+    <div class="table-card">
+      <log-view :loading="loading.logs" :lines="lines" />
+    </div>
+  </div>
 </template>
 
 <script>
-import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import LogView from '../components/LogView.vue';
 
-export default Vue.extend({
+export default {
   components: {
     LogView,
   },
@@ -34,7 +35,7 @@ export default Vue.extend({
   },
 
   computed: {
-    ...mapState(['logs', 'loading']),
+    ...mapState(useMainStore, ['logs', 'loading']),
   },
 
   mounted() {
@@ -44,8 +45,13 @@ export default Vue.extend({
     this.pollId = setInterval(() => this.getLogs(), 10000);
   },
 
-  destroyed() {
+  unmounted() {
     clearInterval(this.pollId);
   },
-});
+};
 </script>
+
+<style scoped lang="scss">
+.logs-page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+</style>

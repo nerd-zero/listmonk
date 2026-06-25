@@ -139,6 +139,8 @@ export default {
   },
 
   mounted() {
+    if (!this.$props.data) return;
+
     const ctx = this.$el.querySelector('.chart-canvas');
 
     let def = {};
@@ -162,3 +164,7 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.chart { position: relative; width: 100%; height: 100%; }
+</style>

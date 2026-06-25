@@ -1,302 +1,326 @@
 <template>
-  <div>
-    <div class="columns mb-6">
-      <div class="column is-4">
-        <b-field data-cy="btn-enable-bounce">
-          <b-switch v-model="data['bounce.enabled']" name="bounce.enabled">
-            {{ $t('settings.bounces.enable') }}
-          </b-switch>
-        </b-field>
-      </div>
-      <div class="column">
-        <div v-for="typ in bounceTypes" :key="typ" class="columns">
-          <div class="column is-2" :class="{ disabled: !data['bounce.enabled'] }" :label="$t('settings.bounces.count')"
-            label-position="on-border">
-            {{ $t(`bounces.${typ}`) }}
-          </div>
-          <div class="column is-4" :class="{ disabled: !data['bounce.enabled'] }">
-            <b-field :label="$t('settings.bounces.count')" label-position="on-border"
-              :message="$t('settings.bounces.countHelp')" data-cy="btn-bounce-count">
-              <b-numberinput v-model="data['bounce.actions'][typ]['count']" name="bounce.count" type="is-light"
-                controls-position="compact" placeholder="3" min="1" max="1000" />
-            </b-field>
-          </div>
-          <div class="column is-4" :class="{ disabled: !data['bounce.enabled'] }">
-            <b-field :label="$t('settings.bounces.action')" label-position="on-border">
-              <b-select name="bounce.action" v-model="data['bounce.actions'][typ]['action']" expanded>
-                <option value="none">
-                  {{ $t('globals.terms.none') }}
-                </option>
-                <option value="unsubscribe">
-                  {{ $t('email.unsub') }}
-                </option>
-                <option value="blocklist">
-                  {{ $t('settings.bounces.blocklist') }}
-                </option>
-                <option value="delete">
-                  {{ $t('globals.buttons.delete') }}
-                </option>
-              </b-select>
-            </b-field>
+  <div class="items">
+    <div class="grid">
+      <div class="col-3">
+        <div class="field" data-cy="btn-enable-bounce">
+          <div class="flex items-center gap-2">
+            <PvToggleSwitch v-model="data['bounce.enabled']" name="bounce.enabled" />
+            <span>{{ $t('settings.bounces.enable') }}</span>
           </div>
         </div>
       </div>
-    </div><!-- columns -->
-
-    <div class="mb-6">
-      <b-field data-cy="btn-enable-bounce-webhook">
-        <b-switch v-model="data['bounce.webhooks_enabled']" :disabled="!data['bounce.enabled']" name="webhooks_enabled"
-          :native-value="true" data-cy="btn-enable-bounce-webhook">
-          {{ $t('settings.bounces.enableWebhooks') }}
-        </b-switch>
-        <p class="has-text-grey">
-          <a href="https://listmonk.app/docs/bounces" target="_blank" rel="noopener noreferer">{{
-            $t('globals.buttons.learnMore') }} &rarr;</a>
-        </p>
-      </b-field>
-      <div class="box" v-if="data['bounce.webhooks_enabled']">
-        <div class="columns">
-          <div class="column">
-            <b-field>
-              <b-switch v-model="data['bounce.ses_enabled']" name="ses_enabled" :native-value="true"
-                data-cy="btn-enable-bounce-ses">
-                {{ $t('settings.bounces.enableSES') }}
-              </b-switch>
-            </b-field>
+      <div class="col-9">
+        <div v-for="typ in bounceTypes" :key="typ" class="grid mb-2">
+          <div class="col-2" :class="{ disabled: !data['bounce.enabled'] }">
+            <span class="text-sm font-medium">{{ $t(`bounces.${typ}`) }}</span>
           </div>
-        </div>
-        <div class="columns">
-          <div class="column is-3">
-            <b-field>
-              <b-switch v-model="data['bounce.azure'].enabled" name="azure_enabled" :native-value="true"
-                data-cy="btn-enable-bounce-azure">
-                {{ $t('settings.bounces.enableAzure') }}
-              </b-switch>
-            </b-field>
+          <div class="col-5" :class="{ disabled: !data['bounce.enabled'] }">
+            <div class="field" data-cy="btn-bounce-count">
+              <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.count') }}</label>
+              <PvInputNumber v-model="data['bounce.actions'][typ]['count']" name="bounce.count"
+                placeholder="3" :min="1" :max="1000" class="w-full" />
+              <small class="block mt-1 text-color-secondary">{{ $t('settings.bounces.countHelp') }}</small>
+            </div>
           </div>
-          <div class="column">
-            <b-field :label="$t('settings.bounces.azureSharedSecret')" :message="$t('settings.bounces.azureSharedSecretHelp')">
-              <b-input v-model="data['bounce.azure'].shared_secret" type="password"
-                :disabled="!data['bounce.azure'].enabled" name="azure_shared_secret"
-                data-cy="bounce-azure-shared-secret" />
-            </b-field>
-          </div>
-          <div class="column">
-            <b-field :label="$t('settings.bounces.azureSharedSecretHeader')" :message="$t('settings.bounces.azureSharedSecretHeaderHelp')">
-              <b-input v-model="data['bounce.azure'].shared_secret_header" type="text"
-                :disabled="!data['bounce.azure'].enabled" name="azure_shared_secret_header"
-                data-cy="bounce-azure-shared-secret-header" />
-            </b-field>
-          </div>
-        </div>
-        <div class="columns">
-          <div class="column is-3">
-            <b-field>
-              <b-switch v-model="data['bounce.sendgrid_enabled']" name="sendgrid_enabled" :native-value="true"
-                data-cy="btn-enable-bounce-sendgrid">
-                {{ $t('settings.bounces.enableSendgrid') }}
-              </b-switch>
-            </b-field>
-          </div>
-          <div class="column">
-            <b-field :label="$t('settings.bounces.sendgridKey')" :message="$t('globals.messages.passwordChange')">
-              <b-input v-model="data['bounce.sendgrid_key']" type="password"
-                :disabled="!data['bounce.sendgrid_enabled']" name="sendgrid_enabled" :native-value="true"
-                data-cy="btn-enable-bounce-sendgrid" />
-            </b-field>
-          </div>
-        </div>
-        <div class="columns">
-          <div class="column is-3">
-            <b-field>
-              <b-switch v-model="data['bounce.postmark'].enabled" name="postmark_enabled" :native-value="true"
-                data-cy="btn-enable-bounce-postmark">
-                {{ $t('settings.bounces.enablePostmark') }}
-              </b-switch>
-            </b-field>
-          </div>
-          <div class="column">
-            <b-field :label="$t('settings.bounces.postmarkUsername')"
-              :message="$t('settings.bounces.postmarkUsernameHelp')">
-              <b-input v-model="data['bounce.postmark'].username" type="text"
-                :disabled="!data['bounce.postmark'].enabled" name="postmark_username"
-                data-cy="btn-enable-bounce-postmark" />
-            </b-field>
-          </div>
-          <div class="column">
-            <b-field :label="$t('settings.bounces.postmarkPassword')" :message="$t('globals.messages.passwordChange')">
-              <b-input v-model="data['bounce.postmark'].password" type="password"
-                :disabled="!data['bounce.postmark'].enabled" name="postmark_password"
-                data-cy="btn-enable-bounce-postmark" />
-            </b-field>
-          </div>
-        </div>
-        <div class="columns">
-          <div class="column is-3">
-            <b-field>
-              <b-switch v-model="data['bounce.forwardemail'].enabled" name="forwardemail_enabled" :native-value="true"
-                data-cy="btn-enable-bounce-forwardemail">
-                {{ $t('settings.bounces.enableForwardemail') }}
-              </b-switch>
-            </b-field>
-          </div>
-          <div class="column">
-            <b-field :label="$t('settings.bounces.forwardemailKey')" :message="$t('globals.messages.passwordChange')">
-              <b-input v-model="data['bounce.forwardemail'].key" type="password"
-                :disabled="!data['bounce.forwardemail'].enabled" name="forwardemail_enabled" :native-value="true"
-                data-cy="btn-enable-bounce-forwardemail" />
-            </b-field>
-          </div>
-        </div>
-        <div class="columns">
-          <div class="column is-3">
-            <b-field>
-              <b-switch v-model="data['bounce.lettermint'].enabled" name="lettermint_enabled" :native-value="true"
-                data-cy="btn-enable-bounce-lettermint">
-                {{ $t('settings.bounces.enableLettermint') }}
-              </b-switch>
-            </b-field>
-          </div>
-          <div class="column">
-            <b-field :label="$t('settings.bounces.lettermintKey')" :message="$t('globals.messages.passwordChange')">
-              <b-input v-model="data['bounce.lettermint'].key" type="password"
-                :disabled="!data['bounce.lettermint'].enabled" name="lettermint_key" data-cy="bounce-lettermint-key" />
-            </b-field>
+          <div class="col-5" :class="{ disabled: !data['bounce.enabled'] }">
+            <div class="field">
+              <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.action') }}</label>
+              <PvSelect v-model="data['bounce.actions'][typ]['action']" name="bounce.action"
+                :options="bounceActionOptions" option-label="label" option-value="value" class="w-full" />
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- bounce mailbox -->
-    <b-field>
-      <b-switch v-if="data['bounce.mailboxes']" v-model="data['bounce.mailboxes'][0].enabled"
-        :disabled="!data['bounce.enabled']" name="enabled" :native-value="true" data-cy="btn-enable-bounce-mailbox">
-        {{ $t('settings.bounces.enableMailbox') }}
-      </b-switch>
-    </b-field>
+    <hr />
+
+    <div class="field" data-cy="btn-enable-bounce-webhook">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['bounce.webhooks_enabled']" :disabled="!data['bounce.enabled']"
+          name="webhooks_enabled" />
+        <span>{{ $t('settings.bounces.enableWebhooks') }}</span>
+      </div>
+      <a href="https://listmonk.app/docs/bounces" target="_blank" rel="noopener noreferer" class="settings-link mt-1 block">
+        {{ $t('globals.buttons.learnMore') }} &rarr;
+      </a>
+    </div>
+
+    <div class="settings-card" v-if="data['bounce.webhooks_enabled']">
+      <div class="grid">
+        <div class="col-3">
+          <div class="field">
+            <div class="flex items-center gap-2">
+              <PvToggleSwitch v-model="data['bounce.ses_enabled']" name="ses_enabled" data-cy="btn-enable-bounce-ses" />
+              <span>{{ $t('settings.bounces.enableSES') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="col-3">
+          <div class="field">
+            <div class="flex items-center gap-2">
+              <PvToggleSwitch v-model="data['bounce.azure'].enabled" name="azure_enabled" data-cy="btn-enable-bounce-azure" />
+              <span>{{ $t('settings.bounces.enableAzure') }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.azureSharedSecret') }}</label>
+            <PvPassword v-model="data['bounce.azure'].shared_secret" :feedback="false"
+              :disabled="!data['bounce.azure'].enabled" name="azure_shared_secret"
+              data-cy="bounce-azure-shared-secret" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.bounces.azureSharedSecretHelp') }}</small>
+          </div>
+        </div>
+        <div class="col-5">
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.azureSharedSecretHeader') }}</label>
+            <PvInputText v-model="data['bounce.azure'].shared_secret_header"
+              :disabled="!data['bounce.azure'].enabled" name="azure_shared_secret_header"
+              data-cy="bounce-azure-shared-secret-header" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.bounces.azureSharedSecretHeaderHelp') }}</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="col-3">
+          <div class="field">
+            <div class="flex items-center gap-2">
+              <PvToggleSwitch v-model="data['bounce.sendgrid_enabled']" name="sendgrid_enabled" data-cy="btn-enable-bounce-sendgrid" />
+              <span>{{ $t('settings.bounces.enableSendgrid') }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-9">
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.sendgridKey') }}</label>
+            <PvPassword v-model="data['bounce.sendgrid_key']" :feedback="false"
+              :disabled="!data['bounce.sendgrid_enabled']" name="sendgrid_enabled"
+              data-cy="btn-enable-bounce-sendgrid" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('globals.messages.passwordChange') }}</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="col-3">
+          <div class="field">
+            <div class="flex items-center gap-2">
+              <PvToggleSwitch v-model="data['bounce.postmark'].enabled" name="postmark_enabled" data-cy="btn-enable-bounce-postmark" />
+              <span>{{ $t('settings.bounces.enablePostmark') }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.postmarkUsername') }}</label>
+            <PvInputText v-model="data['bounce.postmark'].username"
+              :disabled="!data['bounce.postmark'].enabled" name="postmark_username"
+              data-cy="btn-enable-bounce-postmark" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.bounces.postmarkUsernameHelp') }}</small>
+          </div>
+        </div>
+        <div class="col-5">
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.postmarkPassword') }}</label>
+            <PvPassword v-model="data['bounce.postmark'].password" :feedback="false"
+              :disabled="!data['bounce.postmark'].enabled" name="postmark_password"
+              data-cy="btn-enable-bounce-postmark" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('globals.messages.passwordChange') }}</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="col-3">
+          <div class="field">
+            <div class="flex items-center gap-2">
+              <PvToggleSwitch v-model="data['bounce.forwardemail'].enabled" name="forwardemail_enabled" data-cy="btn-enable-bounce-forwardemail" />
+              <span>{{ $t('settings.bounces.enableForwardemail') }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-9">
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.forwardemailKey') }}</label>
+            <PvPassword v-model="data['bounce.forwardemail'].key" :feedback="false"
+              :disabled="!data['bounce.forwardemail'].enabled" name="forwardemail_enabled"
+              data-cy="btn-enable-bounce-forwardemail" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('globals.messages.passwordChange') }}</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="col-3">
+          <div class="field">
+            <div class="flex items-center gap-2">
+              <PvToggleSwitch v-model="data['bounce.lettermint'].enabled" name="lettermint_enabled" data-cy="btn-enable-bounce-lettermint" />
+              <span>{{ $t('settings.bounces.enableLettermint') }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-9">
+          <div class="field">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.lettermintKey') }}</label>
+            <PvPassword v-model="data['bounce.lettermint'].key" :feedback="false"
+              :disabled="!data['bounce.lettermint'].enabled" name="lettermint_key"
+              data-cy="bounce-lettermint-key" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('globals.messages.passwordChange') }}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr />
+
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-if="data['bounce.mailboxes']" v-model="data['bounce.mailboxes'][0].enabled"
+          :disabled="!data['bounce.enabled']" name="enabled" data-cy="btn-enable-bounce-mailbox" />
+        <span v-if="data['bounce.mailboxes']">{{ $t('settings.bounces.enableMailbox') }}</span>
+      </div>
+    </div>
 
     <template v-if="data['bounce.enabled'] && data['bounce.mailboxes'][0].enabled">
-      <div class="block box" v-for="(item, n) in data['bounce.mailboxes']" :key="n">
-        <div class="columns">
-          <div class="column" :class="{ disabled: !item.enabled }">
-            <div class="columns">
-              <div class="column is-3">
-                <b-field :label="$t('settings.bounces.type')" label-position="on-border">
-                  <b-select v-model="item.type" name="type" expanded>
-                    <option value="pop">
-                      POP
-                    </option>
-                  </b-select>
-                </b-field>
+      <div class="settings-card" v-for="(item, n) in data['bounce.mailboxes']" :key="n">
+        <div :class="{ disabled: !item.enabled }">
+          <div class="grid">
+            <div class="col-3">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.type') }}</label>
+                <PvSelect v-model="item.type" name="type"
+                  :options="[{ label: 'POP', value: 'pop' }]" option-label="label" option-value="value"
+                  class="w-full" />
               </div>
-              <div class="column is-6">
-                <b-field :label="$t('settings.mailserver.host')" label-position="on-border"
-                  :message="$t('settings.mailserver.hostHelp')">
-                  <b-input v-model="item.host" name="host" placeholder="bounce.yourmailserver.net" :maxlength="200" />
-                </b-field>
+            </div>
+            <div class="col-6">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.host') }}</label>
+                <PvInputText v-model="item.host" name="host" placeholder="bounce.yourmailserver.net"
+                  :maxlength="200" class="w-full" />
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.hostHelp') }}</small>
               </div>
-              <div class="column is-3">
-                <b-field :label="$t('settings.mailserver.port')" label-position="on-border"
-                  :message="$t('settings.mailserver.portHelp')">
-                  <b-numberinput v-model="item.port" name="port" type="is-light" controls-position="compact"
-                    placeholder="25" min="1" max="65535" />
-                </b-field>
+            </div>
+            <div class="col-3">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.port') }}</label>
+                <PvInputNumber v-model="item.port" name="port" placeholder="25" :min="1" :max="65535"
+                  class="w-full" />
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.portHelp') }}</small>
               </div>
-            </div><!-- host -->
-
-            <div class="columns">
-              <div class="column is-3">
-                <b-field :label="$t('settings.mailserver.authProtocol')" label-position="on-border">
-                  <b-select v-model="item.auth_protocol" name="auth_protocol" expanded>
-                    <option value="none">
-                      none
-                    </option>
-                    <option v-if="item.type === 'pop'" value="userpass">
-                      userpass
-                    </option>
-                    <template v-else>
-                      <option value="cram">
-                        cram
-                      </option>
-                      <option value="plain">
-                        plain
-                      </option>
-                      <option value="login">
-                        login
-                      </option>
-                    </template>
-                  </b-select>
-                </b-field>
-              </div>
-              <div class="column">
-                <b-field grouped>
-                  <b-field :label="$t('settings.mailserver.username')" label-position="on-border" expanded>
-                    <b-input v-model="item.username" :disabled="item.auth_protocol === 'none'" name="username"
-                      placeholder="mysmtp" :maxlength="200" />
-                  </b-field>
-                  <b-field :label="$t('settings.mailserver.password')" label-position="on-border" expanded
-                    :message="$t('settings.mailserver.passwordHelp')">
-                    <b-input v-model="item.password" :disabled="item.auth_protocol === 'none'" name="password"
-                      type="password" :placeholder="$t('settings.mailserver.passwordHelp')" :maxlength="200" />
-                  </b-field>
-                </b-field>
-              </div>
-            </div><!-- auth -->
-
-            <div class="columns">
-              <div class="column is-6">
-                <b-field grouped>
-                  <b-field expanded :message="$t('settings.mailserver.tlsHelp')">
-                    <b-switch v-model="item.tls_enabled" name="item.tls_enabled">
-                      {{ $t('settings.mailserver.tls') }}
-                    </b-switch>
-                  </b-field>
-                  <b-field expanded :message="$t('settings.mailserver.skipTLSHelp')">
-                    <b-switch v-model="item.tls_skip_verify" :disabled="!item.tls_enabled" name="item.tls_skip_verify">
-                      {{ $t('settings.mailserver.skipTLS') }}
-                    </b-switch>
-                  </b-field>
-                </b-field>
-              </div>
-              <div class="column" />
-              <div class="column is-4">
-                <b-field :label="$t('settings.bounces.scanInterval')" expanded label-position="on-border"
-                  :message="$t('settings.bounces.scanIntervalHelp')">
-                  <b-input v-model="item.scan_interval" name="scan_interval" placeholder="15m" :pattern="regDuration"
-                    :maxlength="10" />
-                </b-field>
-              </div>
-            </div><!-- TLS -->
+            </div>
           </div>
-        </div><!-- second container column -->
-      </div><!-- block -->
+
+          <div class="grid">
+            <div class="col-3">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.authProtocol') }}</label>
+                <PvSelect v-model="item.auth_protocol" name="auth_protocol"
+                  :options="getAuthProtocolOptions(item.type)" option-label="label" option-value="value"
+                  class="w-full" />
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.username') }}</label>
+                <PvInputText v-model="item.username" :disabled="item.auth_protocol === 'none'" name="username"
+                  placeholder="mysmtp" :maxlength="200" class="w-full" />
+              </div>
+            </div>
+            <div class="col-5">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.mailserver.password') }}</label>
+                <PvPassword v-model="item.password" :disabled="item.auth_protocol === 'none'" name="password"
+                  :feedback="false" :placeholder="$t('settings.mailserver.passwordHelp')" :maxlength="200"
+                  class="w-full" />
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.passwordHelp') }}</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="col-3">
+              <div class="field">
+                <div class="flex items-center gap-2">
+                  <PvToggleSwitch v-model="item.tls_enabled" name="item.tls_enabled" />
+                  <span>{{ $t('settings.mailserver.tls') }}</span>
+                </div>
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.tlsHelp') }}</small>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="field">
+                <div class="flex items-center gap-2">
+                  <PvToggleSwitch v-model="item.tls_skip_verify" :disabled="!item.tls_enabled"
+                    name="item.tls_skip_verify" />
+                  <span>{{ $t('settings.mailserver.skipTLS') }}</span>
+                </div>
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.mailserver.skipTLSHelp') }}</small>
+              </div>
+            </div>
+            <div class="col-4 col-offset-2">
+              <div class="field">
+                <label class="block mb-1 text-sm font-medium">{{ $t('settings.bounces.scanInterval') }}</label>
+                <PvInputText v-model="item.scan_interval" name="scan_interval" placeholder="15m"
+                  :pattern="regDuration" :maxlength="10" class="w-full" />
+                <small class="block mt-1 text-color-secondary">{{ $t('settings.bounces.scanIntervalHelp') }}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 import { regDuration } from '../../constants';
 
-export default Vue.extend({
+export default {
   props: {
-    form: {
-      type: Object, default: () => { },
-    },
+    form: { type: Object, default: () => {} },
   },
 
   data() {
-    return {
-      bounceTypes: ['soft', 'hard', 'complaint'],
-      data: this.form,
-      regDuration,
-    };
+    return { bounceTypes: ['soft', 'hard', 'complaint'], data: this.form, regDuration };
+  },
+
+  computed: {
+    bounceActionOptions() {
+      return [
+        { label: this.$t('globals.terms.none'), value: 'none' },
+        { label: this.$t('email.unsub'), value: 'unsubscribe' },
+        { label: this.$t('settings.bounces.blocklist'), value: 'blocklist' },
+        { label: this.$t('globals.buttons.delete'), value: 'delete' },
+      ];
+    },
   },
 
   methods: {
-    removeBounceBox(i) {
-      this.data['bounce.mailboxes'].splice(i, 1);
+    removeBounceBox(i) { this.data['bounce.mailboxes'].splice(i, 1); },
+
+    getAuthProtocolOptions(type) {
+      const opts = [{ label: 'none', value: 'none' }];
+      if (type === 'pop') {
+        opts.push({ label: 'userpass', value: 'userpass' });
+      } else {
+        opts.push({ label: 'cram', value: 'cram' });
+        opts.push({ label: 'plain', value: 'plain' });
+        opts.push({ label: 'login', value: 'login' });
+      }
+      return opts;
     },
   },
-});
+};
 </script>
+
+<style scoped lang="scss">
+:deep(.p-password) { width: 100%; }
+:deep(.p-password-input) { width: 100%; }
+</style>

@@ -1,106 +1,114 @@
 <template>
-  <section class="bounces">
-    <header class="page-header columns">
-      <div class="column is-two-thirds">
-        <h1 class="title is-4">
-          {{ $t('globals.terms.bounces') }}
-          <span v-if="bounces.total > 0">({{ bounces.total }})</span>
-        </h1>
-      </div>
-    </header>
+  <div class="bounces-page">
+    <div class="page-header">
+      <h1 class="page-title">
+        {{ $t('globals.terms.bounces') }}
+        <span v-if="bounces.total > 0" class="page-title-count">{{ bounces.total }}</span>
+      </h1>
+    </div>
 
-    <b-table :data="bounces.results" :hoverable="true" :loading="loading.bounces" default-sort="createdAt" checkable
-      @check-all="onTableCheck" @check="onTableCheck" :checked-rows.sync="bulk.checked" detailed show-detail-icon
-      paginated backend-pagination pagination-position="both" @page-change="onPageChange"
-      :current-page="queryParams.page" :per-page="bounces.perPage" :total="bounces.total" backend-sorting
-      @sort="onSort">
-      <template #top-left>
-        <div class="actions">
-          <template v-if="bulk.checked.length > 0">
-            <a class="a" href="#" @click.prevent="$utils.confirm(null, () => deleteBounces())" data-cy="btn-delete">
-              <b-icon icon="trash-can-outline" size="is-small" /> {{ $t('globals.buttons.delete') }}
-            </a>
-            <a class="a" href="#" @click.prevent="$utils.confirm(null, () => blocklistSubscribers())"
-              data-cy="btn-manage-blocklist">
-              <b-icon icon="account-off-outline" size="is-small" /> {{ $t('import.blocklist') }}
-            </a>
-            <span>
+    <div class="table-card">
+      <PvDataTable :value="bounces.results" :loading="loading.bounces"
+        sort-field="createdAt" :sort-order="-1"
+        selection-mode="checkbox" v-model:selection="bulk.checked"
+        @update:selection="onTableCheck"
+        :rows="bounces.perPage" :paginator="true" paginator-position="bottom" :total-records="bounces.total"
+        :lazy="true" @page="(e) => onPageChange(e.page + 1)"
+        @sort="(e) => onSort(e.sortField, e.sortOrder === 1 ? 'asc' : 'desc')"
+        data-key="id"
+        :expanded-rows="expandedRows" @update:expanded-rows="expandedRows = $event">
+        <template #header>
+          <div v-if="bulk.checked.length > 0" class="bulk-bar">
+            <span class="bulk-count">
               {{ $t('globals.messages.numSelected', { num: numSelectedBounces }) }}
-              <span v-if="!bulk.all && bounces.total > bounces.perPage">
-                &mdash;
-                <a href="#" @click.prevent="selectAllBounces">
-                  {{ $t('subscribers.selectAll', { num: bounces.total }) }}
-                </a>
-              </span>
+              <template v-if="!bulk.all && bounces.total > bounces.perPage">
+                &mdash; <a href="#" @click.prevent="selectAllBounces">{{ $t('subscribers.selectAll', { num: bounces.total }) }}</a>
+              </template>
             </span>
+            <button type="button" class="bulk-btn bulk-btn--danger" data-cy="btn-delete"
+              @click="$utils.confirm(null, () => deleteBounces())">
+              <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
+            </button>
+            <button type="button" class="bulk-btn bulk-btn--warn" data-cy="btn-manage-blocklist"
+              @click="$utils.confirm(null, () => blocklistSubscribers())">
+              <i class="pi pi-ban" /> {{ $t('import.blocklist') }}
+            </button>
+          </div>
+        </template>
+
+        <PvColumn selection-mode="multiple" header-style="width:3rem" />
+        <PvColumn expander header-style="width:3rem" />
+
+        <PvColumn field="email" :header="$t('subscribers.email')" sortable>
+          <template #body="{ data }">
+            <router-link class="row-name" :class="{ 'row-name--blocked': data.subscriberStatus === 'blocklisted' }"
+              :to="{ name: 'subscriber', params: { id: data.subscriberId } }">
+              {{ data.email }}
+            </router-link>
+            <PvTag v-if="data.subscriberStatus !== 'enabled'" severity="danger" size="small"
+              data-cy="blocklisted" :value="$t(`subscribers.status.${data.subscriberStatus}`)" />
           </template>
-        </div>
-      </template>
-      <b-table-column v-slot="props" field="email" :label="$t('subscribers.email')" :td-attrs="$utils.tdID" sortable>
-        <router-link :to="{ name: 'subscriber', params: { id: props.row.subscriberId } }"
-          :class="{ 'blocklisted': props.row.subscriberStatus === 'blocklisted' }">
-          {{ props.row.email }}
-          <b-tag v-if="props.row.subscriberStatus !== 'enabled'" :class="props.row.subscriberStatus"
-            data-cy="blocklisted">
-            {{ $t(`subscribers.status.${props.row.subscriberStatus}`) }}
-          </b-tag>
-        </router-link>
-      </b-table-column>
+        </PvColumn>
 
-      <b-table-column v-slot="props" field="campaign" :label="$tc('globals.terms.campaign')" sortable>
-        <router-link v-if="props.row.campaign" :to="{ name: 'bounces', query: { campaign_id: props.row.campaign.id } }">
-          {{ props.row.campaign.name }}
-        </router-link>
-        <span v-else>-</span>
-      </b-table-column>
+        <PvColumn field="campaign" :header="$tc('globals.terms.campaign')" sortable>
+          <template #body="{ data }">
+            <router-link v-if="data.campaign" class="row-link"
+              :to="{ name: 'bounces', query: { campaign_id: data.campaign.id } }">
+              {{ data.campaign.name }}
+            </router-link>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </PvColumn>
 
-      <b-table-column v-slot="props" field="source" :label="$t('bounces.source')" sortable>
-        <router-link :to="{ name: 'bounces', query: { source: props.row.source } }">
-          {{ props.row.source }}
-        </router-link>
-      </b-table-column>
+        <PvColumn field="source" :header="$t('bounces.source')" sortable>
+          <template #body="{ data }">
+            <router-link class="row-link" :to="{ name: 'bounces', query: { source: data.source } }">
+              {{ data.source }}
+            </router-link>
+          </template>
+        </PvColumn>
 
-      <b-table-column v-slot="props" field="type" :label="$t('globals.fields.type')" sortable>
-        <router-link :to="{ name: 'bounces', query: { type: props.row.type } }">
-          {{ $t(`bounces.${props.row.type}`) }}
-        </router-link>
-      </b-table-column>
+        <PvColumn field="type" :header="$t('globals.fields.type')" sortable style="width:8rem">
+          <template #body="{ data }">
+            <PvTag :severity="data.type === 'hard' ? 'danger' : 'warn'" size="small"
+              :value="$t(`bounces.${data.type}`)" />
+          </template>
+        </PvColumn>
 
-      <b-table-column v-slot="props" field="created_at" :label="$t('globals.fields.createdAt')" sortable>
-        {{ $utils.niceDate(props.row.createdAt, true) }}
-      </b-table-column>
+        <PvColumn field="created_at" :header="$t('globals.fields.createdAt')" sortable style="width:11rem">
+          <template #body="{ data }">{{ $utils.niceDate(data.createdAt, true) }}</template>
+        </PvColumn>
 
-      <b-table-column v-slot="props" cell-class="actions" align="right">
-        <div>
-          <a v-if="!props.row.isDefault" href="#" @click.prevent="$utils.confirm(null, () => deleteBounce(props.row))"
-            data-cy="btn-delete" :aria-label="$t('globals.buttons.delete')">
-            <b-tooltip :label="$t('globals.buttons.delete')" type="is-dark">
-              <b-icon icon="trash-can-outline" size="is-small" />
-            </b-tooltip>
-          </a>
-          <span v-else class="a has-text-grey-light">
-            <b-icon icon="trash-can-outline" size="is-small" />
-          </span>
-        </div>
-      </b-table-column>
+        <PvColumn style="width:4rem; text-align:right" align-frozen="right">
+          <template #body="{ data }">
+            <div class="row-actions">
+              <button type="button" class="row-action-btn row-action-btn--danger"
+                data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')"
+                @click="$utils.confirm(null, () => deleteBounce(data))">
+                <i class="pi pi-trash" />
+              </button>
+            </div>
+          </template>
+        </PvColumn>
 
-      <template #detail="props">
-        <pre class="is-size-7">{{ props.row.meta }}</pre>
-      </template>
+        <template #expansion="{ data }">
+          <pre class="meta-expansion">{{ data.meta }}</pre>
+        </template>
 
-      <template #empty v-if="!loading.templates">
-        <empty-placeholder />
-      </template>
-    </b-table>
-  </section>
+        <template #empty v-if="!loading.bounces">
+          <empty-placeholder />
+        </template>
+      </PvDataTable>
+    </div>
+  </div>
 </template>
 
 <script>
-import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default Vue.extend({
+export default {
   components: {
     EmptyPlaceholder,
   },
@@ -108,6 +116,8 @@ export default Vue.extend({
   data() {
     return {
       bounces: {},
+
+      expandedRows: [],
 
       // Table bulk row selection states.
       bulk: {
@@ -203,22 +213,18 @@ export default Vue.extend({
     },
   },
 
+  watch: {
+    refreshTick() { this.getBounces(); },
+  },
+
   computed: {
-    ...mapState(['templates', 'loading']),
+    ...mapState(useMainStore, ['refreshTick', 'templates', 'loading']),
     numSelectedBounces() {
       if (this.bulk.all) {
         return this.bounces.total;
       }
       return this.bulk.checked.length;
     },
-  },
-
-  created() {
-    this.$root.$on('page.refresh', this.getBounces);
-  },
-
-  destroyed() {
-    this.$root.$off('page.refresh', this.getBounces);
   },
 
   mounted() {
@@ -232,5 +238,25 @@ export default Vue.extend({
 
     this.getBounces();
   },
-});
+};
 </script>
+
+<style scoped lang="scss">
+.bounces-page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.bulk-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.bulk-count { font-size: 0.85rem; color: var(--lm-text-muted); a { color: var(--lm-primary); text-decoration: none; } }
+.bulk-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.35rem 0.75rem; border: 1px solid var(--lm-border); border-radius: 6px;
+  background: var(--lm-surface); font-size: 0.8rem; cursor: pointer; color: var(--lm-text-muted);
+  &--danger { color: var(--lm-danger); border-color: var(--lm-danger-border); &:hover { background: var(--lm-danger-bg); } }
+  &--warn   { color: #d97706; border-color: var(--lm-warn-border); &:hover { background: var(--lm-warn-bg); } }
+}
+
+.row-name { color: var(--lm-text); font-weight: 500; text-decoration: none; &:hover { color: var(--lm-primary); } &--blocked { color: var(--lm-text-subtle); text-decoration: line-through; } }
+.row-link  { color: var(--lm-primary); text-decoration: none; &:hover { text-decoration: underline; } }
+.text-muted { color: var(--lm-text-subtle); }
+
+.meta-expansion { font-size: 0.78rem; padding: 1rem; background: var(--lm-bg); border-radius: 6px; margin: 0.5rem 1rem; }
+</style>

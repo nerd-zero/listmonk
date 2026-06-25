@@ -7,8 +7,8 @@ module.exports = {
   plugins: ['vue'],
   extends: [
     'eslint:recommended',
-    'plugin:vue/essential',
-    'plugin:vue/strongly-recommended',
+    'plugin:vue/vue3-essential',
+    'plugin:vue/vue3-strongly-recommended',
     '@vue/eslint-config-airbnb',
   ],
   parser: 'vue-eslint-parser',
@@ -27,6 +27,10 @@ module.exports = {
       template: 200,
       comments: 200,
     }],
+    'vuejs-accessibility/label-has-for': 'off',
+    'vuejs-accessibility/click-events-have-key-events': 'off',
+    'vuejs-accessibility/anchor-has-content': 'off',
+    'import/no-unresolved': ['error', { ignore: ['@primeuix/themes'] }],
   },
   ignorePatterns: ['src/email-builder.js'],
 };

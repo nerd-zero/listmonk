@@ -1,92 +1,96 @@
 <template>
-  <form @submit.prevent="onSubmit">
-    <div class="modal-card content" style="width: auto">
-      <header class="modal-card-head">
-        <p v-if="isEditing" class="has-text-grey-light is-size-7">
-          {{ $t('globals.fields.id') }}: <copy-text :text="`${data.id}`" />
-          {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
-        </p>
-        <b-tag v-if="isEditing" :class="[data.type, 'is-pulled-right']">
-          {{ $t(`lists.types.${data.type}`) }}
-        </b-tag>
-        <h4 v-if="isEditing">
-          {{ data.name }}
-        </h4>
-        <h4 v-else>
-          {{ $t('lists.newList') }}
-        </h4>
-      </header>
-      <section expanded class="modal-card-body">
-        <b-field :label="$t('globals.fields.name')" label-position="on-border">
-          <b-input :maxlength="200" :ref="'focus'" v-model="form.name" name="name"
-            :placeholder="$t('globals.fields.name')" required />
-        </b-field>
+  <form class="lm-form" @submit.prevent="onSubmit">
+    <!-- Dialog header -->
+    <div class="lm-form-header">
+      <div class="lm-form-title-row">
+        <h3 class="lm-form-title">{{ isEditing ? data.name : $t('lists.newList') }}</h3>
+        <PvTag v-if="isEditing" :severity="data.type === 'public' ? 'info' : 'secondary'"
+          :value="$t(`lists.types.${data.type}`)" />
+      </div>
+      <p v-if="isEditing" class="lm-form-meta">
+        ID: <copy-text :text="`${data.id}`" /> &nbsp;·&nbsp;
+        UUID: <copy-text :text="data.uuid" />
+      </p>
+    </div>
 
-        <b-field :label="$t('lists.type')" label-position="on-border" :message="$t('lists.typeHelp')">
-          <b-select v-model="form.type" name="type" :placeholder="$t('lists.typeHelp')" required expanded>
-            <option value="private">
-              {{ $t('lists.types.private') }}
-            </option>
-            <option value="public">
-              {{ $t('lists.types.public') }}
-            </option>
-          </b-select>
-        </b-field>
+    <!-- Fields -->
+    <div class="lm-form-body">
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('globals.fields.name') }}</label>
+        <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
+          :placeholder="$t('globals.fields.name')" class="w-full" required />
+      </div>
 
-        <b-field :label="$t('lists.optin')" label-position="on-border" :message="$t('lists.optinHelp')">
-          <b-select v-model="form.optin" name="optin" placeholder="Opt-in type" required expanded>
-            <option value="single">
-              {{ $t('lists.optins.single') }}
-            </option>
-            <option value="double">
-              {{ $t('lists.optins.double') }}
-            </option>
-          </b-select>
-        </b-field>
+      <div class="lm-field-row">
+        <div class="lm-field">
+          <label class="lm-label">{{ $t('lists.type') }}</label>
+          <PvSelect v-model="form.type" name="type" required class="w-full"
+            :options="[{ label: $t('lists.types.private'), value: 'private' }, { label: $t('lists.types.public'), value: 'public' }]"
+            option-label="label" option-value="value" />
+          <small class="lm-help">{{ $t('lists.typeHelp') }}</small>
+        </div>
 
-        <b-field :label="$t('globals.terms.tags')" label-position="on-border">
-          <b-taginput v-model="form.tags" name="tags" ellipsis icon="tag-outline"
-            :placeholder="$t('globals.terms.tags')" />
-        </b-field>
+        <div class="lm-field">
+          <label class="lm-label">{{ $t('lists.optin') }}</label>
+          <PvSelect v-model="form.optin" name="optin" required class="w-full"
+            :options="[{ label: $t('lists.optins.single'), value: 'single' }, { label: $t('lists.optins.double'), value: 'double' }]"
+            option-label="label" option-value="value" />
+          <small class="lm-help">{{ $t('lists.optinHelp') }}</small>
+        </div>
+      </div>
 
-        <b-field :label="$t('globals.fields.description')" label-position="on-border">
-          <b-input :maxlength="2000" v-model="form.description" name="description" type="textarea"
-            :placeholder="$t('globals.fields.description')" />
-        </b-field>
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('globals.terms.tags') }}</label>
+        <PvAutoComplete v-model="form.tags" name="tags"
+          :placeholder="$t('globals.terms.tags')" multiple class="w-full" />
+      </div>
 
-        <b-field :message="$t('lists.archivedHelp')" :label="$t('lists.archived')">
-          <b-switch v-model="isArchived" name="status" />
-        </b-field>
-      </section>
-      <footer class="modal-card-foot has-text-right">
-        <b-button @click="$parent.close()">
-          {{ $t('globals.buttons.close') }}
-        </b-button>
-        <b-button v-if="$can('lists:manage_all') || $canList(data.id, 'list:manage')" native-type="submit"
-          type="is-primary" :loading="loading.lists" data-cy="btn-save">
-          {{ $t('globals.buttons.save') }}
-        </b-button>
-      </footer>
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('globals.fields.description') }}</label>
+        <PvTextarea :maxlength="2000" v-model="form.description" name="description"
+          :placeholder="$t('globals.fields.description')" class="w-full" rows="3" />
+      </div>
+
+      <div class="lm-field lm-field--inline">
+        <div>
+          <label class="lm-label">{{ $t('lists.archived') }}</label>
+          <small class="lm-help">{{ $t('lists.archivedHelp') }}</small>
+        </div>
+        <PvToggleSwitch v-model="isArchived" name="status" />
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="lm-form-footer">
+      <PvButton severity="secondary" :label="$t('globals.buttons.close')" @click="$emit('close')" />
+      <PvButton
+        v-if="$can('lists:manage_all') || $canList(data.id, 'list:manage')"
+        type="submit"
+        severity="primary"
+        :loading="loading.lists"
+        data-cy="btn-save"
+        :label="$t('globals.buttons.save')"
+      />
     </div>
   </form>
 </template>
 
 <script>
-import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import CopyText from '../components/CopyText.vue';
 
-export default Vue.extend({
+export default {
   name: 'ListForm',
 
-  components: {
-    CopyText,
-  },
+  components: { CopyText },
 
   props: {
     data: { type: Object, default: () => ({}) },
     isEditing: { type: Boolean, default: false },
   },
+
+  emits: ['finished', 'close'],
 
   data() {
     return {
@@ -114,7 +118,7 @@ export default Vue.extend({
     createList() {
       this.$api.createList(this.form).then((data) => {
         this.$emit('finished');
-        this.$parent.close();
+        this.$emit('close');
         this.$utils.toast(this.$t('globals.messages.created', { name: data.name }));
       });
     },
@@ -122,14 +126,14 @@ export default Vue.extend({
     updateList() {
       this.$api.updateList({ id: this.data.id, ...this.form }).then((data) => {
         this.$emit('finished');
-        this.$parent.close();
+        this.$emit('close');
         this.$utils.toast(this.$t('globals.messages.updated', { name: data.name }));
       });
     },
   },
 
   computed: {
-    ...mapState(['loading', 'profile']),
+    ...mapState(useMainStore, ['loading', 'profile']),
 
     isArchived: {
       get() {
@@ -143,10 +147,39 @@ export default Vue.extend({
 
   mounted() {
     this.form = { ...this.form, ...this.$props.data };
-
-    this.$nextTick(() => {
-      this.$refs.focus.focus();
-    });
+    this.$nextTick(() => { this.$refs.focus.$el.focus(); });
   },
-});
+};
 </script>
+
+<style scoped lang="scss">
+
+.lm-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.lm-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.lm-field--inline {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--lm-bg);
+  border: 1px solid var(--lm-border);
+  border-radius: 8px;
+
+  :deep(.p-toggleswitch) { flex-shrink: 0; }
+}
+
+.lm-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+.lm-help {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--lm-text-subtle);
+  line-height: 1.4;
+}
+
+</style>

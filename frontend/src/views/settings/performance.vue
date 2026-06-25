@@ -1,101 +1,100 @@
 <template>
   <div class="items">
-    <b-field :label="$t('settings.performance.concurrency')" label-position="on-border"
-      :message="$t('settings.performance.concurrencyHelp')">
-      <b-numberinput v-model="data['app.concurrency']" name="app.concurrency" type="is-light" placeholder="5" min="1"
-        max="10000" />
-    </b-field>
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.performance.concurrency') }}</label>
+      <PvInputNumber v-model="data['app.concurrency']" name="app.concurrency" placeholder="5" :min="1"
+        :max="10000" class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.concurrencyHelp') }}</small>
+    </div>
 
-    <b-field :label="$t('settings.performance.messageRate')" label-position="on-border"
-      :message="$t('settings.performance.messageRateHelp')">
-      <b-numberinput v-model="data['app.message_rate']" name="app.message_rate" type="is-light" placeholder="5" min="1"
-        max="100000" />
-    </b-field>
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.performance.messageRate') }}</label>
+      <PvInputNumber v-model="data['app.message_rate']" name="app.message_rate" placeholder="5" :min="1"
+        :max="100000" class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.messageRateHelp') }}</small>
+    </div>
 
-    <b-field :label="$t('settings.performance.batchSize')" label-position="on-border"
-      :message="$t('settings.performance.batchSizeHelp')">
-      <b-numberinput v-model="data['app.batch_size']" name="app.batch_size" type="is-light" placeholder="1000" min="1"
-        max="100000" />
-    </b-field>
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.performance.batchSize') }}</label>
+      <PvInputNumber v-model="data['app.batch_size']" name="app.batch_size" placeholder="1000" :min="1"
+        :max="100000" class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.batchSizeHelp') }}</small>
+    </div>
 
-    <b-field :label="$t('settings.performance.maxErrThreshold')" label-position="on-border"
-      :message="$t('settings.performance.maxErrThresholdHelp')">
-      <b-numberinput v-model="data['app.max_send_errors']" name="app.max_send_errors" type="is-light" placeholder="1999"
-        min="0" max="100000" />
-    </b-field>
+    <div class="field">
+      <label class="block mb-1 text-sm font-medium">{{ $t('settings.performance.maxErrThreshold') }}</label>
+      <PvInputNumber v-model="data['app.max_send_errors']" name="app.max_send_errors" placeholder="1999"
+        :min="0" :max="100000" class="w-full" />
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.maxErrThresholdHelp') }}</small>
+    </div>
 
-    <div>
-      <div class="columns">
-        <div class="column is-6">
-          <b-field :message="$t('settings.performance.slidingWindowHelp')">
-            <b-switch v-model="data['app.message_sliding_window']" name="app.message_sliding_window">
-              {{ $t('settings.performance.slidingWindow') }}
-            </b-switch>
-          </b-field>
-        </div>
+    <hr />
 
-        <div class="column is-3" :class="{ disabled: !data['app.message_sliding_window'] }">
-          <b-field :label="$t('settings.performance.slidingWindowRate')" label-position="on-border"
-            :message="$t('settings.performance.slidingWindowRateHelp')">
-            <b-numberinput v-model="data['app.message_sliding_window_rate']" name="sliding_window_rate" type="is-light"
-              controls-position="compact" :disabled="!data['app.message_sliding_window']" placeholder="25" min="1"
-              max="10000000" />
-          </b-field>
-        </div>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['app.message_sliding_window']" name="app.message_sliding_window" />
+        <span>{{ $t('settings.performance.slidingWindow') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.slidingWindowHelp') }}</small>
+    </div>
 
-        <div class="column is-3" :class="{ disabled: !data['app.message_sliding_window'] }">
-          <b-field :label="$t('settings.performance.slidingWindowDuration')" label-position="on-border"
-            :message="$t('settings.performance.slidingWindowDurationHelp')">
-            <b-input v-model="data['app.message_sliding_window_duration']" name="sliding_window_duration"
-              :disabled="!data['app.message_sliding_window']" placeholder="1h" :pattern="regDuration" :maxlength="10" />
-          </b-field>
+    <div class="grid" :class="{ disabled: !data['app.message_sliding_window'] }">
+      <div class="col-6">
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('settings.performance.slidingWindowRate') }}</label>
+          <PvInputNumber v-model="data['app.message_sliding_window_rate']" name="sliding_window_rate"
+            :disabled="!data['app.message_sliding_window']" placeholder="25" :min="1" :max="10000000" class="w-full" />
+          <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.slidingWindowRateHelp') }}</small>
         </div>
       </div>
-    </div><!-- sliding window -->
-
-    <div>
-      <hr />
-      <div class="columns">
-        <div class="column is-4">
-          <b-field :message="$t('settings.performance.cacheSlowQueriesHelp')">
-            <b-switch v-model="data['app.cache_slow_queries']" name="app.cache_slow_queries">
-              {{ $t('settings.performance.cacheSlowQueries') }}
-            </b-switch>
-          </b-field>
-        </div>
-        <div class="column is-4" :class="{ disabled: !data['app.cache_slow_queries'] }">
-          <b-field :label="$t('settings.maintenance.cron')">
-            <b-input v-model="data['app.cache_slow_queries_interval']" :disabled="!data['app.cache_slow_queries']"
-              placeholder="0 3 * * *" />
-          </b-field>
-        </div>
-        <div class="column">
-          <br /><br />
-          <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferer">
-            <b-icon icon="link-variant" /> {{ $t('globals.buttons.learnMore') }}
-          </a>
+      <div class="col-6">
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('settings.performance.slidingWindowDuration') }}</label>
+          <PvInputText v-model="data['app.message_sliding_window_duration']" name="sliding_window_duration"
+            :disabled="!data['app.message_sliding_window']" placeholder="1h" :pattern="regDuration" :maxlength="10"
+            class="w-full" />
+          <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.slidingWindowDurationHelp') }}</small>
         </div>
       </div>
     </div>
+
+    <hr />
+
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['app.cache_slow_queries']" name="app.cache_slow_queries" />
+        <span>{{ $t('settings.performance.cacheSlowQueries') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.performance.cacheSlowQueriesHelp') }}</small>
+    </div>
+
+    <div class="grid" :class="{ disabled: !data['app.cache_slow_queries'] }">
+      <div class="col-6">
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('settings.maintenance.cron') }}</label>
+          <PvInputText v-model="data['app.cache_slow_queries_interval']" :disabled="!data['app.cache_slow_queries']"
+            placeholder="0 3 * * *" class="w-full" />
+        </div>
+      </div>
+    </div>
+
+    <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferer"
+      class="settings-link">
+      <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}
+    </a>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 import { regDuration } from '../../constants';
 
-export default Vue.extend({
+export default {
   props: {
-    form: {
-      type: Object, default: () => { },
-    },
+    form: { type: Object, default: () => {} },
   },
 
   data() {
-    return {
-      data: this.form,
-      regDuration,
-    };
+    return { data: this.form, regDuration };
   },
-});
+};
 </script>

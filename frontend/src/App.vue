@@ -1,232 +1,226 @@
 <template>
-  <div id="app">
-    <b-navbar :fixed-top="true" v-if="$root.isLoaded">
-      <template #brand>
-        <div class="logo">
-          <router-link :to="{ name: 'dashboard' }">
-            <img class="full" src="@/assets/logo.svg" alt="" />
-            <img class="favicon" src="@/assets/favicon.png" alt="" />
+  <div class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'app-dark': isDark }">
+    <PvToast position="bottom-right" />
+    <PvConfirmDialog />
+
+    <template v-if="isLoaded">
+      <!-- ─── Sidebar ─── -->
+      <aside class="app-sidebar">
+        <div class="sidebar-header">
+          <router-link :to="{ name: 'dashboard' }" class="sidebar-brand">
+            <img src="@/assets/logo.svg" alt="listmonk" class="sidebar-logo" />
+            <span class="sidebar-brand-name">listmonk</span>
           </router-link>
         </div>
-      </template>
-      <template #end>
-        <navigation v-if="isMobile" :is-mobile="isMobile" :active-item="activeItem" :active-group="activeGroup"
-          @toggleGroup="toggleGroup" @doLogout="doLogout" />
 
-        <b-navbar-item tag="a" href="#" @click.prevent="emitPageRefresh" data-cy="btn-refresh"
-          :aria-label="$t('globals.buttons.refresh')">
-          <b-tooltip :label="$t('globals.buttons.refresh')" type="is-dark" position="is-bottom">
-            <b-icon icon="refresh" /> <span class="is-hidden-tablet">{{ $t('globals.buttons.refresh') }}</span>
-          </b-tooltip>
-        </b-navbar-item>
+        <nav class="sidebar-nav">
+          <navigation :active-item="activeItem" />
+        </nav>
 
-        <b-navbar-dropdown class="user" tag="div" right>
-          <template v-if="profile.username" #label>
-            <span class="user-avatar">
-              <img v-if="profile.avatar" :src="profile.avatar" alt="" />
-              <span v-else>{{ profile.username[0].toUpperCase() }}</span>
+      </aside>
+
+      <!-- ─── Main ─── -->
+      <div class="app-main">
+        <!-- Topbar -->
+        <header class="app-topbar">
+          <div class="topbar-start">
+            <button type="button" class="topbar-btn" @click="sidebarCollapsed = !sidebarCollapsed">
+              <i class="pi pi-bars" />
+            </button>
+          </div>
+
+          <div class="topbar-end">
+            <PvButton
+              v-if="serverConfig.needs_restart"
+              severity="danger"
+              size="small"
+              icon="pi pi-exclamation-triangle"
+              :label="$t('settings.needsRestart')"
+              @click="$utils.confirm($t('settings.confirmRestart'), reloadApp)"
+            />
+
+            <button
+              type="button"
+              class="topbar-btn"
+              v-tooltip.bottom="$t('globals.buttons.refresh')"
+              data-cy="btn-refresh"
+              @click="triggerRefresh"
+            >
+              <i class="pi pi-refresh" />
+            </button>
+
+            <button type="button" class="topbar-btn" @click="toggleDark" v-tooltip.bottom="isDark ? 'Light mode' : 'Dark mode'">
+              <i :class="['pi', isDark ? 'pi-sun' : 'pi-moon']" />
+            </button>
+
+            <button
+              v-if="profile.username"
+              type="button"
+              class="topbar-user-btn"
+              @click="(e) => $refs.userMenu.show(e)"
+            >
+              <PvAvatar
+                :label="profile.username[0].toUpperCase()"
+                class="topbar-avatar"
+                shape="circle"
+                size="small"
+              />
+              <span class="topbar-username">{{ profile.username }}</span>
+              <i class="pi pi-chevron-down topbar-chevron" />
+            </button>
+            <PvMenu ref="userMenu" :model="userMenuItems" popup />
+          </div>
+        </header>
+
+        <!-- System notices -->
+        <template v-if="serverConfig.update">
+          <div
+            v-if="serverConfig.update.update && serverConfig.update.update.is_new"
+            class="app-notice app-notice--success"
+          >
+            <i class="pi pi-arrow-up-right" />
+            <span>
+              {{ $t('settings.updateAvailable', { version: serverConfig.update.update.release_version }) }}
             </span>
-          </template>
-
-          <b-navbar-item class="user-name" tag="router-link" to="/user/profile">
-            <strong>{{ profile.username }}</strong>
-            <div class="is-size-7">{{ profile.name }}</div>
-          </b-navbar-item>
-
-          <b-navbar-item href="#">
-            <router-link to="/user/profile">
-              <b-icon icon="account-outline" /> {{ $t('users.profile') }}
-            </router-link>
-          </b-navbar-item>
-          <b-navbar-item href="#">
-            <a href="#" @click.prevent="doLogout"><b-icon icon="logout-variant" /> {{ $t('users.logout') }}</a>
-          </b-navbar-item>
-        </b-navbar-dropdown>
-      </template>
-    </b-navbar>
-
-    <div class="wrapper" v-if="$root.isLoaded">
-      <section class="sidebar">
-        <b-sidebar position="static" mobile="hide" :fullheight="true" :open="true" :can-cancel="false">
-          <div>
-            <b-menu :accordion="false">
-              <navigation v-if="!isMobile" :is-mobile="isMobile" :active-item="activeItem" :active-group="activeGroup"
-                @toggleGroup="toggleGroup" />
-            </b-menu>
+            <a :href="serverConfig.update.update.url" target="_blank" rel="noopener noreferrer">View release</a>
           </div>
-        </b-sidebar>
-      </section>
-      <!-- sidebar-->
-
-      <!-- body //-->
-      <div class="main">
-        <div class="global-notices" v-if="isGlobalNotices">
-          <div v-if="serverConfig.needs_restart" class="notification is-danger">
-            {{ $t('settings.needsRestart') }}
-            &mdash;
-            <b-button class="is-primary" size="is-small"
-              @click="$utils.confirm($t('settings.confirmRestart'), reloadApp)">
-              {{ $t('settings.restart') }}
-            </b-button>
+          <div
+            v-for="m in (serverConfig.update.messages || [])"
+            :key="m.title"
+            class="app-notice"
+            :class="m.priority === 'high' ? 'app-notice--danger' : 'app-notice--info'"
+          >
+            <i class="pi pi-info-circle" />
+            <strong v-if="m.title">{{ m.title }}</strong>
+            <span>{{ m.description }}</span>
+            <a v-if="m.url" :href="m.url" target="_blank" rel="noopener noreferrer">View</a>
           </div>
-
-          <template v-if="serverConfig.update">
-            <div v-if="serverConfig.update.update.is_new" class="notification is-success">
-              {{ $t('settings.updateAvailable', {
-                version: `${serverConfig.update.update.release_version}
-              (${$utils.getDate(serverConfig.update.update.release_date).format('DD MMM YY')})`,
-              }) }}
-              <a :href="serverConfig.update.update.url" target="_blank" rel="noopener noreferer">View</a>
-            </div>
-
-            <template v-if="serverConfig.update.messages && serverConfig.update.messages.length > 0">
-              <div v-for="m in serverConfig.update.messages" class="notification"
-                :class="{ [m.priority === 'high' ? 'is-danger' : 'is-info']: true }" :key="m.title">
-                <h3 class="is-size-5" v-if="m.title"><strong>{{ m.title }}</strong></h3>
-                <p v-if="m.description">{{ m.description }}</p>
-                <a v-if="m.url" :href="m.url" target="_blank" rel="noopener noreferer">View</a>
-              </div>
-            </template>
-          </template>
-
-          <div v-if="serverConfig.has_legacy_user" class="notification is-danger">
-            <b-icon icon="warning-empty" />
-            Remove the <code>admin_username</code> and <code>admin_password</code> fields from the TOML
-            configuration file or environment variables. If you are using APIs, create and use new API credentials
-            before removing them. Visit
-            <router-link :to="{ name: 'users' }">
-              Admin -> Settings -> Users
-            </router-link> dashboard. <a href="https://listmonk.app/docs/upgrade/#upgrading-to-v4xx" target="_blank"
-              rel="noopener noreferer">Learn more.</a>
-          </div>
+        </template>
+        <div v-if="serverConfig.has_legacy_user" class="app-notice app-notice--danger">
+          <i class="pi pi-exclamation-triangle" />
+          Remove <code>admin_username</code> / <code>admin_password</code> from config.
+          <router-link :to="{ name: 'users' }">Go to Users</router-link>
         </div>
 
-        <router-view :key="$route.fullPath" />
+        <!-- Page content -->
+        <div class="app-content">
+          <router-view :key="$route.fullPath" />
+        </div>
       </div>
-    </div>
 
-    <b-loading v-if="!$root.isLoaded" active />
+      <!-- Mobile overlay -->
+      <div class="sidebar-overlay" @click="sidebarCollapsed = true" />
+    </template>
+
+    <div v-if="!isLoaded" class="app-loading">
+      <PvProgressSpinner style="width:48px;height:48px" stroke-width="3" />
+    </div>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import { uris } from './constants';
-
+import { useMainStore } from './store';
+import { setToastInstance, setConfirmInstance } from './toastService';
 import Navigation from './components/Navigation.vue';
 
-export default Vue.extend({
+export default {
   name: 'App',
+  components: { Navigation },
 
-  components: {
-    Navigation,
+  setup() {
+    setToastInstance(useToast());
+    setConfirmInstance(useConfirm());
   },
 
   data() {
     return {
+      isLoaded: false,
+      isDark: false,
+      sidebarCollapsed: window.innerWidth < 992,
       activeItem: {},
-      activeGroup: {},
-      windowWidth: window.innerWidth,
     };
+  },
+
+  computed: {
+    ...mapState(useMainStore, ['serverConfig', 'profile']),
+
+    userMenuItems() {
+      return [
+        {
+          label: this.$t('users.profile'),
+          icon: 'pi pi-user',
+          command: () => this.$router.push('/user/profile'),
+        },
+        { separator: true },
+        {
+          label: this.$t('users.logout'),
+          icon: 'pi pi-sign-out',
+          command: () => this.doLogout(),
+        },
+      ];
+    },
   },
 
   watch: {
     $route(to) {
-      // Set the current route name to true for active+expanded keys in the
-      // menu to pick up.
       this.activeItem = { [to.name]: true };
-      if (to.meta.group) {
-        this.activeGroup = { [to.meta.group]: true };
-      } else {
-        // Reset activeGroup to collapse menu items on navigating
-        // to non group items from sidebar
-        this.activeGroup = {};
-      }
+      if (window.innerWidth < 992) this.sidebarCollapsed = true;
     },
   },
 
   methods: {
-    toggleGroup(group, state) {
-      this.activeGroup = state ? { [group]: true } : {};
+    toggleDark() {
+      this.isDark = !this.isDark;
+      document.documentElement.classList.toggle('app-dark', this.isDark);
     },
 
-    emitPageRefresh() {
-      this.$root.$emit('page.refresh');
+    triggerRefresh() {
+      useMainStore().refresh();
+    },
+
+    doLogout() {
+      this.$api.logout().then(() => { document.location.href = uris.root; });
     },
 
     reloadApp() {
       this.$api.reloadApp().then(() => {
-        this.$utils.toast('Reloading app ...');
-
-        // Poll until there's a 200 response, waiting for the app
-        // to restart and come back up.
-        const pollId = setInterval(() => {
-          this.$api.getHealth().then(() => {
-            clearInterval(pollId);
-            document.location.reload();
-          });
+        this.$utils.toast('Reloading…');
+        const poll = setInterval(() => {
+          this.$api.getHealth().then(() => { clearInterval(poll); document.location.reload(); });
         }, 500);
       });
     },
 
-    doLogout() {
-      this.$api.logout().then(() => {
-        document.location.href = uris.root;
-      });
-    },
-
     listenEvents() {
-      const reMatchLog = /(.+?)\.go:\d+:(.+?)$/im;
-      const evtSource = new EventSource(uris.errorEvents, { withCredentials: true });
-      let numEv = 0;
-      evtSource.onmessage = (e) => {
-        if (numEv > 50) {
-          return;
-        }
-        numEv += 1;
-
+      const re = /(.+?)\.go:\d+:(.+?)$/im;
+      const src = new EventSource(uris.errorEvents, { withCredentials: true });
+      let n = 0;
+      src.onmessage = (e) => {
+        if (n > 50) return;
+        n += 1;
         const d = JSON.parse(e.data);
-        if (d && d.type === 'error') {
-          const msg = reMatchLog.exec(d.message.trim());
-          this.$utils.toast(msg[2], 'is-danger', null, true);
+        if (d?.type === 'error') {
+          const m = re.exec(d.message.trim());
+          if (m) this.$utils.toast(m[2], 'is-danger', null, true);
         }
       };
     },
   },
 
-  computed: {
-    ...mapState(['serverConfig', 'profile']),
-
-    isGlobalNotices() {
-      return (this.serverConfig.needs_restart
-        || this.serverConfig.has_legacy_user
-        || (this.serverConfig.update
-          && this.serverConfig.update.messages
-          && this.serverConfig.update.messages.length > 0));
-    },
-
-    version() {
-      return import.meta.env.VUE_APP_VERSION;
-    },
-
-    isMobile() {
-      return this.windowWidth <= 768;
-    },
-  },
-
   mounted() {
-    // Lists is required across different views. On app load, fetch the lists
-    // and have them in the store.
+    this.isLoaded = true;
     this.$api.getLists({ minimal: true, per_page: 'all', status: 'active' });
-
-    window.addEventListener('resize', () => {
-      this.windowWidth = window.innerWidth;
-    });
-
     this.listenEvents();
+    this.activeItem = { [this.$route.name]: true };
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 992) this.sidebarCollapsed = false;
+    });
   },
-});
+};
 </script>
 
 <style lang="scss">

@@ -1,164 +1,130 @@
 <template>
-  <section class="dashboard content">
-    <header class="columns">
-      <div class="column is-two-thirds">
-        <h1 class="title is-5">
-          {{ $utils.niceDate(new Date()) }}
-        </h1>
+  <div class="dash">
+    <!-- Header -->
+    <div class="dash-header">
+      <div>
+        <h1 class="dash-greeting">{{ greeting }}, {{ profile.username }}</h1>
+        <p class="dash-date">{{ $utils.niceDate(new Date()) }}</p>
       </div>
-    </header>
+    </div>
 
-    <section class="counts wrap">
-      <div class="tile is-ancestor">
-        <div class="tile is-vertical is-12">
-          <div class="tile">
-            <div class="tile is-parent is-vertical relative">
-              <b-loading v-if="isCountsLoading" active :is-full-page="false" />
-              <article class="tile is-child notification" data-cy="lists">
-                <div class="columns is-mobile">
-                  <div class="column is-6">
-                    <p class="title">
-                      <b-icon icon="format-list-bulleted-square" />
-                      {{ $utils.niceNumber(counts.lists.total) }}
-                    </p>
-                    <p class="is-size-6 has-text-grey">
-                      {{ $tc('globals.terms.list', counts.lists.total) }}
-                    </p>
-                  </div>
-                  <div class="column is-6">
-                    <ul class="no has-text-grey">
-                      <li>
-                        <label for="#">{{ $utils.niceNumber(counts.lists.public) }}</label>
-                        {{ $t('lists.types.public') }}
-                      </li>
-                      <li>
-                        <label for="#">{{ $utils.niceNumber(counts.lists.private) }}</label>
-                        {{ $t('lists.types.private') }}
-                      </li>
-                      <li>
-                        <label for="#">{{ $utils.niceNumber(counts.lists.optinSingle) }}</label>
-                        {{ $t('lists.optins.single') }}
-                      </li>
-                      <li>
-                        <label for="#">{{ $utils.niceNumber(counts.lists.optinDouble) }}</label>
-                        {{ $t('lists.optins.double') }}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </article><!-- lists -->
-
-              <article class="tile is-child notification" data-cy="campaigns">
-                <div class="columns is-mobile">
-                  <div class="column is-6">
-                    <p class="title">
-                      <b-icon icon="rocket-launch-outline" />
-                      {{ $utils.niceNumber(counts.campaigns.total) }}
-                    </p>
-                    <p class="is-size-6 has-text-grey">
-                      {{ $tc('globals.terms.campaign', counts.campaigns.total) }}
-                    </p>
-                  </div>
-                  <div class="column is-6">
-                    <ul class="no has-text-grey">
-                      <li v-for="(num, status) in counts.campaigns.byStatus" :key="status">
-                        <label for="#" :data-cy="`campaigns-${status}`">{{ num }}</label>
-                        {{ $t(`campaigns.status.${status}`) }}
-                        <span v-if="status === 'running'" class="spinner is-tiny">
-                          <b-loading :is-full-page="false" active />
-                        </span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </article><!-- campaigns -->
-            </div><!-- block -->
-
-            <div class="tile is-parent relative">
-              <b-loading v-if="isCountsLoading" active :is-full-page="false" />
-              <article class="tile is-child notification" data-cy="subscribers">
-                <div class="columns is-mobile">
-                  <div class="column is-6">
-                    <p class="title">
-                      <b-icon icon="account-multiple" />
-                      {{ $utils.niceNumber(counts.subscribers.total) }}
-                    </p>
-                    <p class="is-size-6 has-text-grey">
-                      {{ $tc('globals.terms.subscriber', counts.subscribers.total) }}
-                    </p>
-                  </div>
-
-                  <div class="column is-6">
-                    <ul class="no has-text-grey">
-                      <li>
-                        <label for="#">{{ $utils.niceNumber(counts.subscribers.blocklisted) }}</label>
-                        {{ $t('subscribers.status.blocklisted') }}
-                      </li>
-                      <li>
-                        <label for="#">{{ $utils.niceNumber(counts.subscribers.orphans) }}</label>
-                        {{ $t('dashboard.orphanSubs') }}
-                      </li>
-                    </ul>
-                  </div><!-- subscriber breakdown -->
-                </div><!-- subscriber columns -->
-                <hr />
-                <div class="columns" data-cy="messages">
-                  <div class="column is-12">
-                    <p class="title">
-                      <b-icon icon="email-outline" />
-                      {{ $utils.niceNumber(counts.messages) }}
-                    </p>
-                    <p class="is-size-6 has-text-grey">
-                      {{ $t('dashboard.messagesSent') }}
-                    </p>
-                  </div>
-                </div>
-              </article><!-- subscribers -->
-            </div>
+    <!-- Stat cards -->
+    <div class="dash-stats">
+      <div class="stat-card" data-cy="lists">
+        <div class="stat-icon stat-icon--blue">
+          <i class="pi pi-list" />
+        </div>
+        <div class="stat-body">
+          <div class="stat-number">
+            <PvProgressSpinner v-if="isCountsLoading" style="width:1.5rem;height:1.5rem" stroke-width="4" />
+            <span v-else>{{ $utils.niceNumber(counts.lists.total) }}</span>
           </div>
-          <div class="tile is-parent relative">
-            <b-loading v-if="isChartsLoading" active :is-full-page="false" />
-            <article class="tile is-child notification charts">
-              <div class="columns">
-                <div class="column is-6">
-                  <h3 class="title is-size-6">
-                    {{ $t('dashboard.campaignViews') }}
-                  </h3><br />
-                  <chart type="line" v-if="campaignViews" :data="campaignViews" />
-                </div>
-                <div class="column is-6">
-                  <h3 class="title is-size-6 has-text-right">
-                    {{ $t('dashboard.linkClicks') }}
-                  </h3><br />
-                  <chart type="line" v-if="campaignClicks" :data="campaignClicks" />
-                </div>
-              </div>
-            </article>
+          <div class="stat-label">{{ $tc('globals.terms.list', counts.lists.total) }}</div>
+          <div class="stat-breakdown">
+            <span>{{ counts.lists.public }} {{ $t('lists.types.public') }}</span>
+            <span>{{ counts.lists.private }} {{ $t('lists.types.private') }}</span>
+            <span>{{ counts.lists.optinSingle }} Single opt-in</span>
+            <span>{{ counts.lists.optinDouble }} Double opt-in</span>
           </div>
         </div>
-      </div><!-- tile block -->
-      <p v-if="settings['app.cache_slow_queries']" class="has-text-grey">
-        *{{ $t('globals.messages.slowQueriesCached') }}
-        <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferer"
-          class="has-text-grey">
-          <b-icon icon="link-variant" /> {{ $t('globals.buttons.learnMore') }}
-        </a>
-      </p>
-    </section>
-  </section>
+      </div>
+
+      <div class="stat-card" data-cy="subscribers">
+        <div class="stat-icon stat-icon--green">
+          <i class="pi pi-users" />
+        </div>
+        <div class="stat-body">
+          <div class="stat-number">
+            <PvProgressSpinner v-if="isCountsLoading" style="width:1.5rem;height:1.5rem" stroke-width="4" />
+            <span v-else>{{ $utils.niceNumber(counts.subscribers.total) }}</span>
+          </div>
+          <div class="stat-label">{{ $tc('globals.terms.subscriber', counts.subscribers.total) }}</div>
+          <div class="stat-breakdown">
+            <span>{{ counts.subscribers.blocklisted || 0 }} {{ $t('subscribers.status.blocklisted') }}</span>
+            <span>{{ counts.subscribers.orphans || 0 }} {{ $t('dashboard.orphanSubs') }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-card" data-cy="campaigns">
+        <div class="stat-icon stat-icon--purple">
+          <i class="pi pi-send" />
+        </div>
+        <div class="stat-body">
+          <div class="stat-number">
+            <PvProgressSpinner v-if="isCountsLoading" style="width:1.5rem;height:1.5rem" stroke-width="4" />
+            <span v-else>{{ $utils.niceNumber(counts.campaigns.total) }}</span>
+          </div>
+          <div class="stat-label">{{ $tc('globals.terms.campaign', counts.campaigns.total) }}</div>
+          <div class="stat-breakdown">
+            <span v-for="(num, status) in counts.campaigns.byStatus" :key="status">
+              {{ num }} {{ $t(`campaigns.status.${status}`) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-card" data-cy="messages">
+        <div class="stat-icon stat-icon--orange">
+          <i class="pi pi-envelope" />
+        </div>
+        <div class="stat-body">
+          <div class="stat-number">
+            <PvProgressSpinner v-if="isCountsLoading" style="width:1.5rem;height:1.5rem" stroke-width="4" />
+            <span v-else>{{ $utils.niceNumber(counts.messages) }}</span>
+          </div>
+          <div class="stat-label">{{ $t('dashboard.messagesSent') }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="dash-charts">
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">{{ $t('dashboard.campaignViews') }}</span>
+        </div>
+        <div class="chart-body">
+          <div v-if="isChartsLoading" class="chart-loading">
+            <PvProgressSpinner style="width:2rem;height:2rem" stroke-width="3" />
+          </div>
+          <chart v-else-if="campaignViews" type="line" :data="campaignViews" />
+          <p v-else class="chart-empty">No data</p>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">{{ $t('dashboard.linkClicks') }}</span>
+        </div>
+        <div class="chart-body">
+          <div v-if="isChartsLoading" class="chart-loading">
+            <PvProgressSpinner style="width:2rem;height:2rem" stroke-width="3" />
+          </div>
+          <chart v-else-if="campaignClicks" type="line" :data="campaignClicks" />
+          <p v-else class="chart-empty">No data</p>
+        </div>
+      </div>
+    </div>
+
+    <p v-if="settings['app.cache_slow_queries']" class="dash-cache-note">
+      *{{ $t('globals.messages.slowQueriesCached') }}
+      <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferrer">
+        <i class="pi pi-external-link" /> {{ $t('globals.buttons.learnMore') }}
+      </a>
+    </p>
+  </div>
 </template>
 
 <script>
 import dayjs from 'dayjs';
-import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import { colors } from '../constants';
 import Chart from '../components/Chart.vue';
 
-export default Vue.extend({
-  components: {
-    Chart,
-  },
+export default {
+  components: { Chart },
 
   data() {
     return {
@@ -173,6 +139,25 @@ export default Vue.extend({
         messages: 0,
       },
     };
+  },
+
+  computed: {
+    ...mapState(useMainStore, ['refreshTick', 'settings', 'profile']),
+
+    greeting() {
+      const h = new Date().getHours();
+      if (h < 12) return 'Good morning';
+      if (h < 18) return 'Good afternoon';
+      return 'Good evening';
+    },
+  },
+
+  watch: {
+    refreshTick() { this.fetchData(); },
+  },
+
+  mounted() {
+    this.fetchData();
   },
 
   methods: {
@@ -193,41 +178,168 @@ export default Vue.extend({
     },
 
     makeChart(data) {
-      if (data.length === 0) {
-        return {};
-      }
+      if (!data || data.length === 0) return null;
       return {
         labels: data.map((d) => dayjs(d.date).format('DD MMM')),
-        datasets: [
-          {
-            data: [...data.map((d) => d.count)],
-            borderColor: colors.primary,
-            borderWidth: 2,
-            pointHoverBorderWidth: 5,
-            pointBorderWidth: 0.5,
-          },
-        ],
+        datasets: [{
+          data: data.map((d) => d.count),
+          borderColor: colors.primary,
+          borderWidth: 2,
+          pointHoverBorderWidth: 5,
+          pointBorderWidth: 0.5,
+          fill: true,
+          backgroundColor: 'rgba(99,102,241,0.07)',
+        }],
       };
     },
   },
-
-  computed: {
-    ...mapState(['settings']),
-    dayjs() {
-      return dayjs;
-    },
-  },
-
-  created() {
-    this.$root.$on('page.refresh', this.fetchData);
-  },
-
-  destroyed() {
-    this.$root.$off('page.refresh', this.fetchData);
-  },
-
-  mounted() {
-    this.fetchData();
-  },
-});
+};
 </script>
+
+<style scoped lang="scss">
+.dash {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.dash-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.dash-greeting {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--lm-text);
+  margin: 0 0 0.2rem;
+  line-height: 1.2;
+}
+
+.dash-date {
+  font-size: 0.875rem;
+  color: var(--lm-text-muted);
+  margin: 0;
+}
+
+// Stat cards
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+
+  @media (max-width: 1100px) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 600px)  { grid-template-columns: 1fr; }
+}
+
+.stat-card {
+  background: var(--lm-surface);
+  border: 1px solid var(--lm-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  transition: box-shadow 0.15s;
+}
+
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  i { font-size: 1.15rem; }
+  &--green  { background: var(--lm-success-bg); color: var(--lm-success); }
+  &--orange { background: var(--lm-surface)7ed; color: #f97316; }
+}
+
+.stat-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--lm-text);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--lm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.75rem;
+}
+
+.stat-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+
+  span {
+    font-size: 0.8rem;
+    color: var(--lm-text-subtle);
+  }
+}
+
+// Charts
+.dash-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+
+  @media (max-width: 768px) { grid-template-columns: 1fr; }
+}
+
+.chart-card {
+  background: var(--lm-surface);
+  border: 1px solid var(--lm-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.chart-header {
+  padding: 1.25rem 1.5rem 0;
+}
+
+.chart-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--lm-text);
+}
+
+.chart-body {
+  padding: 1rem 1.5rem 1.5rem;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-loading,
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  color: var(--lm-text-subtle);
+  font-size: 0.875rem;
+}
+
+.dash-cache-note {
+  font-size: 0.8rem;
+  color: var(--lm-text-subtle);
+  margin: 0;
+
+  a { color: var(--lm-text-subtle); text-decoration: underline; }
+}
+</style>

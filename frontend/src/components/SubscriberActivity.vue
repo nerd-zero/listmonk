@@ -1,25 +1,25 @@
 <template>
   <div class="subscriber-activity">
     <div v-if="isLoading" class="has-text-centered">
-      <b-loading :active="true" :is-full-page="false" />
+      <PvProgressSpinner style="width:2rem;height:2rem" />
     </div>
 
     <div v-else>
       <!-- Summary Stats -->
-      <div class="columns">
-        <div class="column is-4">
+      <div class="grid">
+        <div class="col-4">
           <div class="box has-text-centered">
             <p class="heading">{{ $t('globals.terms.campaigns') }}</p>
             <p class="title">{{ activity.campaignViews ? activity.campaignViews.length : 0 }}</p>
           </div>
         </div>
-        <div class="column is-4">
+        <div class="col-4">
           <div class="box has-text-centered">
             <p class="heading">{{ $t('campaigns.views') }}</p>
             <p class="title">{{ totalViews }}</p>
           </div>
         </div>
-        <div class="column is-4">
+        <div class="col-4">
           <div class="box has-text-centered">
             <p class="heading">{{ $t('campaigns.clicks') }}</p>
             <p class="title">{{ totalClicks }}</p>
@@ -35,30 +35,36 @@
       </div>
 
       <div v-if="activity.campaignViews && activity.campaignViews.length > 0">
-        <b-table :data="activity.campaignViews" hoverable default-sort="lastViewedAt" default-sort-direction="desc"
-          paginated :per-page="10" :pagination-simple="false" class="campaign-views-table">
-          <b-table-column v-slot="props" field="subject" :label="$tc('globals.terms.campaign', 1)" sortable>
-            <div v-if="props.row.uuid">
-              <router-link :to="{ name: 'campaign', params: { id: props.row.id } }">
-                {{ props.row.name }}
-              </router-link>
-              <p class="is-size-7 has-text-grey">{{ props.row.subject }}</p>
-            </div>
-            <div v-else>
-              <em class="has-text-grey">{{ $t('subscribers.activity.campaignDeleted') }}</em>
-            </div>
-          </b-table-column>
+        <PvDataTable :value="activity.campaignViews" :hoverable="true" sort-field="lastViewedAt" :sort-order="-1"
+          :paginator="true" :rows="10" class="campaign-views-table">
+          <PvColumn field="subject" :header="$tc('globals.terms.campaign', 1)" sortable>
+            <template #body="{ data }">
+              <div v-if="data.uuid">
+                <router-link :to="{ name: 'campaign', params: { id: data.id } }">
+                  {{ data.name }}
+                </router-link>
+                <p class="is-size-7 has-text-grey">{{ data.subject }}</p>
+              </div>
+              <div v-else>
+                <em class="has-text-grey">{{ $t('subscribers.activity.campaignDeleted') }}</em>
+              </div>
+            </template>
+          </PvColumn>
 
-          <b-table-column v-slot="props" field="viewCount" :label="$t('campaigns.views')" sortable numeric>
-            <span class="tag is-light">{{ props.row.viewCount }}</span>
-          </b-table-column>
+          <PvColumn field="viewCount" :header="$t('campaigns.views')" sortable>
+            <template #body="{ data }">
+              <span class="tag is-light">{{ data.viewCount }}</span>
+            </template>
+          </PvColumn>
 
-          <b-table-column v-slot="props" field="lastViewedAt" :label="$t('globals.fields.createdAt')" sortable>
-            <span v-if="props.row.lastViewedAt">
-              {{ $utils.niceDate(props.row.lastViewedAt, true) }}
-            </span>
-          </b-table-column>
-        </b-table>
+          <PvColumn field="lastViewedAt" :header="$t('globals.fields.createdAt')" sortable>
+            <template #body="{ data }">
+              <span v-if="data.lastViewedAt">
+                {{ $utils.niceDate(data.lastViewedAt, true) }}
+              </span>
+            </template>
+          </PvColumn>
+        </PvDataTable>
       </div>
       <div v-else class="has-text-centered has-text-grey p-6">
         <p class="mt-2">{{ $t('globals.messages.emptyState') }}</p>
@@ -72,36 +78,43 @@
       </div>
 
       <div v-if="activity.linkClicks && activity.linkClicks.length > 0">
-        <b-table :data="activity.linkClicks" hoverable default-sort="lastClickedAt" default-sort-direction="desc"
-          paginated :per-page="10" :pagination-simple="false" class="link-clicks-table">
-          <b-table-column v-slot="props" field="url" :label="$t('globals.terms.url')" cell-class="link-click-url"
-            sortable>
-            <a :href="props.row.url" target="_blank" rel="noopener noreferrer">
-              {{ props.row.url }}
-            </a>
-          </b-table-column>
+        <PvDataTable :value="activity.linkClicks" :hoverable="true" sort-field="lastClickedAt" :sort-order="-1"
+          :paginator="true" :rows="10" class="link-clicks-table">
+          <PvColumn field="url" :header="$t('globals.terms.url')" sortable body-class="link-click-url">
+            <template #body="{ data }">
+              <a :href="data.url" target="_blank" rel="noopener noreferrer">
+                {{ data.url }}
+              </a>
+            </template>
+          </PvColumn>
 
-          <b-table-column v-slot="props" field="campaignName" :label="$tc('globals.terms.campaign', 1)" sortable>
-            <div v-if="props.row.campaignUuid">
-              <router-link :to="{ name: 'campaign', params: { id: props.row.campaignId } }">
-                {{ props.row.campaignSubject || props.row.campaignName }}
-              </router-link>
-            </div>
-            <div v-else>
-              &mdash;
-            </div>
-          </b-table-column>
+          <PvColumn field="campaignName" :header="$tc('globals.terms.campaign', 1)" sortable>
+            <template #body="{ data }">
+              <div v-if="data.campaignUuid">
+                <router-link :to="{ name: 'campaign', params: { id: data.campaignId } }">
+                  {{ data.campaignSubject || data.campaignName }}
+                </router-link>
+              </div>
+              <div v-else>
+                &mdash;
+              </div>
+            </template>
+          </PvColumn>
 
-          <b-table-column v-slot="props" field="clickCount" :label="$t('campaigns.clicks')" sortable numeric>
-            <span class="tag is-light">{{ props.row.clickCount }}</span>
-          </b-table-column>
+          <PvColumn field="clickCount" :header="$t('campaigns.clicks')" sortable>
+            <template #body="{ data }">
+              <span class="tag is-light">{{ data.clickCount }}</span>
+            </template>
+          </PvColumn>
 
-          <b-table-column v-slot="props" field="lastClickedAt" :label="$t('globals.fields.createdAt')" sortable>
-            <span v-if="props.row.lastClickedAt">
-              {{ $utils.niceDate(props.row.lastClickedAt, true) }}
-            </span>
-          </b-table-column>
-        </b-table>
+          <PvColumn field="lastClickedAt" :header="$t('globals.fields.createdAt')" sortable>
+            <template #body="{ data }">
+              <span v-if="data.lastClickedAt">
+                {{ $utils.niceDate(data.lastClickedAt, true) }}
+              </span>
+            </template>
+          </PvColumn>
+        </PvDataTable>
       </div>
       <div v-else class="has-text-centered has-text-grey p-6">
         <p class="mt-2">{{ $t('globals.messages.emptyState') }}</p>
@@ -111,9 +124,7 @@
 </template>
 
 <script>
-import Vue from 'vue';
-
-export default Vue.extend({
+export default {
   props: {
     subscriberId: {
       type: Number,
@@ -158,5 +169,5 @@ export default Vue.extend({
       });
     },
   },
-});
+};
 </script>

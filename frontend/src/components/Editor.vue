@@ -1,59 +1,45 @@
 <template>
   <!-- Two-way Data-Binding -->
   <section class="editor">
-    <div class="columns">
-      <div class="column is-three-quarters is-inline-flex">
-        <b-field :label="$t('campaigns.format')" label-position="on-border" class="mr-4 mb-0">
-          <b-select v-model="contentTypeSel" :disabled="disabled" name="content_type">
-            <option v-for="(name, f) in contentTypes" :key="f" name="format" :value="f" :data-cy="`check-${f}`">
-              {{ name }}
-            </option>
-          </b-select>
-        </b-field>
+    <div class="editor-toolbar">
+      <div class="editor-toolbar-left">
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.format') }}</label>
+          <PvSelect v-model="contentTypeSel" :options="contentTypeOptions" option-label="label" option-value="value"
+            :disabled="disabled" name="content_type" data-cy="check-format" />
+        </div>
 
-        <b-field v-if="self.contentType !== 'visual'" :label="$tc('globals.terms.template')" label-position="on-border">
-          <b-select :placeholder="$t('globals.terms.none')" v-model="templateId" name="template" :disabled="disabled">
-            <template v-for="t in validTemplates">
-              <option :value="t.id" :key="t.id">
-                {{ t.name }}
-              </option>
-            </template>
-          </b-select>
-        </b-field>
+        <div class="field" v-if="self.contentType !== 'visual'">
+          <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
+          <PvSelect v-model="templateId" :options="templateOptions" option-label="name" option-value="id"
+            :disabled="disabled" name="template" />
+        </div>
 
-        <div v-else>
-          <b-button v-if="!isVisualTplSelector" @click="onShowVisualTplSelector" type="is-ghost"
-            icon-left="file-find-outline" data-cy="btn-select-visual-tpl">
-            {{ $t('campaigns.importVisualTemplate') }}
-          </b-button>
-          <b-field v-else :label="$tc('globals.terms.template')" label-position="on-border">
-            <b-select :placeholder="$t('globals.terms.none')" v-model="visualTemplateId"
-              @input="() => isVisualTplDisabled = false" name="template" :disabled="disabled"
-              class="copy-visual-template-list">
-              <template v-for="t in validTemplates">
-                <option :value="t.id" :key="t.id">
-                  {{ t.name }}
-                </option>
-              </template>
-            </b-select>
-
-            <b-button :disabled="disabled || isVisualTplDisabled || !visualTemplateId" class="ml-3"
-              @click="onImportVisualTpl" type="is-primary" icon-left="content-save-outline"
-              data-cy="btn-save-visual-tpl">
-              {{ $t('globals.terms.import') }}
-
-              <span class="spinner is-tiny" v-if="loading.templates">
-                <b-loading :is-full-page="false" active />
-              </span>
-            </b-button>
-          </b-field>
+        <div v-else class="field">
+          <PvButton v-if="!isVisualTplSelector" @click="onShowVisualTplSelector" severity="secondary"
+            icon="pi pi-file-find" data-cy="btn-select-visual-tpl"
+            :label="$t('campaigns.importVisualTemplate')" />
+          <template v-else>
+            <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
+            <div class="flex items-center gap-2">
+              <PvSelect v-model="visualTemplateId" :options="templateOptions" option-label="name" option-value="id"
+                @change="() => isVisualTplDisabled = false" name="template" :disabled="disabled"
+                class="copy-visual-template-list" />
+              <PvButton :disabled="disabled || isVisualTplDisabled || !visualTemplateId"
+                @click="onImportVisualTpl" severity="primary" icon="pi pi-save"
+                data-cy="btn-save-visual-tpl" :label="$t('globals.terms.import')">
+                <PvProgressSpinner v-if="loading.templates" style="width:1rem;height:1rem" />
+              </PvButton>
+            </div>
+          </template>
         </div>
       </div>
-      <div class="column is- has-text-right">
-        <b-button @click="onTogglePreview" type="is-primary" icon-left="file-find-outline" data-cy="btn-preview"
+
+      <div class="editor-toolbar-right">
+        <PvButton @click="onTogglePreview" severity="secondary" outlined data-cy="btn-preview"
           aria-keyshortcuts="F9">
-          <span class="has-kbd">{{ $t('campaigns.preview') }} <span class="kbd">F9</span></span>
-        </b-button>
+          <i class="pi pi-eye" /><span class="has-kbd">{{ $t('campaigns.preview') }} <span class="kbd">F9</span></span>
+        </PvButton>
       </div>
     </div>
 
@@ -71,7 +57,7 @@
     <code-editor lang="markdown" v-if="self.contentType === 'markdown'" v-model="self.body" key="editor-markdown" />
 
     <!-- plain text //-->
-    <b-input v-if="self.contentType === 'plain'" v-model="self.body" type="textarea" name="content" ref="plainEditor"
+    <PvTextarea v-if="self.contentType === 'plain'" v-model="self.body" name="content" ref="plainEditor"
       class="plain-editor" />
 
     <!-- campaign preview //-->
@@ -83,7 +69,8 @@
 <script>
 import { html as beautifyHTML } from 'js-beautify';
 import TurndownService from 'turndown';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 
 import CampaignPreview from './CampaignPreview.vue';
 import VisualEditor from './VisualEditor.vue';
@@ -108,10 +95,7 @@ export default {
     disabled: { type: Boolean, default: false },
     templates: { type: Array, default: null },
 
-    // value is provided by the parent component.
-    // Throught the editor, `this.self` (a mutable clone of `value`) is used,
-    // instead of `this.value` directly.
-    value: {
+    modelValue: {
       type: Object,
       default: () => ({
         body: '',
@@ -127,7 +111,7 @@ export default {
       isPreviewing: false,
       isVisualTplSelector: false,
       isVisualTplDisabled: false,
-      contentTypeSel: this.$props.value.contentType,
+      contentTypeSel: this.$props.modelValue.contentType,
       templateId: null,
       visualTemplateId: null,
     };
@@ -329,9 +313,8 @@ export default {
   },
 
   mounted() {
-    // Set initial content type for the selector.
-    this.contentTypeSel = this.value.contentType;
-    this.templateId = this.value.templateId;
+    this.contentTypeSel = this.modelValue.contentType;
+    this.templateId = this.modelValue.templateId;
 
     window.addEventListener('keydown', this.onKeyboardShortcut);
 
@@ -340,30 +323,34 @@ export default {
     });
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('keydown', this.onKeyboardShortcut);
     this.$events.$off('campaign.preview');
   },
 
   computed: {
-    ...mapState(['serverConfig', 'loading']),
+    ...mapState(useMainStore, ['serverConfig', 'loading']),
 
-    // This is a clone of the incoming `value` prop that's mutated here.
     self: {
       get() {
-        return this.value;
+        return this.modelValue;
       },
-
-      // Any change to the local copy, emit it to the parent.
       set(val) {
-        this.$emit('input', val);
+        this.$emit('update:modelValue', val);
       },
     },
 
-    // Returns the list of valid (visual vs. normal) templates for the template dropdown.
     validTemplates() {
       const typ = this.self.contentType === 'visual' ? 'campaign_visual' : 'campaign';
       return this.templates.filter((t) => (t.type === typ));
+    },
+
+    contentTypeOptions() {
+      return Object.entries(this.contentTypes).map(([value, label]) => ({ value, label }));
+    },
+
+    templateOptions() {
+      return [{ id: null, name: this.$t('globals.terms.none') }, ...this.validTemplates];
     },
   },
 
@@ -395,3 +382,26 @@ export default {
 };
 
 </script>
+
+<style scoped lang="scss">
+.editor-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  &-left {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+
+    .field { margin-bottom: 0; }
+  }
+
+  &-right {
+    flex-shrink: 0;
+  }
+}
+</style>

@@ -1,21 +1,151 @@
-import Vue from 'vue';
-import Buefy from 'buefy';
-import VueI18n from 'vue-i18n';
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import { createI18n } from 'vue-i18n';
+import PrimeVue from 'primevue/config';
+import Aura from '@primeuix/themes/aura';
+import { definePreset } from '@primeuix/themes';
+import ToastService from 'primevue/toastservice';
+import ConfirmationService from 'primevue/confirmationservice';
+import 'primeicons/primeicons.css';
+import 'primeflex/primeflex.css';
+
+import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import Textarea from 'primevue/textarea';
+import Select from 'primevue/select';
+import ToggleSwitch from 'primevue/toggleswitch';
+import Tag from 'primevue/tag';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Dialog from 'primevue/dialog';
+import ProgressBar from 'primevue/progressbar';
+import ProgressSpinner from 'primevue/progressspinner';
+import Tabs from 'primevue/tabs';
+import TabList from 'primevue/tablist';
+import Tab from 'primevue/tab';
+import TabPanels from 'primevue/tabpanels';
+import TabPanel from 'primevue/tabpanel';
+import Toast from 'primevue/toast';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Tooltip from 'primevue/tooltip';
+import Badge from 'primevue/badge';
+import Chip from 'primevue/chip';
+import InputNumber from 'primevue/inputnumber';
+import Password from 'primevue/password';
+import Checkbox from 'primevue/checkbox';
+import RadioButton from 'primevue/radiobutton';
+import Paginator from 'primevue/paginator';
+import Menu from 'primevue/menu';
+import Menubar from 'primevue/menubar';
+import PanelMenu from 'primevue/panelmenu';
+import Drawer from 'primevue/drawer';
+import Message from 'primevue/message';
+import InlineMessage from 'primevue/inlinemessage';
+import FloatLabel from 'primevue/floatlabel';
+import AutoComplete from 'primevue/autocomplete';
+import MultiSelect from 'primevue/multiselect';
+import DatePicker from 'primevue/datepicker';
+import Divider from 'primevue/divider';
+import Panel from 'primevue/panel';
+import Card from 'primevue/card';
+import Avatar from 'primevue/avatar';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import FileUpload from 'primevue/fileupload';
 
 import App from './App.vue';
 import router from './router';
-import store from './store';
 import * as api from './api';
 import Utils from './utils';
+import eventBus from './eventBus';
 
-// Internationalisation.
-Vue.use(VueI18n);
-const i18n = new VueI18n();
+const BluePreset = definePreset(Aura, {
+  semantic: {
+    primary: {
+      50: '{blue.50}',
+      100: '{blue.100}',
+      200: '{blue.200}',
+      300: '{blue.300}',
+      400: '{blue.400}',
+      500: '{blue.500}',
+      600: '{blue.600}',
+      700: '{blue.700}',
+      800: '{blue.800}',
+      900: '{blue.900}',
+      950: '{blue.950}',
+    },
+  },
+});
 
-Vue.use(Buefy, {});
-Vue.config.productionTip = false;
+const pinia = createPinia();
 
-// Setup the router.
+const i18n = createI18n({
+  legacy: true,
+  locale: 'en',
+  messages: {},
+});
+
+const app = createApp(App);
+
+app.use(pinia);
+app.use(router);
+app.use(i18n);
+
+app.use(PrimeVue, {
+  theme: {
+    preset: BluePreset,
+    options: { darkModeSelector: '.app-dark' },
+  },
+  ripple: true,
+});
+app.use(ToastService);
+app.use(ConfirmationService);
+
+app.component('PvButton', Button);
+app.component('PvInputText', InputText);
+app.component('PvTextarea', Textarea);
+app.component('PvSelect', Select);
+app.component('PvToggleSwitch', ToggleSwitch);
+app.component('PvTag', Tag);
+app.component('PvDataTable', DataTable);
+app.component('PvColumn', Column);
+app.component('PvDialog', Dialog);
+app.component('PvProgressBar', ProgressBar);
+app.component('PvProgressSpinner', ProgressSpinner);
+app.component('PvTabs', Tabs);
+app.component('PvTabList', TabList);
+app.component('PvTab', Tab);
+app.component('PvTabPanels', TabPanels);
+app.component('PvTabPanel', TabPanel);
+app.component('PvToast', Toast);
+app.component('PvConfirmDialog', ConfirmDialog);
+app.component('PvBadge', Badge);
+app.component('PvChip', Chip);
+app.component('PvInputNumber', InputNumber);
+app.component('PvPassword', Password);
+app.component('PvCheckbox', Checkbox);
+app.component('PvRadioButton', RadioButton);
+app.component('PvPaginator', Paginator);
+app.component('PvMenu', Menu);
+app.component('PvMenubar', Menubar);
+app.component('PvPanelMenu', PanelMenu);
+app.component('PvDrawer', Drawer);
+app.component('PvMessage', Message);
+app.component('PvInlineMessage', InlineMessage);
+app.component('PvFloatLabel', FloatLabel);
+app.component('PvAutoComplete', AutoComplete);
+app.component('PvMultiSelect', MultiSelect);
+app.component('PvDatePicker', DatePicker);
+app.component('PvDivider', Divider);
+app.component('PvPanel', Panel);
+app.component('PvCard', Card);
+app.component('PvAvatar', Avatar);
+app.component('PvIconField', IconField);
+app.component('PvInputIcon', InputIcon);
+app.component('PvFileUpload', FileUpload);
+
+app.directive('tooltip', Tooltip);
+
 router.beforeEach((to, from, next) => {
   if (to.matched.length === 0) {
     next('/404');
@@ -25,112 +155,65 @@ router.beforeEach((to, from, next) => {
 });
 
 router.afterEach((to) => {
-  Vue.nextTick(() => {
-    const t = to.meta.title && i18n.te(to.meta.title) ? `${i18n.tc(to.meta.title, 0)} /` : '';
-    document.title = `${t} listmonk`;
-  });
+  const { te, tc } = i18n.global;
+  const title = to.meta.title && te(to.meta.title) ? `${tc(to.meta.title, 0)} /` : '';
+  document.title = `${title} listmonk`;
 });
 
-async function initConfig(app) {
-  // Load logged in user profile, server side config, and the language file before mounting the app.
-  const [profile, cfg] = await Promise.all([api.getUserProfile(), api.getServerConfig()]);
+async function initConfig(instance) {
+  let profile;
+  let cfg;
+  try {
+    [profile, cfg] = await Promise.all([api.getUserProfile(), api.getServerConfig()]);
+  } catch (err) {
+    if (err.response && err.response.status === 403) {
+      window.location.href = '/admin/login';
+    }
+    return;
+  }
 
   const lang = await api.getLang(cfg.lang);
-  i18n.locale = cfg.lang;
-  i18n.setLocaleMessage(i18n.locale, lang);
+  i18n.global.locale = cfg.lang;
+  i18n.global.setLocaleMessage(cfg.lang, lang);
 
-  Vue.prototype.$utils = new Utils(i18n);
-  Vue.prototype.$api = api;
-  Vue.prototype.$events = app;
+  const props = instance.config.globalProperties;
+  props.$utils = new Utils(i18n.global);
+  props.$api = api;
+  props.$events = eventBus;
 
-  // $can('permission:name') is used in the UI to check whether the logged in user
-  // has a certain permission to toggle visibility of UI objects and UI functionality.
-  Vue.prototype.$can = (...perms) => {
+  props.$can = (...perms) => {
     if (profile.userRole.id === 1) {
       return true;
     }
-
-    // If the perm ends with a wildcard, check whether at least one permission
-    // in the group is present. Eg: campaigns:* will return true if at least
-    // one of campaigns:get, campaigns:manage etc. are present.
     return perms.some((perm) => {
       if (perm.endsWith('*')) {
         const group = `${perm.split(':')[0]}:`;
         return profile.userRole.permissions.some((p) => p.startsWith(group));
       }
-
       return profile.userRole.permissions.includes(perm);
     });
   };
 
-  Vue.prototype.$canList = (id, perm) => {
+  props.$canList = (id, perm) => {
     if (profile.userRole.id === 1) {
       return true;
     }
-
-    // If the user role has global list permissions, return true.
-    const can = Vue.prototype.$can('lists:get_all', 'lists:manage_all');
+    const can = props.$can('lists:get_all', 'lists:manage_all');
     if (can) {
       return true;
     }
-
-    return profile.listRole.lists.some((list) => list.id === id && list.permissions.includes(perm));
+    return profile.listRole.lists.some(
+      (list) => list.id === id && list.permissions.includes(perm),
+    );
   };
 
-  // Set the page title after i18n has loaded.
-  const to = router.history.current;
-  const title = to.meta.title ? `${i18n.tc(to.meta.title, 0)} /` : '';
-  document.title = `${title} listmonk`;
+  const currentRoute = router.currentRoute.value;
+  const routeTitle = currentRoute.meta.title
+    ? `${i18n.global.tc(currentRoute.meta.title, 0)} /`
+    : '';
+  document.title = `${routeTitle} listmonk`;
 
-  if (app) {
-    app.$mount('#app');
-  }
+  instance.mount('#app');
 }
 
-const v = new Vue({
-  router,
-  store,
-  i18n,
-  render: (h) => h(App),
-
-  data: {
-    isLoaded: false,
-  },
-
-  methods: {
-    loadConfig() {
-      initConfig();
-    },
-
-    // awaitRestart handles app restart polling after settings changes.
-    // Shows a toast and polls until the backend is back up.
-    // Returns a promise that resolves with { needsRestart: boolean }.
-    awaitRestart(response) {
-      return new Promise((resolve) => {
-        // If there are running campaigns, app won't auto restart.
-        if (response && typeof response === 'object' && response.needsRestart) {
-          this.loadConfig();
-          resolve({ needsRestart: true });
-          return;
-        }
-
-        Vue.prototype.$utils.toast(i18n.t('settings.messengers.messageSaved'));
-
-        // Poll until backend is back up.
-        const pollId = setInterval(() => {
-          api.getHealth().then(() => {
-            clearInterval(pollId);
-            this.loadConfig();
-            resolve({ needsRestart: false });
-          });
-        }, 1000);
-      });
-    },
-  },
-
-  mounted() {
-    v.isLoaded = true;
-  },
-});
-
-initConfig(v);
+initConfig(app);

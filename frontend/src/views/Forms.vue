@@ -1,75 +1,83 @@
 <template>
-  <section class="forms content relative">
-    <h1 class="title is-4">
-      {{ $t('forms.title') }}
-    </h1>
-    <hr />
+  <div class="flex flex-column gap-4">
+    <h1 class="text-3xl font-bold text-900 m-0">{{ $t('forms.title') }}</h1>
 
-    <b-loading v-if="loading.lists" :active="loading.lists" :is-full-page="false" />
-    <p v-else-if="publicLists.length === 0">
+    <div v-if="loading.lists" class="flex justify-content-center p-8">
+      <PvProgressSpinner style="width:2rem;height:2rem" />
+    </div>
+
+    <PvMessage v-else-if="publicLists.length === 0" severity="info" :closable="false">
       {{ $t('forms.noPublicLists') }}
-    </p>
-    <div class="columns" v-else-if="publicLists.length > 0">
-      <div class="column is-4">
-        <h4>{{ $t('forms.publicLists') }}</h4>
-        <p>{{ $t('forms.selectHelp') }}</p>
+    </PvMessage>
 
-        <b-loading :active="loading.lists" :is-full-page="false" />
-        <ul class="no" data-cy="lists">
-          <li v-for="(l, i) in publicLists" :key="l.id">
-            <b-checkbox v-model="checked" :native-value="i">
-              {{ l.name }}
-            </b-checkbox>
-          </li>
-        </ul>
+    <div v-else class="grid align-items-start">
+      <!-- Left panel: controls -->
+      <div class="col-12 md:col-4" data-cy="lists">
+        <PvCard>
+          <template #title>{{ $t('forms.publicLists') }}</template>
+          <template #subtitle>{{ $t('forms.selectHelp') }}</template>
+          <template #content>
+            <div class="flex flex-column gap-3">
+              <div v-for="(l, i) in publicLists" :key="l.id" class="flex align-items-center gap-2">
+                <PvCheckbox v-model="checked" :value="i" :input-id="`list-${l.id}`" />
+                <label :for="`list-${l.id}`" class="cursor-pointer">{{ l.name }}</label>
+              </div>
+            </div>
 
-        <template v-if="serverConfig.public_subscription.enabled">
-          <hr />
-          <h4>{{ $t('forms.publicSubPage') }}</h4>
-          <p>
-            <a :href="`${serverConfig.root_url}/subscription/form`" target="_blank" rel="noopener noreferer"
-              data-cy="url">
-              {{ serverConfig.root_url }}/subscription/form
-            </a>
-          </p>
-        </template>
+            <template v-if="serverConfig.public_subscription?.enabled">
+              <PvDivider />
+              <p class="font-semibold text-sm text-900 mb-2">{{ $t('forms.publicSubPage') }}</p>
+              <a :href="`${serverConfig.root_url}/subscription/form`" target="_blank" rel="noopener noreferer"
+                class="text-primary text-sm flex align-items-center gap-1 no-underline hover:underline" data-cy="url">
+                <i class="pi pi-external-link" />
+                {{ serverConfig.root_url }}/subscription/form
+              </a>
+            </template>
 
-        <hr />
-        <h4>{{ $t('forms.redirectURL') }}</h4>
-        <p class="is-size-7 has-text-grey">
-          {{ $t('forms.redirectURLHelp') }}
-        </p>
-        <ul v-if="redirectURLs.length > 0" class="no" data-cy="redirect-urls">
-          <li>
-            <b-radio v-model="selectedRedirectURL" native-value="">
-              {{ $t('globals.terms.none') }}
-            </b-radio>
-          </li>
-          <li v-for="url in redirectURLs" :key="url">
-            <b-radio v-model="selectedRedirectURL" :native-value="url">
-              {{ url }}
-            </b-radio>
-          </li>
-        </ul>
+            <template v-if="redirectURLs.length > 0">
+              <PvDivider />
+              <p class="font-semibold text-sm text-900 mb-1">{{ $t('forms.redirectURL') }}</p>
+              <p class="text-sm text-500 mb-3">{{ $t('forms.redirectURLHelp') }}</p>
+              <div class="flex flex-column gap-3" data-cy="redirect-urls">
+                <div class="flex align-items-center gap-2">
+                  <PvRadioButton v-model="selectedRedirectURL" value="" input-id="redirect-none" />
+                  <label for="redirect-none" class="cursor-pointer">{{ $t('globals.terms.none') }}</label>
+                </div>
+                <div v-for="url in redirectURLs" :key="url" class="flex align-items-center gap-2">
+                  <PvRadioButton v-model="selectedRedirectURL" :value="url" :input-id="`redirect-${url}`" />
+                  <label :for="`redirect-${url}`" class="cursor-pointer text-sm">{{ url }}</label>
+                </div>
+              </div>
+            </template>
+          </template>
+        </PvCard>
       </div>
-      <div class="column" data-cy="form">
-        <h4>{{ $t('forms.formHTML') }}</h4>
-        <p>
-          {{ $t('forms.formHTMLHelp') }}
-        </p>
 
-        <code-editor lang="html" v-if="checked.length > 0" v-model="html" disabled />
+      <!-- Right panel: generated HTML -->
+      <div class="col-12 md:col-8" data-cy="form">
+        <PvCard>
+          <template #title>{{ $t('forms.formHTML') }}</template>
+          <template #subtitle>{{ $t('forms.formHTMLHelp') }}</template>
+          <template #content>
+            <div v-if="checked.length === 0"
+              class="flex flex-column align-items-center justify-content-center gap-3 py-6 text-500">
+              <i class="pi pi-code" style="font-size:2.5rem" />
+              <span class="text-sm">{{ $t('forms.selectHelp') }}</span>
+            </div>
+            <code-editor v-else lang="html" v-model="html" disabled />
+          </template>
+        </PvCard>
       </div>
-    </div><!-- columns -->
-  </section>
+    </div>
+  </div>
 </template>
 
 <script>
-import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import CodeEditor from '../components/CodeEditor.vue';
 
-export default Vue.extend({
+export default {
   name: 'ListForm',
 
   components: {
@@ -123,7 +131,6 @@ export default Vue.extend({
         h += '    </p>\n';
       });
 
-      // Captcha?
       if (this.serverConfig.public_subscription.captcha_enabled) {
         if (this.serverConfig.public_subscription.captcha_provider === 'altcha') {
           h += '\n'
@@ -146,7 +153,7 @@ export default Vue.extend({
   },
 
   computed: {
-    ...mapState(['loading', 'lists', 'serverConfig']),
+    ...mapState(useMainStore, ['loading', 'lists', 'serverConfig']),
 
     publicLists() {
       if (!this.lists.results) {
@@ -172,5 +179,5 @@ export default Vue.extend({
       this.renderHTML();
     },
   },
-});
+};
 </script>

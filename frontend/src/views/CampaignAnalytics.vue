@@ -1,78 +1,73 @@
 <template>
-  <section class="analytics content relative">
-    <h1 class="title is-4">
-      {{ $t('analytics.title') }}
-    </h1>
-    <div v-if="serverConfig.privacy.disable_tracking || !serverConfig.privacy.individual_tracking"
-      class="notification is-info">
-      <template v-if="serverConfig.privacy.disable_tracking">
-        {{ $t('analytics.trackingDisabled') }}
-      </template>
-      <template v-else-if="!serverConfig.privacy.individual_tracking">
-        {{ $t('analytics.nonIndividualTracking') }}
-      </template>
+  <div class="analytics-page">
+    <div class="page-header">
+      <h1 class="page-title">{{ $t('analytics.title') }}</h1>
     </div>
-    <hr />
 
-    <form @submit.prevent="onSubmit">
-      <div class="columns">
-        <div class="column is-6">
-          <b-field :label="$t('globals.terms.campaigns')" label-position="on-border">
-            <b-taginput v-model="form.campaigns" :data="queriedCampaigns" name="campaigns" ellipsis icon="tag-outline"
-              :placeholder="$t('globals.terms.campaigns')" autocomplete :allow-new="false" :open-on-focus="true"
-              :before-adding="isCampaignSelected" @typing="queryCampaigns" @focus="queryCampaigns" field="name"
-              :loading="isSearchLoading" />
-          </b-field>
-        </div>
+    <div v-if="serverConfig.privacy.disable_tracking || !serverConfig.privacy.individual_tracking"
+      class="analytics-notice">
+      <i class="pi pi-info-circle" />
+      <span v-if="serverConfig.privacy.disable_tracking">{{ $t('analytics.trackingDisabled') }}</span>
+      <span v-else-if="!serverConfig.privacy.individual_tracking">{{ $t('analytics.nonIndividualTracking') }}</span>
+    </div>
 
-        <div class="column is-5">
-          <div class="columns">
-            <div class="column is-6">
-              <b-field data-cy="from" :label="$t('analytics.fromDate')" label-position="on-border">
-                <b-datetimepicker v-model="form.from" icon="calendar-clock" :timepicker="{ hourFormat: '24' }"
-                  :datetime-formatter="formatDateTime" @input="onFromDateChange" />
-              </b-field>
-            </div>
-            <div class="column is-6">
-              <b-field data-cy="to" :label="$t('analytics.toDate')" label-position="on-border">
-                <b-datetimepicker v-model="form.to" icon="calendar-clock" :timepicker="{ hourFormat: '24' }"
-                  :datetime-formatter="formatDateTime" @input="onToDateChange" />
-              </b-field>
-            </div>
-          </div><!-- columns -->
-        </div><!-- columns -->
-
-        <div class="column is-1">
-          <b-button native-type="submit" type="is-primary" icon-left="magnify" :disabled="form.campaigns.length === 0"
-            data-cy="btn-search" />
-        </div>
-      </div><!-- columns -->
-    </form>
-
-    <section class="charts mt-5">
-      <div class="chart" v-for="(v, k) in charts" :key="k">
-        <div class="columns">
-          <div class="column is-9">
-            <b-loading v-if="v.loading" :active="v.loading" :is-full-page="false" />
-            <h4>
-              {{ v.name }}
-              <span v-if="v.type !== 'bar'" class="has-text-grey-light">({{ $utils.niceNumber(counts[k]) }})</span>
-            </h4>
-            <chart :type="v.type" v-if="!v.loading" :data="v.data" :on-click="v.onClick" />
+    <div class="table-card">
+      <div class="analytics-filters">
+        <form class="filter-form" @submit.prevent="onSubmit">
+          <div class="filter-field">
+            <label class="filter-label">{{ $t('globals.terms.campaigns') }}</label>
+            <PvAutoComplete v-model="form.campaigns" :suggestions="queriedCampaigns" name="campaigns"
+              :placeholder="$t('globals.terms.campaigns')" multiple option-label="name"
+              :loading="isSearchLoading" @complete="(e) => queryCampaigns(e.query)"
+              @focus="queryCampaigns('')" class="w-full" />
           </div>
-          <div class="column is-2 donut-container">
-            <chart type="donut" v-if="!v.loading" :data="v.donutData" />
+          <div class="filter-field">
+            <label class="filter-label">{{ $t('analytics.fromDate') }}</label>
+            <PvDatePicker v-model="form.from" show-time hour-format="24"
+              :date-format="'yy-mm-dd'" @date-select="onFromDateChange" @update:model-value="onFromDateChange" />
+          </div>
+          <div class="filter-field">
+            <label class="filter-label">{{ $t('analytics.toDate') }}</label>
+            <PvDatePicker v-model="form.to" show-time hour-format="24"
+              :date-format="'yy-mm-dd'" @date-select="onToDateChange" @update:model-value="onToDateChange" />
+          </div>
+          <div class="filter-action">
+            <PvButton type="submit" severity="primary" icon="pi pi-search" :disabled="form.campaigns.length === 0"
+              data-cy="btn-search" />
+          </div>
+        </form>
+      </div>
+
+      <div v-if="hasChartData" class="charts-section">
+        <div v-for="(v, k) in charts" :key="k" class="chart-block">
+          <div class="chart-block-header">
+            <span class="chart-block-title">{{ v.name }}</span>
+            <span v-if="v.type !== 'bar' && v.data" class="chart-block-count">({{ $utils.niceNumber(counts[k]) }})</span>
+          </div>
+          <div v-if="v.loading" class="chart-spinner">
+            <PvProgressSpinner style="width:2rem;height:2rem" />
+          </div>
+          <div v-else-if="v.data" class="chart-block-body" :class="{ 'chart-block-body--bar': v.type === 'bar' }">
+            <div class="chart-main">
+              <chart :type="v.type" :data="v.data" :on-click="v.onClick" />
+            </div>
+            <div v-if="v.type !== 'bar'" class="chart-donut">
+              <chart type="donut" :data="v.donutData" />
+            </div>
+          </div>
+          <div v-else class="chart-empty">
+            <span class="chart-empty-text">{{ $t('globals.messages.emptyState') }}</span>
           </div>
         </div>
       </div>
-    </section>
-  </section>
+    </div>
+  </div>
 </template>
 
 <script>
 import dayjs from 'dayjs';
-import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useMainStore } from '../store';
 import { colors } from '../constants';
 import Chart from '../components/Chart.vue';
 
@@ -88,7 +83,7 @@ const chartColors = [
   '#FFC43D',
 ];
 
-export default Vue.extend({
+export default {
   components: {
     Chart,
   },
@@ -291,7 +286,11 @@ export default Vue.extend({
   },
 
   computed: {
-    ...mapState(['serverConfig']),
+    ...mapState(useMainStore, ['serverConfig']),
+
+    hasChartData() {
+      return Object.values(this.charts).some((c) => c.data !== null || c.loading);
+    },
   },
 
   created() {
@@ -335,5 +334,42 @@ export default Vue.extend({
       });
     }
   },
-});
+};
 </script>
+
+<style scoped lang="scss">
+.analytics-page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.analytics-notice {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1rem; background: var(--lm-primary-light); border: 1px solid var(--lm-primary-border);
+  border-radius: 8px; font-size: 0.875rem; color: var(--lm-primary);
+  i { font-size: 1rem; }
+}
+
+.analytics-filters { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--lm-bg-subtle); }
+.filter-form { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+.filter-field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 180px; }
+.filter-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+.filter-action { padding-bottom: 0; align-self: flex-end; }
+
+.charts-section { display: flex; flex-direction: column; }
+.chart-block { padding: 1.25rem 1.5rem; & + & { border-top: 1px solid var(--lm-border); } }
+.chart-block-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+.chart-block-title { font-size: 0.95rem; font-weight: 600; color: var(--lm-text); }
+.chart-block-count { font-size: 0.85rem; color: var(--lm-text-subtle); }
+
+.chart-block-body {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 1.5rem;
+  align-items: center;
+  &--bar { grid-template-columns: 1fr; }
+}
+.chart-main { height: 220px; position: relative; }
+.chart-donut { height: 200px; position: relative; }
+
+.chart-spinner { display: flex; justify-content: center; padding: 3rem; }
+.chart-empty { display: flex; justify-content: center; padding: 2rem; }
+.chart-empty-text { font-size: 0.875rem; color: var(--lm-text-subtle); }
+</style>
