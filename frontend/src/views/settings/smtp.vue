@@ -229,15 +229,33 @@ import { useMainStore } from '../../store';
 import { regDuration } from '../../constants';
 
 const smtpTemplates = {
-  gmail: { host: 'smtp.gmail.com', port: 465, auth_protocol: 'login', tls_type: 'TLS' },
-  ses: { host: 'email-smtp.YOUR-REGION.amazonaws.com', port: 465, auth_protocol: 'login', tls_type: 'TLS' },
-  azure: { host: 'smtp.azurecomm.net', port: 587, auth_protocol: 'login', tls_type: 'STARTTLS' },
-  mailjet: { host: 'in-v3.mailjet.com', port: 465, auth_protocol: 'cram', tls_type: 'TLS' },
-  mailgun: { host: 'smtp.mailgun.org', port: 465, auth_protocol: 'login', tls_type: 'TLS' },
-  sendgrid: { host: 'smtp.sendgrid.net', port: 465, auth_protocol: 'login', tls_type: 'TLS' },
-  forwardemail: { host: 'smtp.forwardemail.net', port: 465, auth_protocol: 'login', tls_type: 'TLS' },
-  postmark: { host: 'smtp.postmarkapp.com', port: 587, auth_protocol: 'cram', tls_type: 'STARTTLS' },
-  lettermint: { host: 'smtp.lettermint.co', port: 465, auth_protocol: 'login', tls_type: 'TLS' },
+  gmail: {
+    host: 'smtp.gmail.com', port: 465, auth_protocol: 'login', tls_type: 'TLS',
+  },
+  ses: {
+    host: 'email-smtp.YOUR-REGION.amazonaws.com', port: 465, auth_protocol: 'login', tls_type: 'TLS',
+  },
+  azure: {
+    host: 'smtp.azurecomm.net', port: 587, auth_protocol: 'login', tls_type: 'STARTTLS',
+  },
+  mailjet: {
+    host: 'in-v3.mailjet.com', port: 465, auth_protocol: 'cram', tls_type: 'TLS',
+  },
+  mailgun: {
+    host: 'smtp.mailgun.org', port: 465, auth_protocol: 'login', tls_type: 'TLS',
+  },
+  sendgrid: {
+    host: 'smtp.sendgrid.net', port: 465, auth_protocol: 'login', tls_type: 'TLS',
+  },
+  forwardemail: {
+    host: 'smtp.forwardemail.net', port: 465, auth_protocol: 'login', tls_type: 'TLS',
+  },
+  postmark: {
+    host: 'smtp.postmarkapp.com', port: 587, auth_protocol: 'cram', tls_type: 'STARTTLS',
+  },
+  lettermint: {
+    host: 'smtp.lettermint.co', port: 465, auth_protocol: 'login', tls_type: 'TLS',
+  },
 };
 
 export default {
@@ -246,16 +264,35 @@ export default {
   },
 
   data() {
-    return { data: this.form, regDuration, smtpTestItem: null, testEmail: '', errMsg: '' };
+    return {
+      data: this.form,
+      regDuration,
+      smtpTestItem: null,
+      testEmail: '',
+      errMsg: '',
+    };
   },
 
   methods: {
     addSMTP() {
       this.data.smtp.push({
-        name: '', enabled: true, host: '', hello_hostname: '', port: 587,
-        auth_protocol: 'none', username: '', password: '', email_headers: [],
-        from_addresses: [], max_conns: 10, max_msg_retries: 2, msg_retry_delay: '0s',
-        idle_timeout: '15s', wait_timeout: '5s', tls_type: 'STARTTLS', tls_skip_verify: false,
+        name: '',
+        enabled: true,
+        host: '',
+        hello_hostname: '',
+        port: 587,
+        auth_protocol: 'none',
+        username: '',
+        password: '',
+        email_headers: [],
+        from_addresses: [],
+        max_conns: 10,
+        max_msg_retries: 2,
+        msg_retry_delay: '0s',
+        idle_timeout: '15s',
+        wait_timeout: '5s',
+        tls_type: 'STARTTLS',
+        tls_skip_verify: false,
       });
       this.$nextTick(() => {
         const items = document.querySelectorAll('.smtp-list input[name="host"]');
@@ -305,8 +342,12 @@ export default {
 
     fillSettings(n, key) {
       this.data.smtp.splice(n, 1, {
-        ...this.data.smtp[n], ...smtpTemplates[key],
-        username: '', password: '', hello_hostname: '', tls_skip_verify: false,
+        ...this.data.smtp[n],
+        ...smtpTemplates[key],
+        username: '',
+        password: '',
+        hello_hostname: '',
+        tls_skip_verify: false,
       });
       this.$nextTick(() => { document.querySelector(`.smtp-username-${n}`).focus(); });
     },

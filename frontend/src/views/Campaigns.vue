@@ -177,7 +177,9 @@
               </button>
               <button v-if="$can('campaigns:manage')" type="button" class="row-action-btn" data-cy="btn-clone"
                 v-tooltip.bottom="$t('globals.buttons.clone')"
-                @click="$utils.prompt($t('globals.buttons.clone'), { placeholder: $t('globals.fields.name'), value: $t('campaigns.copyOf', { name: data.name }) }, (name) => cloneCampaign(name, data))">
+                @click="$utils.prompt($t('globals.buttons.clone'),
+                  { placeholder: $t('globals.fields.name'), value: $t('campaigns.copyOf', { name: data.name }) },
+                  (name) => cloneCampaign(name, data))">
                 <i class="pi pi-copy" />
               </button>
               <router-link v-if="$can('campaigns:get_analytics')" class="row-action-btn"

@@ -164,7 +164,7 @@ export default {
     barHeight(val) {
       const max = this.peakDay.emailScrubs || 1;
       const h = Math.max(2, Math.round((val / max) * 100));
-      return h + '%';
+      return `${h}%`;
     },
   },
 

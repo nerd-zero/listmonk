@@ -87,8 +87,14 @@ export default {
   methods: {
     addMessenger() {
       this.data.messengers.push({
-        enabled: true, root_url: '', name: '', username: '', password: '',
-        max_conns: 25, max_msg_retries: 2, timeout: '5s',
+        enabled: true,
+        root_url: '',
+        name: '',
+        username: '',
+        password: '',
+        max_conns: 25,
+        max_msg_retries: 2,
+        timeout: '5s',
       });
       this.$nextTick(() => {
         const items = document.querySelectorAll('.messengers input[name="name"]');

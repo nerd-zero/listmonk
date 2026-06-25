@@ -154,7 +154,7 @@ export default {
   computed: {
     ...mapState(useMainStore, ['loading', 'userRoles', 'listRoles']),
 
-    isLoading {
+    isLoading() {
       return this.curType === 'user' ? this.loading.userRoles : this.loading.listRoles;
     },
 

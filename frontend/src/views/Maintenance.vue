@@ -126,7 +126,7 @@
 <script>
 import dayjs from 'dayjs';
 import { mapState } from 'pinia';
-import { useMainStore } from '@/store';
+import { useMainStore } from '../store';
 
 export default {
   components: {

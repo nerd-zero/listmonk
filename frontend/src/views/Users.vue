@@ -147,7 +147,6 @@ export default {
       this.getUsers();
     },
 
-
     // Show the edit form.
     showEditForm(item) {
       this.curItem = item;
