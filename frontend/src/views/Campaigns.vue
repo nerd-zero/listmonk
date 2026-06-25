@@ -564,15 +564,22 @@ export default {
 .ts-row { display: flex; align-items: baseline; gap: 0.4rem; font-size: 0.8rem; }
 .ts-label { font-size: 0.74rem; color: var(--lm-text-subtle); white-space: nowrap; }
 
+// Status tag — make secondary (draft/paused) visually distinct
+.status-link :deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+
 // Stats column
-.stats-cell { display: flex; flex-direction: column; gap: 0.2rem; }
+.stats-cell { display: flex; flex-direction: column; gap: 0.25rem; }
 .stats-row {
   display: flex;
   align-items: baseline;
-  gap: 0.4rem;
-  font-size: 0.8rem;
+  gap: 0.45rem;
+  font-size: 0.82rem;
 }
-.stats-label { font-size: 0.74rem; color: var(--lm-text-subtle); white-space: nowrap; display: flex; align-items: center; gap: 0.2rem; }
+.stats-label { font-size: 0.76rem; color: var(--lm-text-muted); white-space: nowrap; min-width: 52px; display: flex; align-items: center; gap: 0.2rem; }
 
 // Row actions
 
