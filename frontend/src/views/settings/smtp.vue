@@ -223,7 +223,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../../store';
 import { regDuration } from '../../constants';
@@ -258,7 +259,7 @@ const smtpTemplates = {
   },
 };
 
-export default {
+export default defineComponent({
   props: {
     form: { type: Object, default: () => {} },
   },
@@ -356,7 +357,7 @@ export default {
   computed: {
     ...mapState(useMainStore, ['settings']),
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

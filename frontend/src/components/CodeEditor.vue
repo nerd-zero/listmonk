@@ -2,7 +2,8 @@
   <div ref="editor" class="code-editor" />
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { EditorState } from '@codemirror/state';
 import {
   EditorView, keymap, highlightActiveLine, lineNumbers, highlightActiveLineGutter,
@@ -18,7 +19,7 @@ import { defaultHighlightStyle, syntaxHighlighting, bracketMatching } from '@cod
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { vsCodeLight } from './editor-theme';
 
-export default {
+export default defineComponent({
   props: {
     modelValue: { type: String, default: '' },
     lang: { type: String, default: 'html' },
@@ -127,5 +128,5 @@ export default {
       }
     },
   },
-};
+});
 </script>

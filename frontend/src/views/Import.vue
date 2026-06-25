@@ -142,13 +142,14 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import ListSelector from '../components/ListSelector.vue';
 import LogView from '../components/LogView.vue';
 
-export default {
+export default defineComponent({
   components: {
     ListSelector,
     LogView,
@@ -378,7 +379,7 @@ export default {
       });
     }
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

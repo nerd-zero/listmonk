@@ -296,7 +296,8 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import dayjs from 'dayjs';
 import htmlToPlainText from 'textversionjs';
 import { mapState } from 'pinia';
@@ -308,7 +309,7 @@ import Editor from '../components/Editor.vue';
 import ListSelector from '../components/ListSelector.vue';
 import Media from './Media.vue';
 
-export default {
+export default defineComponent({
   components: {
     ListSelector,
     Editor,
@@ -814,7 +815,7 @@ export default {
   beforeUnmount() {
     this.$events.$off('campaign.update');
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

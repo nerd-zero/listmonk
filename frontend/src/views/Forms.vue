@@ -67,12 +67,13 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import CodeEditor from '../components/CodeEditor.vue';
 
-export default {
+export default defineComponent({
   name: 'ListForm',
 
   components: {
@@ -174,7 +175,7 @@ export default {
       this.renderHTML();
     },
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

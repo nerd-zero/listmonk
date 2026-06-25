@@ -17,13 +17,14 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 // Regexp for splitting log lines in the following format to
 // [timestamp] [file] [message].
 // 2021/05/01 00:00:00:00 init.go:99: reading config: config.toml
 const reFormatLine = /^([0-9\s:/]+\.[0-9]{6}) (.+?\.go:[0-9]+|\*):\s(.+)$/;
 
-export default {
+export default defineComponent({
   name: 'LogView',
 
   props: {
@@ -62,5 +63,5 @@ export default {
       });
     },
   },
-};
+});
 </script>

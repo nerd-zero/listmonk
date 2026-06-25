@@ -103,12 +103,13 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default {
+export default defineComponent({
   components: {
     EmptyPlaceholder,
   },
@@ -238,7 +239,7 @@ export default {
 
     this.getBounces();
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

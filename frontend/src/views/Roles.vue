@@ -65,13 +65,14 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import RoleForm from './RoleForm.vue';
 
-export default {
+export default defineComponent({
   components: {
     EmptyPlaceholder,
     RoleForm,
@@ -175,7 +176,7 @@ export default {
     this.curType = this.$route.name === 'userRoles' ? 'user' : 'list';
     this.fetchRoles();
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

@@ -29,10 +29,11 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { uris } from '../constants';
 
-export default {
+export default defineComponent({
   name: 'CampaignPreview',
 
   props: {
@@ -109,7 +110,7 @@ export default {
       }, 100);
     }
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

@@ -113,11 +113,12 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../../store';
 
-export default {
+export default defineComponent({
   props: {
     form: { type: Object, default: () => {} },
   },
@@ -129,5 +130,5 @@ export default {
   computed: {
     ...mapState(useMainStore, ['serverConfig', 'loading']),
   },
-};
+});
 </script>

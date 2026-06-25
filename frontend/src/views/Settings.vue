@@ -66,7 +66,8 @@
   </form>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import AppearanceSettings from './settings/appearance.vue';
@@ -80,7 +81,7 @@ import PrivacySettings from './settings/privacy.vue';
 import SecuritySettings from './settings/security.vue';
 import SmtpSettings from './settings/smtp.vue';
 
-export default {
+export default defineComponent({
   components: {
     GeneralSettings,
     PerformanceSettings,
@@ -299,7 +300,7 @@ export default {
       this.$utils.setPref('settings.tab', t);
     },
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

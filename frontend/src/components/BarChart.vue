@@ -4,7 +4,8 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import Chart from 'chart.js/auto';
 
 const DEFAULT = {
@@ -33,7 +34,7 @@ const DEFAULT = {
   },
 };
 
-export default {
+export default defineComponent({
   name: 'BarChart',
 
   props: {
@@ -44,5 +45,5 @@ export default {
     const ctx = this.$el.querySelector('.bar-chart-canvas');
     this.chart = new Chart(ctx, { ...DEFAULT, data: this.$props.data });
   },
-};
+});
 </script>

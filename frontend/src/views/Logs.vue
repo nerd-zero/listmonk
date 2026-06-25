@@ -9,12 +9,13 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import LogView from '../components/LogView.vue';
 
-export default {
+export default defineComponent({
   components: {
     LogView,
   },
@@ -48,7 +49,7 @@ export default {
   unmounted() {
     clearInterval(this.pollId);
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

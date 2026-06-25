@@ -24,9 +24,10 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 
-export default {
+export default defineComponent({
   name: 'ListSelector',
 
   props: {
@@ -109,5 +110,5 @@ export default {
       this.selectedItems = JSON.parse(JSON.stringify(this.selected));
     }
   },
-};
+});
 </script>

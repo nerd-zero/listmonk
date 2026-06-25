@@ -164,14 +164,15 @@
   </form>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import ListSelector from '../components/ListSelector.vue';
 import CopyText from '../components/CopyText.vue';
 import SubscriberActivity from '../components/SubscriberActivity.vue';
 
-export default {
+export default defineComponent({
   components: {
     ListSelector,
     CopyText,
@@ -359,7 +360,7 @@ export default {
       this.$refs.focus.$el.focus();
     });
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

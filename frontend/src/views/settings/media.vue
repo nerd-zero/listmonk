@@ -101,10 +101,11 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { regDuration } from '../../constants';
 
-export default {
+export default defineComponent({
   props: {
     form: { type: Object, default: () => {} },
   },
@@ -121,5 +122,5 @@ export default {
       this.data['upload.s3.url'] = `https://s3.${this.data['upload.s3.aws_default_region']}.amazonaws.com`;
     },
   },
-};
+});
 </script>

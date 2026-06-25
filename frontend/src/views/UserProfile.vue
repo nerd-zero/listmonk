@@ -114,12 +114,13 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import CopyText from '../components/CopyText.vue';
 
-export default {
+export default defineComponent({
   name: 'UserProfile',
 
   components: { CopyText },
@@ -239,7 +240,7 @@ export default {
   computed: {
     ...mapState(useMainStore, ['loading']),
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

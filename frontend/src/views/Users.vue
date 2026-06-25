@@ -111,14 +111,15 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
 import UserForm from './UserForm.vue';
 
-export default {
+export default defineComponent({
   components: {
     EmptyPlaceholder,
     UserForm,
@@ -212,7 +213,7 @@ export default {
       this.getUsers();
     }
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

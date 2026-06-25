@@ -96,11 +96,12 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 
-export default {
+export default defineComponent({
   name: 'ScrubDashboard',
 
   data() {
@@ -171,7 +172,7 @@ export default {
   mounted() {
     this.fetchStats();
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

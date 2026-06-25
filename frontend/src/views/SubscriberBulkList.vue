@@ -42,12 +42,13 @@
   </form>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import ListSelector from '../components/ListSelector.vue';
 
-export default {
+export default defineComponent({
   components: {
     ListSelector,
   },
@@ -82,7 +83,7 @@ export default {
       return this.form.lists.some((l) => l.optin === 'double');
     },
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

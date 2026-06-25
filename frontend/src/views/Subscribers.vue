@@ -202,7 +202,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
@@ -211,7 +212,7 @@ import SubscriberBulkList from './SubscriberBulkList.vue';
 import SubscriberForm from './SubscriberForm.vue';
 import CopyText from '../components/CopyText.vue';
 
-export default {
+export default defineComponent({
   components: {
     SubscriberForm,
     SubscriberBulkList,
@@ -556,7 +557,7 @@ export default {
       this.querySubscribers();
     }
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

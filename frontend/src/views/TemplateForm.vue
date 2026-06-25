@@ -66,7 +66,8 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import CampaignPreview from '../components/CampaignPreview.vue';
@@ -74,7 +75,7 @@ import CodeEditor from '../components/CodeEditor.vue';
 import VisualEditor from '../components/VisualEditor.vue';
 import CopyText from '../components/CopyText.vue';
 
-export default {
+export default defineComponent({
   components: {
     CampaignPreview,
     CopyText,
@@ -183,7 +184,7 @@ export default {
   beforeUnmount() {
     window.removeEventListener('keydown', this.onPreviewShortcut);
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

@@ -5,8 +5,10 @@
   </a>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
   name: 'CopyText',
 
   props: {
@@ -31,5 +33,5 @@ export default {
       this.$utils.toast(this.$t('globals.messages.copied'));
     },
   },
-};
+});
 </script>

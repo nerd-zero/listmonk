@@ -64,7 +64,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import dayjs from 'dayjs';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
@@ -83,7 +84,7 @@ const chartColors = [
   '#FFC43D',
 ];
 
-export default {
+export default defineComponent({
   components: {
     Chart,
   },
@@ -334,7 +335,7 @@ export default {
       });
     }
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

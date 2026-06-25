@@ -122,14 +122,15 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import dayjs from 'dayjs';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import { colors } from '../constants';
 import Chart from '../components/Chart.vue';
 
-export default {
+export default defineComponent({
   components: { Chart },
 
   data() {
@@ -199,7 +200,7 @@ export default {
       };
     },
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

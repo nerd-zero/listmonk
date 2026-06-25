@@ -14,10 +14,11 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import Media from '../views/Media.vue';
 
-export default {
+export default defineComponent({
   components: {
     Media,
   },
@@ -167,7 +168,7 @@ export default {
   unmounted() {
     window.removeEventListener('message', this.onSidebarMount, false);
   },
-};
+});
 </script>
 
 <style lang="css">

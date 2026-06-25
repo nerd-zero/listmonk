@@ -144,7 +144,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../../store';
 import CopyText from '../../components/CopyText.vue';
@@ -156,7 +157,7 @@ const OIDC_PROVIDERS = {
   apple: 'https://appleid.apple.com',
 };
 
-export default {
+export default defineComponent({
   components: { CopyText },
 
   props: {
@@ -228,5 +229,5 @@ export default {
       this.$nextTick(() => { this.$refs.client_id.$el.focus(); });
     },
   },
-};
+});
 </script>

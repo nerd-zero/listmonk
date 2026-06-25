@@ -72,10 +72,11 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { regDuration } from '../../constants';
 
-export default {
+export default defineComponent({
   props: {
     form: { type: Object, default: () => {} },
   },
@@ -104,7 +105,7 @@ export default {
 
     removeMessenger(i) { this.data.messengers.splice(i, 1); },
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

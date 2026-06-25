@@ -112,12 +112,13 @@
   </form>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import CopyText from '../components/CopyText.vue';
 
-export default {
+export default defineComponent({
   name: 'RoleForm',
 
   components: {
@@ -260,7 +261,7 @@ export default {
       this.$refs.focus.$el.focus();
     });
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

@@ -123,12 +123,13 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import dayjs from 'dayjs';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 
-export default {
+export default defineComponent({
   components: {
   },
 
@@ -253,7 +254,7 @@ export default {
       ];
     },
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

@@ -95,8 +95,10 @@
   </div>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
   props: {
     form: { type: Object, default: () => {} },
   },
@@ -123,5 +125,5 @@ export default {
   watch: {
     tab(t) { this.$utils.setPref('settings.privacyDomainTab', t); },
   },
-};
+});
 </script>

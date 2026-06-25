@@ -9,13 +9,15 @@
   </section>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
   name: 'EmptyPlaceholder',
 
   props: {
     icon: { type: String, default: '' },
     label: { type: String, default: '' },
   },
-};
+});
 </script>

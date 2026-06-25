@@ -66,7 +66,8 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { html as beautifyHTML } from 'js-beautify';
 import TurndownService from 'turndown';
 import { mapState } from 'pinia';
@@ -80,7 +81,7 @@ import CodeEditor from './CodeEditor.vue';
 
 const turndown = new TurndownService();
 
-export default {
+export default defineComponent({
   components: {
     CampaignPreview,
     'code-editor': CodeEditor,
@@ -379,7 +380,7 @@ export default {
       this.self.templateId = to;
     },
   },
-};
+});
 
 </script>
 

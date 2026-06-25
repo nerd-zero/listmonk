@@ -4,7 +4,8 @@
   </section>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import Chart from 'chart.js/auto';
 
 const DEFAULT_DONUT = {
@@ -129,7 +130,7 @@ const DEFAULT_BAR = {
   },
 };
 
-export default {
+export default defineComponent({
   name: 'Chart',
 
   props: {
@@ -162,7 +163,7 @@ export default {
     }
     this.chart = new Chart(ctx, conf);
   },
-};
+});
 </script>
 
 <style scoped>

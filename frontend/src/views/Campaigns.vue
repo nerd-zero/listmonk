@@ -206,7 +206,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import dayjs from 'dayjs';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
@@ -214,7 +215,7 @@ import CampaignPreview from '../components/CampaignPreview.vue';
 import CopyText from '../components/CopyText.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default {
+export default defineComponent({
   components: {
     CampaignPreview,
     EmptyPlaceholder,
@@ -489,7 +490,7 @@ export default {
   unmounted() {
     clearInterval(this.pollID);
   },
-};
+});
 </script>
 
 <style scoped lang="scss">

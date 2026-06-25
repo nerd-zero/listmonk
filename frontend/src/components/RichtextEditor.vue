@@ -39,7 +39,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import TinyMce from '@tinymce/tinymce-vue';
 import { html } from 'js-beautify';
 import { mapState } from 'pinia';
@@ -93,7 +94,7 @@ const TRACK_LINK = 'trackLink';
 const TRACK_SUFFIX = '@TrackLink';
 const EMBED_IMAGE = 'embedImage';
 
-export default {
+export default defineComponent({
   components: {
     Media,
     'tiny-mce': TinyMce,
@@ -386,5 +387,5 @@ export default {
       },
     },
   },
-};
+});
 </script>

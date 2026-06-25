@@ -91,7 +91,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useMainStore } from '../store';
 import CampaignPreview from '../components/CampaignPreview.vue';
@@ -99,7 +100,7 @@ import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
 import TemplateForm from './TemplateForm.vue';
 
-export default {
+export default defineComponent({
   components: {
     CampaignPreview,
     TemplateForm,
@@ -187,7 +188,7 @@ export default {
   mounted() {
     this.$api.getTemplates();
   },
-};
+});
 </script>
 
 <style scoped lang="scss">
