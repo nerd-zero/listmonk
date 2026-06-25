@@ -97,13 +97,9 @@
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('import.csvFile') }}</label>
             <div class="upload-drop-area" @dragover.prevent @drop.prevent="onFileDrop"
-              @click="$refs.fileInput.click()" style="border:2px dashed #ccc;border-radius:4px;cursor:pointer;">
-              <div class="has-text-centered section">
-                <p>
-                  <i class="pi pi-upload" style="font-size:2rem;" />
-                </p>
-                <p>{{ $t('import.csvFileHelp') }}</p>
-              </div>
+              @click="$refs.fileInput.click()">
+              <i class="pi pi-upload upload-icon" />
+              <p class="upload-label">{{ $t('import.csvFileHelp') }}</p>
               <input ref="fileInput" type="file" style="display:none" @change="onFileSelect" />
             </div>
           </div>
@@ -118,7 +114,6 @@
           </div>
         </div>
       </form>
-      <br /><br />
 
       <div class="import-help">
         <h5 class="import-help-title">{{ $t('import.instructions') }}</h5>
@@ -388,6 +383,32 @@ export default {
 
 <style scoped lang="scss">
 .import-page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+
+.upload-drop-area {
+  border: 2px dashed var(--lm-border);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover {
+    border-color: var(--lm-primary);
+    background: var(--lm-primary-light);
+  }
+}
+
+.upload-icon { font-size: 2rem; color: var(--lm-text-muted); }
+.upload-label { font-size: 0.875rem; color: var(--lm-text-muted); margin: 0; }
 
 .import-help-title { font-size: 0.95rem; font-weight: 600; color: #374151; margin: 0 0 0.5rem; }
 
