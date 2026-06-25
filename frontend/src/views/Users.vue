@@ -147,12 +147,6 @@ export default {
       this.getUsers();
     },
 
-    onTableCheck() {
-      // Disable bulk.all selection if there are no rows checked in the table.
-      if (this.bulk.checked.length !== this.subscribers.total) {
-        this.bulk.all = false;
-      }
-    },
 
     // Show the edit form.
     showEditForm(item) {
@@ -224,6 +218,12 @@ export default {
 
 <style scoped lang="scss">
 .users-page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
 
 .table-toolbar { display: flex; align-items: center; gap: 1rem; }
 .search-form { flex: 0 0 260px; }
