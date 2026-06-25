@@ -118,7 +118,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState } from 'pinia';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
@@ -127,7 +128,7 @@ import { useMainStore } from './store';
 import { setToastInstance, setConfirmInstance } from './toastService';
 import Navigation from './components/Navigation.vue';
 
-export default {
+export default defineComponent({
   name: 'App',
   components: { Navigation },
 
@@ -220,7 +221,7 @@ export default {
       if (window.innerWidth >= 992) this.sidebarCollapsed = false;
     });
   },
-};
+});
 </script>
 
 <style lang="scss">
