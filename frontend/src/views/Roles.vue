@@ -10,7 +10,7 @@
     </div>
 
     <div class="table-card">
-      <PvDataTable :value="roles" :loading="isLoading()">
+      <PvDataTable :value="roles" :loading="isLoading">
         <PvColumn field="role" :header="$tc('users.role')" sortable>
           <template #body="{ data }">
             <div class="role-name-cell">
@@ -52,7 +52,7 @@
           </template>
         </PvColumn>
 
-        <template #empty v-if="!isLoading()">
+        <template #empty v-if="!isLoading">
           <empty-placeholder />
         </template>
       </PvDataTable>
@@ -87,10 +87,6 @@ export default {
   },
 
   methods: {
-    isLoading() {
-      return this.curType === 'user' ? this.loading.userRoles : this.loading.listRoles;
-    },
-
     fetchRoles() {
       if (this.isUser) {
         this.$api.getUserRoles();
@@ -157,6 +153,10 @@ export default {
 
   computed: {
     ...mapState(useMainStore, ['loading', 'userRoles', 'listRoles']),
+
+    isLoading {
+      return this.curType === 'user' ? this.loading.userRoles : this.loading.listRoles;
+    },
 
     isUser() {
       return this.curType === 'user';

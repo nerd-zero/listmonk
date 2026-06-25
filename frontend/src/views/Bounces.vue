@@ -130,7 +130,7 @@ export default {
         page: 1,
         orderBy: 'created_at',
         order: 'desc',
-        campaignID: 0,
+        campaignId: 0,
         source: '',
       },
     };
@@ -166,7 +166,7 @@ export default {
         page: this.queryParams.page,
         order_by: this.queryParams.orderBy,
         order: this.queryParams.order,
-        campaign_id: this.queryParams.campaign_id,
+        campaign_id: this.queryParams.campaignId,
         source: this.queryParams.source,
       }).then((data) => {
         this.bounces = data;
@@ -229,7 +229,7 @@ export default {
 
   mounted() {
     if (this.$route.query.campaign_id) {
-      this.queryParams.campaign_id = parseInt(this.$route.query.campaign_id, 10);
+      this.queryParams.campaignId = parseInt(this.$route.query.campaign_id, 10);
     }
 
     if (this.$route.query.source) {
@@ -251,7 +251,7 @@ export default {
   padding: 0.35rem 0.75rem; border: 1px solid var(--lm-border); border-radius: 6px;
   background: var(--lm-surface); font-size: 0.8rem; cursor: pointer; color: var(--lm-text-muted);
   &--danger { color: var(--lm-danger); border-color: var(--lm-danger-border); &:hover { background: var(--lm-danger-bg); } }
-  &--warn   { color: #d97706; border-color: var(--lm-warn-border); &:hover { background: var(--lm-warn-bg); } }
+  &--warn   { color: var(--lm-warn, #d97706); border-color: var(--lm-warn-border); &:hover { background: var(--lm-warn-bg); } }
 }
 
 .row-name { color: var(--lm-text); font-weight: 500; text-decoration: none; &:hover { color: var(--lm-primary); } &--blocked { color: var(--lm-text-subtle); text-decoration: line-through; } }
