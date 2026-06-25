@@ -350,7 +350,7 @@ export default {
 .analytics-filters { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--lm-bg-subtle); }
 .filter-form { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
 .filter-field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 180px; }
-.filter-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+.filter-label { font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
 .filter-action { padding-bottom: 0; align-self: flex-end; }
 
 .charts-section { display: flex; flex-direction: column; }
