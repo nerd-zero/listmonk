@@ -153,6 +153,11 @@ export default {
 </script>
 
 <style scoped lang="scss">
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
 
 .lm-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .lm-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -173,7 +178,7 @@ export default {
   display: block;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--lm-text);
 }
 .lm-help {
   display: block;
