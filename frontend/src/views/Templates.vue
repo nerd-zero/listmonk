@@ -193,6 +193,12 @@ export default {
 <style scoped lang="scss">
 .templates-page { display: flex; flex-direction: column; gap: 1.5rem; }
 
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+
 .name-cell { display: flex; flex-direction: column; gap: 0.2rem; }
 .name-row { display: flex; align-items: center; gap: 0.5rem; }
 .row-name { color: var(--lm-text); font-weight: 500; text-decoration: none; &:hover { color: var(--lm-primary); } }
