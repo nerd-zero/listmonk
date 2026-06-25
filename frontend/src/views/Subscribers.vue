@@ -607,6 +607,19 @@ export default {
   &--warn { color: var(--lm-warn); border-color: var(--lm-warn-border); &:hover { background: var(--lm-warn-bg); } }
 }
 
+// Make secondary PvTags visible
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+
+.toolbar-btn:hover {
+  background: var(--lm-bg-subtle);
+  border-color: var(--lm-text-muted);
+  color: var(--lm-text);
+}
+
 // Row cells
 .email-cell { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .row-name { font-weight: 500; color: var(--lm-primary); text-decoration: none; &:hover { text-decoration: underline; } }
