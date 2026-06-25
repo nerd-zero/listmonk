@@ -5,11 +5,11 @@
 // CSS Custom Properties (design tokens)
 // ============================================================
 :root {
-  --lm-primary:         #2563eb;
-  --lm-primary-hover:   #1d4ed8;
-  --lm-primary-light:   #eff6ff;
-  --lm-primary-border:  #bfdbfe;
-  --lm-primary-text:    #1e40af;
+  --lm-primary:         #6366f1;
+  --lm-primary-hover:   #4f46e5;
+  --lm-primary-light:   #eef2ff;
+  --lm-primary-border:  #c7d2fe;
+  --lm-primary-text:    #4338ca;
 
   --lm-text:            #0f172a;
   --lm-text-secondary:  #334155;
@@ -45,7 +45,7 @@ $grey-light:   #b5b5b5;
 $grey:         #7a7a7a;
 $grey-dark:    #4a4a4a;
 $black:        #363636;
-$primary:      #2563eb;
+$primary:      #6366f1;
 $green:        #36995b;
 $red:          #FF5722;
 $body-family:  "Inter", "Helvetica Neue", sans-serif;
@@ -511,8 +511,8 @@ select { height: auto; padding: 0.5rem 0.75rem; }
     background: color.adjust($color, $lightness: 47%);
   }
   &.public, &.running, &.list, &.campaign, &.user, &.primary {
-    color: color.adjust($primary, $lightness: 20%);
-    background: #e6f7ff;
+    color: color.adjust($primary, $lightness: 10%);
+    background: #eef2ff;
   }
   &.finished, &.enabled, &.status-confirmed {
     color: $green;
@@ -563,16 +563,18 @@ select { height: auto; padding: 0.5rem 0.75rem; }
 // App shell layout
 // ============================================================
 
-$sidebar-w:     260px;
-$topbar-h:      56px;
-$sidebar-bg:    #ffffff;   // white sidebar
-$sidebar-hover: rgba(37,99,235,0.07);
-$sidebar-active:#dbeafe;   // blue-100
-$nav-text:      #475569;   // slate-600
-$nav-text-hover:#1e40af;   // blue-800
-$nav-text-active:#1d4ed8;  // blue-700
-$nav-label:     #94a3b8;   // slate-400
-$ease:          cubic-bezier(0.4, 0, 0.2, 1);
+$sidebar-w:      260px;
+$topbar-h:       56px;
+$sidebar-bg:     #1e293b;           // dark sidebar
+$sidebar-border: rgba(255,255,255,0.08);
+$sidebar-hover:  rgba(255,255,255,0.07);
+$sidebar-active: rgba(99,102,241,0.18);  // indigo tint
+$nav-text:       #94a3b8;               // slate-400
+$nav-text-hover: #f1f5f9;               // slate-100
+$nav-text-active:#a5b4fc;               // indigo-300
+$nav-active-bar: #6366f1;               // indigo-500
+$nav-label:      #475569;               // slate-600
+$ease:           cubic-bezier(0.4, 0, 0.2, 1);
 
 .app-shell {
   display: flex;
@@ -590,7 +592,7 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
   height: 100vh;
   z-index: 100;
   background: $sidebar-bg;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid $sidebar-border;
   display: flex;
   flex-direction: column;
   transition: transform 0.25s $ease, width 0.25s $ease;
@@ -602,7 +604,7 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
     align-items: center;
     padding: 0 1.25rem;
     flex-shrink: 0;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid $sidebar-border;
   }
 
   .sidebar-brand {
@@ -618,13 +620,14 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
     width: 28px;
     height: 28px;
     object-fit: contain;
+    filter: brightness(1.1);
   }
 
   .sidebar-brand-name {
     font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: #1e293b;
+    color: #f8fafc;
     white-space: nowrap;
   }
 
@@ -653,8 +656,9 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: $nav-label;
-  padding: 0.875rem 1.25rem 0.25rem;
+  padding: 0.875rem 1.25rem 0.3rem;
   margin: 0;
+  opacity: 0.7;
 }
 
 .nav-item {
@@ -697,7 +701,7 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
       top: 0;
       bottom: 0;
       width: 3px;
-      background: #93c5fd;
+      background: $nav-active-bar;
       border-radius: 0 2px 2px 0;
     }
   }
@@ -785,6 +789,7 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
     font-size: 0.7rem !important;
     background: $primary !important;
     color: #fff !important;
+    flex-shrink: 0;
   }
 
   .topbar-username { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -805,7 +810,7 @@ $ease:          cubic-bezier(0.4, 0, 0.2, 1);
   code { font-size: 0.8em; padding: 1px 4px; border-radius: 4px; background: rgba(0,0,0,0.08); }
 
   &--success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; a { color: #15803d; } }
-  &--info    { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; a { color: #1d4ed8; } }
+  &--info    { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; a { color: #4f46e5; } }
   &--danger  { background: #fff1f2; border-color: #fecdd3; color: #9f1239; a { color: #be123c; } }
 }
 
@@ -1390,8 +1395,8 @@ section.import {
 section.campaigns {
   table tbody {
     tr.running {
-      background: color.adjust(#1890ff, $lightness: 43%);
-      td { border-bottom: 1px solid color.adjust(#1890ff, $lightness: 30%); }
+      background: color.adjust(#6366f1, $lightness: 38%);
+      td { border-bottom: 1px solid color.adjust(#6366f1, $lightness: 25%); }
     }
     td {
       .tags { margin-top: 5px; }
