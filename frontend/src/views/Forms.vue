@@ -1,8 +1,10 @@
 <template>
-  <div class="flex flex-column gap-4">
-    <h1 class="text-3xl font-bold text-900 m-0">{{ $t('forms.title') }}</h1>
+  <div class="forms-page">
+    <div class="page-header">
+      <h1 class="page-title">{{ $t('forms.title') }}</h1>
+    </div>
 
-    <div v-if="loading.lists" class="flex justify-content-center p-8">
+    <div v-if="loading.lists" class="forms-loading">
       <PvProgressSpinner style="width:2rem;height:2rem" />
     </div>
 
@@ -10,63 +12,56 @@
       {{ $t('forms.noPublicLists') }}
     </PvMessage>
 
-    <div v-else class="grid align-items-start">
+    <div v-else class="forms-grid">
       <!-- Left panel: controls -->
-      <div class="col-12 md:col-4" data-cy="lists">
-        <PvCard>
-          <template #title>{{ $t('forms.publicLists') }}</template>
-          <template #subtitle>{{ $t('forms.selectHelp') }}</template>
-          <template #content>
-            <div class="flex flex-column gap-3">
-              <div v-for="(l, i) in publicLists" :key="l.id" class="flex align-items-center gap-2">
-                <PvCheckbox v-model="checked" :value="i" :input-id="`list-${l.id}`" />
-                <label :for="`list-${l.id}`" class="cursor-pointer">{{ l.name }}</label>
-              </div>
+      <div class="forms-panel" data-cy="lists">
+        <div class="forms-panel-title">{{ $t('forms.publicLists') }}</div>
+        <p class="forms-panel-subtitle">{{ $t('forms.selectHelp') }}</p>
+
+        <div class="checklist">
+          <div v-for="(l, i) in publicLists" :key="l.id" class="checklist-item">
+            <PvCheckbox v-model="checked" :value="i" :input-id="`list-${l.id}`" />
+            <label :for="`list-${l.id}`" class="checklist-label">{{ l.name }}</label>
+          </div>
+        </div>
+
+        <template v-if="serverConfig.public_subscription?.enabled">
+          <PvDivider />
+          <p class="forms-section-label">{{ $t('forms.publicSubPage') }}</p>
+          <a :href="`${serverConfig.root_url}/subscription/form`" target="_blank" rel="noopener noreferer"
+            class="forms-ext-link" data-cy="url">
+            <i class="pi pi-external-link" />
+            {{ serverConfig.root_url }}/subscription/form
+          </a>
+        </template>
+
+        <template v-if="redirectURLs.length > 0">
+          <PvDivider />
+          <p class="forms-section-label">{{ $t('forms.redirectURL') }}</p>
+          <p class="forms-panel-subtitle">{{ $t('forms.redirectURLHelp') }}</p>
+          <div class="checklist" data-cy="redirect-urls">
+            <div class="checklist-item">
+              <PvRadioButton v-model="selectedRedirectURL" value="" input-id="redirect-none" />
+              <label for="redirect-none" class="checklist-label">{{ $t('globals.terms.none') }}</label>
             </div>
-
-            <template v-if="serverConfig.public_subscription?.enabled">
-              <PvDivider />
-              <p class="font-semibold text-sm text-900 mb-2">{{ $t('forms.publicSubPage') }}</p>
-              <a :href="`${serverConfig.root_url}/subscription/form`" target="_blank" rel="noopener noreferer"
-                class="text-primary text-sm flex align-items-center gap-1 no-underline hover:underline" data-cy="url">
-                <i class="pi pi-external-link" />
-                {{ serverConfig.root_url }}/subscription/form
-              </a>
-            </template>
-
-            <template v-if="redirectURLs.length > 0">
-              <PvDivider />
-              <p class="font-semibold text-sm text-900 mb-1">{{ $t('forms.redirectURL') }}</p>
-              <p class="text-sm text-500 mb-3">{{ $t('forms.redirectURLHelp') }}</p>
-              <div class="flex flex-column gap-3" data-cy="redirect-urls">
-                <div class="flex align-items-center gap-2">
-                  <PvRadioButton v-model="selectedRedirectURL" value="" input-id="redirect-none" />
-                  <label for="redirect-none" class="cursor-pointer">{{ $t('globals.terms.none') }}</label>
-                </div>
-                <div v-for="url in redirectURLs" :key="url" class="flex align-items-center gap-2">
-                  <PvRadioButton v-model="selectedRedirectURL" :value="url" :input-id="`redirect-${url}`" />
-                  <label :for="`redirect-${url}`" class="cursor-pointer text-sm">{{ url }}</label>
-                </div>
-              </div>
-            </template>
-          </template>
-        </PvCard>
+            <div v-for="url in redirectURLs" :key="url" class="checklist-item">
+              <PvRadioButton v-model="selectedRedirectURL" :value="url" :input-id="`redirect-${url}`" />
+              <label :for="`redirect-${url}`" class="checklist-label checklist-label--url">{{ url }}</label>
+            </div>
+          </div>
+        </template>
       </div>
 
       <!-- Right panel: generated HTML -->
-      <div class="col-12 md:col-8" data-cy="form">
-        <PvCard>
-          <template #title>{{ $t('forms.formHTML') }}</template>
-          <template #subtitle>{{ $t('forms.formHTMLHelp') }}</template>
-          <template #content>
-            <div v-if="checked.length === 0"
-              class="flex flex-column align-items-center justify-content-center gap-3 py-6 text-500">
-              <i class="pi pi-code" style="font-size:2.5rem" />
-              <span class="text-sm">{{ $t('forms.selectHelp') }}</span>
-            </div>
-            <code-editor v-else lang="html" v-model="html" disabled />
-          </template>
-        </PvCard>
+      <div class="forms-panel" data-cy="form">
+        <div class="forms-panel-title">{{ $t('forms.formHTML') }}</div>
+        <p class="forms-panel-subtitle">{{ $t('forms.formHTMLHelp') }}</p>
+
+        <div v-if="checked.length === 0" class="forms-empty">
+          <i class="pi pi-code forms-empty-icon" />
+          <span>{{ $t('forms.selectHelp') }}</span>
+        </div>
+        <code-editor v-else lang="html" v-model="html" disabled />
       </div>
     </div>
   </div>
@@ -181,3 +176,47 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.forms-page { display: flex; flex-direction: column; gap: 1.5rem; }
+.forms-loading { display: flex; justify-content: center; padding: 3rem; }
+
+.forms-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+
+  @media (max-width: 768px) { grid-template-columns: 1fr; }
+}
+
+.forms-panel {
+  background: var(--lm-surface);
+  border: 1px solid var(--lm-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.forms-panel-title { font-size: 1rem; font-weight: 600; color: var(--lm-text); margin: 0; }
+.forms-panel-subtitle { font-size: 0.85rem; color: var(--lm-text-muted); margin: 0; }
+.forms-section-label { font-size: 0.8rem; font-weight: 600; color: var(--lm-text); margin: 0; }
+
+.checklist { display: flex; flex-direction: column; gap: 0.6rem; }
+.checklist-item { display: flex; align-items: center; gap: 0.5rem; }
+.checklist-label { font-size: 0.9rem; color: var(--lm-text); cursor: pointer; &--url { font-size: 0.8rem; color: var(--lm-text-muted); } }
+
+.forms-ext-link {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-size: 0.85rem; color: var(--lm-primary); text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.forms-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.75rem; padding: 3rem 1rem; color: var(--lm-text-subtle); font-size: 0.875rem;
+}
+.forms-empty-icon { font-size: 2.5rem; opacity: 0.4; }
+</style>
