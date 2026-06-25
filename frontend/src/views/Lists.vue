@@ -118,7 +118,7 @@
                 data-cy="btn-send-optin-campaign"
                 v-tooltip.bottom="$t('lists.sendOptinCampaign')"
               >
-                <i class="pi pi-send" /> {{ $t('lists.sendOptinCampaign') }}
+                <i class="pi pi-send" />
               </a>
             </div>
           </template>
@@ -386,7 +386,7 @@ export default {
     },
 
     deleteLists() {
-      const name = this.$tc('globals.terms.list', this.numSelectedCampaigns);
+      const name = this.$tc('globals.terms.list', this.numSelectedLists);
 
       const fn = () => {
         const params = {};
@@ -515,14 +515,26 @@ export default {
 }
 .row-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
 
+// Make secondary PvTags visible (Aura theme has no default background for secondary)
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+
 .type-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .optin-send {
-  font-size: 0.75rem;
-  color: var(--lm-text-muted);
-  text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  color: var(--lm-text-muted);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  i { font-size: 0.8rem; }
+  &:hover { background: var(--lm-primary-light); color: var(--lm-primary); }
 }
 
 .sub-count-link { text-decoration: none; display: flex; flex-direction: column; }
