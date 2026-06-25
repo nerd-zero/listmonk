@@ -30,6 +30,13 @@
           </div>
 
           <div class="field mt-4">
+            <label class="block mb-1 text-sm font-medium">{{ $t('settings.scrub.integrationId') }}</label>
+            <PvInputNumber v-model="data.scrub.integration_id" name="scrub.integration_id"
+              :use-grouping="false" :min="0" :disabled="!data.scrub.enabled" class="w-full" />
+            <small class="block mt-1 text-color-secondary">{{ $t('settings.scrub.integrationIdHelp') }}</small>
+          </div>
+
+          <div class="field mt-4">
             <PvButton severity="primary" :loading="isTesting"
               :disabled="!data.scrub.enabled || !data.scrub.url || !data.scrub.api_key"
               icon="pi pi-link" :label="$t('settings.scrub.testConnection')"

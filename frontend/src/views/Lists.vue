@@ -89,7 +89,10 @@
         <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" sortable>
           <template #body="{ data }">
             <a class="row-name" :href="`/lists/${data.id}`" @click.prevent="showEditForm(data)">{{ data.name }}</a>
-            <div v-if="data.tags?.length" class="row-tags">
+            <div class="row-tags">
+              <PvTag v-if="scrubStatus[data.id]?.activeJobRequestId" severity="warn" :value="$t('settings.scrub.validating')" />
+              <PvTag v-else-if="scrubStatus[data.id]?.lastResult" severity="secondary"
+                :value="`${$t('settings.scrub.lastValidated')}: ${$utils.niceDate(scrubStatus[data.id].lastResult.completedAt)}`" />
               <PvTag v-for="t in data.tags" :key="t" :value="t" severity="secondary" />
             </div>
           </template>
@@ -180,6 +183,19 @@
 <i class="pi pi-pencil" />
 </button>
 
+              <button
+                v-if="serverConfig.scrubEnabled && $can('settings:manage')"
+                type="button"
+                class="row-action-btn"
+                :class="{ 'row-action-btn--active': scrubStatus[data.id]?.activeJobRequestId }"
+                data-cy="btn-scrub"
+                v-tooltip.bottom="$t('settings.scrub.scrubList')"
+                :disabled="!!scrubStatus[data.id]?.activeJobRequestId"
+                @click="$utils.confirm($t('settings.scrub.scrubListConfirm', { name: data.name }), () => scrubList(data))"
+              >
+                <i class="pi pi-shield" />
+              </button>
+
               <router-link
                 v-if="$can('subscribers:import')"
                 :to="{ name: 'import', query: { list_id: data.id } }"
@@ -256,6 +272,9 @@ export default {
         checked: [],
         all: false,
       },
+
+      // Scrub validation status keyed by list id: { activeJobRequestId, lastResult }
+      scrubStatus: {},
     };
   },
 
@@ -318,6 +337,27 @@ export default {
       // Also fetch the minimal lists for the global store that appears
       // in dropdown menus on other pages like import and campaigns.
       this.$api.getLists({ minimal: true, per_page: 'all', status: 'active' });
+
+      if (this.serverConfig.scrubEnabled) {
+        this.fetchScrubStatus();
+      }
+    },
+
+    fetchScrubStatus() {
+      this.$api.getScrubListStatus().then((data) => {
+        const m = {};
+        (Array.isArray(data) ? data : []).forEach((l) => {
+          m[l.id] = { activeJobRequestId: l.activeJobRequestId, lastResult: l.lastResult };
+        });
+        this.scrubStatus = m;
+      }).catch(() => {});
+    },
+
+    scrubList(list) {
+      this.$api.scrubList(list.id).then(() => {
+        this.$utils.toast(this.$t('settings.scrub.scrubJobStarted'));
+        this.fetchScrubStatus();
+      });
     },
 
     deleteList(list) {
@@ -400,7 +440,7 @@ export default {
   },
 
   computed: {
-    ...mapState(useMainStore, ['refreshTick', 'loading', 'settings']),
+    ...mapState(useMainStore, ['refreshTick', 'loading', 'settings', 'serverConfig']),
 
     numSelectedLists() {
       return this.bulk.all ? this.lists.total : this.bulk.checked.length;

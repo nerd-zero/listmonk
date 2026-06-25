@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -363,6 +364,14 @@ func (a *App) UpdateCampaignStatus(c echo.Context) error {
 	}{}
 	if err := c.Bind(&req); err != nil {
 		return err
+	}
+
+	// Block start/schedule when a Scrub validation job is active on any of the campaign's lists.
+	if req.Status == models.CampaignStatusRunning || req.Status == models.CampaignStatusScheduled {
+		if blocked, listName, err := a.checkScrubJobOnCampaign(c.Request().Context(), id); err == nil && blocked {
+			return echo.NewHTTPError(http.StatusBadRequest,
+				a.i18n.Ts("campaigns.scrubJobRunning", "list", listName))
+		}
 	}
 
 	// Update the campaign status in the DB.
@@ -836,4 +845,64 @@ func canEditCampaign(status string) bool {
 	return status == models.CampaignStatusDraft ||
 		status == models.CampaignStatusPaused ||
 		status == models.CampaignStatusScheduled
+}
+
+// checkScrubJobOnCampaign returns (true, listName) if any of the campaign's
+// target lists has an active Scrub validation job. Returns (false, "") silently
+// when Scrub is not configured or unreachable.
+func (a *App) checkScrubJobOnCampaign(ctx context.Context, campaignID int) (bool, string, error) {
+	s, err := a.core.GetSettings()
+	if err != nil || !s.Scrub.Enabled || s.Scrub.URL == "" || s.Scrub.APIKey == "" || s.Scrub.IntegrationID == 0 {
+		return false, "", nil
+	}
+
+	// Get campaign with its lists.
+	camp, err := a.core.GetCampaign(campaignID, "", "")
+	if err != nil {
+		return false, "", err
+	}
+
+	// Parse campaign list IDs from the JSON array [{id, name}, ...].
+	var campLists []struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal([]byte(camp.Lists), &campLists); err != nil || len(campLists) == 0 {
+		return false, "", nil
+	}
+	campListIDs := make(map[int]bool, len(campLists))
+	for _, l := range campLists {
+		campListIDs[l.ID] = true
+	}
+
+	// Query Scrub API for lists with active jobs.
+	scrubURL := strings.TrimRight(strings.TrimSpace(s.Scrub.URL), "/")
+	apiURL := fmt.Sprintf("%s/listmonk/integrations/%d/lists", scrubURL, s.Scrub.IntegrationID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return false, "", nil
+	}
+	httpReq.Header.Set("X-API-Key", s.Scrub.APIKey)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil || resp.StatusCode >= 400 {
+		return false, "", nil // silently pass if Scrub is unreachable
+	}
+	defer resp.Body.Close()
+
+	var lists []struct {
+		ID                 int     `json:"id"`
+		Name               string  `json:"name"`
+		ActiveJobRequestID *string `json:"active_job_request_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&lists); err != nil {
+		return false, "", nil
+	}
+
+	for _, l := range lists {
+		if l.ActiveJobRequestID != nil && campListIDs[l.ID] {
+			return true, l.Name, nil
+		}
+	}
+	return false, "", nil
 }

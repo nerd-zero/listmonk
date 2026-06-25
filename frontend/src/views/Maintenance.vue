@@ -25,6 +25,7 @@
       </div>
 
       <!-- Subscriptions -->
+
       <div class="maint-card">
         <div class="maint-card-header">
           <i class="pi pi-list maint-icon" />
@@ -125,7 +126,7 @@
 <script>
 import dayjs from 'dayjs';
 import { mapState } from 'pinia';
-import { useMainStore } from '../store';
+import { useMainStore } from '@/store';
 
 export default {
   components: {
