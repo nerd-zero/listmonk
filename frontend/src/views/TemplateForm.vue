@@ -11,57 +11,48 @@
         </p>
       </div>
       <div class="lm-form-body">
-          <div class="grid">
-            <div class="col-9">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
-                <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
-                  :placeholder="$t('globals.fields.name')" required class="w-full" />
-              </div>
-            </div>
-            <div class="col-3">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.type') }}</label>
-                <PvSelect v-model="form.type" :disabled="isEditing"
-                  :options="[
-                    { label: $tc('templates.typeCampaignHTML'), value: 'campaign' },
-                    { label: $tc('templates.typeCampaignVisual'), value: 'campaign_visual' },
-                    { label: $tc('templates.typeTransactional'), value: 'tx' },
-                  ]"
-                  option-label="label" option-value="value" class="w-full" />
-              </div>
-            </div>
+        <div class="name-type-row">
+          <div class="lm-field name-field">
+            <label class="lm-label">{{ $t('globals.fields.name') }}</label>
+            <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
+              :placeholder="$t('globals.fields.name')" required class="w-full" />
           </div>
-          <div class="grid" v-if="form.type === 'tx'">
-            <div class="col-12">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('templates.subject') }}</label>
-                <PvInputText :maxlength="200" v-model="form.subject" name="subject"
-                  :placeholder="$t('templates.subject')" required class="w-full" />
-              </div>
-            </div>
+          <div class="lm-field type-field">
+            <label class="lm-label">{{ $t('globals.fields.type') }}</label>
+            <PvSelect v-model="form.type" :disabled="isEditing"
+              :options="[
+                { label: $tc('templates.typeCampaignHTML'), value: 'campaign' },
+                { label: $tc('templates.typeCampaignVisual'), value: 'campaign_visual' },
+                { label: $tc('templates.typeTransactional'), value: 'tx' },
+              ]"
+              option-label="label" option-value="value" class="w-full" />
           </div>
+        </div>
 
-          <template v-if="form.body !== null">
-            <div v-if="form.type === 'campaign_visual'" class="field mb-1">
-              <visual-editor v-if="form.type === 'campaign_visual'" name="body" :source="form.bodySource"
-                @change="onChangeVisualEditor" height="70vh" />
-            </div>
+        <div v-if="form.type === 'tx'" class="lm-field">
+          <label class="lm-label">{{ $t('templates.subject') }}</label>
+          <PvInputText :maxlength="200" v-model="form.subject" name="subject"
+            :placeholder="$t('templates.subject')" required class="w-full" />
+        </div>
 
-            <div v-else class="field">
-              <label class="block mb-1 text-sm font-medium">{{ $t('templates.rawHTML') }}</label>
-              <code-editor lang="html" v-model="form.body" name="body" />
-            </div>
+        <template v-if="form.body !== null">
+          <visual-editor v-if="form.type === 'campaign_visual'" name="body" :source="form.bodySource"
+            @change="onChangeVisualEditor" height="70vh" />
+
+          <div v-else class="lm-field">
+            <label class="lm-label">{{ $t('templates.rawHTML') }}</label>
+            <code-editor lang="html" v-model="form.body" name="body" />
+          </div>
+        </template>
+
+        <p class="template-help">
+          <template v-if="form.type === 'campaign'">
+            {{ $t('templates.placeholderHelp', { placeholder: egPlaceholder }) }}
           </template>
-
-          <p class="template-help">
-            <template v-if="form.type === 'campaign'">
-              {{ $t('templates.placeholderHelp', { placeholder: egPlaceholder }) }}
-            </template>
-            <a target="_blank" rel="noopener noreferer" href="https://listmonk.app/docs/templating">
-              {{ $t('globals.buttons.learnMore') }}
-            </a>
-          </p>
+          <a target="_blank" rel="noopener noreferer" href="https://listmonk.app/docs/templating">
+            {{ $t('globals.buttons.learnMore') }}
+          </a>
+        </p>
       </div>
 
       <div class="lm-form-footer">
@@ -196,6 +187,15 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.lm-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0; }
+.lm-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
+
+.name-type-row {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 1rem;
+  align-items: start;
+}
 
 .template-help { font-size: 0.78rem; color: var(--lm-text-subtle); margin: 0; }
 </style>
