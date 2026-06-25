@@ -89,7 +89,10 @@
             <PvProgressSpinner style="width:2rem;height:2rem" stroke-width="3" />
           </div>
           <chart v-else-if="campaignViews" type="line" :data="campaignViews" />
-          <p v-else class="chart-empty">No data</p>
+          <div v-else class="chart-empty">
+            <i class="pi pi-chart-line chart-empty-icon" />
+            <span>No campaign data yet</span>
+          </div>
         </div>
       </div>
 
@@ -102,7 +105,10 @@
             <PvProgressSpinner style="width:2rem;height:2rem" stroke-width="3" />
           </div>
           <chart v-else-if="campaignClicks" type="line" :data="campaignClicks" />
-          <p v-else class="chart-empty">No data</p>
+          <div v-else class="chart-empty">
+            <i class="pi pi-chart-line chart-empty-icon" />
+            <span>No campaign data yet</span>
+          </div>
         </div>
       </div>
     </div>
@@ -241,7 +247,12 @@ export default {
   display: flex;
   gap: 1rem;
   align-items: flex-start;
-  transition: box-shadow 0.15s;
+  transition: box-shadow 0.18s, transform 0.18s;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    transform: translateY(-1px);
+  }
 }
 
 .stat-icon {
@@ -254,8 +265,10 @@ export default {
   flex-shrink: 0;
 
   i { font-size: 1.15rem; }
-  &--green  { background: var(--lm-success-bg); color: var(--lm-success); }
-  &--orange { background: var(--lm-surface)7ed; color: #f97316; }
+  &--blue   { background: #eff6ff; color: #2563eb; }
+  &--green  { background: var(--lm-success-bg); color: #16a34a; }
+  &--purple { background: #f5f3ff; color: #7c3aed; }
+  &--orange { background: #fff7ed; color: #ea580c; }
 }
 
 .stat-body {
@@ -325,14 +338,27 @@ export default {
   justify-content: center;
 }
 
-.chart-loading,
-.chart-empty {
+.chart-loading {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
+}
+
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
   color: var(--lm-text-subtle);
   font-size: 0.875rem;
+}
+
+.chart-empty-icon {
+  font-size: 1.75rem;
+  opacity: 0.4;
 }
 
 .dash-cache-note {
