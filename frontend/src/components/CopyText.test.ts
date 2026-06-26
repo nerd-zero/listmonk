@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  describe, it, expect, vi, beforeEach,
+} from 'vitest';
 import { mount } from '@vue/test-utils';
 import CopyText from './CopyText.vue';
 import { testI18n } from '../test/i18n';

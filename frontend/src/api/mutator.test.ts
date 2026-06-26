@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  describe, it, expect, vi, beforeEach,
+} from 'vitest';
 
 // Mock showToast before importing the mutator so the error interceptor
 // can call it without needing a real PrimeVue instance.

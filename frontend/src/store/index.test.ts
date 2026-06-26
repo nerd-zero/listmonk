@@ -1,4 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  describe, it, expect, beforeEach,
+} from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useMainStore } from './index';
 import { models } from '../constants';

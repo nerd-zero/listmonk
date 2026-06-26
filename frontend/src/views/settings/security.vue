@@ -167,13 +167,14 @@ const { $can } = useGlobal();
 const { listUserRoles, listListRoles } = getRoles();
 const { t } = useI18n();
 const store = useMainStore();
-const { serverConfig, userRoles, listRoles } = storeToRefs(store);
+const { serverConfig: serverConfigRef, userRoles, listRoles } = storeToRefs(store);
+const serverConfig = computed(() => serverConfigRef.value as any);
 const clientIdEl = ref<any>(null);
 const data = props.form;
 
 const listRoleOptions = computed(() => [
   { id: null, name: `— ${t('globals.terms.none')} —` },
-  ...listRoles.value,
+  ...((listRoles.value as any[]) || []),
 ]);
 
 const trustedURLs = computed({

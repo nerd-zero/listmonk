@@ -91,5 +91,14 @@ module.exports = {
         'no-restricted-syntax': 'off',
       },
     },
+    {
+      files: ['**/*.test.ts', 'src/test/**/*.ts'],
+      rules: {
+        'import/no-extraneous-dependencies': 'off',
+        'import/prefer-default-export': 'off',
+        'no-restricted-syntax': 'off',
+        'import/first': 'off',
+      },
+    },
   ],
 };
