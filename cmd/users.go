@@ -284,6 +284,13 @@ func (a *App) DeleteUsers(c echo.Context) error {
 }
 
 // GetUserProfile fetches the uesr profile for the currently logged in user.
+//
+//	@ID			getUserProfile
+//	@Summary	Get current user profile
+//	@Tags		users
+//	@Produce	json
+//	@Success	200	{object}	User
+//	@Router		/api/profile [get]
 func (a *App) GetUserProfile(c echo.Context) error {
 	// Get the authenticated user.
 	user := auth.GetUser(c)
@@ -296,6 +303,16 @@ func (a *App) GetUserProfile(c echo.Context) error {
 }
 
 // UpdateUserProfile update's the current user's profile.
+//
+//	@ID			updateUserProfile
+//	@Summary	Update current user profile
+//	@Tags		users
+//	@Accept		json
+//	@Produce	json
+//	@Param		body	body		User	true	"Profile fields"
+//	@Success	200		{object}	User
+//	@Failure	400		{object}	echo.HTTPError
+//	@Router		/api/profile [put]
 func (a *App) UpdateUserProfile(c echo.Context) error {
 	// Get the authenticated user.
 	user := auth.GetUser(c)

@@ -2392,6 +2392,44 @@ paths:
       summary: Get a media item
       tags:
       - media
+  /api/profile:
+    get:
+      operationId: getUserProfile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+      summary: Get current user profile
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      operationId: updateUserProfile
+      parameters:
+      - description: Profile fields
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update current user profile
+      tags:
+      - users
   /api/roles/{id}:
     delete:
       operationId: deleteRole
