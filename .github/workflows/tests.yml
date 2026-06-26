@@ -57,14 +57,19 @@ jobs:
           LISTMONK_db__database: listmonk
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Frontend lint
+  # Frontend build + lint + unit tests
   # ──────────────────────────────────────────────────────────────────────────
   # NOTE: vue-tsc type checking is not yet enforced here — there are ~120
   # pre-existing type errors from the JS→TS migration that need to be resolved
   # first. Add `yarn vue-tsc --noEmit` once those are fixed.
-  frontend-lint:
-    name: Frontend lint
+  frontend:
+    name: Frontend (${{ matrix.step }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        step: [build, lint, unit]
 
     steps:
       - uses: actions/checkout@v4
@@ -80,38 +85,28 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Generate API client
+        working-directory: frontend
+        run: yarn gen:api
+
+      - name: Build
+        if: matrix.step == 'build'
+        working-directory: frontend
+        run: yarn build
+
       - name: Lint
+        if: matrix.step == 'lint'
         working-directory: frontend
         run: yarn lint
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # Frontend unit tests (Vitest)
-  # ──────────────────────────────────────────────────────────────────────────
-  frontend-unit:
-    name: Frontend unit tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
-
-      - name: Install dependencies
-        working-directory: frontend
-        run: yarn install --frozen-lockfile
-
-      - name: Run unit tests with coverage
+      - name: Unit tests
+        if: matrix.step == 'unit'
         working-directory: frontend
         run: yarn test:coverage
 
       - name: Upload coverage report
+        if: matrix.step == 'unit'
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: coverage-report
           path: frontend/coverage/
