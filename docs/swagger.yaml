@@ -2117,6 +2117,46 @@ paths:
       summary: Update a list
       tags:
       - lists
+  /api/lists/{id}/scrub:
+    post:
+      operationId: scrubList
+      parameters:
+      - description: List ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Trigger Scrub validation on a list
+      tags:
+      - settings
+  /api/lists/scrub:
+    get:
+      operationId: getScrubListStatus
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get Scrub list validation status
+      tags:
+      - settings
   /api/logout:
     post:
       operationId: logout

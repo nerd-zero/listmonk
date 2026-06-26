@@ -282,7 +282,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { regDuration } from '../../constants';
+import { regDuration } from '@/constants.ts';
 
 const props = defineProps<{ form?: any }>();
 const { t } = useI18n();

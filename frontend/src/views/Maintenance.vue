@@ -130,8 +130,12 @@ import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
+import { getMaintenance } from '../api/generated/endpoints/maintenance/maintenance';
+import { getSettings as settingsApi } from '../api/generated/endpoints/settings/settings';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { gcSubscribers, gcSubscriptions, gcCampaignAnalytics } = getMaintenance();
+const { getSettings, getServerConfig, updateSettingByKey } = settingsApi();
 const { t, tc } = useI18n();
 const { loading } = storeToRefs(useMainStore());
 
@@ -175,7 +179,7 @@ function formatDateTime(s: any) { return dayjs(s).format('YYYY-MM-DD'); }
 
 function deleteSubscribers() {
   $utils.confirm(null, () => {
-    $api.deleteGCSubscribers(subscriberType.value).then((data: any) => {
+    gcSubscribers(subscriberType.value).then((data: any) => {
       $utils.toast(t('globals.messages.deletedCount', { name: tc('globals.terms.subscribers', 2), num: data.count }));
     });
   });
@@ -183,7 +187,8 @@ function deleteSubscribers() {
 
 function deleteSubscriptions() {
   $utils.confirm(null, () => {
-    $api.deleteGCSubscriptions(subscriptionDate.value).then((data: any) => {
+    const beforeDate = dayjs(subscriptionDate.value).toISOString();
+    gcSubscriptions({ before_date: beforeDate }).then((data: any) => {
       $utils.toast(t('globals.messages.deletedCount', { name: tc('globals.terms.subscriptions', 2), num: data.count }));
     });
   });
@@ -191,14 +196,15 @@ function deleteSubscriptions() {
 
 function deleteAnalytics() {
   $utils.confirm(null, () => {
-    $api.deleteGCCampaignAnalytics(analyticsType.value, analyticsDate.value).then(() => {
+    const beforeDate = dayjs(analyticsDate.value).toISOString();
+    gcCampaignAnalytics(analyticsType.value, { before_date: beforeDate }).then(() => {
       $utils.toast(t('globals.messages.done'));
     });
   });
 }
 
 function loadDBSettings() {
-  $api.getSettings().then((data: any) => {
+  getSettings().then((data: any) => {
     if (data['maintenance.db'] !== undefined) {
       dbSettings.value = { ...data['maintenance.db'] };
     }
@@ -208,8 +214,8 @@ function loadDBSettings() {
 async function onUpdateDBSettings() {
   isLoading.value = true;
   try {
-    await $api.updateSettingsByKey('maintenance.db', dbSettings.value);
-    await $api.getServerConfig();
+    await updateSettingByKey('maintenance.db', dbSettings.value);
+    await getServerConfig();
   } finally {
     isLoading.value = false;
   }

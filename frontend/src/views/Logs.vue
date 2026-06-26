@@ -13,17 +13,17 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useMainStore } from '../store';
-import { useGlobal } from '../composables/useGlobal';
 import LogView from '../components/LogView.vue';
+import { getSettings } from '../api/generated/endpoints/settings/settings';
 
-const { $api } = useGlobal();
 const { loading } = storeToRefs(useMainStore());
+const { getLogs: fetchLogs } = getSettings();
 
 const lines = ref<unknown[]>([]);
 let pollId: ReturnType<typeof setInterval> | null = null;
 
 function getLogs() {
-  $api.getLogs().then((data: unknown) => {
+  fetchLogs().then((data: unknown) => {
     lines.value = data as unknown[];
   });
 }

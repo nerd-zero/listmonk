@@ -130,10 +130,10 @@ import dayjs from 'dayjs';
 import { storeToRefs } from 'pinia';
 import { useMainStore } from '../store';
 import { colors } from '../constants';
-import { useGlobal } from '../composables/useGlobal';
 import Chart from '../components/Chart.vue';
+import { getDashboard } from '../api/generated/endpoints/dashboard/dashboard';
 
-const { $api } = useGlobal();
+const { getDashboardCounts, getDashboardCharts } = getDashboard();
 const { refreshTick, settings, profile } = storeToRefs(useMainStore());
 
 const isChartsLoading = ref(true);
@@ -174,12 +174,12 @@ function fetchData() {
   isCountsLoading.value = true;
   isChartsLoading.value = true;
 
-  $api.getDashboardCounts().then((data: any) => {
+  getDashboardCounts().then((data: any) => {
     counts.value = data;
     isCountsLoading.value = false;
   });
 
-  $api.getDashboardCharts().then((data: any) => {
+  getDashboardCharts().then((data: any) => {
     isChartsLoading.value = false;
     campaignViews.value = makeChart(data.campaignViews);
     campaignClicks.value = makeChart(data.linkClicks);

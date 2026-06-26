@@ -53,7 +53,7 @@
       >
         <template #header>
           <div class="table-toolbar">
-            <form class="search-form" @submit.prevent="getLists">
+            <form class="search-form" @submit.prevent="fetchLists">
               <PvIconField>
                 <PvInputIcon class="pi pi-search" />
                 <PvInputText
@@ -77,7 +77,7 @@
                   </a>
                 </template>
               </span>
-              <button type="button" class="bulk-btn bulk-btn--danger" @click.prevent="deleteLists" data-cy="btn-delete-lists">
+              <button type="button" class="bulk-btn bulk-btn--danger" @click.prevent="onDeleteLists" data-cy="btn-delete-lists">
                 <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
               </button>
             </div>
@@ -191,7 +191,7 @@
                 data-cy="btn-scrub"
                 v-tooltip.bottom="$t('settings.scrub.scrubList')"
                 :disabled="!!scrubStatus[data.id]?.activeJobRequestId"
-                @click="$utils.confirm($t('settings.scrub.scrubListConfirm', { name: data.name }), () => scrubList(data))"
+                @click="$utils.confirm($t('settings.scrub.scrubListConfirm', { name: data.name }), () => onScrubList(data))"
               >
                 <i class="pi pi-shield" />
               </button>
@@ -212,7 +212,7 @@
                 class="row-action-btn row-action-btn--danger"
                 data-cy="btn-delete"
                 v-tooltip.bottom="$t('globals.buttons.delete')"
-                @click="deleteList(data)"
+                @click="onDeleteList(data)"
               >
 <i class="pi pi-trash" />
 </button>
@@ -247,12 +247,18 @@ import {
 import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { useMainStore } from '../store';
+import { useMainStore } from '@/store';
 import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import ListForm from './ListForm.vue';
+import { getLists as listsApi } from '../api/generated/endpoints/lists/lists';
+import { getCampaigns as campaignsApi } from '../api/generated/endpoints/campaigns/campaigns';
+import { getSettings as settingsApi } from '../api/generated/endpoints/settings/settings';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { listLists, getList, deleteList, deleteLists } = listsApi();
+const { createCampaign } = campaignsApi();
+const { getScrubListStatus, scrubList } = settingsApi();
 const { t, tc } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -279,13 +285,13 @@ const numSelectedLists = computed(() => (bulk.all ? (lists.value as any).total :
 
 function onPageChange(p: number) {
   queryParams.page = p;
-  getLists();
+  fetchLists();
 }
 
 function onSort(field: string, direction: string) {
   queryParams.orderBy = field;
   queryParams.order = direction;
-  getLists();
+  fetchLists();
 }
 
 function showEditForm(list: any) {
@@ -300,7 +306,7 @@ function showNewForm() {
   isEditing.value = false;
 }
 
-function formFinished() { getLists(); }
+function formFinished() { fetchLists(); }
 
 function onFormClose() {
   if (route.params.id) router.push({ name: 'lists' });
@@ -316,7 +322,7 @@ function filterStatuses(list: any) {
 }
 
 function fetchScrubStatus() {
-  $api.getScrubListStatus().then((data: any) => {
+  getScrubListStatus().then((data: any) => {
     const m: Record<number, any> = {};
     (Array.isArray(data) ? data : []).forEach((l: any) => {
       m[l.id] = { activeJobRequestId: l.activeJobRequestId, lastResult: l.lastResult };
@@ -325,31 +331,30 @@ function fetchScrubStatus() {
   }).catch(() => {});
 }
 
-function getLists() {
-  $api.queryLists({
+function fetchLists() {
+  listLists({
     page: queryParams.page,
     query: queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
-    order_by: queryParams.orderBy,
-    order: queryParams.order,
-    status: queryParams.status,
+    order_by: queryParams.orderBy as any,
+    order: queryParams.order as any,
+    status: queryParams.status as any,
   }).then((resp: any) => { lists.value = resp; });
-  $api.getLists({ minimal: true, per_page: 'all', status: 'active' });
   if ((serverConfig.value as any).scrubEnabled) fetchScrubStatus();
 }
 
-function scrubList(list: any) {
-  $api.scrubList(list.id).then(() => {
+function onScrubList(list: any) {
+  scrubList(list.id).then(() => {
     $utils.toast(t('settings.scrub.scrubJobStarted'));
     fetchScrubStatus();
   });
 }
 
-function deleteList(list: any) {
+function onDeleteList(list: any) {
   $utils.confirm(
     t('lists.confirmDelete'),
     () => {
-      $api.deleteList(list.id).then(() => {
-        getLists();
+      deleteList(list.id).then(() => {
+        fetchLists();
         $utils.toast(t('globals.messages.deleted', { name: list.name }));
       });
     },
@@ -362,7 +367,7 @@ function onTableCheck() {
   if (bulk.checked.length !== (lists.value as any).total) bulk.all = false;
 }
 
-function deleteLists() {
+function onDeleteLists() {
   const name = tc('globals.terms.list', numSelectedLists.value);
   const fn = () => {
     const params: any = {};
@@ -372,8 +377,8 @@ function deleteLists() {
       params.query = queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' ');
       params.all = bulk.all;
     }
-    $api.deleteLists(params).then(() => {
-      getLists();
+    deleteLists(params).then(() => {
+      fetchLists();
       $utils.toast(tc('globals.messages.deletedCount', numSelectedLists.value, { num: numSelectedLists.value, name }));
     });
   };
@@ -381,7 +386,7 @@ function deleteLists() {
 }
 
 function createOptinCampaign(list: any) {
-  const data = {
+  const data: any = {
     name: t('lists.optinTo', { name: list.name }),
     subject: t('lists.confirmSub', { name: list.name }),
     lists: [list.id],
@@ -390,18 +395,18 @@ function createOptinCampaign(list: any) {
     messenger: 'email',
     type: 'optin',
   };
-  $api.createCampaign(data).then((d: any) => {
+  createCampaign(data).then((d: any) => {
     router.push({ name: 'campaign', hash: '#content', params: { id: d.id } });
   });
 }
 
-watch(() => refreshTick.value, () => { getLists(); });
+watch(() => refreshTick.value, () => { fetchLists(); });
 
 onMounted(() => {
   if (route.params.id) {
-    $api.getList(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
+    getList(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
   } else {
-    getLists();
+    fetchLists();
   }
 });
 </script>

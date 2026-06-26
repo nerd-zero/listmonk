@@ -600,6 +600,14 @@ func (a *App) GetScrubStats(c echo.Context) error {
 
 // GetScrubListStatus proxies the Scrub integration lists endpoint, which returns
 // each list along with its active job request_id and last validation result.
+//
+//	@ID			getScrubListStatus
+//	@Summary	Get Scrub list validation status
+//	@Tags		settings
+//	@Produce	json
+//	@Success	200	{object}	object
+//	@Failure	400	{object}	echo.HTTPError
+//	@Router		/api/lists/scrub [get]
 func (a *App) GetScrubListStatus(c echo.Context) error {
 	s, err := a.core.GetSettings()
 	if err != nil {
@@ -638,6 +646,15 @@ func (a *App) GetScrubListStatus(c echo.Context) error {
 }
 
 // ScrubList triggers a Scrub email validation job on a subscriber list.
+//
+//	@ID			scrubList
+//	@Summary	Trigger Scrub validation on a list
+//	@Tags		settings
+//	@Produce	json
+//	@Param		id	path	int	true	"List ID"
+//	@Success	200	{object}	object
+//	@Failure	400	{object}	echo.HTTPError
+//	@Router		/api/lists/{id}/scrub [post]
 func (a *App) ScrubList(c echo.Context) error {
 	id := getID(c)
 
