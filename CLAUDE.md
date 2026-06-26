@@ -34,6 +34,16 @@ Cypress config: `frontend/cypress.config.js`. Tests use admin/listmonk credentia
 make dist          # Builds backend + frontend + packs with stuffbin into single binary
 ```
 
+### API type generation (swaggo + orval)
+```bash
+# 1. Regenerate OpenAPI spec from Go handler annotations:
+swag init -g cmd/main.go -o docs/ --parseDependency --parseInternal
+
+# 2. Regenerate TypeScript Axios client + model interfaces:
+cd frontend && yarn gen:api
+```
+Swagger UI is available at `/api/swagger/index.html` when the server is running. After adding or changing a handler, update its swaggo annotations in `cmd/<file>.go`, re-run `swag init`, then `yarn gen:api`.
+
 ## Architecture
 
 ### Backend (Go)
@@ -57,12 +67,14 @@ Static assets (frontend dist, schema, i18n files) are embedded into the binary a
 
 ### Frontend (Vue 3 + PrimeVue)
 
-**Stack**: Vue 3 Options API · PrimeVue 4 (Aura theme, blue preset) · Pinia · Vue Router 4 · PrimeFlex · Axios
+**Stack**: Vue 3 `<script setup lang="ts">` Composition API · PrimeVue 4 (Aura theme, blue preset) · Pinia · Vue Router 4 · PrimeFlex · Axios · orval-generated TypeScript API client
 
 **Key files**:
-- `frontend/src/main.js` — app bootstrap: creates Vue app, registers PrimeVue components globally with `Pv*` prefix (e.g. `PvButton`, `PvDataTable`), loads server config and user profile before mount.
+- `frontend/src/main.ts` — app bootstrap: creates Vue app, registers PrimeVue components globally with `Pv*` prefix (e.g. `PvButton`, `PvDataTable`), loads server config and user profile before mount.
 - `frontend/src/store/index.js` — single Pinia store (`useMainStore`). Holds all model data (lists, campaigns, subscribers, etc.), per-model `loading` flags, and a `refreshTick` counter used to trigger view re-fetches without a full page reload.
-- `frontend/src/api/index.js` — all Axios API calls. Interceptors auto-convert snake_case responses to camelCase, set loading flags, and update the store. Each call can pass `{ loading: 'modelName', store: 'modelName' }` config to wire these automatically.
+- `frontend/src/api/index.js` — hand-written Axios API calls (legacy). Interceptors auto-convert snake_case responses to camelCase. New code should use `src/api/generated/` (orval-generated typed client).
+- `frontend/src/api/generated/` — auto-generated typed Axios functions and TypeScript model interfaces (gitignored, run `yarn gen:api` to regenerate). Split by tag: `endpoints/subscribers`, `endpoints/campaigns`, etc. Model interfaces in `model/`.
+- `frontend/src/api/mutator.ts` — custom Axios instance used by the orval-generated client: handles response envelope unwrapping, camelCase conversion, and error toasts.
 - `frontend/src/router/index.js` — 35 lazily-loaded routes.
 - `frontend/src/assets/style.scss` — global SCSS. CSS custom properties for the design system are defined here (`--lm-primary`, `--lm-surface`, `--lm-border`, `--lm-text`, `--lm-text-muted`, `--lm-bg`, `--lm-bg-subtle`).
 - `frontend/src/constants.js` — model names, URI prefixes, regex helpers (e.g. `regDuration`).
