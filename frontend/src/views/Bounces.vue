@@ -117,7 +117,9 @@ import { getBounces as bouncesApi } from '../api/generated/endpoints/bounces/bou
 import { getSubscribers as subscribersApi } from '../api/generated/endpoints/subscribers/subscribers';
 
 const { $utils } = useGlobal();
-const { listBounces, deleteBounce, deleteBounces, blocklistBouncedSubscribers } = bouncesApi();
+const {
+  listBounces, deleteBounce, deleteBounces, blocklistBouncedSubscribers,
+} = bouncesApi();
 const { blocklistSubscribers } = subscribersApi();
 const { t, tc } = useI18n();
 const route = useRoute();

@@ -51,7 +51,7 @@
                   </a>
                 </template>
               </span>
-              <button type="button" class="bulk-btn bulk-btn--danger" @click.prevent="deleteCampaigns" data-cy="btn-delete-campaigns">
+              <button type="button" class="bulk-btn bulk-btn--danger" @click.prevent="onDeleteCampaigns" data-cy="btn-delete-campaigns">
                 <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
               </button>
             </div>
@@ -355,7 +355,7 @@ function onTableCheck() {
   if (bulk.checked.length !== (campaigns.value as any).total) bulk.all = false;
 }
 
-function deleteCampaigns() {
+function onDeleteCampaigns() {
   const name = tc('globals.terms.campaign', numSelectedCampaigns.value);
   const fn = () => {
     const params: any = {};

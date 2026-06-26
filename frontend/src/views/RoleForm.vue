@@ -132,7 +132,9 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits(['finished', 'close']);
 
 const { $utils, $can } = useGlobal();
-const { createUserRole, updateUserRole, createListRole, updateListRole } = rolesApi();
+const {
+  createUserRole, updateUserRole, createListRole, updateListRole,
+} = rolesApi();
 const { t } = useI18n();
 const { loading, serverConfig, lists } = storeToRefs(useMainStore());
 

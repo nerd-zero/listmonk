@@ -156,7 +156,9 @@ import LogView from '../components/LogView.vue';
 import { getImport } from '../api/generated/endpoints/import/import';
 
 const { $utils } = useGlobal();
-const { getImportLogs, getImportStatus, stopImport, importSubscribers } = getImport();
+const {
+  getImportLogs, getImportStatus, stopImport, importSubscribers,
+} = getImport();
 const { t } = useI18n();
 const route = useRoute();
 const { lists } = storeToRefs(useMainStore());

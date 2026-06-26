@@ -256,7 +256,9 @@ import { getCampaigns as campaignsApi } from '../api/generated/endpoints/campaig
 import { getSettings as settingsApi } from '../api/generated/endpoints/settings/settings';
 
 const { $utils } = useGlobal();
-const { listLists, getList, deleteList, deleteLists } = listsApi();
+const {
+  listLists, getList, deleteList, deleteLists,
+} = listsApi();
 const { createCampaign } = campaignsApi();
 const { getScrubListStatus, scrubList } = settingsApi();
 const { t, tc } = useI18n();

@@ -190,7 +190,7 @@ const {
   createSubscriber, updateSubscriber, sendSubscriberOptin, deleteSubscriberBounces,
 } = subscribersApi();
 const { getSubscriberBounces } = bouncesApi();
-const { t, tc } = useI18n();
+const { t } = useI18n();
 const { lists, loading } = storeToRefs(useMainStore());
 
 const focusEl = ref<any>(null);

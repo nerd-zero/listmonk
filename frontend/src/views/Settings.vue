@@ -119,7 +119,7 @@ function fetchSettings() {
     let d: any = {};
     try {
       d = JSON.parse(JSON.stringify(data));
-    } catch (err) {
+    } catch {
       return;
     }
     for (let i = 0; i < d.smtp.length; i += 1) {

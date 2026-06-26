@@ -77,7 +77,9 @@ import RoleForm from './RoleForm.vue';
 import { getRoles as rolesApi } from '../api/generated/endpoints/roles/roles';
 
 const { $utils } = useGlobal();
-const { listUserRoles, listListRoles, createUserRole, createListRole, deleteRole } = rolesApi();
+const {
+  listUserRoles, listListRoles, createUserRole, createListRole, deleteRole,
+} = rolesApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();

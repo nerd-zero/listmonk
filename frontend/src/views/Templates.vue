@@ -104,7 +104,9 @@ import { getTemplates as templatesApi } from '../api/generated/endpoints/templat
 
 const { $utils } = useGlobal();
 const store = useMainStore();
-const { listTemplates, createTemplate, deleteTemplate, setDefaultTemplate } = templatesApi();
+const {
+  listTemplates, createTemplate, deleteTemplate, setDefaultTemplate,
+} = templatesApi();
 const { t } = useI18n();
 const { refreshTick, templates, loading } = storeToRefs(store);
 

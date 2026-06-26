@@ -217,8 +217,8 @@ const isURLOk = computed(() => {
 
 onMounted(() => {
   if ($can('roles:get')) {
-    listUserRoles().then((data: any) => { store.setModelResponse({ model: 'userRoles', data }); });
-    listListRoles().then((data: any) => { store.setModelResponse({ model: 'listRoles', data }); });
+    listUserRoles().then((res: any) => { store.setModelResponse({ model: 'userRoles', data: res }); });
+    listListRoles().then((res: any) => { store.setModelResponse({ model: 'listRoles', data: res }); });
   }
 });
 
