@@ -32,8 +32,6 @@ http.interceptors.response.use(
   },
 );
 
-export const httpMutator = <T>(config: AxiosRequestConfig): Promise<T> => {
-  return http(config) as Promise<T>;
-};
+export const httpMutator = <T>(config: AxiosRequestConfig): Promise<T> => http(config) as Promise<T>;
 
 export default httpMutator;
