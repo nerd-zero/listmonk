@@ -86,18 +86,27 @@ describe('Utils.niceNumber', () => {
     expect(u.niceNumber(9999)).toBe(9999);
   });
 
-  it('abbreviates thousands with k suffix', () => {
-    expect(u.niceNumber(10000)).toBe('10.00k');
-    expect(u.niceNumber(15500)).toBe('15.50k');
+  it('abbreviates whole thousands with k suffix (no decimals)', () => {
+    expect(u.niceNumber(10000)).toBe('10k');
+    expect(u.niceNumber(50000)).toBe('50k');
   });
 
-  it('abbreviates millions with m suffix', () => {
-    expect(u.niceNumber(1_000_000)).toBe('1.00m');
+  it('abbreviates fractional thousands to 2 decimal places', () => {
+    expect(u.niceNumber(15500)).toBe('15.50k');
+    expect(u.niceNumber(12345)).toBe('12.35k');
+  });
+
+  it('abbreviates whole millions with m suffix (no decimals)', () => {
+    expect(u.niceNumber(1_000_000)).toBe('1m');
+    expect(u.niceNumber(5_000_000)).toBe('5m');
+  });
+
+  it('abbreviates fractional millions to 2 decimal places', () => {
     expect(u.niceNumber(2_500_000)).toBe('2.50m');
   });
 
-  it('abbreviates billions with b suffix', () => {
-    expect(u.niceNumber(1_000_000_000)).toBe('1.00b');
+  it('abbreviates whole billions with b suffix (no decimals)', () => {
+    expect(u.niceNumber(1_000_000_000)).toBe('1b');
   });
 
   it('returns 0 for null and undefined', () => {

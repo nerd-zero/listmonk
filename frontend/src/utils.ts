@@ -111,7 +111,7 @@ export default class Utils {
     }
 
     const out = (n / div);
-    if (Math.floor(out) === n) {
+    if (Math.floor(out) === out) {
       return out + pfx;
     }
 
