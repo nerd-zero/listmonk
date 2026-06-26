@@ -115,7 +115,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { useMainStore } from '../../store';
+import { useMainStore } from '@/store';
 
 const props = defineProps<{ form?: any }>();
 const data = props.form;

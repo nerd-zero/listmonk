@@ -1,0 +1,3769 @@
+basePath: /
+definitions:
+  About:
+    properties:
+      build:
+        type: string
+      database:
+        items:
+          type: integer
+        type: array
+      go_arch:
+        type: string
+      go_version:
+        type: string
+      host:
+        $ref: '#/definitions/AboutHost'
+      system:
+        $ref: '#/definitions/AboutSystem'
+      version:
+        type: string
+    type: object
+  AboutHost:
+    properties:
+      arch:
+        type: string
+      hostname:
+        type: string
+      os:
+        type: string
+    type: object
+  AboutSystem:
+    properties:
+      memory_alloc_mb:
+        type: integer
+      memory_from_os_mb:
+        type: integer
+      num_cpu:
+        type: integer
+    type: object
+  AppUpdate:
+    properties:
+      messages:
+        items:
+          properties:
+            date:
+              type: string
+            description:
+              type: string
+            priority:
+              type: string
+            title:
+              type: string
+            url:
+              type: string
+          type: object
+        type: array
+      update:
+        properties:
+          description:
+            type: string
+          is_new:
+            description: This is computed and set locally based on the local version.
+            type: boolean
+          release_date:
+            type: string
+          release_version:
+            type: string
+          url:
+            type: string
+        type: object
+    type: object
+  Bounce:
+    properties:
+      campaign:
+        items:
+          type: integer
+        type: array
+      campaign_uuid:
+        type: string
+      created_at:
+        type: string
+      email:
+        description: One of these should be provided.
+        type: string
+      id:
+        type: integer
+      meta:
+        items:
+          type: integer
+        type: array
+      source:
+        type: string
+      subscriber_id:
+        type: integer
+      subscriber_status:
+        type: string
+      subscriber_uuid:
+        type: string
+      type:
+        type: string
+    type: object
+  Campaign:
+    properties:
+      altbody:
+        $ref: '#/definitions/null.String'
+      archive:
+        type: boolean
+      archive_meta:
+        items:
+          type: integer
+        type: array
+      archive_slug:
+        $ref: '#/definitions/null.String'
+      archive_template_id:
+        $ref: '#/definitions/null.Int'
+      attribs:
+        $ref: '#/definitions/JSON'
+      body:
+        type: string
+      body_source:
+        $ref: '#/definitions/null.String'
+      bounces:
+        type: integer
+      clicks:
+        type: integer
+      content_type:
+        type: string
+      created_at:
+        type: string
+      from_email:
+        type: string
+      headers:
+        items:
+          additionalProperties:
+            type: string
+          type: object
+        type: array
+      id:
+        type: integer
+      lists:
+        description: |-
+          This is a list of {list_id, name} pairs unlike Subscriber.Lists[]
+          because lists can be deleted after a campaign is finished, resulting
+          in null lists data to be returned. For that reason, campaign_lists maintains
+          campaign-list associations with a historical record of id + name that persist
+          even after a list is deleted.
+        items:
+          type: integer
+        type: array
+      media:
+        items:
+          type: integer
+        type: array
+      messenger:
+        type: string
+      name:
+        type: string
+      send_at:
+        type: string
+      sent:
+        type: integer
+      started_at:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      template_id:
+        $ref: '#/definitions/null.Int'
+      to_send:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+      views:
+        type: integer
+    type: object
+  CampaignAnalyticsCount:
+    properties:
+      campaign_id:
+        type: integer
+      count:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  CreateCampaignReq:
+    properties:
+      altbody:
+        $ref: '#/definitions/null.String'
+      archive:
+        type: boolean
+      archive_meta:
+        items:
+          type: integer
+        type: array
+      archive_slug:
+        $ref: '#/definitions/null.String'
+      archive_template_id:
+        $ref: '#/definitions/null.Int'
+      attribs:
+        $ref: '#/definitions/JSON'
+      body:
+        type: string
+      body_source:
+        $ref: '#/definitions/null.String'
+      bounces:
+        type: integer
+      clicks:
+        type: integer
+      content_type:
+        type: string
+      created_at:
+        type: string
+      from_email:
+        type: string
+      headers:
+        items:
+          additionalProperties:
+            type: string
+          type: object
+        type: array
+      id:
+        type: integer
+      lists:
+        description: |-
+          This overrides Campaign.Lists to receive and
+          write a list of int IDs during creation and updation.
+          Campaign.Lists is JSONText for sending lists children
+          to the outside world.
+        items:
+          type: integer
+        type: array
+      media:
+        items:
+          type: integer
+        type: array
+      messenger:
+        type: string
+      name:
+        type: string
+      send_at:
+        type: string
+      sent:
+        type: integer
+      started_at:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+      subscribers:
+        description: This is only relevant to campaign test requests.
+        items:
+          type: string
+        type: array
+      tags:
+        items:
+          type: string
+        type: array
+      template_id:
+        $ref: '#/definitions/null.Int'
+      to_send:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+      views:
+        type: integer
+    type: object
+  CreateSubscriberReq:
+    properties:
+      attribs:
+        $ref: '#/definitions/JSON'
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      list_uuids:
+        items:
+          type: string
+        type: array
+      lists:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      preconfirm_subscriptions:
+        type: boolean
+      status:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+    type: object
+  I18nLang:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+    type: object
+  ImportStatus:
+    properties:
+      imported:
+        type: integer
+      name:
+        type: string
+      status:
+        type: string
+      total:
+        type: integer
+    type: object
+  JSON:
+    additionalProperties: {}
+    type: object
+  List:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      optin:
+        type: string
+      status:
+        type: string
+      subscriber_count:
+        type: integer
+      subscriber_statuses:
+        $ref: '#/definitions/StringIntMap'
+      subscription_created_at:
+        type: string
+      subscription_status:
+        description: This is only relevant when querying the lists of a subscriber.
+        type: string
+      subscription_updated_at:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+    type: object
+  ListPermission:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    type: object
+  ListRole:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      lists:
+        items:
+          $ref: '#/definitions/ListPermission'
+        type: array
+      name:
+        $ref: '#/definitions/null.String'
+      updated_at:
+        type: string
+    type: object
+  ListRolePermissions:
+    properties:
+      id:
+        type: integer
+      lists:
+        items:
+          $ref: '#/definitions/ListPermission'
+        type: array
+      name:
+        type: string
+    type: object
+  PageResults:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      query:
+        type: string
+      results: {}
+      search:
+        type: string
+      total:
+        type: integer
+    type: object
+  Role:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      lists:
+        items:
+          $ref: '#/definitions/ListPermission'
+        type: array
+      name:
+        $ref: '#/definitions/null.String'
+      permissions:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  ServerConfig:
+    properties:
+      from_email:
+        type: string
+      has_legacy_user:
+        type: boolean
+      lang:
+        type: string
+      langs:
+        items:
+          $ref: '#/definitions/I18nLang'
+        type: array
+      media_provider:
+        type: string
+      messengers:
+        items:
+          type: string
+        type: array
+      needs_restart:
+        type: boolean
+      permissions:
+        items:
+          type: integer
+        type: array
+      privacy:
+        properties:
+          disable_tracking:
+            type: boolean
+          individual_tracking:
+            type: boolean
+        type: object
+      public_subscription:
+        properties:
+          altcha_complexity:
+            type: integer
+          captcha_enabled:
+            type: boolean
+          captcha_key:
+            $ref: '#/definitions/null.String'
+          captcha_provider:
+            $ref: '#/definitions/null.String'
+          enabled:
+            type: boolean
+          redirect_urls:
+            items:
+              type: string
+            type: array
+        type: object
+      root_url:
+        type: string
+      scrub_enabled:
+        type: boolean
+      update:
+        $ref: '#/definitions/AppUpdate'
+      version:
+        type: string
+    type: object
+  Settings:
+    properties:
+      app.batch_size:
+        type: integer
+      app.cache_slow_queries:
+        type: boolean
+      app.cache_slow_queries_interval:
+        type: string
+      app.check_updates:
+        type: boolean
+      app.concurrency:
+        type: integer
+      app.enable_public_archive:
+        type: boolean
+      app.enable_public_archive_rss_content:
+        type: boolean
+      app.enable_public_subscription_page:
+        type: boolean
+      app.favicon_url:
+        type: string
+      app.from_email:
+        type: string
+      app.lang:
+        type: string
+      app.logo_url:
+        type: string
+      app.max_send_errors:
+        type: integer
+      app.message_rate:
+        type: integer
+      app.message_sliding_window:
+        type: boolean
+      app.message_sliding_window_duration:
+        type: string
+      app.message_sliding_window_rate:
+        type: integer
+      app.notify_emails:
+        items:
+          type: string
+        type: array
+      app.root_url:
+        type: string
+      app.send_optin_confirmation:
+        type: boolean
+      app.show_optin_page:
+        type: boolean
+      app.site_name:
+        type: string
+      appearance.admin.custom_css:
+        type: string
+      appearance.admin.custom_js:
+        type: string
+      appearance.public.custom_css:
+        type: string
+      appearance.public.custom_js:
+        type: string
+      bounce.actions:
+        additionalProperties:
+          properties:
+            action:
+              type: string
+            count:
+              type: integer
+          type: object
+        type: object
+      bounce.azure:
+        properties:
+          enabled:
+            type: boolean
+          shared_secret:
+            type: string
+          shared_secret_header:
+            type: string
+        type: object
+      bounce.enabled:
+        type: boolean
+      bounce.forwardemail:
+        properties:
+          enabled:
+            type: boolean
+          key:
+            type: string
+        type: object
+      bounce.lettermint:
+        properties:
+          enabled:
+            type: boolean
+          key:
+            type: string
+        type: object
+      bounce.mailboxes:
+        items:
+          properties:
+            auth_protocol:
+              type: string
+            enabled:
+              type: boolean
+            host:
+              type: string
+            password:
+              type: string
+            port:
+              type: integer
+            return_path:
+              type: string
+            scan_interval:
+              type: string
+            tls_enabled:
+              type: boolean
+            tls_skip_verify:
+              type: boolean
+            type:
+              type: string
+            username:
+              type: string
+            uuid:
+              type: string
+          type: object
+        type: array
+      bounce.postmark:
+        properties:
+          enabled:
+            type: boolean
+          password:
+            type: string
+          username:
+            type: string
+        type: object
+      bounce.sendgrid_enabled:
+        type: boolean
+      bounce.sendgrid_key:
+        type: string
+      bounce.ses_enabled:
+        type: boolean
+      bounce.webhooks_enabled:
+        type: boolean
+      maintenance.db:
+        properties:
+          vacuum:
+            type: boolean
+          vacuum_cron_interval:
+            type: string
+        type: object
+      messengers:
+        items:
+          properties:
+            enabled:
+              type: boolean
+            max_conns:
+              type: integer
+            max_msg_retries:
+              type: integer
+            name:
+              type: string
+            password:
+              type: string
+            root_url:
+              type: string
+            timeout:
+              type: string
+            username:
+              type: string
+            uuid:
+              type: string
+          type: object
+        type: array
+      privacy.allow_blocklist:
+        type: boolean
+      privacy.allow_export:
+        type: boolean
+      privacy.allow_preferences:
+        type: boolean
+      privacy.allow_wipe:
+        type: boolean
+      privacy.disable_tracking:
+        type: boolean
+      privacy.domain_allowlist:
+        items:
+          type: string
+        type: array
+      privacy.domain_blocklist:
+        items:
+          type: string
+        type: array
+      privacy.exportable:
+        items:
+          type: string
+        type: array
+      privacy.individual_tracking:
+        type: boolean
+      privacy.record_optin_ip:
+        type: boolean
+      privacy.unsubscribe_header:
+        type: boolean
+      scrub:
+        properties:
+          api_key:
+            type: string
+          enabled:
+            type: boolean
+          integration_id:
+            type: integer
+          url:
+            type: string
+        type: object
+      security.captcha:
+        properties:
+          altcha:
+            properties:
+              complexity:
+                type: integer
+              enabled:
+                type: boolean
+            type: object
+          hcaptcha:
+            properties:
+              enabled:
+                type: boolean
+              key:
+                type: string
+              secret:
+                type: string
+            type: object
+        type: object
+      security.oidc:
+        properties:
+          auto_create_users:
+            type: boolean
+          client_id:
+            type: string
+          client_secret:
+            type: string
+          default_list_role_id:
+            $ref: '#/definitions/null.Int'
+          default_user_role_id:
+            $ref: '#/definitions/null.Int'
+          enabled:
+            type: boolean
+          provider_name:
+            type: string
+          provider_url:
+            type: string
+        type: object
+      security.trusted_urls:
+        items:
+          type: string
+        type: array
+      smtp:
+        items:
+          properties:
+            auth_protocol:
+              type: string
+            email_headers:
+              items:
+                additionalProperties:
+                  type: string
+                type: object
+              type: array
+            enabled:
+              type: boolean
+            from_addresses:
+              items:
+                type: string
+              type: array
+            hello_hostname:
+              type: string
+            host:
+              type: string
+            idle_timeout:
+              type: string
+            max_conns:
+              type: integer
+            max_msg_retries:
+              type: integer
+            msg_retry_delay:
+              type: string
+            name:
+              type: string
+            password:
+              type: string
+            port:
+              type: integer
+            tls_skip_verify:
+              type: boolean
+            tls_type:
+              type: string
+            username:
+              type: string
+            uuid:
+              type: string
+            wait_timeout:
+              type: string
+          type: object
+        type: array
+      upload.extensions:
+        items:
+          type: string
+        type: array
+      upload.filesystem.upload_path:
+        type: string
+      upload.filesystem.upload_uri:
+        type: string
+      upload.provider:
+        type: string
+      upload.s3.aws_access_key_id:
+        type: string
+      upload.s3.aws_default_region:
+        type: string
+      upload.s3.aws_secret_access_key:
+        type: string
+      upload.s3.bucket:
+        type: string
+      upload.s3.bucket_domain:
+        type: string
+      upload.s3.bucket_path:
+        type: string
+      upload.s3.bucket_type:
+        type: string
+      upload.s3.expiry:
+        type: string
+      upload.s3.public_url:
+        type: string
+      upload.s3.url:
+        type: string
+    type: object
+  StringIntMap:
+    additionalProperties:
+      type: integer
+    type: object
+  Subscriber:
+    properties:
+      attribs:
+        $ref: '#/definitions/JSON'
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      lists:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+    type: object
+  SubscriberActivity:
+    properties:
+      campaign_views:
+        items:
+          type: integer
+        type: array
+      link_clicks:
+        items:
+          type: integer
+        type: array
+    type: object
+  SubscriberExportProfile:
+    properties:
+      campaign_views:
+        items:
+          type: integer
+        type: array
+      link_clicks:
+        items:
+          type: integer
+        type: array
+      profile:
+        items:
+          type: integer
+        type: array
+      subscriptions:
+        items:
+          type: integer
+        type: array
+    type: object
+  SubscriberQueryReq:
+    properties:
+      action:
+        type: string
+      all:
+        type: boolean
+      ids:
+        items:
+          type: integer
+        type: array
+      list_ids:
+        items:
+          type: integer
+        type: array
+      query:
+        type: string
+      search:
+        type: string
+      status:
+        type: string
+      subscription_status:
+        type: string
+      target_list_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  Template:
+    properties:
+      body:
+        type: string
+      body_source:
+        $ref: '#/definitions/null.String'
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_default:
+        type: boolean
+      name:
+        type: string
+      subject:
+        description: Subject is only for type=tx.
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  UpdateCampaignContentReq:
+    properties:
+      altbody:
+        $ref: '#/definitions/null.String'
+      archive:
+        type: boolean
+      archive_meta:
+        items:
+          type: integer
+        type: array
+      archive_slug:
+        $ref: '#/definitions/null.String'
+      archive_template_id:
+        $ref: '#/definitions/null.Int'
+      attribs:
+        $ref: '#/definitions/JSON'
+      body:
+        type: string
+      body_source:
+        $ref: '#/definitions/null.String'
+      bounces:
+        type: integer
+      clicks:
+        type: integer
+      content_type:
+        type: string
+      created_at:
+        type: string
+      from:
+        type: string
+      from_email:
+        type: string
+      headers:
+        items:
+          additionalProperties:
+            type: string
+          type: object
+        type: array
+      id:
+        type: integer
+      lists:
+        description: |-
+          This is a list of {list_id, name} pairs unlike Subscriber.Lists[]
+          because lists can be deleted after a campaign is finished, resulting
+          in null lists data to be returned. For that reason, campaign_lists maintains
+          campaign-list associations with a historical record of id + name that persist
+          even after a list is deleted.
+        items:
+          type: integer
+        type: array
+      media:
+        items:
+          type: integer
+        type: array
+      messenger:
+        type: string
+      name:
+        type: string
+      send_at:
+        type: string
+      sent:
+        type: integer
+      started_at:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      template_id:
+        $ref: '#/definitions/null.Int'
+      to:
+        type: string
+      to_send:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+      views:
+        type: integer
+    type: object
+  User:
+    properties:
+      avatar:
+        $ref: '#/definitions/null.String'
+      created_at:
+        type: string
+      email:
+        $ref: '#/definitions/null.String'
+      id:
+        type: integer
+      list_role:
+        $ref: '#/definitions/ListRolePermissions'
+      list_role_id:
+        type: integer
+      loggedin_at:
+        type: string
+      name:
+        type: string
+      password:
+        allOf:
+        - $ref: '#/definitions/null.String'
+        description: For API users, this is the plaintext API token.
+      password_login:
+        type: boolean
+      status:
+        type: string
+      twofa_type:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+      user_role:
+        description: Non-DB fields filled post-retrieval.
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+          permissions:
+            items:
+              type: string
+            type: array
+        type: object
+      user_role_id:
+        type: integer
+      username:
+        type: string
+    type: object
+  echo.HTTPError:
+    properties:
+      message: {}
+    type: object
+  null.Int:
+    properties:
+      int:
+        type: integer
+      valid:
+        type: boolean
+    type: object
+  null.String:
+    properties:
+      string:
+        type: string
+      valid:
+        type: boolean
+    type: object
+host: localhost:9000
+info:
+  contact: {}
+  description: listmonk mailing list manager REST API.
+  title: listmonk API
+  version: "1.0"
+paths:
+  /api/about:
+    get:
+      operationId: getAboutInfo
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/About'
+      summary: Get application info
+      tags:
+      - settings
+  /api/admin/reload:
+    post:
+      operationId: reloadApp
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Reload the application
+      tags:
+      - settings
+  /api/bounces:
+    delete:
+      operationId: deleteBounces
+      parameters:
+      - description: Delete all bounces
+        in: query
+        name: all
+        type: boolean
+      - collectionFormat: csv
+        description: Bounce IDs to delete
+        in: query
+        items:
+          type: integer
+        name: id
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete bounce records
+      tags:
+      - bounces
+    get:
+      operationId: listBounces
+      parameters:
+      - description: Filter by campaign ID
+        in: query
+        name: campaign_id
+        type: integer
+      - description: Filter by bounce source
+        in: query
+        name: source
+        type: string
+      - description: Field to order results by
+        in: query
+        name: order_by
+        type: string
+      - description: Sort order (ASC or DESC)
+        in: query
+        name: order
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PageResults'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List bounce records
+      tags:
+      - bounces
+  /api/bounces/{id}:
+    delete:
+      operationId: deleteBounce
+      parameters:
+      - description: Bounce ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a bounce record
+      tags:
+      - bounces
+    get:
+      operationId: getBounce
+      parameters:
+      - description: Bounce ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Bounce'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a bounce record
+      tags:
+      - bounces
+  /api/bounces/blocklist:
+    put:
+      operationId: blocklistBouncedSubscribers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Blocklist all bounced subscribers
+      tags:
+      - bounces
+  /api/campaigns:
+    delete:
+      operationId: deleteCampaigns
+      parameters:
+      - collectionFormat: csv
+        description: Campaign IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        type: array
+      - description: SQL-like filter query
+        in: query
+        name: query
+        type: string
+      - description: Delete all campaigns matching the query
+        in: query
+        name: all
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete campaigns (bulk)
+      tags:
+      - campaigns
+    get:
+      operationId: listCampaigns
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        type: string
+      - collectionFormat: csv
+        description: Campaign status filter
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - collectionFormat: csv
+        description: Tags
+        in: query
+        items:
+          type: string
+        name: tag
+        type: array
+      - description: Order by field
+        in: query
+        name: order_by
+        type: string
+      - description: Sort order (asc/desc)
+        in: query
+        name: order
+        type: string
+      - description: Omit campaign body from response
+        in: query
+        name: no_body
+        type: boolean
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PageResults'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get campaigns
+      tags:
+      - campaigns
+    post:
+      consumes:
+      - application/json
+      operationId: createCampaign
+      parameters:
+      - description: Campaign to create
+        in: body
+        name: campaign
+        required: true
+        schema:
+          $ref: '#/definitions/CreateCampaignReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Campaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a campaign
+      tags:
+      - campaigns
+  /api/campaigns/{id}:
+    delete:
+      operationId: deleteCampaign
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a campaign
+      tags:
+      - campaigns
+    get:
+      operationId: getCampaign
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Omit campaign body from response
+        in: query
+        name: no_body
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Campaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a campaign
+      tags:
+      - campaigns
+    put:
+      consumes:
+      - application/json
+      operationId: updateCampaign
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Campaign fields to update
+        in: body
+        name: campaign
+        required: true
+        schema:
+          $ref: '#/definitions/CreateCampaignReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Campaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a campaign
+      tags:
+      - campaigns
+  /api/campaigns/{id}/archive:
+    put:
+      consumes:
+      - application/json
+      operationId: updateCampaignArchive
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Archive settings
+        in: body
+        name: req
+        required: true
+        schema:
+          properties:
+            archive:
+              type: boolean
+            archive_meta:
+              type: object
+            archive_slug:
+              type: string
+            archive_template_id:
+              type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update campaign archive settings
+      tags:
+      - campaigns
+  /api/campaigns/{id}/content:
+    post:
+      consumes:
+      - application/json
+      operationId: setCampaignContent
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Content conversion request
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateCampaignContentReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Convert campaign content format
+      tags:
+      - campaigns
+  /api/campaigns/{id}/preview:
+    get:
+      consumes:
+      - multipart/form-data
+      operationId: previewCampaign
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Content type override
+        in: formData
+        name: content_type
+        type: string
+      - description: Template ID to use for preview
+        in: formData
+        name: template_id
+        type: integer
+      - description: Campaign body override (POST only)
+        in: formData
+        name: body
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Rendered HTML or plain text
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a campaign
+      tags:
+      - campaigns
+    post:
+      consumes:
+      - multipart/form-data
+      operationId: previewCampaign
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Content type override
+        in: formData
+        name: content_type
+        type: string
+      - description: Template ID to use for preview
+        in: formData
+        name: template_id
+        type: integer
+      - description: Campaign body override (POST only)
+        in: formData
+        name: body
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Rendered HTML or plain text
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a campaign
+      tags:
+      - campaigns
+  /api/campaigns/{id}/preview/archive:
+    post:
+      consumes:
+      - multipart/form-data
+      operationId: previewCampaignArchive
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Template ID to use for preview
+        in: formData
+        name: template_id
+        type: integer
+      - description: Archive meta JSON
+        in: formData
+        name: archive_meta
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Rendered HTML
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a campaign as an archive page
+      tags:
+      - campaigns
+  /api/campaigns/{id}/status:
+    put:
+      consumes:
+      - application/json
+      operationId: updateCampaignStatus
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New status
+        in: body
+        name: req
+        required: true
+        schema:
+          properties:
+            status:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Campaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update campaign status
+      tags:
+      - campaigns
+  /api/campaigns/{id}/test:
+    post:
+      consumes:
+      - application/json
+      operationId: testCampaign
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Test campaign request with subscriber emails
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/CreateCampaignReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Send a test campaign message
+      tags:
+      - campaigns
+  /api/campaigns/analytics/{type}:
+    get:
+      operationId: getCampaignAnalytics
+      parameters:
+      - description: Analytics type (views, clicks, bounces, links)
+        in: path
+        name: type
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Campaign IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        required: true
+        type: array
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CampaignAnalyticsCount'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get campaign analytics
+      tags:
+      - campaigns
+  /api/campaigns/running/stats:
+    get:
+      operationId: getRunningCampaignStats
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Campaign'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get running campaign stats
+      tags:
+      - campaigns
+  /api/config:
+    get:
+      operationId: getServerConfig
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ServerConfig'
+      summary: Get server config
+      tags:
+      - settings
+  /api/dashboard/charts:
+    get:
+      operationId: getDashboardCharts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      summary: Get dashboard chart data
+      tags:
+      - dashboard
+  /api/dashboard/counts:
+    get:
+      operationId: getDashboardCounts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      summary: Get dashboard counts
+      tags:
+      - dashboard
+  /api/health:
+    get:
+      operationId: healthCheck
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Health check
+      tags:
+      - misc
+  /api/import/subscribers:
+    delete:
+      operationId: stopImport
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ImportStatus'
+      summary: Stop or clear a subscriber import
+      tags:
+      - import
+    get:
+      operationId: getImportStatus
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ImportStatus'
+      summary: Get current import status
+      tags:
+      - import
+    post:
+      consumes:
+      - multipart/form-data
+      operationId: importSubscribers
+      parameters:
+      - description: CSV or ZIP file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: JSON-encoded import options (subimporter.SessionOpt)
+        in: formData
+        name: params
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ImportStatus'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Import subscribers from a CSV or ZIP file
+      tags:
+      - import
+  /api/import/subscribers/logs:
+    get:
+      operationId: getImportLogs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get import log
+      tags:
+      - import
+  /api/lang/{lang}:
+    get:
+      operationId: getI18nLang
+      parameters:
+      - description: Language code (e.g. en)
+        in: path
+        name: lang
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get i18n language pack
+      tags:
+      - misc
+  /api/lists:
+    delete:
+      operationId: deleteLists
+      parameters:
+      - collectionFormat: csv
+        description: List IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        type: array
+      - description: SQL-like filter query
+        in: query
+        name: query
+        type: string
+      - description: Delete all lists matching the query
+        in: query
+        name: all
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete lists (bulk)
+      tags:
+      - lists
+    get:
+      operationId: listLists
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        type: string
+      - description: List type
+        in: query
+        name: type
+        type: string
+      - description: Opt-in type
+        in: query
+        name: optin
+        type: string
+      - description: List status
+        in: query
+        name: status
+        type: string
+      - collectionFormat: csv
+        description: Tags
+        in: query
+        items:
+          type: string
+        name: tag
+        type: array
+      - description: Order by field
+        in: query
+        name: order_by
+        type: string
+      - description: Sort order (asc/desc)
+        in: query
+        name: order
+        type: string
+      - description: Return minimal list without subscriber counts
+        in: query
+        name: minimal
+        type: boolean
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PageResults'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get lists
+      tags:
+      - lists
+    post:
+      consumes:
+      - application/json
+      operationId: createList
+      parameters:
+      - description: List to create
+        in: body
+        name: list
+        required: true
+        schema:
+          $ref: '#/definitions/List'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/List'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a list
+      tags:
+      - lists
+  /api/lists/{id}:
+    delete:
+      operationId: deleteList
+      parameters:
+      - description: List ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a list
+      tags:
+      - lists
+    get:
+      operationId: getList
+      parameters:
+      - description: List ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/List'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a list
+      tags:
+      - lists
+    put:
+      consumes:
+      - application/json
+      operationId: updateList
+      parameters:
+      - description: List ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: List fields to update
+        in: body
+        name: list
+        required: true
+        schema:
+          $ref: '#/definitions/List'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/List'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a list
+      tags:
+      - lists
+  /api/lists/{id}/scrub:
+    post:
+      operationId: scrubList
+      parameters:
+      - description: List ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Trigger Scrub validation on a list
+      tags:
+      - settings
+  /api/lists/scrub:
+    get:
+      operationId: getScrubListStatus
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get Scrub list validation status
+      tags:
+      - settings
+  /api/logout:
+    post:
+      operationId: logout
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Log out the current user
+      tags:
+      - users
+  /api/logs:
+    get:
+      operationId: getLogs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+      summary: Get application logs
+      tags:
+      - settings
+  /api/maintenance/analytics/{type}:
+    delete:
+      operationId: gcCampaignAnalytics
+      parameters:
+      - description: 'Type: all, views, or clicks'
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: RFC3339 date; delete analytics older than this
+        in: formData
+        name: before_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete campaign analytics
+      tags:
+      - maintenance
+  /api/maintenance/analytics/{type}/export:
+    get:
+      operationId: exportCampaignAnalytics
+      parameters:
+      - description: 'Type: views or clicks'
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: RFC3339 date; export analytics since this date
+        in: query
+        name: since
+        required: true
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV download
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Export campaign analytics as CSV
+      tags:
+      - maintenance
+  /api/maintenance/subscribers/{type}:
+    delete:
+      operationId: gcSubscribers
+      parameters:
+      - description: 'Type: blocklisted or orphan'
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete orphaned/blocklisted subscribers
+      tags:
+      - maintenance
+  /api/maintenance/subscriptions/unconfirmed:
+    delete:
+      operationId: gcSubscriptions
+      parameters:
+      - description: RFC3339 date; delete subscriptions older than this
+        in: formData
+        name: before_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete unconfirmed subscriptions
+      tags:
+      - maintenance
+  /api/media:
+    get:
+      operationId: listMedia
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PageResults'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List all media
+      tags:
+      - media
+    post:
+      consumes:
+      - multipart/form-data
+      operationId: uploadMedia
+      parameters:
+      - description: Media file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Upload a media file
+      tags:
+      - media
+  /api/media/{id}:
+    delete:
+      operationId: deleteMedia
+      parameters:
+      - description: Media ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a media item
+      tags:
+      - media
+    get:
+      operationId: getMedia
+      parameters:
+      - description: Media ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a media item
+      tags:
+      - media
+  /api/roles/{id}:
+    delete:
+      operationId: deleteRole
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a role
+      tags:
+      - roles
+  /api/roles/lists:
+    get:
+      operationId: listListRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ListRole'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List list roles
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      operationId: createListRole
+      parameters:
+      - description: List role to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ListRole'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ListRole'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a list role
+      tags:
+      - roles
+  /api/roles/lists/{id}:
+    put:
+      consumes:
+      - application/json
+      operationId: updateListRole
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated list role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ListRole'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ListRole'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a list role
+      tags:
+      - roles
+  /api/roles/users:
+    get:
+      operationId: listUserRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Role'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List user roles
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      operationId: createUserRole
+      parameters:
+      - description: Role to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Role'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Role'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a user role
+      tags:
+      - roles
+  /api/roles/users/{id}:
+    put:
+      consumes:
+      - application/json
+      operationId: updateUserRole
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Role'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Role'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a user role
+      tags:
+      - roles
+  /api/settings:
+    get:
+      operationId: getSettings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Settings'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get application settings
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      operationId: updateSettings
+      parameters:
+      - description: Settings payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/Settings'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update application settings
+      tags:
+      - settings
+  /api/settings/{key}:
+    put:
+      consumes:
+      - application/json
+      operationId: updateSettingByKey
+      parameters:
+      - description: Setting key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Value (raw JSON)
+        in: body
+        name: body
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a single setting by key
+      tags:
+      - settings
+  /api/settings/scrub/stats:
+    get:
+      operationId: getScrubStats
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get Scrub usage statistics
+      tags:
+      - settings
+  /api/settings/scrub/test:
+    post:
+      consumes:
+      - application/json
+      operationId: testScrubSettings
+      parameters:
+      - description: Scrub URL and API key
+        in: body
+        name: body
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Test Scrub integration settings
+      tags:
+      - settings
+  /api/settings/smtp/test:
+    post:
+      consumes:
+      - application/json
+      operationId: testSmtpSettings
+      parameters:
+      - description: SMTP config with target email
+        in: body
+        name: body
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Test SMTP settings
+      tags:
+      - settings
+  /api/subscribers:
+    delete:
+      operationId: deleteSubscribers
+      parameters:
+      - collectionFormat: multi
+        description: Subscriber IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Bulk delete subscribers
+      tags:
+      - subscribers
+    get:
+      operationId: listSubscribers
+      parameters:
+      - description: Raw SQL expression to filter subscribers
+        in: query
+        name: query
+        type: string
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: List IDs to filter by
+        in: query
+        items:
+          type: integer
+        name: list_id
+        type: array
+      - description: Subscription status filter
+        in: query
+        name: subscription_status
+        type: string
+      - description: Column to order by
+        in: query
+        name: order_by
+        type: string
+      - description: Sort order (asc, desc)
+        in: query
+        name: order
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PageResults'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Query subscribers
+      tags:
+      - subscribers
+    post:
+      consumes:
+      - application/json
+      operationId: createSubscriber
+      parameters:
+      - description: Subscriber details
+        in: body
+        name: subscriber
+        required: true
+        schema:
+          $ref: '#/definitions/CreateSubscriberReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Subscriber'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create subscriber
+      tags:
+      - subscribers
+  /api/subscribers/{id}:
+    delete:
+      operationId: deleteSubscriber
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete subscriber
+      tags:
+      - subscribers
+    get:
+      operationId: getSubscriber
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Subscriber'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get subscriber
+      tags:
+      - subscribers
+    patch:
+      consumes:
+      - application/json
+      operationId: patchSubscriber
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to patch
+        in: body
+        name: subscriber
+        required: true
+        schema:
+          $ref: '#/definitions/Subscriber'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Subscriber'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Partially update subscriber
+      tags:
+      - subscribers
+    put:
+      consumes:
+      - application/json
+      operationId: updateSubscriber
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Subscriber fields to update
+        in: body
+        name: subscriber
+        required: true
+        schema:
+          $ref: '#/definitions/Subscriber'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Subscriber'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update subscriber
+      tags:
+      - subscribers
+  /api/subscribers/{id}/activity:
+    get:
+      operationId: getSubscriberActivity
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SubscriberActivity'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get subscriber activity
+      tags:
+      - subscribers
+  /api/subscribers/{id}/blocklist:
+    put:
+      operationId: blocklistSubscriber
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Blocklist subscriber
+      tags:
+      - subscribers
+  /api/subscribers/{id}/bounces:
+    delete:
+      operationId: deleteSubscriberBounces
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete subscriber bounces
+      tags:
+      - subscribers
+    get:
+      operationId: getSubscriberBounces
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Bounce'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get bounces for a subscriber
+      tags:
+      - bounces
+  /api/subscribers/{id}/export:
+    get:
+      operationId: exportSubscriberData
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SubscriberExportProfile'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Export subscriber data (privacy)
+      tags:
+      - subscribers
+  /api/subscribers/{id}/optin:
+    post:
+      operationId: sendSubscriberOptin
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Send opt-in email
+      tags:
+      - subscribers
+  /api/subscribers/blocklist:
+    put:
+      consumes:
+      - application/json
+      operationId: blocklistSubscribers
+      parameters:
+      - description: Subscriber IDs
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/SubscriberQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Bulk blocklist subscribers
+      tags:
+      - subscribers
+  /api/subscribers/export:
+    get:
+      operationId: exportSubscribers
+      parameters:
+      - description: Raw SQL expression to filter
+        in: query
+        name: query
+        type: string
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: List IDs
+        in: query
+        items:
+          type: integer
+        name: list_id
+        type: array
+      - description: Subscription status
+        in: query
+        name: subscription_status
+        type: string
+      - collectionFormat: multi
+        description: Specific subscriber IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        type: array
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file download
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Export subscribers as CSV
+      tags:
+      - subscribers
+  /api/subscribers/lists:
+    put:
+      consumes:
+      - application/json
+      operationId: manageSubscriberLists
+      parameters:
+      - description: Action and target list IDs
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/SubscriberQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Manage subscriber list subscriptions
+      tags:
+      - subscribers
+  /api/subscribers/query/blocklist:
+    put:
+      consumes:
+      - application/json
+      operationId: blocklistSubscribersByQuery
+      parameters:
+      - description: Query and options
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/SubscriberQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Blocklist subscribers by query
+      tags:
+      - subscribers
+  /api/subscribers/query/delete:
+    post:
+      consumes:
+      - application/json
+      operationId: deleteSubscribersByQuery
+      parameters:
+      - description: Query and options
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/SubscriberQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete subscribers by query
+      tags:
+      - subscribers
+  /api/subscribers/query/lists:
+    put:
+      consumes:
+      - application/json
+      operationId: manageSubscriberListsByQuery
+      parameters:
+      - description: Query, action, and target lists
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/SubscriberQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Manage subscriber lists by query
+      tags:
+      - subscribers
+  /api/templates:
+    get:
+      operationId: listTemplates
+      parameters:
+      - description: Omit template bodies from response
+        in: query
+        name: no_body
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Template'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List templates
+      tags:
+      - templates
+    post:
+      consumes:
+      - application/json
+      operationId: createTemplate
+      parameters:
+      - description: Template to create
+        in: body
+        name: template
+        required: true
+        schema:
+          $ref: '#/definitions/Template'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Template'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a template
+      tags:
+      - templates
+  /api/templates/{id}:
+    delete:
+      operationId: deleteTemplate
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a template
+      tags:
+      - templates
+    get:
+      operationId: getTemplate
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Omit template body from response
+        in: query
+        name: no_body
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Template'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a template
+      tags:
+      - templates
+    put:
+      consumes:
+      - application/json
+      operationId: updateTemplate
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated template
+        in: body
+        name: template
+        required: true
+        schema:
+          $ref: '#/definitions/Template'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Template'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a template
+      tags:
+      - templates
+  /api/templates/{id}/default:
+    put:
+      operationId: setDefaultTemplate
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Template'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Set default template
+      tags:
+      - templates
+  /api/templates/{id}/preview:
+    get:
+      operationId: previewTemplate
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a template
+      tags:
+      - templates
+  /api/templates/preview:
+    post:
+      consumes:
+      - multipart/form-data
+      operationId: previewTemplateBody
+      parameters:
+      - description: Template type (campaign, tx)
+        in: formData
+        name: template_type
+        type: string
+      - description: Template body HTML
+        in: formData
+        name: body
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a template body
+      tags:
+      - templates
+  /api/users:
+    delete:
+      operationId: deleteUsers
+      parameters:
+      - collectionFormat: multi
+        description: User ID(s)
+        in: query
+        items:
+          type: integer
+        name: id
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete one or more users
+      tags:
+      - users
+    get:
+      operationId: listUsers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/User'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      operationId: createUser
+      parameters:
+      - description: User to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a user
+      tags:
+      - users
+  /api/users/{id}:
+    delete:
+      operationId: deleteUser
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a user
+      tags:
+      - users
+    get:
+      operationId: getUser
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      operationId: updateUser
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated user
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a user
+      tags:
+      - users
+  /api/users/{id}/twofa:
+    delete:
+      consumes:
+      - multipart/form-data
+      operationId: disableTotp
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Current password
+        in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Disable TOTP two-factor authentication
+      tags:
+      - users
+    put:
+      consumes:
+      - multipart/form-data
+      operationId: enableTotp
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: TOTP secret
+        in: formData
+        name: secret
+        required: true
+        type: string
+      - description: TOTP verification code
+        in: formData
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Enable TOTP two-factor authentication
+      tags:
+      - users
+  /api/users/{id}/twofa/totp:
+    get:
+      operationId: generateTotpQr
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Generate a TOTP QR code
+      tags:
+      - users
+  /webhooks/bounce:
+    post:
+      consumes:
+      - application/json
+      operationId: receiveBounceWebhook
+      parameters:
+      - description: Bounce payload (native webhook only)
+        in: body
+        name: bounce
+        schema:
+          $ref: '#/definitions/Bounce'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Receive a bounce webhook
+      tags:
+      - bounces
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

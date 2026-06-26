@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
-import { useGlobal } from '../../composables/useGlobal';
+import { useGlobal } from '@/composables/useGlobal.ts';
 import CodeEditor from '../../components/CodeEditor.vue';
 
 const props = defineProps<{ form?: any }>();

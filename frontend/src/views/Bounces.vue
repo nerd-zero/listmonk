@@ -26,11 +26,11 @@
               </template>
             </span>
             <button type="button" class="bulk-btn bulk-btn--danger" data-cy="btn-delete"
-              @click="$utils.confirm(null, () => deleteBounces())">
+              @click="$utils.confirm(null, () => onDeleteBounces())">
               <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
             </button>
             <button type="button" class="bulk-btn bulk-btn--warn" data-cy="btn-manage-blocklist"
-              @click="$utils.confirm(null, () => blocklistSubscribers())">
+              @click="$utils.confirm(null, () => onBlocklistSubscribers())">
               <i class="pi pi-ban" /> {{ $t('import.blocklist') }}
             </button>
           </div>
@@ -84,7 +84,7 @@
             <div class="row-actions">
               <button type="button" class="row-action-btn row-action-btn--danger"
                 data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')"
-                @click="$utils.confirm(null, () => deleteBounce(data))">
+                @click="$utils.confirm(null, () => onDeleteBounce(data))">
                 <i class="pi pi-trash" />
               </button>
             </div>
@@ -113,8 +113,12 @@ import { useRoute } from 'vue-router';
 import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
+import { getBounces as bouncesApi } from '../api/generated/endpoints/bounces/bounces';
+import { getSubscribers as subscribersApi } from '../api/generated/endpoints/subscribers/subscribers';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { listBounces, deleteBounce, deleteBounces, blocklistBouncedSubscribers } = bouncesApi();
+const { blocklistSubscribers } = subscribersApi();
 const { t, tc } = useI18n();
 const route = useRoute();
 const { refreshTick, loading } = storeToRefs(useMainStore());
@@ -131,10 +135,10 @@ const numSelectedBounces = computed(() => (bulk.all ? (bounces.value as any).tot
 function getBounces() {
   bulk.checked = [];
   bulk.all = false;
-  $api.getBounces({
+  listBounces({
     page: queryParams.page,
-    order_by: queryParams.orderBy,
-    order: queryParams.order,
+    order_by: queryParams.orderBy as any,
+    order: queryParams.order as any,
     campaign_id: queryParams.campaignId,
     source: queryParams.source,
   }).then((data: any) => { bounces.value = data; });
@@ -157,34 +161,34 @@ function onTableCheck() {
   if (bulk.checked.length !== (bounces.value as any).total) bulk.all = false;
 }
 
-function deleteBounce(b: any) {
-  $api.deleteBounce(b.id).then(() => {
+function onDeleteBounce(b: any) {
+  deleteBounce(b.id).then(() => {
     getBounces();
     $utils.toast(t('globals.messages.deleted', { name: b.email }));
   });
 }
 
-function deleteBounces() {
+function onDeleteBounces() {
   const params: any = {};
   if (!bulk.all && bulk.checked.length > 0) {
     params.id = bulk.checked.map((s: any) => s.id);
   } else if (bulk.all) {
     params.all = true;
   }
-  $api.deleteBounces(params).then(() => {
+  deleteBounces(params).then(() => {
     getBounces();
     $utils.toast(t('globals.messages.deletedCount', { name: tc('globals.terms.bounces'), num: numSelectedBounces.value }));
   });
 }
 
-function blocklistSubscribers() {
+function onBlocklistSubscribers() {
   const cb = () => { getBounces(); $utils.toast(t('globals.messages.done')); };
   if (!bulk.all && bulk.checked.length > 0) {
     const subIds = bulk.checked.map((s: any) => s.subscriberId);
-    $api.blocklistSubscribers({ ids: subIds }).then(cb);
+    blocklistSubscribers({ ids: subIds }).then(cb);
     return;
   }
-  $api.blocklistBouncedSubscribers({ all: true }).then(cb);
+  blocklistBouncedSubscribers().then(cb);
 }
 
 watch(() => refreshTick.value, () => { getBounces(); });

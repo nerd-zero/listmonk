@@ -106,7 +106,7 @@ type Status struct {
 	Imported int    `json:"imported"`
 	Status   string `json:"status"`
 	logBuf   *bytes.Buffer
-}
+} // @name ImportStatus
 
 // SubReq is a wrapper over the Subscriber model.
 type SubReq struct {
@@ -114,7 +114,7 @@ type SubReq struct {
 	Lists          []int    `json:"lists"`
 	ListUUIDs      []string `json:"list_uuids"`
 	PreconfirmSubs bool     `json:"preconfirm_subscriptions"`
-}
+} // @name CreateSubscriberReq
 
 type importStatusTpl struct {
 	Name     string

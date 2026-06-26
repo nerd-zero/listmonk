@@ -119,20 +119,21 @@ type User struct {
 	GetListIDs         []int                       `db:"-" json:"-"`
 	ManageListIDs      []int                       `db:"-" json:"-"`
 	HasPassword        bool                        `db:"-" json:"-"`
-}
+} // @name User
 
 type ListPermission struct {
 	ID          int            `json:"id"`
 	Name        string         `json:"name"`
 	Permissions pq.StringArray `json:"permissions"`
-}
+} // @name ListPermission
 
 type ListRolePermissions struct {
 	ID    int              `db:"-" json:"id"`
 	Name  string           `db:"-" json:"name"`
 	Lists []ListPermission `db:"-" json:"lists"`
-}
+} // @name ListRolePermissions
 
+// Role represents a user role with permissions.
 type Role struct {
 	Base
 
@@ -144,8 +145,9 @@ type Role struct {
 	ParentID null.Int         `db:"parent_id" json:"-"`
 	ListsRaw json.RawMessage  `db:"list_permissions" json:"-"`
 	Lists    []ListPermission `db:"-" json:"lists"`
-}
+} // @name Role
 
+// ListRole represents a list-scoped role with per-list permissions.
 type ListRole struct {
 	Base
 
@@ -155,7 +157,7 @@ type ListRole struct {
 	ParentID null.Int         `db:"parent_id" json:"-"`
 	ListsRaw json.RawMessage  `db:"list_permissions" json:"-"`
 	Lists    []ListPermission `db:"-" json:"lists"`
-}
+} // @name ListRole
 
 // HasPerm checks if the user has a specific permission.
 func (u *User) HasPerm(perm string) bool {

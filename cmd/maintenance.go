@@ -12,6 +12,15 @@ import (
 )
 
 // GCSubscribers garbage collects (deletes) orphaned or blocklisted subscribers.
+//
+//	@ID			gcSubscribers
+//	@Summary		Delete orphaned/blocklisted subscribers
+//	@Tags			maintenance
+//	@Produce		json
+//	@Param			type	path		string	true	"Type: blocklisted or orphan"
+//	@Success		200		{object}	object
+//	@Failure		400		{object}	echo.HTTPError
+//	@Router			/api/maintenance/subscribers/{type} [delete]
 func (a *App) GCSubscribers(c echo.Context) error {
 	var (
 		typ = c.Param("type")
@@ -38,7 +47,16 @@ func (a *App) GCSubscribers(c echo.Context) error {
 	}{n}})
 }
 
-// GCSubscriptions garbage collects (deletes) orphaned or blocklisted subscribers.
+// GCSubscriptions garbage collects (deletes) unconfirmed subscriptions older than a given date.
+//
+//	@ID			gcSubscriptions
+//	@Summary		Delete unconfirmed subscriptions
+//	@Tags			maintenance
+//	@Produce		json
+//	@Param			before_date	formData	string	true	"RFC3339 date; delete subscriptions older than this"
+//	@Success		200			{object}	object
+//	@Failure		400			{object}	echo.HTTPError
+//	@Router			/api/maintenance/subscriptions/unconfirmed [delete]
 func (a *App) GCSubscriptions(c echo.Context) error {
 	// Validate the date.
 	t, err := time.Parse(time.RFC3339, c.FormValue("before_date"))
@@ -58,6 +76,16 @@ func (a *App) GCSubscriptions(c echo.Context) error {
 }
 
 // GCCampaignAnalytics garbage collects (deletes) campaign analytics.
+//
+//	@ID			gcCampaignAnalytics
+//	@Summary		Delete campaign analytics
+//	@Tags			maintenance
+//	@Produce		json
+//	@Param			type		path		string	true	"Type: all, views, or clicks"
+//	@Param			before_date	formData	string	true	"RFC3339 date; delete analytics older than this"
+//	@Success		200
+//	@Failure		400			{object}	echo.HTTPError
+//	@Router			/api/maintenance/analytics/{type} [delete]
 func (a *App) GCCampaignAnalytics(c echo.Context) error {
 
 	t, err := time.Parse(time.RFC3339, c.FormValue("before_date"))
@@ -87,6 +115,16 @@ func (a *App) GCCampaignAnalytics(c echo.Context) error {
 }
 
 // ExportCampaignAnalytics streams campaign analytics (views or link clicks) as a CSV file.
+//
+//	@ID			exportCampaignAnalytics
+//	@Summary		Export campaign analytics as CSV
+//	@Tags			maintenance
+//	@Produce		text/csv
+//	@Param			type	path	string	true	"Type: views or clicks"
+//	@Param			since	query	string	true	"RFC3339 date; export analytics since this date"
+//	@Success		200		{string}	string	"CSV download"
+//	@Failure		400		{object}	echo.HTTPError
+//	@Router			/api/maintenance/analytics/{type}/export [get]
 func (a *App) ExportCampaignAnalytics(c echo.Context) error {
 	since, err := time.Parse(time.RFC3339, c.QueryParam("since"))
 	if err != nil {

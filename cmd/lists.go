@@ -11,6 +11,24 @@ import (
 )
 
 // GetLists retrieves lists with additional metadata like subscriber counts.
+//
+//	@ID			listLists
+//	@Summary		Get lists
+//	@Tags			lists
+//	@Produce		json
+//	@Param			query		query		string	false	"Search query"
+//	@Param			type		query		string	false	"List type"
+//	@Param			optin		query		string	false	"Opt-in type"
+//	@Param			status		query		string	false	"List status"
+//	@Param			tag			query		[]string	false	"Tags"
+//	@Param			order_by	query		string	false	"Order by field"
+//	@Param			order		query		string	false	"Sort order (asc/desc)"
+//	@Param			minimal		query		bool	false	"Return minimal list without subscriber counts"
+//	@Param			page		query		int		false	"Page number"
+//	@Param			per_page	query		int		false	"Results per page"
+//	@Success		200	{object}	models.PageResults
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/lists [get]
 func (a *App) GetLists(c echo.Context) error {
 	// Get the authenticated user.
 	user := auth.GetUser(c)
@@ -72,6 +90,16 @@ func (a *App) GetLists(c echo.Context) error {
 
 // GetList retrieves a single list by id.
 // It's permission checked by the listPerm middleware.
+//
+//	@ID			getList
+//	@Summary		Get a list
+//	@Tags			lists
+//	@Produce		json
+//	@Param			id	path		int	true	"List ID"
+//	@Success		200	{object}	models.List
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/lists/{id} [get]
 func (a *App) GetList(c echo.Context) error {
 	// Get the authenticated user.
 	user := auth.GetUser(c)
@@ -92,6 +120,16 @@ func (a *App) GetList(c echo.Context) error {
 }
 
 // CreateList handles list creation.
+//
+//	@ID			createList
+//	@Summary		Create a list
+//	@Tags			lists
+//	@Accept			json
+//	@Produce		json
+//	@Param			list	body		models.List	true	"List to create"
+//	@Success		200	{object}	models.List
+//	@Failure		400	{object}	echo.HTTPError
+//	@Router			/api/lists [post]
 func (a *App) CreateList(c echo.Context) error {
 	l := models.List{}
 	if err := c.Bind(&l); err != nil {
@@ -113,6 +151,18 @@ func (a *App) CreateList(c echo.Context) error {
 
 // UpdateList handles list modification.
 // It's permission checked by the listPerm middleware.
+//
+//	@ID			updateList
+//	@Summary		Update a list
+//	@Tags			lists
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int			true	"List ID"
+//	@Param			list	body		models.List	true	"List fields to update"
+//	@Success		200	{object}	models.List
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/lists/{id} [put]
 func (a *App) UpdateList(c echo.Context) error {
 	// Get the authenticated user.
 	user := auth.GetUser(c)
@@ -144,6 +194,16 @@ func (a *App) UpdateList(c echo.Context) error {
 }
 
 // DeleteList deletes a single list by ID.
+//
+//	@ID			deleteList
+//	@Summary		Delete a list
+//	@Tags			lists
+//	@Produce		json
+//	@Param			id	path		int	true	"List ID"
+//	@Success		200
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/lists/{id} [delete]
 func (a *App) DeleteList(c echo.Context) error {
 	id := getID(c)
 
@@ -163,6 +223,17 @@ func (a *App) DeleteList(c echo.Context) error {
 }
 
 // DeleteLists deletes multiple lists by IDs or by query.
+//
+//	@ID			deleteLists
+//	@Summary		Delete lists (bulk)
+//	@Tags			lists
+//	@Produce		json
+//	@Param			id		query		[]int	false	"List IDs"
+//	@Param			query	query		string	false	"SQL-like filter query"
+//	@Param			all		query		bool	false	"Delete all lists matching the query"
+//	@Success		200
+//	@Failure		400	{object}	echo.HTTPError
+//	@Router			/api/lists [delete]
 func (a *App) DeleteLists(c echo.Context) error {
 	user := auth.GetUser(c)
 

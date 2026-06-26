@@ -19,6 +19,16 @@ var (
 )
 
 // GetUser retrieves a single user by ID.
+//
+//	@ID				getUser
+//	@Summary		Get a user
+//	@Tags			users
+//	@Produce		json
+//	@Param			id	path		int	true	"User ID"
+//	@Success		200	{object}	auth.User
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/users/{id} [get]
 func (a *App) GetUser(c echo.Context) error {
 	// Get the user from the DB.
 	id := getID(c)
@@ -34,6 +44,14 @@ func (a *App) GetUser(c echo.Context) error {
 }
 
 // GetUsers retrieves all users.
+//
+//	@ID				listUsers
+//	@Summary		List users
+//	@Tags			users
+//	@Produce		json
+//	@Success		200	{array}		auth.User
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/users [get]
 func (a *App) GetUsers(c echo.Context) error {
 	// Get all users from the DB.
 	out, err := a.core.GetUsers()
@@ -50,6 +68,16 @@ func (a *App) GetUsers(c echo.Context) error {
 }
 
 // CreateUser handles user creation.
+//
+//	@ID				createUser
+//	@Summary		Create a user
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.User	true	"User to create"
+//	@Success		200		{object}	auth.User
+//	@Failure		400		{object}	echo.HTTPError
+//	@Router			/api/users [post]
 func (a *App) CreateUser(c echo.Context) error {
 	var u auth.User
 	if err := c.Bind(&u); err != nil {
@@ -104,6 +132,18 @@ func (a *App) CreateUser(c echo.Context) error {
 }
 
 // UpdateUser handles user modification.
+//
+//	@ID				updateUser
+//	@Summary		Update a user
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int			true	"User ID"
+//	@Param			body	body		auth.User	true	"Updated user"
+//	@Success		200		{object}	auth.User
+//	@Failure		400		{object}	echo.HTTPError
+//	@Failure		404		{object}	echo.HTTPError
+//	@Router			/api/users/{id} [put]
 func (a *App) UpdateUser(c echo.Context) error {
 	// Incoming params.
 	var u auth.User
@@ -189,6 +229,16 @@ func (a *App) UpdateUser(c echo.Context) error {
 }
 
 // DeleteUser handles the deletion of a single user by ID.
+//
+//	@ID				deleteUser
+//	@Summary		Delete a user
+//	@Tags			users
+//	@Produce		json
+//	@Param			id	path		int	true	"User ID"
+//	@Success		200
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/users/{id} [delete]
 func (a *App) DeleteUser(c echo.Context) error {
 	// Delete the user(s) from the DB.
 	id := getID(c)
@@ -205,6 +255,15 @@ func (a *App) DeleteUser(c echo.Context) error {
 }
 
 // DeleteUsers handles user deletion, either a single one (ID in the URI), or a list.
+//
+//	@ID				deleteUsers
+//	@Summary		Delete one or more users
+//	@Tags			users
+//	@Produce		json
+//	@Param			id	query		[]int	true	"User ID(s)"	collectionFormat(multi)
+//	@Success		200
+//	@Failure		400	{object}	echo.HTTPError
+//	@Router			/api/users [delete]
 func (a *App) DeleteUsers(c echo.Context) error {
 	ids, err := getQueryInts("id", c.QueryParams())
 	if err != nil {
@@ -284,6 +343,18 @@ func (a *App) UpdateUserProfile(c echo.Context) error {
 }
 
 // EnableTOTP enables TOTP 2FA for a user after verifying the code.
+//
+//	@ID				enableTotp
+//	@Summary		Enable TOTP two-factor authentication
+//	@Tags			users
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			id		path		int		true	"User ID"
+//	@Param			secret	formData	string	true	"TOTP secret"
+//	@Param			code	formData	string	true	"TOTP verification code"
+//	@Success		200
+//	@Failure		400		{object}	echo.HTTPError
+//	@Router			/api/users/{id}/twofa [put]
 func (a *App) EnableTOTP(c echo.Context) error {
 	var (
 		u      = c.Get(auth.UserHTTPCtxKey).(auth.User)
@@ -320,6 +391,18 @@ func (a *App) EnableTOTP(c echo.Context) error {
 }
 
 // DisableTOTP disables TOTP 2FA for a user after verifying the password.
+//
+//	@ID				disableTotp
+//	@Summary		Disable TOTP two-factor authentication
+//	@Tags			users
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			id			path		int		true	"User ID"
+//	@Param			password	formData	string	true	"Current password"
+//	@Success		200
+//	@Failure		400			{object}	echo.HTTPError
+//	@Failure		403			{object}	echo.HTTPError
+//	@Router			/api/users/{id}/twofa [delete]
 func (a *App) DisableTOTP(c echo.Context) error {
 	var (
 		u        = c.Get(auth.UserHTTPCtxKey).(auth.User)
