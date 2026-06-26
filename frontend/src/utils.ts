@@ -142,7 +142,7 @@ export default class Utils {
   // https://stackoverflow.com/a/12034334
   escapeHTML = (html: string): string => html.replace(/[&<>"'`=/]/g, (s) => htmlEntities[s]);
 
-  titleCase = (str: string): string => str[0].toUpperCase() + str.substr(1).toLowerCase();
+  titleCase = (str: string): string => str[0].toUpperCase() + str.slice(1).toLowerCase();
 
   // UI shortcuts.
   confirm = (msg: string | null, onConfirm?: () => void, onCancel?: () => void): void => {
@@ -155,7 +155,7 @@ export default class Utils {
 
   prompt = (
     msg: string,
-    inputAttrs: unknown,
+    _inputAttrs: unknown,
     onConfirm?: (value: string) => void,
     onCancel?: () => void,
   ): void => {
@@ -172,7 +172,7 @@ export default class Utils {
 
   camelString = (str: string): string => {
     const s = str.replace(/[-_\s]+(.)?/g, (_match, chr) => (chr ? chr.toUpperCase() : ''));
-    return s.substr(0, 1).toLowerCase() + s.substr(1);
+    return s.slice(0, 1).toLowerCase() + s.slice(1);
   };
 
   // camelKeys recursively camelCases all keys in a given object (array or {}).

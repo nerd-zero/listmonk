@@ -40,7 +40,6 @@ import Menubar from 'primevue/menubar';
 import PanelMenu from 'primevue/panelmenu';
 import Drawer from 'primevue/drawer';
 import Message from 'primevue/message';
-import InlineMessage from 'primevue/inlinemessage';
 import FloatLabel from 'primevue/floatlabel';
 import AutoComplete from 'primevue/autocomplete';
 import MultiSelect from 'primevue/multiselect';
@@ -131,7 +130,7 @@ app.component('PvMenubar', Menubar);
 app.component('PvPanelMenu', PanelMenu);
 app.component('PvDrawer', Drawer);
 app.component('PvMessage', Message);
-app.component('PvInlineMessage', InlineMessage);
+app.component('PvInlineMessage', Message);
 app.component('PvFloatLabel', FloatLabel);
 app.component('PvAutoComplete', AutoComplete);
 app.component('PvMultiSelect', MultiSelect);
@@ -178,7 +177,7 @@ async function initConfig(instance: typeof app) {
   i18n.global.setLocaleMessage(cfg.lang as string, lang as Record<string, unknown>);
 
   const props = instance.config.globalProperties;
-  props.$utils = new Utils(i18n.global as Parameters<typeof Utils>[0]);
+  props.$utils = new Utils(i18n.global as ConstructorParameters<typeof Utils>[0]);
   props.$api = api;
   props.$events = eventBus;
 
