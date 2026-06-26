@@ -165,6 +165,12 @@ func (a *App) TwofaPage(c echo.Context) error {
 }
 
 // Logout logs a user out.
+//
+//	@Summary		Log out the current user
+//	@Tags			users
+//	@Produce		json
+//	@Success		200	{object}	okResp{data=bool}
+//	@Router			/api/logout [post]
 func (a *App) Logout(c echo.Context) error {
 	// Delete the session from the DB and cookie.
 	sess := c.Get(auth.SessionKey).(*simplesessions.Session)
@@ -752,6 +758,15 @@ func (a *App) doTwofaVerify(c echo.Context, token string, userID int, next strin
 }
 
 // GenerateTOTPQR generates a TOTP QR code for a user to scan with their authenticator app.
+//
+//	@Summary		Generate a TOTP QR code
+//	@Tags			users
+//	@Produce		json
+//	@Param			id	path		int	true	"User ID"
+//	@Success		200	{object}	okResp{data=string}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/users/{id}/twofa/totp [get]
 func (a *App) GenerateTOTPQR(c echo.Context) error {
 	u := c.Get(auth.UserHTTPCtxKey).(auth.User)
 

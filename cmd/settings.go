@@ -56,6 +56,13 @@ var (
 )
 
 // GetSettings returns settings from the DB.
+//
+//	@Summary		Get application settings
+//	@Tags			settings
+//	@Produce		json
+//	@Success		200	{object}	okResp{data=models.Settings}
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/settings [get]
 func (a *App) GetSettings(c echo.Context) error {
 	s, err := a.core.GetSettings()
 	if err != nil {
@@ -86,7 +93,17 @@ func (a *App) GetSettings(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{s})
 }
 
-// UpdateSettings returns settings from the DB.
+// UpdateSettings updates and saves settings to the DB.
+//
+//	@Summary		Update application settings
+//	@Tags			settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		models.Settings	true	"Settings payload"
+//	@Success		200		{object}	okResp{data=bool}
+//	@Failure		400		{object}	echo.HTTPError
+//	@Failure		500		{object}	echo.HTTPError
+//	@Router			/api/settings [put]
 func (a *App) UpdateSettings(c echo.Context) error {
 	// Unmarshal and marshal the fields once to sanitize the settings blob.
 	var set models.Settings
@@ -332,6 +349,16 @@ func (a *App) UpdateSettings(c echo.Context) error {
 }
 
 // UpdateSettingsByKey updates a single setting key-value in the DB.
+//
+//	@Summary		Update a single setting by key
+//	@Tags			settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			key		path		string			true	"Setting key"
+//	@Param			body	body		interface{}		true	"Value (raw JSON)"
+//	@Success		200		{object}	okResp{data=bool}
+//	@Failure		400		{object}	echo.HTTPError
+//	@Router			/api/settings/{key} [put]
 func (a *App) UpdateSettingsByKey(c echo.Context) error {
 	key := c.Param("key")
 	if key == "" {
@@ -377,11 +404,27 @@ func (a *App) handleSettingsRestart(c echo.Context) error {
 }
 
 // GetLogs returns the log entries stored in the log buffer.
+//
+//	@Summary		Get application logs
+//	@Tags			settings
+//	@Produce		json
+//	@Success		200	{object}	okResp{data=[]string}
+//	@Router			/api/logs [get]
 func (a *App) GetLogs(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{a.bufLog.Lines()})
 }
 
-// TestSMTPSettings returns the log entries stored in the log buffer.
+// TestSMTPSettings tests an SMTP server connection by sending a test e-mail.
+//
+//	@Summary		Test SMTP settings
+//	@Tags			settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		interface{}		true	"SMTP config with target email"
+//	@Success		200		{object}	okResp{data=[]string}
+//	@Failure		400		{object}	echo.HTTPError
+//	@Failure		500		{object}	echo.HTTPError
+//	@Router			/api/settings/smtp/test [post]
 func (a *App) TestSMTPSettings(c echo.Context) error {
 	// Copy the raw JSON post body.
 	reqBody, err := io.ReadAll(c.Request().Body)
@@ -438,6 +481,15 @@ func (a *App) TestSMTPSettings(c echo.Context) error {
 }
 
 // TestScrubSettings verifies that the Scrub URL and API key are reachable.
+//
+//	@Summary		Test Scrub integration settings
+//	@Tags			settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		interface{}		true	"Scrub URL and API key"
+//	@Success		200		{object}	okResp{data=bool}
+//	@Failure		400		{object}	echo.HTTPError
+//	@Router			/api/settings/scrub/test [post]
 func (a *App) TestScrubSettings(c echo.Context) error {
 	var req struct {
 		URL    string `json:"url"`
@@ -489,6 +541,13 @@ func (a *App) TestScrubSettings(c echo.Context) error {
 }
 
 // GetScrubStats fetches daily usage stats from the configured Scrub service.
+//
+//	@Summary		Get Scrub usage statistics
+//	@Tags			settings
+//	@Produce		json
+//	@Success		200	{object}	okResp{data=interface{}}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Router			/api/settings/scrub/stats [get]
 func (a *App) GetScrubStats(c echo.Context) error {
 	s, err := a.core.GetSettings()
 	if err != nil {
@@ -616,6 +675,13 @@ func (a *App) ScrubList(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{out})
 }
 
+// GetAboutInfo returns version, build, system, and host information about the app.
+//
+//	@Summary		Get application info
+//	@Tags			settings
+//	@Produce		json
+//	@Success		200	{object}	about
+//	@Router			/api/about [get]
 func (a *App) GetAboutInfo(c echo.Context) error {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)

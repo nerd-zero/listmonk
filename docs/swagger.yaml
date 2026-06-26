@@ -1,0 +1,4143 @@
+basePath: /
+definitions:
+  cmd.AppUpdate:
+    properties:
+      messages:
+        items:
+          properties:
+            date:
+              type: string
+            description:
+              type: string
+            priority:
+              type: string
+            title:
+              type: string
+            url:
+              type: string
+          type: object
+        type: array
+      update:
+        properties:
+          description:
+            type: string
+          is_new:
+            description: This is computed and set locally based on the local version.
+            type: boolean
+          release_date:
+            type: string
+          release_version:
+            type: string
+          url:
+            type: string
+        type: object
+    type: object
+  cmd.about:
+    properties:
+      build:
+        type: string
+      database:
+        items:
+          type: integer
+        type: array
+      go_arch:
+        type: string
+      go_version:
+        type: string
+      host:
+        $ref: '#/definitions/cmd.aboutHost'
+      system:
+        $ref: '#/definitions/cmd.aboutSystem'
+      version:
+        type: string
+    type: object
+  cmd.aboutHost:
+    properties:
+      arch:
+        type: string
+      hostname:
+        type: string
+      os:
+        type: string
+    type: object
+  cmd.aboutSystem:
+    properties:
+      memory_alloc_mb:
+        type: integer
+      memory_from_os_mb:
+        type: integer
+      num_cpu:
+        type: integer
+    type: object
+  cmd.campContentReq:
+    properties:
+      altbody:
+        $ref: '#/definitions/null.String'
+      archive:
+        type: boolean
+      archive_meta:
+        items:
+          type: integer
+        type: array
+      archive_slug:
+        $ref: '#/definitions/null.String'
+      archive_template_id:
+        $ref: '#/definitions/null.Int'
+      attribs:
+        $ref: '#/definitions/models.JSON'
+      body:
+        type: string
+      body_source:
+        $ref: '#/definitions/null.String'
+      bounces:
+        type: integer
+      clicks:
+        type: integer
+      content_type:
+        type: string
+      created_at:
+        type: string
+      from:
+        type: string
+      from_email:
+        type: string
+      headers:
+        items:
+          additionalProperties:
+            type: string
+          type: object
+        type: array
+      id:
+        type: integer
+      lists:
+        description: |-
+          This is a list of {list_id, name} pairs unlike Subscriber.Lists[]
+          because lists can be deleted after a campaign is finished, resulting
+          in null lists data to be returned. For that reason, campaign_lists maintains
+          campaign-list associations with a historical record of id + name that persist
+          even after a list is deleted.
+        items:
+          type: integer
+        type: array
+      media:
+        items:
+          type: integer
+        type: array
+      messenger:
+        type: string
+      name:
+        type: string
+      send_at:
+        type: string
+      sent:
+        type: integer
+      started_at:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      template_id:
+        $ref: '#/definitions/null.Int'
+      to:
+        type: string
+      to_send:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+      views:
+        type: integer
+    type: object
+  cmd.campReq:
+    properties:
+      altbody:
+        $ref: '#/definitions/null.String'
+      archive:
+        type: boolean
+      archive_meta:
+        items:
+          type: integer
+        type: array
+      archive_slug:
+        $ref: '#/definitions/null.String'
+      archive_template_id:
+        $ref: '#/definitions/null.Int'
+      attribs:
+        $ref: '#/definitions/models.JSON'
+      body:
+        type: string
+      body_source:
+        $ref: '#/definitions/null.String'
+      bounces:
+        type: integer
+      clicks:
+        type: integer
+      content_type:
+        type: string
+      created_at:
+        type: string
+      from_email:
+        type: string
+      headers:
+        items:
+          additionalProperties:
+            type: string
+          type: object
+        type: array
+      id:
+        type: integer
+      lists:
+        description: |-
+          This overrides Campaign.Lists to receive and
+          write a list of int IDs during creation and updation.
+          Campaign.Lists is JSONText for sending lists children
+          to the outside world.
+        items:
+          type: integer
+        type: array
+      media:
+        items:
+          type: integer
+        type: array
+      messenger:
+        type: string
+      name:
+        type: string
+      send_at:
+        type: string
+      sent:
+        type: integer
+      started_at:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+      subscribers:
+        description: This is only relevant to campaign test requests.
+        items:
+          type: string
+        type: array
+      tags:
+        items:
+          type: string
+        type: array
+      template_id:
+        $ref: '#/definitions/null.Int'
+      to_send:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+      views:
+        type: integer
+    type: object
+  cmd.i18nLang:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+    type: object
+  cmd.okResp:
+    properties:
+      data: {}
+    type: object
+  cmd.serverConfig:
+    properties:
+      from_email:
+        type: string
+      has_legacy_user:
+        type: boolean
+      lang:
+        type: string
+      langs:
+        items:
+          $ref: '#/definitions/cmd.i18nLang'
+        type: array
+      media_provider:
+        type: string
+      messengers:
+        items:
+          type: string
+        type: array
+      needs_restart:
+        type: boolean
+      permissions:
+        items:
+          type: integer
+        type: array
+      privacy:
+        properties:
+          disable_tracking:
+            type: boolean
+          individual_tracking:
+            type: boolean
+        type: object
+      public_subscription:
+        properties:
+          altcha_complexity:
+            type: integer
+          captcha_enabled:
+            type: boolean
+          captcha_key:
+            $ref: '#/definitions/null.String'
+          captcha_provider:
+            $ref: '#/definitions/null.String'
+          enabled:
+            type: boolean
+          redirect_urls:
+            items:
+              type: string
+            type: array
+        type: object
+      root_url:
+        type: string
+      scrub_enabled:
+        type: boolean
+      update:
+        $ref: '#/definitions/cmd.AppUpdate'
+      version:
+        type: string
+    type: object
+  cmd.subQueryReq:
+    properties:
+      action:
+        type: string
+      all:
+        type: boolean
+      ids:
+        items:
+          type: integer
+        type: array
+      list_ids:
+        items:
+          type: integer
+        type: array
+      query:
+        type: string
+      search:
+        type: string
+      status:
+        type: string
+      subscription_status:
+        type: string
+      target_list_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  echo.HTTPError:
+    properties:
+      message: {}
+    type: object
+  github_com_knadh_listmonk_internal_auth.ListPermission:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_knadh_listmonk_internal_auth.ListRole:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      lists:
+        items:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListPermission'
+        type: array
+      name:
+        $ref: '#/definitions/null.String'
+      updated_at:
+        type: string
+    type: object
+  github_com_knadh_listmonk_internal_auth.ListRolePermissions:
+    properties:
+      id:
+        type: integer
+      lists:
+        items:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListPermission'
+        type: array
+      name:
+        type: string
+    type: object
+  github_com_knadh_listmonk_internal_auth.Role:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      lists:
+        items:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListPermission'
+        type: array
+      name:
+        $ref: '#/definitions/null.String'
+      permissions:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_knadh_listmonk_internal_auth.User:
+    properties:
+      avatar:
+        $ref: '#/definitions/null.String'
+      created_at:
+        type: string
+      email:
+        $ref: '#/definitions/null.String'
+      id:
+        type: integer
+      list_role:
+        $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListRolePermissions'
+      list_role_id:
+        type: integer
+      loggedin_at:
+        type: string
+      name:
+        type: string
+      password:
+        allOf:
+        - $ref: '#/definitions/null.String'
+        description: For API users, this is the plaintext API token.
+      password_login:
+        type: boolean
+      status:
+        type: string
+      twofa_type:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+      user_role:
+        description: Non-DB fields filled post-retrieval.
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+          permissions:
+            items:
+              type: string
+            type: array
+        type: object
+      user_role_id:
+        type: integer
+      username:
+        type: string
+    type: object
+  github_com_knadh_listmonk_internal_subimporter.Status:
+    properties:
+      imported:
+        type: integer
+      name:
+        type: string
+      status:
+        type: string
+      total:
+        type: integer
+    type: object
+  github_com_knadh_listmonk_internal_subimporter.SubReq:
+    properties:
+      attribs:
+        $ref: '#/definitions/models.JSON'
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      list_uuids:
+        items:
+          type: string
+        type: array
+      lists:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      preconfirm_subscriptions:
+        type: boolean
+      status:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+    type: object
+  models.Bounce:
+    properties:
+      campaign:
+        items:
+          type: integer
+        type: array
+      campaign_uuid:
+        type: string
+      created_at:
+        type: string
+      email:
+        description: One of these should be provided.
+        type: string
+      id:
+        type: integer
+      meta:
+        items:
+          type: integer
+        type: array
+      source:
+        type: string
+      subscriber_id:
+        type: integer
+      subscriber_status:
+        type: string
+      subscriber_uuid:
+        type: string
+      type:
+        type: string
+    type: object
+  models.Campaign:
+    properties:
+      altbody:
+        $ref: '#/definitions/null.String'
+      archive:
+        type: boolean
+      archive_meta:
+        items:
+          type: integer
+        type: array
+      archive_slug:
+        $ref: '#/definitions/null.String'
+      archive_template_id:
+        $ref: '#/definitions/null.Int'
+      attribs:
+        $ref: '#/definitions/models.JSON'
+      body:
+        type: string
+      body_source:
+        $ref: '#/definitions/null.String'
+      bounces:
+        type: integer
+      clicks:
+        type: integer
+      content_type:
+        type: string
+      created_at:
+        type: string
+      from_email:
+        type: string
+      headers:
+        items:
+          additionalProperties:
+            type: string
+          type: object
+        type: array
+      id:
+        type: integer
+      lists:
+        description: |-
+          This is a list of {list_id, name} pairs unlike Subscriber.Lists[]
+          because lists can be deleted after a campaign is finished, resulting
+          in null lists data to be returned. For that reason, campaign_lists maintains
+          campaign-list associations with a historical record of id + name that persist
+          even after a list is deleted.
+        items:
+          type: integer
+        type: array
+      media:
+        items:
+          type: integer
+        type: array
+      messenger:
+        type: string
+      name:
+        type: string
+      send_at:
+        type: string
+      sent:
+        type: integer
+      started_at:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      template_id:
+        $ref: '#/definitions/null.Int'
+      to_send:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+      views:
+        type: integer
+    type: object
+  models.CampaignAnalyticsCount:
+    properties:
+      campaign_id:
+        type: integer
+      count:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  models.JSON:
+    additionalProperties: {}
+    type: object
+  models.List:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      optin:
+        type: string
+      status:
+        type: string
+      subscriber_count:
+        type: integer
+      subscriber_statuses:
+        $ref: '#/definitions/models.StringIntMap'
+      subscription_created_at:
+        type: string
+      subscription_status:
+        description: This is only relevant when querying the lists of a subscriber.
+        type: string
+      subscription_updated_at:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+    type: object
+  models.PageResults:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      query:
+        type: string
+      results: {}
+      search:
+        type: string
+      total:
+        type: integer
+    type: object
+  models.Settings:
+    properties:
+      app.batch_size:
+        type: integer
+      app.cache_slow_queries:
+        type: boolean
+      app.cache_slow_queries_interval:
+        type: string
+      app.check_updates:
+        type: boolean
+      app.concurrency:
+        type: integer
+      app.enable_public_archive:
+        type: boolean
+      app.enable_public_archive_rss_content:
+        type: boolean
+      app.enable_public_subscription_page:
+        type: boolean
+      app.favicon_url:
+        type: string
+      app.from_email:
+        type: string
+      app.lang:
+        type: string
+      app.logo_url:
+        type: string
+      app.max_send_errors:
+        type: integer
+      app.message_rate:
+        type: integer
+      app.message_sliding_window:
+        type: boolean
+      app.message_sliding_window_duration:
+        type: string
+      app.message_sliding_window_rate:
+        type: integer
+      app.notify_emails:
+        items:
+          type: string
+        type: array
+      app.root_url:
+        type: string
+      app.send_optin_confirmation:
+        type: boolean
+      app.show_optin_page:
+        type: boolean
+      app.site_name:
+        type: string
+      appearance.admin.custom_css:
+        type: string
+      appearance.admin.custom_js:
+        type: string
+      appearance.public.custom_css:
+        type: string
+      appearance.public.custom_js:
+        type: string
+      bounce.actions:
+        additionalProperties:
+          properties:
+            action:
+              type: string
+            count:
+              type: integer
+          type: object
+        type: object
+      bounce.azure:
+        properties:
+          enabled:
+            type: boolean
+          shared_secret:
+            type: string
+          shared_secret_header:
+            type: string
+        type: object
+      bounce.enabled:
+        type: boolean
+      bounce.forwardemail:
+        properties:
+          enabled:
+            type: boolean
+          key:
+            type: string
+        type: object
+      bounce.lettermint:
+        properties:
+          enabled:
+            type: boolean
+          key:
+            type: string
+        type: object
+      bounce.mailboxes:
+        items:
+          properties:
+            auth_protocol:
+              type: string
+            enabled:
+              type: boolean
+            host:
+              type: string
+            password:
+              type: string
+            port:
+              type: integer
+            return_path:
+              type: string
+            scan_interval:
+              type: string
+            tls_enabled:
+              type: boolean
+            tls_skip_verify:
+              type: boolean
+            type:
+              type: string
+            username:
+              type: string
+            uuid:
+              type: string
+          type: object
+        type: array
+      bounce.postmark:
+        properties:
+          enabled:
+            type: boolean
+          password:
+            type: string
+          username:
+            type: string
+        type: object
+      bounce.sendgrid_enabled:
+        type: boolean
+      bounce.sendgrid_key:
+        type: string
+      bounce.ses_enabled:
+        type: boolean
+      bounce.webhooks_enabled:
+        type: boolean
+      maintenance.db:
+        properties:
+          vacuum:
+            type: boolean
+          vacuum_cron_interval:
+            type: string
+        type: object
+      messengers:
+        items:
+          properties:
+            enabled:
+              type: boolean
+            max_conns:
+              type: integer
+            max_msg_retries:
+              type: integer
+            name:
+              type: string
+            password:
+              type: string
+            root_url:
+              type: string
+            timeout:
+              type: string
+            username:
+              type: string
+            uuid:
+              type: string
+          type: object
+        type: array
+      privacy.allow_blocklist:
+        type: boolean
+      privacy.allow_export:
+        type: boolean
+      privacy.allow_preferences:
+        type: boolean
+      privacy.allow_wipe:
+        type: boolean
+      privacy.disable_tracking:
+        type: boolean
+      privacy.domain_allowlist:
+        items:
+          type: string
+        type: array
+      privacy.domain_blocklist:
+        items:
+          type: string
+        type: array
+      privacy.exportable:
+        items:
+          type: string
+        type: array
+      privacy.individual_tracking:
+        type: boolean
+      privacy.record_optin_ip:
+        type: boolean
+      privacy.unsubscribe_header:
+        type: boolean
+      scrub:
+        properties:
+          api_key:
+            type: string
+          enabled:
+            type: boolean
+          integration_id:
+            type: integer
+          url:
+            type: string
+        type: object
+      security.captcha:
+        properties:
+          altcha:
+            properties:
+              complexity:
+                type: integer
+              enabled:
+                type: boolean
+            type: object
+          hcaptcha:
+            properties:
+              enabled:
+                type: boolean
+              key:
+                type: string
+              secret:
+                type: string
+            type: object
+        type: object
+      security.oidc:
+        properties:
+          auto_create_users:
+            type: boolean
+          client_id:
+            type: string
+          client_secret:
+            type: string
+          default_list_role_id:
+            $ref: '#/definitions/null.Int'
+          default_user_role_id:
+            $ref: '#/definitions/null.Int'
+          enabled:
+            type: boolean
+          provider_name:
+            type: string
+          provider_url:
+            type: string
+        type: object
+      security.trusted_urls:
+        items:
+          type: string
+        type: array
+      smtp:
+        items:
+          properties:
+            auth_protocol:
+              type: string
+            email_headers:
+              items:
+                additionalProperties:
+                  type: string
+                type: object
+              type: array
+            enabled:
+              type: boolean
+            from_addresses:
+              items:
+                type: string
+              type: array
+            hello_hostname:
+              type: string
+            host:
+              type: string
+            idle_timeout:
+              type: string
+            max_conns:
+              type: integer
+            max_msg_retries:
+              type: integer
+            msg_retry_delay:
+              type: string
+            name:
+              type: string
+            password:
+              type: string
+            port:
+              type: integer
+            tls_skip_verify:
+              type: boolean
+            tls_type:
+              type: string
+            username:
+              type: string
+            uuid:
+              type: string
+            wait_timeout:
+              type: string
+          type: object
+        type: array
+      upload.extensions:
+        items:
+          type: string
+        type: array
+      upload.filesystem.upload_path:
+        type: string
+      upload.filesystem.upload_uri:
+        type: string
+      upload.provider:
+        type: string
+      upload.s3.aws_access_key_id:
+        type: string
+      upload.s3.aws_default_region:
+        type: string
+      upload.s3.aws_secret_access_key:
+        type: string
+      upload.s3.bucket:
+        type: string
+      upload.s3.bucket_domain:
+        type: string
+      upload.s3.bucket_path:
+        type: string
+      upload.s3.bucket_type:
+        type: string
+      upload.s3.expiry:
+        type: string
+      upload.s3.public_url:
+        type: string
+      upload.s3.url:
+        type: string
+    type: object
+  models.StringIntMap:
+    additionalProperties:
+      type: integer
+    type: object
+  models.Subscriber:
+    properties:
+      attribs:
+        $ref: '#/definitions/models.JSON'
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      lists:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      uuid:
+        type: string
+    type: object
+  models.SubscriberActivity:
+    properties:
+      campaign_views:
+        items:
+          type: integer
+        type: array
+      link_clicks:
+        items:
+          type: integer
+        type: array
+    type: object
+  models.SubscriberExportProfile:
+    properties:
+      campaign_views:
+        items:
+          type: integer
+        type: array
+      link_clicks:
+        items:
+          type: integer
+        type: array
+      profile:
+        items:
+          type: integer
+        type: array
+      subscriptions:
+        items:
+          type: integer
+        type: array
+    type: object
+  models.Template:
+    properties:
+      body:
+        type: string
+      body_source:
+        $ref: '#/definitions/null.String'
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_default:
+        type: boolean
+      name:
+        type: string
+      subject:
+        description: Subject is only for type=tx.
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  null.Int:
+    properties:
+      int:
+        type: integer
+      valid:
+        type: boolean
+    type: object
+  null.String:
+    properties:
+      string:
+        type: string
+      valid:
+        type: boolean
+    type: object
+host: localhost:9000
+info:
+  contact: {}
+  description: listmonk mailing list manager REST API.
+  title: listmonk API
+  version: "1.0"
+paths:
+  /api/about:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/cmd.about'
+      summary: Get application info
+      tags:
+      - settings
+  /api/admin/reload:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Reload the application
+      tags:
+      - settings
+  /api/bounces:
+    delete:
+      parameters:
+      - description: Delete all bounces
+        in: query
+        name: all
+        type: boolean
+      - collectionFormat: csv
+        description: Bounce IDs to delete
+        in: query
+        items:
+          type: integer
+        name: id
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete bounce records
+      tags:
+      - bounces
+    get:
+      parameters:
+      - description: Filter by campaign ID
+        in: query
+        name: campaign_id
+        type: integer
+      - description: Filter by bounce source
+        in: query
+        name: source
+        type: string
+      - description: Field to order results by
+        in: query
+        name: order_by
+        type: string
+      - description: Sort order (ASC or DESC)
+        in: query
+        name: order
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PageResults'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List bounce records
+      tags:
+      - bounces
+  /api/bounces/{id}:
+    delete:
+      parameters:
+      - description: Bounce ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a bounce record
+      tags:
+      - bounces
+    get:
+      parameters:
+      - description: Bounce ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Bounce'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a bounce record
+      tags:
+      - bounces
+  /api/bounces/blocklist:
+    put:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Blocklist all bounced subscribers
+      tags:
+      - bounces
+  /api/campaigns:
+    delete:
+      parameters:
+      - collectionFormat: csv
+        description: Campaign IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        type: array
+      - description: SQL-like filter query
+        in: query
+        name: query
+        type: string
+      - description: Delete all campaigns matching the query
+        in: query
+        name: all
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete campaigns (bulk)
+      tags:
+      - campaigns
+    get:
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        type: string
+      - collectionFormat: csv
+        description: Campaign status filter
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - collectionFormat: csv
+        description: Tags
+        in: query
+        items:
+          type: string
+        name: tag
+        type: array
+      - description: Order by field
+        in: query
+        name: order_by
+        type: string
+      - description: Sort order (asc/desc)
+        in: query
+        name: order
+        type: string
+      - description: Omit campaign body from response
+        in: query
+        name: no_body
+        type: boolean
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PageResults'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get campaigns
+      tags:
+      - campaigns
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Campaign to create
+        in: body
+        name: campaign
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.campReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Campaign'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a campaign
+      tags:
+      - campaigns
+  /api/campaigns/{id}:
+    delete:
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a campaign
+      tags:
+      - campaigns
+    get:
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Omit campaign body from response
+        in: query
+        name: no_body
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Campaign'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a campaign
+      tags:
+      - campaigns
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Campaign fields to update
+        in: body
+        name: campaign
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.campReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Campaign'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a campaign
+      tags:
+      - campaigns
+  /api/campaigns/{id}/archive:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Archive settings
+        in: body
+        name: req
+        required: true
+        schema:
+          properties:
+            archive:
+              type: boolean
+            archive_meta:
+              type: object
+            archive_slug:
+              type: string
+            archive_template_id:
+              type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update campaign archive settings
+      tags:
+      - campaigns
+  /api/campaigns/{id}/content:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Content conversion request
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.campContentReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Convert campaign content format
+      tags:
+      - campaigns
+  /api/campaigns/{id}/preview:
+    get:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Content type override
+        in: formData
+        name: content_type
+        type: string
+      - description: Template ID to use for preview
+        in: formData
+        name: template_id
+        type: integer
+      - description: Campaign body override (POST only)
+        in: formData
+        name: body
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Rendered HTML or plain text
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a campaign
+      tags:
+      - campaigns
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Content type override
+        in: formData
+        name: content_type
+        type: string
+      - description: Template ID to use for preview
+        in: formData
+        name: template_id
+        type: integer
+      - description: Campaign body override (POST only)
+        in: formData
+        name: body
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Rendered HTML or plain text
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a campaign
+      tags:
+      - campaigns
+  /api/campaigns/{id}/preview/archive:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Template ID to use for preview
+        in: formData
+        name: template_id
+        type: integer
+      - description: Archive meta JSON
+        in: formData
+        name: archive_meta
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Rendered HTML
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a campaign as an archive page
+      tags:
+      - campaigns
+  /api/campaigns/{id}/status:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New status
+        in: body
+        name: req
+        required: true
+        schema:
+          properties:
+            status:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Campaign'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update campaign status
+      tags:
+      - campaigns
+  /api/campaigns/{id}/test:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Campaign ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Test campaign request with subscriber emails
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.campReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Send a test campaign message
+      tags:
+      - campaigns
+  /api/campaigns/analytics/{type}:
+    get:
+      parameters:
+      - description: Analytics type (views, clicks, bounces, links)
+        in: path
+        name: type
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Campaign IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        required: true
+        type: array
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CampaignAnalyticsCount'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get campaign analytics
+      tags:
+      - campaigns
+  /api/campaigns/running/stats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Campaign'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get running campaign stats
+      tags:
+      - campaigns
+  /api/config:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/cmd.serverConfig'
+              type: object
+      summary: Get server config
+      tags:
+      - settings
+  /api/dashboard/charts:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Get dashboard chart data
+      tags:
+      - dashboard
+  /api/dashboard/counts:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Get dashboard counts
+      tags:
+      - dashboard
+  /api/health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      summary: Health check
+      tags:
+      - misc
+  /api/import/subscribers:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_subimporter.Status'
+              type: object
+      summary: Stop or clear a subscriber import
+      tags:
+      - import
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_subimporter.Status'
+              type: object
+      summary: Get current import status
+      tags:
+      - import
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: CSV or ZIP file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: JSON-encoded import options (subimporter.SessionOpt)
+        in: formData
+        name: params
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_subimporter.Status'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Import subscribers from a CSV or ZIP file
+      tags:
+      - import
+  /api/import/subscribers/logs:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: string
+              type: object
+      summary: Get import log
+      tags:
+      - import
+  /api/lang/{lang}:
+    get:
+      parameters:
+      - description: Language code (e.g. en)
+        in: path
+        name: lang
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get i18n language pack
+      tags:
+      - misc
+  /api/lists:
+    delete:
+      parameters:
+      - collectionFormat: csv
+        description: List IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        type: array
+      - description: SQL-like filter query
+        in: query
+        name: query
+        type: string
+      - description: Delete all lists matching the query
+        in: query
+        name: all
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete lists (bulk)
+      tags:
+      - lists
+    get:
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        type: string
+      - description: List type
+        in: query
+        name: type
+        type: string
+      - description: Opt-in type
+        in: query
+        name: optin
+        type: string
+      - description: List status
+        in: query
+        name: status
+        type: string
+      - collectionFormat: csv
+        description: Tags
+        in: query
+        items:
+          type: string
+        name: tag
+        type: array
+      - description: Order by field
+        in: query
+        name: order_by
+        type: string
+      - description: Sort order (asc/desc)
+        in: query
+        name: order
+        type: string
+      - description: Return minimal list without subscriber counts
+        in: query
+        name: minimal
+        type: boolean
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PageResults'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get lists
+      tags:
+      - lists
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: List to create
+        in: body
+        name: list
+        required: true
+        schema:
+          $ref: '#/definitions/models.List'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.List'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a list
+      tags:
+      - lists
+  /api/lists/{id}:
+    delete:
+      parameters:
+      - description: List ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a list
+      tags:
+      - lists
+    get:
+      parameters:
+      - description: List ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.List'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a list
+      tags:
+      - lists
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: List ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: List fields to update
+        in: body
+        name: list
+        required: true
+        schema:
+          $ref: '#/definitions/models.List'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.List'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a list
+      tags:
+      - lists
+  /api/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      summary: Log out the current user
+      tags:
+      - users
+  /api/logs:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+      summary: Get application logs
+      tags:
+      - settings
+  /api/maintenance/analytics/{type}:
+    delete:
+      parameters:
+      - description: 'Type: all, views, or clicks'
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: RFC3339 date; delete analytics older than this
+        in: formData
+        name: before_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete campaign analytics
+      tags:
+      - maintenance
+  /api/maintenance/analytics/{type}/export:
+    get:
+      parameters:
+      - description: 'Type: views or clicks'
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: RFC3339 date; export analytics since this date
+        in: query
+        name: since
+        required: true
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV download
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Export campaign analytics as CSV
+      tags:
+      - maintenance
+  /api/maintenance/subscribers/{type}:
+    delete:
+      parameters:
+      - description: 'Type: blocklisted or orphan'
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete orphaned/blocklisted subscribers
+      tags:
+      - maintenance
+  /api/maintenance/subscriptions/unconfirmed:
+    delete:
+      parameters:
+      - description: RFC3339 date; delete subscriptions older than this
+        in: formData
+        name: before_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete unconfirmed subscriptions
+      tags:
+      - maintenance
+  /api/media:
+    get:
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PageResults'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List all media
+      tags:
+      - media
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Media file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Upload a media file
+      tags:
+      - media
+  /api/media/{id}:
+    delete:
+      parameters:
+      - description: Media ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a media item
+      tags:
+      - media
+    get:
+      parameters:
+      - description: Media ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a media item
+      tags:
+      - media
+  /api/roles/{id}:
+    delete:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a role
+      tags:
+      - roles
+  /api/roles/lists:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListRole'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List list roles
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: List role to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListRole'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListRole'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a list role
+      tags:
+      - roles
+  /api/roles/lists/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated list role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListRole'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.ListRole'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a list role
+      tags:
+      - roles
+  /api/roles/users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.Role'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List user roles
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.Role'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.Role'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a user role
+      tags:
+      - roles
+  /api/roles/users/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.Role'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.Role'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a user role
+      tags:
+      - roles
+  /api/settings:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Settings'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get application settings
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Settings payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Settings'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update application settings
+      tags:
+      - settings
+  /api/settings/{key}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Setting key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Value (raw JSON)
+        in: body
+        name: body
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a single setting by key
+      tags:
+      - settings
+  /api/settings/scrub/stats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data: {}
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get Scrub usage statistics
+      tags:
+      - settings
+  /api/settings/scrub/test:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Scrub URL and API key
+        in: body
+        name: body
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Test Scrub integration settings
+      tags:
+      - settings
+  /api/settings/smtp/test:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: SMTP config with target email
+        in: body
+        name: body
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Test SMTP settings
+      tags:
+      - settings
+  /api/subscribers:
+    delete:
+      parameters:
+      - collectionFormat: multi
+        description: Subscriber IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Bulk delete subscribers
+      tags:
+      - subscribers
+    get:
+      parameters:
+      - description: Raw SQL expression to filter subscribers
+        in: query
+        name: query
+        type: string
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: List IDs to filter by
+        in: query
+        items:
+          type: integer
+        name: list_id
+        type: array
+      - description: Subscription status filter
+        in: query
+        name: subscription_status
+        type: string
+      - description: Column to order by
+        in: query
+        name: order_by
+        type: string
+      - description: Sort order (asc, desc)
+        in: query
+        name: order
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Results per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PageResults'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Query subscribers
+      tags:
+      - subscribers
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Subscriber details
+        in: body
+        name: subscriber
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_subimporter.SubReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Subscriber'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create subscriber
+      tags:
+      - subscribers
+  /api/subscribers/{id}:
+    delete:
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete subscriber
+      tags:
+      - subscribers
+    get:
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Subscriber'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get subscriber
+      tags:
+      - subscribers
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to patch
+        in: body
+        name: subscriber
+        required: true
+        schema:
+          $ref: '#/definitions/models.Subscriber'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Subscriber'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Partially update subscriber
+      tags:
+      - subscribers
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Subscriber fields to update
+        in: body
+        name: subscriber
+        required: true
+        schema:
+          $ref: '#/definitions/models.Subscriber'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Subscriber'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update subscriber
+      tags:
+      - subscribers
+  /api/subscribers/{id}/activity:
+    get:
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SubscriberActivity'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get subscriber activity
+      tags:
+      - subscribers
+  /api/subscribers/{id}/blocklist:
+    put:
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Blocklist subscriber
+      tags:
+      - subscribers
+  /api/subscribers/{id}/bounces:
+    delete:
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete subscriber bounces
+      tags:
+      - subscribers
+    get:
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Bounce'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get bounces for a subscriber
+      tags:
+      - bounces
+  /api/subscribers/{id}/export:
+    get:
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SubscriberExportProfile'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Export subscriber data (privacy)
+      tags:
+      - subscribers
+  /api/subscribers/{id}/optin:
+    post:
+      parameters:
+      - description: Subscriber ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Send opt-in email
+      tags:
+      - subscribers
+  /api/subscribers/blocklist:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Subscriber IDs
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.subQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Bulk blocklist subscribers
+      tags:
+      - subscribers
+  /api/subscribers/export:
+    get:
+      parameters:
+      - description: Raw SQL expression to filter
+        in: query
+        name: query
+        type: string
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: List IDs
+        in: query
+        items:
+          type: integer
+        name: list_id
+        type: array
+      - description: Subscription status
+        in: query
+        name: subscription_status
+        type: string
+      - collectionFormat: multi
+        description: Specific subscriber IDs
+        in: query
+        items:
+          type: integer
+        name: id
+        type: array
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file download
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Export subscribers as CSV
+      tags:
+      - subscribers
+  /api/subscribers/lists:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Action and target list IDs
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.subQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Manage subscriber list subscriptions
+      tags:
+      - subscribers
+  /api/subscribers/query/blocklist:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Query and options
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.subQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Blocklist subscribers by query
+      tags:
+      - subscribers
+  /api/subscribers/query/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Query and options
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.subQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete subscribers by query
+      tags:
+      - subscribers
+  /api/subscribers/query/lists:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Query, action, and target lists
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.subQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Manage subscriber lists by query
+      tags:
+      - subscribers
+  /api/templates:
+    get:
+      parameters:
+      - description: Omit template bodies from response
+        in: query
+        name: no_body
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Template'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List templates
+      tags:
+      - templates
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template to create
+        in: body
+        name: template
+        required: true
+        schema:
+          $ref: '#/definitions/models.Template'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Template'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a template
+      tags:
+      - templates
+  /api/templates/{id}:
+    delete:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a template
+      tags:
+      - templates
+    get:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Omit template body from response
+        in: query
+        name: no_body
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Template'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a template
+      tags:
+      - templates
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated template
+        in: body
+        name: template
+        required: true
+        schema:
+          $ref: '#/definitions/models.Template'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Template'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a template
+      tags:
+      - templates
+  /api/templates/{id}/default:
+    put:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Template'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Set default template
+      tags:
+      - templates
+  /api/templates/{id}/preview:
+    get:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a template
+      tags:
+      - templates
+  /api/templates/preview:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Template type (campaign, tx)
+        in: formData
+        name: template_type
+        type: string
+      - description: Template body HTML
+        in: formData
+        name: body
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Preview a template body
+      tags:
+      - templates
+  /api/users:
+    delete:
+      parameters:
+      - collectionFormat: multi
+        description: User ID(s)
+        in: query
+        items:
+          type: integer
+        name: id
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete one or more users
+      tags:
+      - users
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.User'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Create a user
+      tags:
+      - users
+  /api/users/{id}:
+    delete:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete a user
+      tags:
+      - users
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get a user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated user
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_knadh_listmonk_internal_auth.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update a user
+      tags:
+      - users
+  /api/users/{id}/twofa:
+    delete:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Current password
+        in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Disable TOTP two-factor authentication
+      tags:
+      - users
+    put:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: TOTP secret
+        in: formData
+        name: secret
+        required: true
+        type: string
+      - description: TOTP verification code
+        in: formData
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Enable TOTP two-factor authentication
+      tags:
+      - users
+  /api/users/{id}/twofa/totp:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Generate a TOTP QR code
+      tags:
+      - users
+  /webhooks/bounce:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Bounce payload (native webhook only)
+        in: body
+        name: bounce
+        schema:
+          $ref: '#/definitions/models.Bounce'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/cmd.okResp'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Receive a bounce webhook
+      tags:
+      - bounces
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

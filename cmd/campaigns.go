@@ -53,6 +53,21 @@ var (
 )
 
 // GetCampaigns handles retrieval of campaigns.
+//
+//	@Summary		Get campaigns
+//	@Tags			campaigns
+//	@Produce		json
+//	@Param			query		query		string		false	"Search query"
+//	@Param			status		query		[]string	false	"Campaign status filter"
+//	@Param			tag			query		[]string	false	"Tags"
+//	@Param			order_by	query		string		false	"Order by field"
+//	@Param			order		query		string		false	"Sort order (asc/desc)"
+//	@Param			no_body		query		bool		false	"Omit campaign body from response"
+//	@Param			page		query		int			false	"Page number"
+//	@Param			per_page	query		int			false	"Results per page"
+//	@Success		200	{object}	okResp{data=models.PageResults}
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/campaigns [get]
 func (a *App) GetCampaigns(c echo.Context) error {
 	// Get the authenticated user.
 	user := auth.GetUser(c)
@@ -109,7 +124,17 @@ func (a *App) GetCampaigns(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{out})
 }
 
-// GetCampaign handles retrieval of campaigns.
+// GetCampaign handles retrieval of a single campaign.
+//
+//	@Summary		Get a campaign
+//	@Tags			campaigns
+//	@Produce		json
+//	@Param			id		path		int		true	"Campaign ID"
+//	@Param			no_body	query		bool	false	"Omit campaign body from response"
+//	@Success		200	{object}	okResp{data=models.Campaign}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id} [get]
 func (a *App) GetCampaign(c echo.Context) error {
 	// Get the campaign ID.
 	id := getID(c)
@@ -135,6 +160,20 @@ func (a *App) GetCampaign(c echo.Context) error {
 }
 
 // PreviewCampaign renders the HTML preview of a campaign body.
+//
+//	@Summary		Preview a campaign
+//	@Tags			campaigns
+//	@Accept			mpfd
+//	@Produce		html
+//	@Param			id				path		int		true	"Campaign ID"
+//	@Param			content_type	formData	string	false	"Content type override"
+//	@Param			template_id		formData	int		false	"Template ID to use for preview"
+//	@Param			body			formData	string	false	"Campaign body override (POST only)"
+//	@Success		200	{string}	string	"Rendered HTML or plain text"
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id}/preview [get]
+//	@Router			/api/campaigns/{id}/preview [post]
 func (a *App) PreviewCampaign(c echo.Context) error {
 	// Get the campaign ID.
 	id := getID(c)
@@ -197,6 +236,18 @@ func (a *App) PreviewCampaign(c echo.Context) error {
 }
 
 // PreviewCampaignArchive renders the public campaign archives page.
+//
+//	@Summary		Preview a campaign as an archive page
+//	@Tags			campaigns
+//	@Accept			mpfd
+//	@Produce		html
+//	@Param			id				path		int		true	"Campaign ID"
+//	@Param			template_id		formData	int		false	"Template ID to use for preview"
+//	@Param			archive_meta	formData	string	false	"Archive meta JSON"
+//	@Success		200	{string}	string	"Rendered HTML"
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id}/preview/archive [post]
 func (a *App) PreviewCampaignArchive(c echo.Context) error {
 	// Get the campaign ID.
 	id := getID(c)
@@ -235,6 +286,16 @@ func (a *App) PreviewCampaignArchive(c echo.Context) error {
 }
 
 // CampaignContent handles campaign content (body) format conversions.
+//
+//	@Summary		Convert campaign content format
+//	@Tags			campaigns
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Campaign ID"
+//	@Param			req		body		campContentReq		true	"Content conversion request"
+//	@Success		200	{object}	okResp{data=string}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id}/content [post]
 func (a *App) CampaignContent(c echo.Context) error {
 	var camp campContentReq
 	if err := c.Bind(&camp); err != nil {
@@ -252,6 +313,15 @@ func (a *App) CampaignContent(c echo.Context) error {
 
 // CreateCampaign handles campaign creation.
 // Newly created campaigns are always drafts.
+//
+//	@Summary		Create a campaign
+//	@Tags			campaigns
+//	@Accept			json
+//	@Produce		json
+//	@Param			campaign	body		campReq	true	"Campaign to create"
+//	@Success		200	{object}	okResp{data=models.Campaign}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Router			/api/campaigns [post]
 func (a *App) CreateCampaign(c echo.Context) error {
 	var o campReq
 	if err := c.Bind(&o); err != nil {
@@ -299,6 +369,17 @@ func (a *App) CreateCampaign(c echo.Context) error {
 
 // UpdateCampaign handles campaign modification.
 // Campaigns that are done cannot be modified.
+//
+//	@Summary		Update a campaign
+//	@Tags			campaigns
+//	@Accept			json
+//	@Produce		json
+//	@Param			id			path		int			true	"Campaign ID"
+//	@Param			campaign	body		campReq		true	"Campaign fields to update"
+//	@Success		200	{object}	okResp{data=models.Campaign}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id} [put]
 func (a *App) UpdateCampaign(c echo.Context) error {
 	// Get the campaign ID.
 	id := getID(c)
@@ -350,6 +431,17 @@ func (a *App) UpdateCampaign(c echo.Context) error {
 }
 
 // UpdateCampaignStatus handles campaign status modification.
+//
+//	@Summary		Update campaign status
+//	@Tags			campaigns
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int								true	"Campaign ID"
+//	@Param			req		body		object{status=string}			true	"New status"
+//	@Success		200	{object}	okResp{data=models.Campaign}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id}/status [put]
 func (a *App) UpdateCampaignStatus(c echo.Context) error {
 	// Get the campaign ID.
 	id := getID(c)
@@ -388,7 +480,18 @@ func (a *App) UpdateCampaignStatus(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{out})
 }
 
-// UpdateCampaignArchive handles campaign status modification.
+// UpdateCampaignArchive updates campaign archive settings.
+//
+//	@Summary		Update campaign archive settings
+//	@Tags			campaigns
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int		true	"Campaign ID"
+//	@Param			req		body		object{archive=bool,archive_template_id=int,archive_meta=object,archive_slug=string}	true	"Archive settings"
+//	@Success		200	{object}	okResp{data=object}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id}/archive [put]
 func (a *App) UpdateCampaignArchive(c echo.Context) error {
 	id := getID(c)
 
@@ -424,6 +527,15 @@ func (a *App) UpdateCampaignArchive(c echo.Context) error {
 
 // DeleteCampaign handles campaign deletion.
 // Only scheduled campaigns that have not started yet can be deleted.
+//
+//	@Summary		Delete a campaign
+//	@Tags			campaigns
+//	@Produce		json
+//	@Param			id	path		int	true	"Campaign ID"
+//	@Success		200	{object}	okResp{data=bool}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id} [delete]
 func (a *App) DeleteCampaign(c echo.Context) error {
 	// Get the campaign ID.
 	id := getID(c)
@@ -442,6 +554,16 @@ func (a *App) DeleteCampaign(c echo.Context) error {
 }
 
 // DeleteCampaigns deletes multiple campaigns by IDs or by query.
+//
+//	@Summary		Delete campaigns (bulk)
+//	@Tags			campaigns
+//	@Produce		json
+//	@Param			id		query		[]int	false	"Campaign IDs"
+//	@Param			query	query		string	false	"SQL-like filter query"
+//	@Param			all		query		bool	false	"Delete all campaigns matching the query"
+//	@Success		200	{object}	okResp{data=bool}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Router			/api/campaigns [delete]
 func (a *App) DeleteCampaigns(c echo.Context) error {
 	// Get the authenticated user.
 	user := auth.GetUser(c)
@@ -492,6 +614,13 @@ func (a *App) DeleteCampaigns(c echo.Context) error {
 }
 
 // GetRunningCampaignStats returns stats of a given set of campaign IDs.
+//
+//	@Summary		Get running campaign stats
+//	@Tags			campaigns
+//	@Produce		json
+//	@Success		200	{object}	okResp{data=[]models.Campaign}
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/campaigns/running/stats [get]
 func (a *App) GetRunningCampaignStats(c echo.Context) error {
 	// Get the running campaign stats from the DB.
 	out, err := a.core.GetRunningCampaignStats()
@@ -526,6 +655,17 @@ func (a *App) GetRunningCampaignStats(c echo.Context) error {
 
 // TestCampaign handles the sending of a campaign message to
 // arbitrary subscribers for testing.
+//
+//	@Summary		Send a test campaign message
+//	@Tags			campaigns
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int			true	"Campaign ID"
+//	@Param			req		body		campReq		true	"Test campaign request with subscriber emails"
+//	@Success		200	{object}	okResp{data=bool}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/campaigns/{id}/test [post]
 func (a *App) TestCampaign(c echo.Context) error {
 	// Get the campaign ID.
 	id := getID(c)
@@ -609,7 +749,18 @@ func (a *App) TestCampaign(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{true})
 }
 
-// GetCampaignViewAnalytics retrieves view counts for a campaign.
+// GetCampaignViewAnalytics retrieves view/click analytics for a campaign.
+//
+//	@Summary		Get campaign analytics
+//	@Tags			campaigns
+//	@Produce		json
+//	@Param			type	path		string		true	"Analytics type (views, clicks, bounces, links)"
+//	@Param			id		query		[]int		true	"Campaign IDs"
+//	@Param			from	query		string		true	"Start date (YYYY-MM-DD)"
+//	@Param			to		query		string		true	"End date (YYYY-MM-DD)"
+//	@Success		200	{object}	okResp{data=[]models.CampaignAnalyticsCount}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Router			/api/campaigns/analytics/{type} [get]
 func (a *App) GetCampaignViewAnalytics(c echo.Context) error {
 	ids, err := parseStringIDs(c.Request().URL.Query()["id"])
 	if err != nil {

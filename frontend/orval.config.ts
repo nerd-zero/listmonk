@@ -3,7 +3,7 @@ import { defineConfig } from 'orval';
 export default defineConfig({
   listmonk: {
     input: {
-      target: '../docs/swagger/collections.yaml',
+      target: '../docs/swagger.yaml',
     },
     output: {
       mode: 'tags-split',

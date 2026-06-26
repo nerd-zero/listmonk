@@ -23,6 +23,16 @@ var (
 )
 
 // UploadMedia handles media file uploads.
+//
+//	@Summary		Upload a media file
+//	@Tags			media
+//	@Accept			mpfd
+//	@Produce		json
+//	@Param			file	formData	file	true	"Media file to upload"
+//	@Success		200		{object}	okResp{data=object}
+//	@Failure		400		{object}	echo.HTTPError
+//	@Failure		500		{object}	echo.HTTPError
+//	@Router			/api/media [post]
 func (a *App) UploadMedia(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -140,6 +150,16 @@ func (a *App) UploadMedia(c echo.Context) error {
 }
 
 // GetAllMedia handles retrieval of uploaded media.
+//
+//	@Summary		List all media
+//	@Tags			media
+//	@Produce		json
+//	@Param			query	query		string	false	"Search query"
+//	@Param			page	query		int		false	"Page number"
+//	@Param			per_page	query	int		false	"Results per page"
+//	@Success		200		{object}	okResp{data=models.PageResults}
+//	@Failure		500		{object}	echo.HTTPError
+//	@Router			/api/media [get]
 func (a *App) GetAllMedia(c echo.Context) error {
 	var (
 		query = c.FormValue("query")
@@ -163,6 +183,15 @@ func (a *App) GetAllMedia(c echo.Context) error {
 }
 
 // GetMedia handles retrieval of a media item by ID.
+//
+//	@Summary		Get a media item
+//	@Tags			media
+//	@Produce		json
+//	@Param			id	path		int	true	"Media ID"
+//	@Success		200	{object}	okResp{data=object}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/media/{id} [get]
 func (a *App) GetMedia(c echo.Context) error {
 	// Fetch the media item from the DB.
 	id := getID(c)
@@ -175,6 +204,15 @@ func (a *App) GetMedia(c echo.Context) error {
 }
 
 // DeleteMedia handles deletion of uploaded media.
+//
+//	@Summary		Delete a media item
+//	@Tags			media
+//	@Produce		json
+//	@Param			id	path		int	true	"Media ID"
+//	@Success		200	{object}	okResp{data=bool}
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/media/{id} [delete]
 func (a *App) DeleteMedia(c echo.Context) error {
 
 	// Delete the media from the DB. The query returns the filename.

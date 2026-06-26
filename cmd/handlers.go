@@ -8,9 +8,11 @@ import (
 	"regexp"
 	"strconv"
 
+	_ "github.com/knadh/listmonk/docs" // swaggo generated docs
 	"github.com/knadh/listmonk/internal/auth"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 const (
@@ -31,6 +33,9 @@ var (
 
 // registerHandlers registers HTTP handlers.
 func initHTTPHandlers(e *echo.Echo, a *App) {
+	// Swagger UI (development convenience — lists all annotated API endpoints).
+	e.GET("/api/swagger/*", echoSwagger.WrapHandler)
+
 	// Default error handler.
 	e.HTTPErrorHandler = func(err error, c echo.Context) {
 		// Generic, non-echo error. Log it.
@@ -323,6 +328,12 @@ func (a *App) AdminPage(c echo.Context) error {
 }
 
 // HealthCheck is a healthcheck endpoint that returns a 200 response.
+//
+//	@Summary		Health check
+//	@Tags			misc
+//	@Produce		json
+//	@Success		200	{object}	okResp{data=bool}
+//	@Router			/api/health [get]
 func (a *App) HealthCheck(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{true})
 }
