@@ -767,66 +767,6 @@ const docTemplate = `{
             }
         },
         "/api/campaigns/{id}/preview": {
-            "get": {
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "text/html"
-                ],
-                "tags": [
-                    "campaigns"
-                ],
-                "summary": "Preview a campaign",
-                "operationId": "previewCampaign",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Campaign ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Content type override",
-                        "name": "content_type",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Template ID to use for preview",
-                        "name": "template_id",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Campaign body override (POST only)",
-                        "name": "body",
-                        "in": "formData"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Rendered HTML or plain text",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/echo.HTTPError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/echo.HTTPError"
-                        }
-                    }
-                }
-            },
             "post": {
                 "consumes": [
                     "multipart/form-data"
@@ -837,7 +777,7 @@ const docTemplate = `{
                 "tags": [
                     "campaigns"
                 ],
-                "summary": "Preview a campaign",
+                "summary": "Preview a campaign (POST)",
                 "operationId": "previewCampaign",
                 "parameters": [
                     {
@@ -861,7 +801,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Campaign body override (POST only)",
+                        "description": "Campaign body override",
                         "name": "body",
                         "in": "formData"
                     }
