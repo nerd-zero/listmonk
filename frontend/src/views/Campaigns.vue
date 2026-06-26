@@ -351,10 +351,6 @@ function onDeleteCampaign(c: any) {
 
 function onSelectAll() { bulk.all = true; }
 
-function onTableCheck() {
-  if (bulk.checked.length !== (campaigns.value as any).total) bulk.all = false;
-}
-
 function onDeleteCampaigns() {
   const name = tc('globals.terms.campaign', numSelectedCampaigns.value);
   const fn = () => {

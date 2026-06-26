@@ -210,7 +210,7 @@ const isURLOk = computed(() => {
   try {
     const u = new URL(serverConfig.value.root_url);
     return u.hostname !== 'localhost' && u.hostname !== '127.0.0.1';
-  } catch (e) {
+  } catch {
     return false;
   }
 });

@@ -119,5 +119,5 @@ import { useMainStore } from '@/store';
 
 const props = defineProps<{ form?: any }>();
 const data = props.form;
-const { serverConfig, loading } = storeToRefs(useMainStore());
+const { serverConfig } = storeToRefs(useMainStore());
 </script>

@@ -109,7 +109,7 @@ const { $utils, $events } = useGlobal();
 const { setCampaignContent } = campaignsApi();
 const { getTemplate } = templatesApi();
 const { t } = useI18n();
-const { serverConfig, loading } = storeToRefs(useMainStore());
+const { loading } = storeToRefs(useMainStore());
 
 const isPreviewing = ref(false);
 const isVisualTplSelector = ref(false);
