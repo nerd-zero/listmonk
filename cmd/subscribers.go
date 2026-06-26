@@ -35,7 +35,7 @@ type subQueryReq struct {
 	Status             string `json:"status"`
 	SubscriptionStatus string `json:"subscription_status"`
 	All                bool   `json:"all"`
-}
+} // @name SubscriberQueryReq
 
 // subOptin contains the data that's passed to the double opt-in e-mail template.
 type subOptin struct {
@@ -57,11 +57,12 @@ var (
 
 // GetSubscriber handles the retrieval of a single subscriber by ID.
 //
+//	@ID			getSubscriber
 //	@Summary		Get subscriber
 //	@Tags			subscribers
 //	@Produce		json
 //	@Param			id	path		int	true	"Subscriber ID"
-//	@Success		200	{object}	okResp{data=models.Subscriber}
+//	@Success		200	{object}	models.Subscriber
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		403	{object}	echo.HTTPError
 //	@Failure		404	{object}	echo.HTTPError
@@ -88,11 +89,12 @@ func (a *App) GetSubscriber(c echo.Context) error {
 
 // GetSubscriberActivity handles the retrieval of a subscriber's campaign views and link clicks.
 //
+//	@ID			getSubscriberActivity
 //	@Summary		Get subscriber activity
 //	@Tags			subscribers
 //	@Produce		json
 //	@Param			id	path		int	true	"Subscriber ID"
-//	@Success		200	{object}	okResp{data=models.SubscriberActivity}
+//	@Success		200	{object}	models.SubscriberActivity
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		403	{object}	echo.HTTPError
 //	@Failure		404	{object}	echo.HTTPError
@@ -117,6 +119,7 @@ func (a *App) GetSubscriberActivity(c echo.Context) error {
 
 // QuerySubscribers handles querying subscribers based on an arbitrary SQL expression.
 //
+//	@ID			listSubscribers
 //	@Summary		Query subscribers
 //	@Tags			subscribers
 //	@Produce		json
@@ -128,7 +131,7 @@ func (a *App) GetSubscriberActivity(c echo.Context) error {
 //	@Param			order			query		string	false	"Sort order (asc, desc)"
 //	@Param			page			query		int		false	"Page number"
 //	@Param			per_page		query		int		false	"Results per page"
-//	@Success		200				{object}	okResp{data=models.PageResults}
+//	@Success		200				{object}	models.PageResults
 //	@Failure		400				{object}	echo.HTTPError
 //	@Router			/api/subscribers [get]
 func (a *App) QuerySubscribers(c echo.Context) error {
@@ -182,6 +185,7 @@ func (a *App) QuerySubscribers(c echo.Context) error {
 
 // ExportSubscribers handles querying subscribers based on an arbitrary SQL expression.
 //
+//	@ID			exportSubscribers
 //	@Summary		Export subscribers as CSV
 //	@Tags			subscribers
 //	@Produce		text/csv
@@ -270,12 +274,13 @@ loop:
 
 // CreateSubscriber handles the creation of a new subscriber.
 //
+//	@ID			createSubscriber
 //	@Summary		Create subscriber
 //	@Tags			subscribers
 //	@Accept			json
 //	@Produce		json
 //	@Param			subscriber	body		subimporter.SubReq	true	"Subscriber details"
-//	@Success		200			{object}	okResp{data=models.Subscriber}
+//	@Success		200			{object}	models.Subscriber
 //	@Failure		400			{object}	echo.HTTPError
 //	@Failure		403			{object}	echo.HTTPError
 //	@Router			/api/subscribers [post]
@@ -314,13 +319,14 @@ func (a *App) CreateSubscriber(c echo.Context) error {
 
 // UpdateSubscriber handles modification of a subscriber.
 //
+//	@ID			updateSubscriber
 //	@Summary		Update subscriber
 //	@Tags			subscribers
 //	@Accept			json
 //	@Produce		json
 //	@Param			id			path		int					true	"Subscriber ID"
 //	@Param			subscriber	body		models.Subscriber	true	"Subscriber fields to update"
-//	@Success		200			{object}	okResp{data=models.Subscriber}
+//	@Success		200			{object}	models.Subscriber
 //	@Failure		400			{object}	echo.HTTPError
 //	@Failure		403			{object}	echo.HTTPError
 //	@Failure		404			{object}	echo.HTTPError
@@ -381,13 +387,14 @@ func (a *App) UpdateSubscriber(c echo.Context) error {
 // PatchSubscriber handles partially modifying a subscriber.
 // Only fields present in the request body are updated.
 //
+//	@ID			patchSubscriber
 //	@Summary		Partially update subscriber
 //	@Tags			subscribers
 //	@Accept			json
 //	@Produce		json
 //	@Param			id			path		int					true	"Subscriber ID"
 //	@Param			subscriber	body		models.Subscriber	true	"Fields to patch"
-//	@Success		200			{object}	okResp{data=models.Subscriber}
+//	@Success		200			{object}	models.Subscriber
 //	@Failure		400			{object}	echo.HTTPError
 //	@Failure		403			{object}	echo.HTTPError
 //	@Router			/api/subscribers/{id} [patch]
@@ -454,11 +461,12 @@ func (a *App) PatchSubscriber(c echo.Context) error {
 
 // SubscriberSendOptin sends an optin confirmation e-mail to a subscriber.
 //
+//	@ID			sendSubscriberOptin
 //	@Summary		Send opt-in email
 //	@Tags			subscribers
 //	@Produce		json
 //	@Param			id	path		int		true	"Subscriber ID"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		403	{object}	echo.HTTPError
 //	@Router			/api/subscribers/{id}/optin [post]
@@ -486,11 +494,12 @@ func (a *App) SubscriberSendOptin(c echo.Context) error {
 
 // BlocklistSubscriber handles the blocklisting of a given subscriber.
 //
+//	@ID			blocklistSubscriber
 //	@Summary		Blocklist subscriber
 //	@Tags			subscribers
 //	@Produce		json
 //	@Param			id	path		int		true	"Subscriber ID"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		403	{object}	echo.HTTPError
 //	@Router			/api/subscribers/{id}/blocklist [put]
@@ -512,12 +521,13 @@ func (a *App) BlocklistSubscriber(c echo.Context) error {
 
 // BlocklistSubscribers handles the blocklisting of one or more subscribers.
 //
+//	@ID			blocklistSubscribers
 //	@Summary		Bulk blocklist subscribers
 //	@Tags			subscribers
 //	@Accept			json
 //	@Produce		json
 //	@Param			req	body		subQueryReq	true	"Subscriber IDs"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		403	{object}	echo.HTTPError
 //	@Router			/api/subscribers/blocklist [put]
@@ -550,12 +560,13 @@ func (a *App) BlocklistSubscribers(c echo.Context) error {
 // from or to one or more target lists.
 // It takes either an ID in the URI, or a list of IDs in the request body.
 //
+//	@ID			manageSubscriberLists
 //	@Summary		Manage subscriber list subscriptions
 //	@Tags			subscribers
 //	@Accept			json
 //	@Produce		json
 //	@Param			req	body		subQueryReq	true	"Action and target list IDs"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		403	{object}	echo.HTTPError
 //	@Router			/api/subscribers/lists [put]
@@ -625,11 +636,12 @@ func (a *App) ManageSubscriberLists(c echo.Context) error {
 
 // DeleteSubscriber handles deletion of a single subscriber.
 //
+//	@ID			deleteSubscriber
 //	@Summary		Delete subscriber
 //	@Tags			subscribers
 //	@Produce		json
 //	@Param			id	path		int		true	"Subscriber ID"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		403	{object}	echo.HTTPError
 //	@Router			/api/subscribers/{id} [delete]
@@ -651,11 +663,12 @@ func (a *App) DeleteSubscriber(c echo.Context) error {
 
 // DeleteSubscribers handles bulk deletion of one or more subscribers.
 //
+//	@ID			deleteSubscribers
 //	@Summary		Bulk delete subscribers
 //	@Tags			subscribers
 //	@Produce		json
 //	@Param			id	query		[]int	true	"Subscriber IDs"	collectionFormat(multi)
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		403	{object}	echo.HTTPError
 //	@Router			/api/subscribers [delete]
@@ -688,12 +701,13 @@ func (a *App) DeleteSubscribers(c echo.Context) error {
 // DeleteSubscribersByQuery bulk deletes based on an
 // arbitrary SQL expression.
 //
+//	@ID			deleteSubscribersByQuery
 //	@Summary		Delete subscribers by query
 //	@Tags			subscribers
 //	@Accept			json
 //	@Produce		json
 //	@Param			req	body		subQueryReq	true	"Query and options"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Router			/api/subscribers/query/delete [post]
 func (a *App) DeleteSubscribersByQuery(c echo.Context) error {
@@ -737,12 +751,13 @@ func (a *App) DeleteSubscribersByQuery(c echo.Context) error {
 // BlocklistSubscribersByQuery bulk blocklists subscribers
 // based on an arbitrary SQL expression.
 //
+//	@ID			blocklistSubscribersByQuery
 //	@Summary		Blocklist subscribers by query
 //	@Tags			subscribers
 //	@Accept			json
 //	@Produce		json
 //	@Param			req	body		subQueryReq	true	"Query and options"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Router			/api/subscribers/query/blocklist [put]
 func (a *App) BlocklistSubscribersByQuery(c echo.Context) error {
@@ -785,12 +800,13 @@ func (a *App) BlocklistSubscribersByQuery(c echo.Context) error {
 // ManageSubscriberListsByQuery bulk adds/removes/unsubscribes subscribers
 // from one or more lists based on an arbitrary SQL expression.
 //
+//	@ID			manageSubscriberListsByQuery
 //	@Summary		Manage subscriber lists by query
 //	@Tags			subscribers
 //	@Accept			json
 //	@Produce		json
 //	@Param			req	body		subQueryReq	true	"Query, action, and target lists"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Router			/api/subscribers/query/lists [put]
 func (a *App) ManageSubscriberListsByQuery(c echo.Context) error {
@@ -843,11 +859,12 @@ func (a *App) ManageSubscriberListsByQuery(c echo.Context) error {
 
 // DeleteSubscriberBounces deletes all the bounces on a subscriber.
 //
+//	@ID			deleteSubscriberBounces
 //	@Summary		Delete subscriber bounces
 //	@Tags			subscribers
 //	@Produce		json
 //	@Param			id	path		int		true	"Subscriber ID"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Router			/api/subscribers/{id}/bounces [delete]
 func (a *App) DeleteSubscriberBounces(c echo.Context) error {
@@ -865,6 +882,7 @@ func (a *App) DeleteSubscriberBounces(c echo.Context) error {
 // a JSON report. This is a privacy feature and depends on the
 // configuration in a.Constants.Privacy.
 //
+//	@ID			exportSubscriberData
 //	@Summary		Export subscriber data (privacy)
 //	@Tags			subscribers
 //	@Produce		application/json

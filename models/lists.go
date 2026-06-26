@@ -37,4 +37,4 @@ type List struct {
 	// Pseudofield for getting the total number of subscribers
 	// in searches and queries.
 	Total int `db:"total" json:"-"`
-}
+} // @name List

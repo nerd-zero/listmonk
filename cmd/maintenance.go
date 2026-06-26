@@ -13,11 +13,12 @@ import (
 
 // GCSubscribers garbage collects (deletes) orphaned or blocklisted subscribers.
 //
+//	@ID			gcSubscribers
 //	@Summary		Delete orphaned/blocklisted subscribers
 //	@Tags			maintenance
 //	@Produce		json
 //	@Param			type	path		string	true	"Type: blocklisted or orphan"
-//	@Success		200		{object}	okResp{data=object}
+//	@Success		200		{object}	object
 //	@Failure		400		{object}	echo.HTTPError
 //	@Router			/api/maintenance/subscribers/{type} [delete]
 func (a *App) GCSubscribers(c echo.Context) error {
@@ -48,11 +49,12 @@ func (a *App) GCSubscribers(c echo.Context) error {
 
 // GCSubscriptions garbage collects (deletes) unconfirmed subscriptions older than a given date.
 //
+//	@ID			gcSubscriptions
 //	@Summary		Delete unconfirmed subscriptions
 //	@Tags			maintenance
 //	@Produce		json
 //	@Param			before_date	formData	string	true	"RFC3339 date; delete subscriptions older than this"
-//	@Success		200			{object}	okResp{data=object}
+//	@Success		200			{object}	object
 //	@Failure		400			{object}	echo.HTTPError
 //	@Router			/api/maintenance/subscriptions/unconfirmed [delete]
 func (a *App) GCSubscriptions(c echo.Context) error {
@@ -75,12 +77,13 @@ func (a *App) GCSubscriptions(c echo.Context) error {
 
 // GCCampaignAnalytics garbage collects (deletes) campaign analytics.
 //
+//	@ID			gcCampaignAnalytics
 //	@Summary		Delete campaign analytics
 //	@Tags			maintenance
 //	@Produce		json
 //	@Param			type		path		string	true	"Type: all, views, or clicks"
 //	@Param			before_date	formData	string	true	"RFC3339 date; delete analytics older than this"
-//	@Success		200			{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400			{object}	echo.HTTPError
 //	@Router			/api/maintenance/analytics/{type} [delete]
 func (a *App) GCCampaignAnalytics(c echo.Context) error {
@@ -113,6 +116,7 @@ func (a *App) GCCampaignAnalytics(c echo.Context) error {
 
 // ExportCampaignAnalytics streams campaign analytics (views or link clicks) as a CSV file.
 //
+//	@ID			exportCampaignAnalytics
 //	@Summary		Export campaign analytics as CSV
 //	@Tags			maintenance
 //	@Produce		text/csv

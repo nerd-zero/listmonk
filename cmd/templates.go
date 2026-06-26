@@ -33,12 +33,13 @@ var (
 
 // GetTemplate handles the retrieval of a template
 //
+//	@ID			getTemplate
 //	@Summary		Get a template
 //	@Tags			templates
 //	@Produce		json
 //	@Param			id		path		int		true	"Template ID"
 //	@Param			no_body	query		bool	false	"Omit template body from response"
-//	@Success		200		{object}	okResp{data=models.Template}
+//	@Success		200		{object}	models.Template
 //	@Failure		400		{object}	echo.HTTPError
 //	@Failure		404		{object}	echo.HTTPError
 //	@Router			/api/templates/{id} [get]
@@ -58,11 +59,12 @@ func (a *App) GetTemplate(c echo.Context) error {
 
 // GetTemplates handles retrieval of templates.
 //
+//	@ID			listTemplates
 //	@Summary		List templates
 //	@Tags			templates
 //	@Produce		json
 //	@Param			no_body	query		bool	false	"Omit template bodies from response"
-//	@Success		200		{object}	okResp{data=[]models.Template}
+//	@Success		200		{object}	[]models.Template
 //	@Failure		500		{object}	echo.HTTPError
 //	@Router			/api/templates [get]
 func (a *App) GetTemplates(c echo.Context) error {
@@ -80,6 +82,7 @@ func (a *App) GetTemplates(c echo.Context) error {
 
 // PreviewTemplate renders the HTML preview of a template in the DB.
 //
+//	@ID			previewTemplate
 //	@Summary		Preview a template
 //	@Tags			templates
 //	@Produce		html
@@ -107,6 +110,7 @@ func (a *App) PreviewTemplate(c echo.Context) error {
 
 // PreviewTemplateBody renders the HTML preview of a template given its type and body.
 //
+//	@ID			previewTemplateBody
 //	@Summary		Preview a template body
 //	@Tags			templates
 //	@Accept			mpfd
@@ -143,12 +147,13 @@ func (a *App) PreviewTemplateBody(c echo.Context) error {
 
 // CreateTemplate handles template creation.
 //
+//	@ID			createTemplate
 //	@Summary		Create a template
 //	@Tags			templates
 //	@Accept			json
 //	@Produce		json
 //	@Param			template	body		models.Template	true	"Template to create"
-//	@Success		200			{object}	okResp{data=models.Template}
+//	@Success		200			{object}	models.Template
 //	@Failure		400			{object}	echo.HTTPError
 //	@Router			/api/templates [post]
 func (a *App) CreateTemplate(c echo.Context) error {
@@ -192,13 +197,14 @@ func (a *App) CreateTemplate(c echo.Context) error {
 
 // UpdateTemplate handles template modification.
 //
+//	@ID			updateTemplate
 //	@Summary		Update a template
 //	@Tags			templates
 //	@Accept			json
 //	@Produce		json
 //	@Param			id			path		int				true	"Template ID"
 //	@Param			template	body		models.Template	true	"Updated template"
-//	@Success		200			{object}	okResp{data=models.Template}
+//	@Success		200			{object}	models.Template
 //	@Failure		400			{object}	echo.HTTPError
 //	@Failure		404			{object}	echo.HTTPError
 //	@Router			/api/templates/{id} [put]
@@ -244,11 +250,12 @@ func (a *App) UpdateTemplate(c echo.Context) error {
 
 // TemplateSetDefault sets a template as the default.
 //
+//	@ID			setDefaultTemplate
 //	@Summary		Set default template
 //	@Tags			templates
 //	@Produce		json
 //	@Param			id	path		int	true	"Template ID"
-//	@Success		200	{object}	okResp{data=[]models.Template}
+//	@Success		200	{object}	[]models.Template
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		404	{object}	echo.HTTPError
 //	@Router			/api/templates/{id}/default [put]
@@ -264,11 +271,12 @@ func (a *App) TemplateSetDefault(c echo.Context) error {
 
 // DeleteTemplate handles template deletion.
 //
+//	@ID			deleteTemplate
 //	@Summary		Delete a template
 //	@Tags			templates
 //	@Produce		json
 //	@Param			id	path		int	true	"Template ID"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		404	{object}	echo.HTTPError
 //	@Router			/api/templates/{id} [delete]

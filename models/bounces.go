@@ -31,4 +31,4 @@ type Bounce struct {
 	// Pseudofield for getting the total number of bounces
 	// in searches and queries.
 	Total int `db:"total" json:"-"`
-}
+} // @name Bounce

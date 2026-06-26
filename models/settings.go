@@ -172,4 +172,4 @@ type Settings struct {
 		APIKey        string `json:"api_key"`
 		IntegrationID int    `json:"integration_id"`
 	} `json:"scrub"`
-}
+} // @name Settings

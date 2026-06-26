@@ -34,7 +34,7 @@ type Subscriber struct {
 	Attribs JSON           `db:"attribs" json:"attribs"`
 	Status  string         `db:"status" json:"status"`
 	Lists   types.JSONText `db:"lists" json:"lists"`
-}
+} // @name Subscriber
 
 type subLists struct {
 	SubscriberID int            `db:"subscriber_id"`
@@ -127,10 +127,10 @@ type SubscriberExportProfile struct {
 	Subscriptions json.RawMessage `db:"subscriptions" json:"subscriptions,omitempty"`
 	CampaignViews json.RawMessage `db:"campaign_views" json:"campaign_views,omitempty"`
 	LinkClicks    json.RawMessage `db:"link_clicks" json:"link_clicks,omitempty"`
-}
+} // @name SubscriberExportProfile
 
 // SubscriberActivity represents a subscriber's campaign views and link clicks for the Activity tab.
 type SubscriberActivity struct {
 	CampaignViews json.RawMessage `db:"campaign_views" json:"campaign_views"`
 	LinkClicks    json.RawMessage `db:"link_clicks" json:"link_clicks"`
-}
+} // @name SubscriberActivity

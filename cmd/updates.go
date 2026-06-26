@@ -29,7 +29,7 @@ type AppUpdate struct {
 		URL         string `json:"url"`
 		Priority    string `json:"priority"`
 	} `json:"messages"`
-}
+} // @name AppUpdate
 
 var reSemver = regexp.MustCompile(`-(.*)`)
 

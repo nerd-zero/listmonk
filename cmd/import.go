@@ -16,13 +16,14 @@ import (
 // ImportSubscribers handles the uploading and bulk importing of
 // a ZIP file of one or more CSV files.
 //
+//	@ID			importSubscribers
 //	@Summary		Import subscribers from a CSV or ZIP file
 //	@Tags			import
 //	@Accept			multipart/form-data
 //	@Produce		json
 //	@Param			file	formData	file	true	"CSV or ZIP file"
 //	@Param			params	formData	string	true	"JSON-encoded import options (subimporter.SessionOpt)"
-//	@Success		200		{object}	okResp{data=subimporter.Status}
+//	@Success		200		{object}	subimporter.Status
 //	@Failure		400		{object}	echo.HTTPError
 //	@Failure		500		{object}	echo.HTTPError
 //	@Router			/api/import/subscribers [post]
@@ -131,10 +132,11 @@ func (a *App) ImportSubscribers(c echo.Context) error {
 
 // GetImportSubscribers returns import statistics.
 //
+//	@ID			getImportStatus
 //	@Summary		Get current import status
 //	@Tags			import
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=subimporter.Status}
+//	@Success		200	{object}	subimporter.Status
 //	@Router			/api/import/subscribers [get]
 func (a *App) GetImportSubscribers(c echo.Context) error {
 	s := a.importer.GetStats()
@@ -143,10 +145,11 @@ func (a *App) GetImportSubscribers(c echo.Context) error {
 
 // GetImportSubscriberStats returns import log output.
 //
+//	@ID			getImportLogs
 //	@Summary		Get import log
 //	@Tags			import
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=string}
+//	@Success		200	{object}	string
 //	@Router			/api/import/subscribers/logs [get]
 func (a *App) GetImportSubscriberStats(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{string(a.importer.GetLogs())})
@@ -156,10 +159,11 @@ func (a *App) GetImportSubscriberStats(c echo.Context) error {
 // If there's an ongoing import, it'll be stopped, and if an import
 // is finished, it's state is cleared.
 //
+//	@ID			stopImport
 //	@Summary		Stop or clear a subscriber import
 //	@Tags			import
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=subimporter.Status}
+//	@Success		200	{object}	subimporter.Status
 //	@Router			/api/import/subscribers [delete]
 func (a *App) StopImportSubscribers(c echo.Context) error {
 	a.importer.Stop()

@@ -15,7 +15,7 @@ import (
 type i18nLang struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
-}
+} // @name I18nLang
 
 type i18nLangRaw struct {
 	Code string `json:"_.code"`
@@ -26,11 +26,12 @@ var reLangCode = regexp.MustCompile(`[^a-zA-Z_0-9\\-]`)
 
 // GetI18nLang returns the JSON language pack given the language code.
 //
+//	@ID				getI18nLang
 //	@Summary		Get i18n language pack
 //	@Tags			misc
 //	@Produce		json
 //	@Param			lang	path		string	true	"Language code (e.g. en)"
-//	@Success		200		{object}	okResp{data=object}
+//	@Success		200		{object}	object
 //	@Failure		400		{object}	echo.HTTPError
 //	@Router			/api/lang/{lang} [get]
 func (a *App) GetI18nLang(c echo.Context) error {

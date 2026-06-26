@@ -24,11 +24,12 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Get application info",
+                "operationId": "getAboutInfo",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/cmd.about"
+                            "$ref": "#/definitions/About"
                         }
                     }
                 }
@@ -43,24 +44,10 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Reload the application",
+                "operationId": "reloadApp",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -80,6 +67,7 @@ const docTemplate = `{
                     "bounces"
                 ],
                 "summary": "List bounce records",
+                "operationId": "listBounces",
                 "parameters": [
                     {
                         "type": "integer",
@@ -122,19 +110,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.PageResults"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/PageResults"
                         }
                     },
                     "500": {
@@ -153,6 +129,7 @@ const docTemplate = `{
                     "bounces"
                 ],
                 "summary": "Delete bounce records",
+                "operationId": "deleteBounces",
                 "parameters": [
                     {
                         "type": "boolean",
@@ -173,22 +150,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -208,24 +170,10 @@ const docTemplate = `{
                     "bounces"
                 ],
                 "summary": "Blocklist all bounced subscribers",
+                "operationId": "blocklistBouncedSubscribers",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -245,6 +193,7 @@ const docTemplate = `{
                     "bounces"
                 ],
                 "summary": "Get a bounce record",
+                "operationId": "getBounce",
                 "parameters": [
                     {
                         "type": "integer",
@@ -258,19 +207,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Bounce"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Bounce"
                         }
                     },
                     "400": {
@@ -295,6 +232,7 @@ const docTemplate = `{
                     "bounces"
                 ],
                 "summary": "Delete a bounce record",
+                "operationId": "deleteBounce",
                 "parameters": [
                     {
                         "type": "integer",
@@ -306,22 +244,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -347,6 +270,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Get campaigns",
+                "operationId": "listCampaigns",
                 "parameters": [
                     {
                         "type": "string",
@@ -409,19 +333,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.PageResults"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/PageResults"
                         }
                     },
                     "500": {
@@ -443,6 +355,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Create a campaign",
+                "operationId": "createCampaign",
                 "parameters": [
                     {
                         "description": "Campaign to create",
@@ -450,7 +363,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.campReq"
+                            "$ref": "#/definitions/CreateCampaignReq"
                         }
                     }
                 ],
@@ -458,19 +371,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Campaign"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Campaign"
                         }
                     },
                     "400": {
@@ -489,6 +390,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Delete campaigns (bulk)",
+                "operationId": "deleteCampaigns",
                 "parameters": [
                     {
                         "type": "array",
@@ -515,22 +417,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -550,6 +437,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Get campaign analytics",
+                "operationId": "getCampaignAnalytics",
                 "parameters": [
                     {
                         "type": "string",
@@ -588,22 +476,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.CampaignAnalyticsCount"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CampaignAnalyticsCount"
+                            }
                         }
                     },
                     "400": {
@@ -624,26 +500,15 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Get running campaign stats",
+                "operationId": "getRunningCampaignStats",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.Campaign"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Campaign"
+                            }
                         }
                     },
                     "500": {
@@ -664,6 +529,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Get a campaign",
+                "operationId": "getCampaign",
                 "parameters": [
                     {
                         "type": "integer",
@@ -683,19 +549,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Campaign"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Campaign"
                         }
                     },
                     "400": {
@@ -723,6 +577,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Update a campaign",
+                "operationId": "updateCampaign",
                 "parameters": [
                     {
                         "type": "integer",
@@ -737,7 +592,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.campReq"
+                            "$ref": "#/definitions/CreateCampaignReq"
                         }
                     }
                 ],
@@ -745,19 +600,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Campaign"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Campaign"
                         }
                     },
                     "400": {
@@ -782,6 +625,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Delete a campaign",
+                "operationId": "deleteCampaign",
                 "parameters": [
                     {
                         "type": "integer",
@@ -793,22 +637,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -837,6 +666,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Update campaign archive settings",
+                "operationId": "updateCampaignArchive",
                 "parameters": [
                     {
                         "type": "integer",
@@ -872,21 +702,7 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "schema": {}
                     },
                     "400": {
                         "description": "Bad Request",
@@ -915,6 +731,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Convert campaign content format",
+                "operationId": "setCampaignContent",
                 "parameters": [
                     {
                         "type": "integer",
@@ -929,7 +746,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.campContentReq"
+                            "$ref": "#/definitions/UpdateCampaignContentReq"
                         }
                     }
                 ],
@@ -937,19 +754,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "string"
                         }
                     },
                     "400": {
@@ -973,6 +778,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Preview a campaign",
+                "operationId": "previewCampaign",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1032,6 +838,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Preview a campaign",
+                "operationId": "previewCampaign",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1093,6 +900,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Preview a campaign as an archive page",
+                "operationId": "previewCampaignArchive",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1148,6 +956,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Update campaign status",
+                "operationId": "updateCampaignStatus",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1175,19 +984,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Campaign"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Campaign"
                         }
                     },
                     "400": {
@@ -1217,6 +1014,7 @@ const docTemplate = `{
                     "campaigns"
                 ],
                 "summary": "Send a test campaign message",
+                "operationId": "testCampaign",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1231,28 +1029,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.campReq"
+                            "$ref": "#/definitions/CreateCampaignReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -1278,23 +1061,12 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Get server config",
+                "operationId": "getServerConfig",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/cmd.serverConfig"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/ServerConfig"
                         }
                     }
                 }
@@ -1309,23 +1081,12 @@ const docTemplate = `{
                     "dashboard"
                 ],
                 "summary": "Get dashboard chart data",
+                "operationId": "getDashboardCharts",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object"
                         }
                     }
                 }
@@ -1340,23 +1101,12 @@ const docTemplate = `{
                     "dashboard"
                 ],
                 "summary": "Get dashboard counts",
+                "operationId": "getDashboardCounts",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object"
                         }
                     }
                 }
@@ -1371,24 +1121,10 @@ const docTemplate = `{
                     "misc"
                 ],
                 "summary": "Health check",
+                "operationId": "healthCheck",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     }
                 }
             }
@@ -1402,23 +1138,12 @@ const docTemplate = `{
                     "import"
                 ],
                 "summary": "Get current import status",
+                "operationId": "getImportStatus",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_subimporter.Status"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/ImportStatus"
                         }
                     }
                 }
@@ -1434,6 +1159,7 @@ const docTemplate = `{
                     "import"
                 ],
                 "summary": "Import subscribers from a CSV or ZIP file",
+                "operationId": "importSubscribers",
                 "parameters": [
                     {
                         "type": "file",
@@ -1454,19 +1180,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_subimporter.Status"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/ImportStatus"
                         }
                     },
                     "400": {
@@ -1491,23 +1205,12 @@ const docTemplate = `{
                     "import"
                 ],
                 "summary": "Stop or clear a subscriber import",
+                "operationId": "stopImport",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_subimporter.Status"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/ImportStatus"
                         }
                     }
                 }
@@ -1522,23 +1225,12 @@ const docTemplate = `{
                     "import"
                 ],
                 "summary": "Get import log",
+                "operationId": "getImportLogs",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "string"
                         }
                     }
                 }
@@ -1553,6 +1245,7 @@ const docTemplate = `{
                     "misc"
                 ],
                 "summary": "Get i18n language pack",
+                "operationId": "getI18nLang",
                 "parameters": [
                     {
                         "type": "string",
@@ -1566,19 +1259,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -1599,6 +1280,7 @@ const docTemplate = `{
                     "lists"
                 ],
                 "summary": "Get lists",
+                "operationId": "listLists",
                 "parameters": [
                     {
                         "type": "string",
@@ -1669,19 +1351,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.PageResults"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/PageResults"
                         }
                     },
                     "500": {
@@ -1703,6 +1373,7 @@ const docTemplate = `{
                     "lists"
                 ],
                 "summary": "Create a list",
+                "operationId": "createList",
                 "parameters": [
                     {
                         "description": "List to create",
@@ -1710,7 +1381,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.List"
+                            "$ref": "#/definitions/List"
                         }
                     }
                 ],
@@ -1718,19 +1389,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.List"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/List"
                         }
                     },
                     "400": {
@@ -1749,6 +1408,7 @@ const docTemplate = `{
                     "lists"
                 ],
                 "summary": "Delete lists (bulk)",
+                "operationId": "deleteLists",
                 "parameters": [
                     {
                         "type": "array",
@@ -1775,22 +1435,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -1810,6 +1455,7 @@ const docTemplate = `{
                     "lists"
                 ],
                 "summary": "Get a list",
+                "operationId": "getList",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1823,19 +1469,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.List"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/List"
                         }
                     },
                     "400": {
@@ -1863,6 +1497,7 @@ const docTemplate = `{
                     "lists"
                 ],
                 "summary": "Update a list",
+                "operationId": "updateList",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1877,7 +1512,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.List"
+                            "$ref": "#/definitions/List"
                         }
                     }
                 ],
@@ -1885,19 +1520,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.List"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/List"
                         }
                     },
                     "400": {
@@ -1922,6 +1545,7 @@ const docTemplate = `{
                     "lists"
                 ],
                 "summary": "Delete a list",
+                "operationId": "deleteList",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1933,22 +1557,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -1974,24 +1583,10 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Log out the current user",
+                "operationId": "logout",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     }
                 }
             }
@@ -2005,26 +1600,15 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Get application logs",
+                "operationId": "getLogs",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -2039,6 +1623,7 @@ const docTemplate = `{
                     "maintenance"
                 ],
                 "summary": "Delete campaign analytics",
+                "operationId": "gcCampaignAnalytics",
                 "parameters": [
                     {
                         "type": "string",
@@ -2057,22 +1642,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -2092,6 +1662,7 @@ const docTemplate = `{
                     "maintenance"
                 ],
                 "summary": "Export campaign analytics as CSV",
+                "operationId": "exportCampaignAnalytics",
                 "parameters": [
                     {
                         "type": "string",
@@ -2133,6 +1704,7 @@ const docTemplate = `{
                     "maintenance"
                 ],
                 "summary": "Delete orphaned/blocklisted subscribers",
+                "operationId": "gcSubscribers",
                 "parameters": [
                     {
                         "type": "string",
@@ -2146,19 +1718,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -2179,6 +1739,7 @@ const docTemplate = `{
                     "maintenance"
                 ],
                 "summary": "Delete unconfirmed subscriptions",
+                "operationId": "gcSubscriptions",
                 "parameters": [
                     {
                         "type": "string",
@@ -2192,19 +1753,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -2225,6 +1774,7 @@ const docTemplate = `{
                     "media"
                 ],
                 "summary": "List all media",
+                "operationId": "listMedia",
                 "parameters": [
                     {
                         "type": "string",
@@ -2249,19 +1799,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.PageResults"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/PageResults"
                         }
                     },
                     "500": {
@@ -2283,6 +1821,7 @@ const docTemplate = `{
                     "media"
                 ],
                 "summary": "Upload a media file",
+                "operationId": "uploadMedia",
                 "parameters": [
                     {
                         "type": "file",
@@ -2296,19 +1835,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -2335,6 +1862,7 @@ const docTemplate = `{
                     "media"
                 ],
                 "summary": "Get a media item",
+                "operationId": "getMedia",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2348,19 +1876,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -2385,6 +1901,7 @@ const docTemplate = `{
                     "media"
                 ],
                 "summary": "Delete a media item",
+                "operationId": "deleteMedia",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2396,22 +1913,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -2437,26 +1939,15 @@ const docTemplate = `{
                     "roles"
                 ],
                 "summary": "List list roles",
+                "operationId": "listListRoles",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListRole"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/ListRole"
+                            }
                         }
                     },
                     "500": {
@@ -2478,6 +1969,7 @@ const docTemplate = `{
                     "roles"
                 ],
                 "summary": "Create a list role",
+                "operationId": "createListRole",
                 "parameters": [
                     {
                         "description": "List role to create",
@@ -2485,7 +1977,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListRole"
+                            "$ref": "#/definitions/ListRole"
                         }
                     }
                 ],
@@ -2493,19 +1985,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListRole"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/ListRole"
                         }
                     },
                     "400": {
@@ -2529,6 +2009,7 @@ const docTemplate = `{
                     "roles"
                 ],
                 "summary": "Update a list role",
+                "operationId": "updateListRole",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2543,7 +2024,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListRole"
+                            "$ref": "#/definitions/ListRole"
                         }
                     }
                 ],
@@ -2551,19 +2032,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListRole"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/ListRole"
                         }
                     },
                     "400": {
@@ -2584,26 +2053,15 @@ const docTemplate = `{
                     "roles"
                 ],
                 "summary": "List user roles",
+                "operationId": "listUserRoles",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.Role"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Role"
+                            }
                         }
                     },
                     "500": {
@@ -2625,6 +2083,7 @@ const docTemplate = `{
                     "roles"
                 ],
                 "summary": "Create a user role",
+                "operationId": "createUserRole",
                 "parameters": [
                     {
                         "description": "Role to create",
@@ -2632,7 +2091,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.Role"
+                            "$ref": "#/definitions/Role"
                         }
                     }
                 ],
@@ -2640,19 +2099,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.Role"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Role"
                         }
                     },
                     "400": {
@@ -2676,6 +2123,7 @@ const docTemplate = `{
                     "roles"
                 ],
                 "summary": "Update a user role",
+                "operationId": "updateUserRole",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2690,7 +2138,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.Role"
+                            "$ref": "#/definitions/Role"
                         }
                     }
                 ],
@@ -2698,19 +2146,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.Role"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Role"
                         }
                     },
                     "400": {
@@ -2731,6 +2167,7 @@ const docTemplate = `{
                     "roles"
                 ],
                 "summary": "Delete a role",
+                "operationId": "deleteRole",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2742,22 +2179,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -2777,23 +2199,12 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Get application settings",
+                "operationId": "getSettings",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Settings"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Settings"
                         }
                     },
                     "500": {
@@ -2815,6 +2226,7 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Update application settings",
+                "operationId": "updateSettings",
                 "parameters": [
                     {
                         "description": "Settings payload",
@@ -2822,28 +2234,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Settings"
+                            "$ref": "#/definitions/Settings"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -2869,22 +2266,11 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Get Scrub usage statistics",
+                "operationId": "getScrubStats",
                 "responses": {
                     "200": {
                         "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {}
-                                    }
-                                }
-                            ]
-                        }
+                        "schema": {}
                     },
                     "400": {
                         "description": "Bad Request",
@@ -2907,6 +2293,7 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Test Scrub integration settings",
+                "operationId": "testScrubSettings",
                 "parameters": [
                     {
                         "description": "Scrub URL and API key",
@@ -2918,22 +2305,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -2956,6 +2328,7 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Test SMTP settings",
+                "operationId": "testSmtpSettings",
                 "parameters": [
                     {
                         "description": "SMTP config with target email",
@@ -2969,22 +2342,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
                         }
                     },
                     "400": {
@@ -3014,6 +2375,7 @@ const docTemplate = `{
                     "settings"
                 ],
                 "summary": "Update a single setting by key",
+                "operationId": "updateSettingByKey",
                 "parameters": [
                     {
                         "type": "string",
@@ -3032,22 +2394,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3067,6 +2414,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Query subscribers",
+                "operationId": "listSubscribers",
                 "parameters": [
                     {
                         "type": "string",
@@ -3125,19 +2473,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.PageResults"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/PageResults"
                         }
                     },
                     "400": {
@@ -3159,6 +2495,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Create subscriber",
+                "operationId": "createSubscriber",
                 "parameters": [
                     {
                         "description": "Subscriber details",
@@ -3166,7 +2503,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_subimporter.SubReq"
+                            "$ref": "#/definitions/CreateSubscriberReq"
                         }
                     }
                 ],
@@ -3174,19 +2511,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Subscriber"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Subscriber"
                         }
                     },
                     "400": {
@@ -3211,6 +2536,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Bulk delete subscribers",
+                "operationId": "deleteSubscribers",
                 "parameters": [
                     {
                         "type": "array",
@@ -3226,22 +2552,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3270,6 +2581,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Bulk blocklist subscribers",
+                "operationId": "blocklistSubscribers",
                 "parameters": [
                     {
                         "description": "Subscriber IDs",
@@ -3277,28 +2589,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.subQueryReq"
+                            "$ref": "#/definitions/SubscriberQueryReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3324,6 +2621,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Export subscribers as CSV",
+                "operationId": "exportSubscribers",
                 "parameters": [
                     {
                         "type": "string",
@@ -3392,6 +2690,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Manage subscriber list subscriptions",
+                "operationId": "manageSubscriberLists",
                 "parameters": [
                     {
                         "description": "Action and target list IDs",
@@ -3399,28 +2698,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.subQueryReq"
+                            "$ref": "#/definitions/SubscriberQueryReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3449,6 +2733,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Blocklist subscribers by query",
+                "operationId": "blocklistSubscribersByQuery",
                 "parameters": [
                     {
                         "description": "Query and options",
@@ -3456,28 +2741,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.subQueryReq"
+                            "$ref": "#/definitions/SubscriberQueryReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3500,6 +2770,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Delete subscribers by query",
+                "operationId": "deleteSubscribersByQuery",
                 "parameters": [
                     {
                         "description": "Query and options",
@@ -3507,28 +2778,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.subQueryReq"
+                            "$ref": "#/definitions/SubscriberQueryReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3551,6 +2807,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Manage subscriber lists by query",
+                "operationId": "manageSubscriberListsByQuery",
                 "parameters": [
                     {
                         "description": "Query, action, and target lists",
@@ -3558,28 +2815,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cmd.subQueryReq"
+                            "$ref": "#/definitions/SubscriberQueryReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3599,6 +2841,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Get subscriber",
+                "operationId": "getSubscriber",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3612,19 +2855,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Subscriber"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Subscriber"
                         }
                     },
                     "400": {
@@ -3658,6 +2889,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Update subscriber",
+                "operationId": "updateSubscriber",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3672,7 +2904,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Subscriber"
+                            "$ref": "#/definitions/Subscriber"
                         }
                     }
                 ],
@@ -3680,19 +2912,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Subscriber"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Subscriber"
                         }
                     },
                     "400": {
@@ -3723,6 +2943,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Delete subscriber",
+                "operationId": "deleteSubscriber",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3734,22 +2955,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3776,6 +2982,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Partially update subscriber",
+                "operationId": "patchSubscriber",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3790,7 +2997,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Subscriber"
+                            "$ref": "#/definitions/Subscriber"
                         }
                     }
                 ],
@@ -3798,19 +3005,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Subscriber"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Subscriber"
                         }
                     },
                     "400": {
@@ -3837,6 +3032,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Get subscriber activity",
+                "operationId": "getSubscriberActivity",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3850,19 +3046,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.SubscriberActivity"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/SubscriberActivity"
                         }
                     },
                     "400": {
@@ -3895,6 +3079,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Blocklist subscriber",
+                "operationId": "blocklistSubscriber",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3906,22 +3091,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3947,6 +3117,7 @@ const docTemplate = `{
                     "bounces"
                 ],
                 "summary": "Get bounces for a subscriber",
+                "operationId": "getSubscriberBounces",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3960,22 +3131,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.Bounce"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Bounce"
+                            }
                         }
                     },
                     "400": {
@@ -4000,6 +3159,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Delete subscriber bounces",
+                "operationId": "deleteSubscriberBounces",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4011,22 +3171,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -4046,6 +3191,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Export subscriber data (privacy)",
+                "operationId": "exportSubscriberData",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4059,7 +3205,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.SubscriberExportProfile"
+                            "$ref": "#/definitions/SubscriberExportProfile"
                         }
                     },
                     "400": {
@@ -4086,6 +3232,7 @@ const docTemplate = `{
                     "subscribers"
                 ],
                 "summary": "Send opt-in email",
+                "operationId": "sendSubscriberOptin",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4097,22 +3244,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -4138,6 +3270,7 @@ const docTemplate = `{
                     "templates"
                 ],
                 "summary": "List templates",
+                "operationId": "listTemplates",
                 "parameters": [
                     {
                         "type": "boolean",
@@ -4150,22 +3283,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.Template"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Template"
+                            }
                         }
                     },
                     "500": {
@@ -4187,6 +3308,7 @@ const docTemplate = `{
                     "templates"
                 ],
                 "summary": "Create a template",
+                "operationId": "createTemplate",
                 "parameters": [
                     {
                         "description": "Template to create",
@@ -4194,7 +3316,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Template"
+                            "$ref": "#/definitions/Template"
                         }
                     }
                 ],
@@ -4202,19 +3324,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Template"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Template"
                         }
                     },
                     "400": {
@@ -4238,6 +3348,7 @@ const docTemplate = `{
                     "templates"
                 ],
                 "summary": "Preview a template body",
+                "operationId": "previewTemplateBody",
                 "parameters": [
                     {
                         "type": "string",
@@ -4278,6 +3389,7 @@ const docTemplate = `{
                     "templates"
                 ],
                 "summary": "Get a template",
+                "operationId": "getTemplate",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4297,19 +3409,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Template"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Template"
                         }
                     },
                     "400": {
@@ -4337,6 +3437,7 @@ const docTemplate = `{
                     "templates"
                 ],
                 "summary": "Update a template",
+                "operationId": "updateTemplate",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4351,7 +3452,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Template"
+                            "$ref": "#/definitions/Template"
                         }
                     }
                 ],
@@ -4359,19 +3460,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Template"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/Template"
                         }
                     },
                     "400": {
@@ -4396,6 +3485,7 @@ const docTemplate = `{
                     "templates"
                 ],
                 "summary": "Delete a template",
+                "operationId": "deleteTemplate",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4407,22 +3497,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -4448,6 +3523,7 @@ const docTemplate = `{
                     "templates"
                 ],
                 "summary": "Set default template",
+                "operationId": "setDefaultTemplate",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4461,22 +3537,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.Template"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Template"
+                            }
                         }
                     },
                     "400": {
@@ -4503,6 +3567,7 @@ const docTemplate = `{
                     "templates"
                 ],
                 "summary": "Preview a template",
+                "operationId": "previewTemplate",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4543,26 +3608,15 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "List users",
+                "operationId": "listUsers",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.User"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/User"
+                            }
                         }
                     },
                     "500": {
@@ -4584,6 +3638,7 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Create a user",
+                "operationId": "createUser",
                 "parameters": [
                     {
                         "description": "User to create",
@@ -4591,7 +3646,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.User"
+                            "$ref": "#/definitions/User"
                         }
                     }
                 ],
@@ -4599,19 +3654,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.User"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/User"
                         }
                     },
                     "400": {
@@ -4630,6 +3673,7 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Delete one or more users",
+                "operationId": "deleteUsers",
                 "parameters": [
                     {
                         "type": "array",
@@ -4645,22 +3689,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -4680,6 +3709,7 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Get a user",
+                "operationId": "getUser",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4693,19 +3723,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.User"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/User"
                         }
                     },
                     "400": {
@@ -4733,6 +3751,7 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Update a user",
+                "operationId": "updateUser",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4747,7 +3766,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.User"
+                            "$ref": "#/definitions/User"
                         }
                     }
                 ],
@@ -4755,19 +3774,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.User"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/User"
                         }
                     },
                     "400": {
@@ -4792,6 +3799,7 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Delete a user",
+                "operationId": "deleteUser",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4803,22 +3811,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -4847,6 +3840,7 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Enable TOTP two-factor authentication",
+                "operationId": "enableTotp",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4872,22 +3866,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -4908,6 +3887,7 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Disable TOTP two-factor authentication",
+                "operationId": "disableTotp",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4926,22 +3906,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -4967,6 +3932,7 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Generate a TOTP QR code",
+                "operationId": "generateTotpQr",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4980,19 +3946,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -5022,34 +3976,20 @@ const docTemplate = `{
                     "bounces"
                 ],
                 "summary": "Receive a bounce webhook",
+                "operationId": "receiveBounceWebhook",
                 "parameters": [
                     {
                         "description": "Bounce payload (native webhook only)",
                         "name": "bounce",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/models.Bounce"
+                            "$ref": "#/definitions/Bounce"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/cmd.okResp"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -5068,7 +4008,64 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "cmd.AppUpdate": {
+        "About": {
+            "type": "object",
+            "properties": {
+                "build": {
+                    "type": "string"
+                },
+                "database": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "go_arch": {
+                    "type": "string"
+                },
+                "go_version": {
+                    "type": "string"
+                },
+                "host": {
+                    "$ref": "#/definitions/AboutHost"
+                },
+                "system": {
+                    "$ref": "#/definitions/AboutSystem"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "AboutHost": {
+            "type": "object",
+            "properties": {
+                "arch": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                }
+            }
+        },
+        "AboutSystem": {
+            "type": "object",
+            "properties": {
+                "memory_alloc_mb": {
+                    "type": "integer"
+                },
+                "memory_from_os_mb": {
+                    "type": "integer"
+                },
+                "num_cpu": {
+                    "type": "integer"
+                }
+            }
+        },
+        "AppUpdate": {
             "type": "object",
             "properties": {
                 "messages": {
@@ -5117,64 +4114,52 @@ const docTemplate = `{
                 }
             }
         },
-        "cmd.about": {
+        "Bounce": {
             "type": "object",
             "properties": {
-                "build": {
-                    "type": "string"
-                },
-                "database": {
+                "campaign": {
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
                 },
-                "go_arch": {
+                "campaign_uuid": {
                     "type": "string"
                 },
-                "go_version": {
+                "created_at": {
                     "type": "string"
                 },
-                "host": {
-                    "$ref": "#/definitions/cmd.aboutHost"
+                "email": {
+                    "description": "One of these should be provided.",
+                    "type": "string"
                 },
-                "system": {
-                    "$ref": "#/definitions/cmd.aboutSystem"
+                "id": {
+                    "type": "integer"
                 },
-                "version": {
+                "meta": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "source": {
+                    "type": "string"
+                },
+                "subscriber_id": {
+                    "type": "integer"
+                },
+                "subscriber_status": {
+                    "type": "string"
+                },
+                "subscriber_uuid": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
         },
-        "cmd.aboutHost": {
-            "type": "object",
-            "properties": {
-                "arch": {
-                    "type": "string"
-                },
-                "hostname": {
-                    "type": "string"
-                },
-                "os": {
-                    "type": "string"
-                }
-            }
-        },
-        "cmd.aboutSystem": {
-            "type": "object",
-            "properties": {
-                "memory_alloc_mb": {
-                    "type": "integer"
-                },
-                "memory_from_os_mb": {
-                    "type": "integer"
-                },
-                "num_cpu": {
-                    "type": "integer"
-                }
-            }
-        },
-        "cmd.campContentReq": {
+        "Campaign": {
             "type": "object",
             "properties": {
                 "altbody": {
@@ -5196,7 +4181,7 @@ const docTemplate = `{
                     "$ref": "#/definitions/null.Int"
                 },
                 "attribs": {
-                    "$ref": "#/definitions/models.JSON"
+                    "$ref": "#/definitions/JSON"
                 },
                 "body": {
                     "type": "string"
@@ -5214,9 +4199,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "created_at": {
-                    "type": "string"
-                },
-                "from": {
                     "type": "string"
                 },
                 "from_email": {
@@ -5277,9 +4259,6 @@ const docTemplate = `{
                 "template_id": {
                     "$ref": "#/definitions/null.Int"
                 },
-                "to": {
-                    "type": "string"
-                },
                 "to_send": {
                     "type": "integer"
                 },
@@ -5297,7 +4276,21 @@ const docTemplate = `{
                 }
             }
         },
-        "cmd.campReq": {
+        "CampaignAnalyticsCount": {
+            "type": "object",
+            "properties": {
+                "campaign_id": {
+                    "type": "integer"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "CreateCampaignReq": {
             "type": "object",
             "properties": {
                 "altbody": {
@@ -5319,7 +4312,7 @@ const docTemplate = `{
                     "$ref": "#/definitions/null.Int"
                 },
                 "attribs": {
-                    "$ref": "#/definitions/models.JSON"
+                    "$ref": "#/definitions/JSON"
                 },
                 "body": {
                     "type": "string"
@@ -5421,7 +4414,51 @@ const docTemplate = `{
                 }
             }
         },
-        "cmd.i18nLang": {
+        "CreateSubscriberReq": {
+            "type": "object",
+            "properties": {
+                "attribs": {
+                    "$ref": "#/definitions/JSON"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "list_uuids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "lists": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "preconfirm_subscriptions": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "I18nLang": {
             "type": "object",
             "properties": {
                 "code": {
@@ -5432,13 +4469,192 @@ const docTemplate = `{
                 }
             }
         },
-        "cmd.okResp": {
+        "ImportStatus": {
             "type": "object",
             "properties": {
-                "data": {}
+                "imported": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "integer"
+                }
             }
         },
-        "cmd.serverConfig": {
+        "JSON": {
+            "type": "object",
+            "additionalProperties": {}
+        },
+        "List": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "optin": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subscriber_count": {
+                    "type": "integer"
+                },
+                "subscriber_statuses": {
+                    "$ref": "#/definitions/StringIntMap"
+                },
+                "subscription_created_at": {
+                    "type": "string"
+                },
+                "subscription_status": {
+                    "description": "This is only relevant when querying the lists of a subscriber.",
+                    "type": "string"
+                },
+                "subscription_updated_at": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "ListPermission": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "ListRole": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lists": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ListPermission"
+                    }
+                },
+                "name": {
+                    "$ref": "#/definitions/null.String"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "ListRolePermissions": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "lists": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ListPermission"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "PageResults": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "query": {
+                    "type": "string"
+                },
+                "results": {},
+                "search": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Role": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lists": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ListPermission"
+                    }
+                },
+                "name": {
+                    "$ref": "#/definitions/null.String"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "ServerConfig": {
             "type": "object",
             "properties": {
                 "from_email": {
@@ -5453,7 +4669,7 @@ const docTemplate = `{
                 "langs": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/cmd.i18nLang"
+                        "$ref": "#/definitions/I18nLang"
                     }
                 },
                 "media_provider": {
@@ -5518,542 +4734,14 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "update": {
-                    "$ref": "#/definitions/cmd.AppUpdate"
+                    "$ref": "#/definitions/AppUpdate"
                 },
                 "version": {
                     "type": "string"
                 }
             }
         },
-        "cmd.subQueryReq": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "all": {
-                    "type": "boolean"
-                },
-                "ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "list_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "query": {
-                    "type": "string"
-                },
-                "search": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "subscription_status": {
-                    "type": "string"
-                },
-                "target_list_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "echo.HTTPError": {
-            "type": "object",
-            "properties": {
-                "message": {}
-            }
-        },
-        "github_com_knadh_listmonk_internal_auth.ListPermission": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "permissions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "github_com_knadh_listmonk_internal_auth.ListRole": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "lists": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListPermission"
-                    }
-                },
-                "name": {
-                    "$ref": "#/definitions/null.String"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_knadh_listmonk_internal_auth.ListRolePermissions": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "lists": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListPermission"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_knadh_listmonk_internal_auth.Role": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "lists": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListPermission"
-                    }
-                },
-                "name": {
-                    "$ref": "#/definitions/null.String"
-                },
-                "permissions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_knadh_listmonk_internal_auth.User": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "$ref": "#/definitions/null.String"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "$ref": "#/definitions/null.String"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "list_role": {
-                    "$ref": "#/definitions/github_com_knadh_listmonk_internal_auth.ListRolePermissions"
-                },
-                "list_role_id": {
-                    "type": "integer"
-                },
-                "loggedin_at": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "password": {
-                    "description": "For API users, this is the plaintext API token.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/null.String"
-                        }
-                    ]
-                },
-                "password_login": {
-                    "type": "boolean"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "twofa_type": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_role": {
-                    "description": "Non-DB fields filled post-retrieval.",
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "permissions": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                },
-                "user_role_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_knadh_listmonk_internal_subimporter.Status": {
-            "type": "object",
-            "properties": {
-                "imported": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_knadh_listmonk_internal_subimporter.SubReq": {
-            "type": "object",
-            "properties": {
-                "attribs": {
-                    "$ref": "#/definitions/models.JSON"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "list_uuids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "lists": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "preconfirm_subscriptions": {
-                    "type": "boolean"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "uuid": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.Bounce": {
-            "type": "object",
-            "properties": {
-                "campaign": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "campaign_uuid": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "description": "One of these should be provided.",
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "meta": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "source": {
-                    "type": "string"
-                },
-                "subscriber_id": {
-                    "type": "integer"
-                },
-                "subscriber_status": {
-                    "type": "string"
-                },
-                "subscriber_uuid": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.Campaign": {
-            "type": "object",
-            "properties": {
-                "altbody": {
-                    "$ref": "#/definitions/null.String"
-                },
-                "archive": {
-                    "type": "boolean"
-                },
-                "archive_meta": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "archive_slug": {
-                    "$ref": "#/definitions/null.String"
-                },
-                "archive_template_id": {
-                    "$ref": "#/definitions/null.Int"
-                },
-                "attribs": {
-                    "$ref": "#/definitions/models.JSON"
-                },
-                "body": {
-                    "type": "string"
-                },
-                "body_source": {
-                    "$ref": "#/definitions/null.String"
-                },
-                "bounces": {
-                    "type": "integer"
-                },
-                "clicks": {
-                    "type": "integer"
-                },
-                "content_type": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "from_email": {
-                    "type": "string"
-                },
-                "headers": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "lists": {
-                    "description": "This is a list of {list_id, name} pairs unlike Subscriber.Lists[]\nbecause lists can be deleted after a campaign is finished, resulting\nin null lists data to be returned. For that reason, campaign_lists maintains\ncampaign-list associations with a historical record of id + name that persist\neven after a list is deleted.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "media": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "messenger": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "send_at": {
-                    "type": "string"
-                },
-                "sent": {
-                    "type": "integer"
-                },
-                "started_at": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "template_id": {
-                    "$ref": "#/definitions/null.Int"
-                },
-                "to_send": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "uuid": {
-                    "type": "string"
-                },
-                "views": {
-                    "type": "integer"
-                }
-            }
-        },
-        "models.CampaignAnalyticsCount": {
-            "type": "object",
-            "properties": {
-                "campaign_id": {
-                    "type": "integer"
-                },
-                "count": {
-                    "type": "integer"
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.JSON": {
-            "type": "object",
-            "additionalProperties": {}
-        },
-        "models.List": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "optin": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "subscriber_count": {
-                    "type": "integer"
-                },
-                "subscriber_statuses": {
-                    "$ref": "#/definitions/models.StringIntMap"
-                },
-                "subscription_created_at": {
-                    "type": "string"
-                },
-                "subscription_status": {
-                    "description": "This is only relevant when querying the lists of a subscriber.",
-                    "type": "string"
-                },
-                "subscription_updated_at": {
-                    "type": "string"
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "uuid": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.PageResults": {
-            "type": "object",
-            "properties": {
-                "page": {
-                    "type": "integer"
-                },
-                "per_page": {
-                    "type": "integer"
-                },
-                "query": {
-                    "type": "string"
-                },
-                "results": {},
-                "search": {
-                    "type": "string"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "models.Settings": {
+        "Settings": {
             "type": "object",
             "properties": {
                 "app.batch_size": {
@@ -6548,17 +5236,17 @@ const docTemplate = `{
                 }
             }
         },
-        "models.StringIntMap": {
+        "StringIntMap": {
             "type": "object",
             "additionalProperties": {
                 "type": "integer"
             }
         },
-        "models.Subscriber": {
+        "Subscriber": {
             "type": "object",
             "properties": {
                 "attribs": {
-                    "$ref": "#/definitions/models.JSON"
+                    "$ref": "#/definitions/JSON"
                 },
                 "created_at": {
                     "type": "string"
@@ -6589,7 +5277,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.SubscriberActivity": {
+        "SubscriberActivity": {
             "type": "object",
             "properties": {
                 "campaign_views": {
@@ -6606,7 +5294,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.SubscriberExportProfile": {
+        "SubscriberExportProfile": {
             "type": "object",
             "properties": {
                 "campaign_views": {
@@ -6635,7 +5323,48 @@ const docTemplate = `{
                 }
             }
         },
-        "models.Template": {
+        "SubscriberQueryReq": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "all": {
+                    "type": "boolean"
+                },
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "list_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "query": {
+                    "type": "string"
+                },
+                "search": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subscription_status": {
+                    "type": "string"
+                },
+                "target_list_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "Template": {
             "type": "object",
             "properties": {
                 "body": {
@@ -6666,6 +5395,211 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string"
                 }
+            }
+        },
+        "UpdateCampaignContentReq": {
+            "type": "object",
+            "properties": {
+                "altbody": {
+                    "$ref": "#/definitions/null.String"
+                },
+                "archive": {
+                    "type": "boolean"
+                },
+                "archive_meta": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "archive_slug": {
+                    "$ref": "#/definitions/null.String"
+                },
+                "archive_template_id": {
+                    "$ref": "#/definitions/null.Int"
+                },
+                "attribs": {
+                    "$ref": "#/definitions/JSON"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "body_source": {
+                    "$ref": "#/definitions/null.String"
+                },
+                "bounces": {
+                    "type": "integer"
+                },
+                "clicks": {
+                    "type": "integer"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "from_email": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lists": {
+                    "description": "This is a list of {list_id, name} pairs unlike Subscriber.Lists[]\nbecause lists can be deleted after a campaign is finished, resulting\nin null lists data to be returned. For that reason, campaign_lists maintains\ncampaign-list associations with a historical record of id + name that persist\neven after a list is deleted.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "messenger": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "send_at": {
+                    "type": "string"
+                },
+                "sent": {
+                    "type": "integer"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "template_id": {
+                    "$ref": "#/definitions/null.Int"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "to_send": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                },
+                "views": {
+                    "type": "integer"
+                }
+            }
+        },
+        "User": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "$ref": "#/definitions/null.String"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "$ref": "#/definitions/null.String"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "list_role": {
+                    "$ref": "#/definitions/ListRolePermissions"
+                },
+                "list_role_id": {
+                    "type": "integer"
+                },
+                "loggedin_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "description": "For API users, this is the plaintext API token.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/null.String"
+                        }
+                    ]
+                },
+                "password_login": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "twofa_type": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_role": {
+                    "description": "Non-DB fields filled post-retrieval.",
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "permissions": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "user_role_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "echo.HTTPError": {
+            "type": "object",
+            "properties": {
+                "message": {}
             }
         },
         "null.Int": {

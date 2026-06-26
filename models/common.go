@@ -100,20 +100,20 @@ type PageResults struct {
 	Total   int    `json:"total"`
 	PerPage int    `json:"per_page"`
 	Page    int    `json:"page"`
-}
+} // @name PageResults
 
 // Base holds common fields shared across models.
 type Base struct {
 	ID        int       `db:"id" json:"id"`
 	CreatedAt null.Time `db:"created_at" json:"created_at"`
 	UpdatedAt null.Time `db:"updated_at" json:"updated_at"`
-}
+} // @name Base
 
 // JSON is the wrapper for reading and writing arbitrary JSONB fields from the DB.
-type JSON map[string]any
+type JSON map[string]any // @name JSON
 
 // StringIntMap is used to define DB Scan()s.
-type StringIntMap map[string]int
+type StringIntMap map[string]int // @name StringIntMap
 
 // Value returns the JSON marshalled SubscriberAttribs.
 func (s JSON) Value() (driver.Value, error) {

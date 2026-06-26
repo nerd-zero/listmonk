@@ -329,10 +329,11 @@ func (a *App) AdminPage(c echo.Context) error {
 
 // HealthCheck is a healthcheck endpoint that returns a 200 response.
 //
+//	@ID				healthCheck
 //	@Summary		Health check
 //	@Tags			misc
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Router			/api/health [get]
 func (a *App) HealthCheck(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{true})

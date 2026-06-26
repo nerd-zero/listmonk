@@ -33,7 +33,7 @@ type Template struct {
 	SubjectTpl  *txttpl.Template   `json:"-"`
 	Tpl         *template.Template `json:"-"`
 	Attachments []Attachment       `json:"-"`
-}
+} // @name Template
 
 // Compile compiles a template body and subject (only for tx templates) and
 // caches the templat references to be executed later.
@@ -73,7 +73,7 @@ type CampaignAnalyticsCount struct {
 	CampaignID int       `db:"campaign_id" json:"campaign_id"`
 	Count      int       `db:"count" json:"count"`
 	Timestamp  time.Time `db:"timestamp" json:"timestamp"`
-}
+} // @name CampaignAnalyticsCount
 
 type CampaignAnalyticsLink struct {
 	URL   string `db:"url" json:"url"`

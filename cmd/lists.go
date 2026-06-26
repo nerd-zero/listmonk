@@ -12,6 +12,7 @@ import (
 
 // GetLists retrieves lists with additional metadata like subscriber counts.
 //
+//	@ID			listLists
 //	@Summary		Get lists
 //	@Tags			lists
 //	@Produce		json
@@ -25,7 +26,7 @@ import (
 //	@Param			minimal		query		bool	false	"Return minimal list without subscriber counts"
 //	@Param			page		query		int		false	"Page number"
 //	@Param			per_page	query		int		false	"Results per page"
-//	@Success		200	{object}	okResp{data=models.PageResults}
+//	@Success		200	{object}	models.PageResults
 //	@Failure		500	{object}	echo.HTTPError
 //	@Router			/api/lists [get]
 func (a *App) GetLists(c echo.Context) error {
@@ -90,11 +91,12 @@ func (a *App) GetLists(c echo.Context) error {
 // GetList retrieves a single list by id.
 // It's permission checked by the listPerm middleware.
 //
+//	@ID			getList
 //	@Summary		Get a list
 //	@Tags			lists
 //	@Produce		json
 //	@Param			id	path		int	true	"List ID"
-//	@Success		200	{object}	okResp{data=models.List}
+//	@Success		200	{object}	models.List
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		404	{object}	echo.HTTPError
 //	@Router			/api/lists/{id} [get]
@@ -119,12 +121,13 @@ func (a *App) GetList(c echo.Context) error {
 
 // CreateList handles list creation.
 //
+//	@ID			createList
 //	@Summary		Create a list
 //	@Tags			lists
 //	@Accept			json
 //	@Produce		json
 //	@Param			list	body		models.List	true	"List to create"
-//	@Success		200	{object}	okResp{data=models.List}
+//	@Success		200	{object}	models.List
 //	@Failure		400	{object}	echo.HTTPError
 //	@Router			/api/lists [post]
 func (a *App) CreateList(c echo.Context) error {
@@ -149,13 +152,14 @@ func (a *App) CreateList(c echo.Context) error {
 // UpdateList handles list modification.
 // It's permission checked by the listPerm middleware.
 //
+//	@ID			updateList
 //	@Summary		Update a list
 //	@Tags			lists
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		int			true	"List ID"
 //	@Param			list	body		models.List	true	"List fields to update"
-//	@Success		200	{object}	okResp{data=models.List}
+//	@Success		200	{object}	models.List
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		404	{object}	echo.HTTPError
 //	@Router			/api/lists/{id} [put]
@@ -191,11 +195,12 @@ func (a *App) UpdateList(c echo.Context) error {
 
 // DeleteList deletes a single list by ID.
 //
+//	@ID			deleteList
 //	@Summary		Delete a list
 //	@Tags			lists
 //	@Produce		json
 //	@Param			id	path		int	true	"List ID"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		404	{object}	echo.HTTPError
 //	@Router			/api/lists/{id} [delete]
@@ -219,13 +224,14 @@ func (a *App) DeleteList(c echo.Context) error {
 
 // DeleteLists deletes multiple lists by IDs or by query.
 //
+//	@ID			deleteLists
 //	@Summary		Delete lists (bulk)
 //	@Tags			lists
 //	@Produce		json
 //	@Param			id		query		[]int	false	"List IDs"
 //	@Param			query	query		string	false	"SQL-like filter query"
 //	@Param			all		query		bool	false	"Delete all lists matching the query"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Router			/api/lists [delete]
 func (a *App) DeleteLists(c echo.Context) error {

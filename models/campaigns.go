@@ -80,7 +80,7 @@ type Campaign struct {
 	// Pseudofield for getting the total number of subscribers
 	// in searches and queries.
 	Total int `db:"total" json:"-"`
-}
+} // @name Campaign
 
 // CampaignMeta contains fields tracking a campaign's progress.
 type CampaignMeta struct {
@@ -100,7 +100,7 @@ type CampaignMeta struct {
 	StartedAt null.Time `db:"started_at" json:"started_at"`
 	ToSend    int       `db:"to_send" json:"to_send"`
 	Sent      int       `db:"sent" json:"sent"`
-}
+} // @name CampaignMeta
 
 // GetIDs returns the list of campaign IDs.
 func (camps Campaigns) GetIDs() []int {

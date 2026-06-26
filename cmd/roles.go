@@ -11,10 +11,11 @@ import (
 
 // GetUserRoles retrieves roles.
 //
+//	@ID				listUserRoles
 //	@Summary		List user roles
 //	@Tags			roles
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=[]auth.Role}
+//	@Success		200	{array}		auth.Role
 //	@Failure		500	{object}	echo.HTTPError
 //	@Router			/api/roles/users [get]
 func (a *App) GetUserRoles(c echo.Context) error {
@@ -29,10 +30,11 @@ func (a *App) GetUserRoles(c echo.Context) error {
 
 // GeListRoles retrieves roles.
 //
+//	@ID				listListRoles
 //	@Summary		List list roles
 //	@Tags			roles
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=[]auth.ListRole}
+//	@Success		200	{array}		auth.ListRole
 //	@Failure		500	{object}	echo.HTTPError
 //	@Router			/api/roles/lists [get]
 func (a *App) GeListRoles(c echo.Context) error {
@@ -47,12 +49,13 @@ func (a *App) GeListRoles(c echo.Context) error {
 
 // CreateUserRole handles role creation.
 //
+//	@ID				createUserRole
 //	@Summary		Create a user role
 //	@Tags			roles
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body		auth.Role	true	"Role to create"
-//	@Success		200		{object}	okResp{data=auth.Role}
+//	@Success		200		{object}	auth.Role
 //	@Failure		400		{object}	echo.HTTPError
 //	@Router			/api/roles/users [post]
 func (a *App) CreateUserRole(c echo.Context) error {
@@ -75,12 +78,13 @@ func (a *App) CreateUserRole(c echo.Context) error {
 
 // CreateListRole handles role creation.
 //
+//	@ID				createListRole
 //	@Summary		Create a list role
 //	@Tags			roles
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body		auth.ListRole	true	"List role to create"
-//	@Success		200		{object}	okResp{data=auth.ListRole}
+//	@Success		200		{object}	auth.ListRole
 //	@Failure		400		{object}	echo.HTTPError
 //	@Router			/api/roles/lists [post]
 func (a *App) CreateListRole(c echo.Context) error {
@@ -103,13 +107,14 @@ func (a *App) CreateListRole(c echo.Context) error {
 
 // UpdateUserRole handles role modification.
 //
+//	@ID				updateUserRole
 //	@Summary		Update a user role
 //	@Tags			roles
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		int			true	"Role ID"
 //	@Param			body	body		auth.Role	true	"Updated role"
-//	@Success		200		{object}	okResp{data=auth.Role}
+//	@Success		200		{object}	auth.Role
 //	@Failure		400		{object}	echo.HTTPError
 //	@Router			/api/roles/users/{id} [put]
 func (a *App) UpdateUserRole(c echo.Context) error {
@@ -148,13 +153,14 @@ func (a *App) UpdateUserRole(c echo.Context) error {
 
 // UpdateListRole handles role modification.
 //
+//	@ID				updateListRole
 //	@Summary		Update a list role
 //	@Tags			roles
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		int				true	"Role ID"
 //	@Param			body	body		auth.ListRole	true	"Updated list role"
-//	@Success		200		{object}	okResp{data=auth.ListRole}
+//	@Success		200		{object}	auth.ListRole
 //	@Failure		400		{object}	echo.HTTPError
 //	@Router			/api/roles/lists/{id} [put]
 func (a *App) UpdateListRole(c echo.Context) error {
@@ -195,11 +201,12 @@ func (a *App) UpdateListRole(c echo.Context) error {
 
 // DeleteRole handles (user|list) role deletion.
 //
+//	@ID				deleteRole
 //	@Summary		Delete a role
 //	@Tags			roles
 //	@Produce		json
 //	@Param			id	path		int	true	"Role ID"
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400	{object}	echo.HTTPError
 //	@Router			/api/roles/{id} [delete]
 func (a *App) DeleteRole(c echo.Context) error {

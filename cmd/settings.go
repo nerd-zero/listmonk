@@ -33,13 +33,13 @@ type aboutHost struct {
 	OS       string `json:"os"`
 	Machine  string `json:"arch"`
 	Hostname string `json:"hostname"`
-}
+} // @name AboutHost
 
 type aboutSystem struct {
 	NumCPU  int    `json:"num_cpu"`
 	AllocMB uint64 `json:"memory_alloc_mb"`
 	OSMB    uint64 `json:"memory_from_os_mb"`
-}
+} // @name AboutSystem
 
 type about struct {
 	Version   string         `json:"version"`
@@ -49,7 +49,7 @@ type about struct {
 	Database  types.JSONText `json:"database"`
 	System    aboutSystem    `json:"system"`
 	Host      aboutHost      `json:"host"`
-}
+} // @name About
 
 var (
 	reAlphaNum = regexp.MustCompile(`[^a-z0-9\-]`)
@@ -57,10 +57,11 @@ var (
 
 // GetSettings returns settings from the DB.
 //
+//	@ID				getSettings
 //	@Summary		Get application settings
 //	@Tags			settings
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=models.Settings}
+//	@Success		200	{object}	models.Settings
 //	@Failure		500	{object}	echo.HTTPError
 //	@Router			/api/settings [get]
 func (a *App) GetSettings(c echo.Context) error {
@@ -95,12 +96,13 @@ func (a *App) GetSettings(c echo.Context) error {
 
 // UpdateSettings updates and saves settings to the DB.
 //
+//	@ID				updateSettings
 //	@Summary		Update application settings
 //	@Tags			settings
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body		models.Settings	true	"Settings payload"
-//	@Success		200		{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400		{object}	echo.HTTPError
 //	@Failure		500		{object}	echo.HTTPError
 //	@Router			/api/settings [put]
@@ -350,13 +352,14 @@ func (a *App) UpdateSettings(c echo.Context) error {
 
 // UpdateSettingsByKey updates a single setting key-value in the DB.
 //
+//	@ID				updateSettingByKey
 //	@Summary		Update a single setting by key
 //	@Tags			settings
 //	@Accept			json
 //	@Produce		json
 //	@Param			key		path		string			true	"Setting key"
 //	@Param			body	body		interface{}		true	"Value (raw JSON)"
-//	@Success		200		{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400		{object}	echo.HTTPError
 //	@Router			/api/settings/{key} [put]
 func (a *App) UpdateSettingsByKey(c echo.Context) error {
@@ -405,10 +408,11 @@ func (a *App) handleSettingsRestart(c echo.Context) error {
 
 // GetLogs returns the log entries stored in the log buffer.
 //
+//	@ID				getLogs
 //	@Summary		Get application logs
 //	@Tags			settings
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=[]string}
+//	@Success		200	{array}		string
 //	@Router			/api/logs [get]
 func (a *App) GetLogs(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{a.bufLog.Lines()})
@@ -416,12 +420,13 @@ func (a *App) GetLogs(c echo.Context) error {
 
 // TestSMTPSettings tests an SMTP server connection by sending a test e-mail.
 //
+//	@ID				testSmtpSettings
 //	@Summary		Test SMTP settings
 //	@Tags			settings
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body		interface{}		true	"SMTP config with target email"
-//	@Success		200		{object}	okResp{data=[]string}
+//	@Success		200		{array}		string
 //	@Failure		400		{object}	echo.HTTPError
 //	@Failure		500		{object}	echo.HTTPError
 //	@Router			/api/settings/smtp/test [post]
@@ -482,12 +487,13 @@ func (a *App) TestSMTPSettings(c echo.Context) error {
 
 // TestScrubSettings verifies that the Scrub URL and API key are reachable.
 //
+//	@ID				testScrubSettings
 //	@Summary		Test Scrub integration settings
 //	@Tags			settings
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body		interface{}		true	"Scrub URL and API key"
-//	@Success		200		{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		400		{object}	echo.HTTPError
 //	@Router			/api/settings/scrub/test [post]
 func (a *App) TestScrubSettings(c echo.Context) error {
@@ -542,10 +548,11 @@ func (a *App) TestScrubSettings(c echo.Context) error {
 
 // GetScrubStats fetches daily usage stats from the configured Scrub service.
 //
+//	@ID				getScrubStats
 //	@Summary		Get Scrub usage statistics
 //	@Tags			settings
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=interface{}}
+//	@Success		200	{object}	interface{}
 //	@Failure		400	{object}	echo.HTTPError
 //	@Router			/api/settings/scrub/stats [get]
 func (a *App) GetScrubStats(c echo.Context) error {
@@ -677,6 +684,7 @@ func (a *App) ScrubList(c echo.Context) error {
 
 // GetAboutInfo returns version, build, system, and host information about the app.
 //
+//	@ID				getAboutInfo
 //	@Summary		Get application info
 //	@Tags			settings
 //	@Produce		json

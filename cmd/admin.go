@@ -37,14 +37,15 @@ type serverConfig struct {
 	HasLegacyUser bool            `json:"has_legacy_user"`
 	ScrubEnabled  bool            `json:"scrub_enabled"`
 	Version       string          `json:"version"`
-}
+} // @name ServerConfig
 
 // GetServerConfig returns general server config.
 //
+//	@ID				getServerConfig
 //	@Summary		Get server config
 //	@Tags			settings
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=serverConfig}
+//	@Success		200	{object}	serverConfig
 //	@Router			/api/config [get]
 func (a *App) GetServerConfig(c echo.Context) error {
 	out := serverConfig{
@@ -110,10 +111,11 @@ func (a *App) GetServerConfig(c echo.Context) error {
 
 // GetDashboardCharts returns chart data points to render ont he dashboard.
 //
+//	@ID				getDashboardCharts
 //	@Summary		Get dashboard chart data
 //	@Tags			dashboard
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=object}
+//	@Success		200	{object}	object
 //	@Router			/api/dashboard/charts [get]
 func (a *App) GetDashboardCharts(c echo.Context) error {
 	// Get the chart data from the DB.
@@ -127,10 +129,11 @@ func (a *App) GetDashboardCharts(c echo.Context) error {
 
 // GetDashboardCounts returns stats counts to show on the dashboard.
 //
+//	@ID				getDashboardCounts
 //	@Summary		Get dashboard counts
 //	@Tags			dashboard
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=object}
+//	@Success		200	{object}	object
 //	@Router			/api/dashboard/counts [get]
 func (a *App) GetDashboardCounts(c echo.Context) error {
 	// Get the chart data from the DB.
@@ -144,10 +147,11 @@ func (a *App) GetDashboardCounts(c echo.Context) error {
 
 // ReloadApp sends a reload signal to the app, causing a full restart.
 //
+//	@ID				reloadApp
 //	@Summary		Reload the application
 //	@Tags			settings
 //	@Produce		json
-//	@Success		200	{object}	okResp{data=bool}
+//	@Success		200
 //	@Failure		500	{object}	echo.HTTPError
 //	@Router			/api/admin/reload [post]
 func (a *App) ReloadApp(c echo.Context) error {
