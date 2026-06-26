@@ -1525,7 +1525,7 @@ paths:
     get:
       consumes:
       - multipart/form-data
-      operationId: previewCampaign
+      operationId: getCampaignPreview
       parameters:
       - description: Campaign ID
         in: path
@@ -1540,10 +1540,6 @@ paths:
         in: formData
         name: template_id
         type: integer
-      - description: Campaign body override (POST only)
-        in: formData
-        name: body
-        type: string
       produces:
       - text/html
       responses:
@@ -1580,7 +1576,7 @@ paths:
         in: formData
         name: template_id
         type: integer
-      - description: Campaign body override (POST only)
+      - description: Campaign body override
         in: formData
         name: body
         type: string
@@ -1599,7 +1595,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/echo.HTTPError'
-      summary: Preview a campaign
+      summary: Preview a campaign (POST)
       tags:
       - campaigns
   /api/campaigns/{id}/preview/archive:
@@ -2392,6 +2388,44 @@ paths:
       summary: Get a media item
       tags:
       - media
+  /api/profile:
+    get:
+      operationId: getUserProfile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+      summary: Get current user profile
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      operationId: updateUserProfile
+      parameters:
+      - description: Profile fields
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update current user profile
+      tags:
+      - users
   /api/roles/{id}:
     delete:
       operationId: deleteRole

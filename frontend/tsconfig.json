@@ -12,8 +12,8 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client"]
+    "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "vite.config.ts"],
-  "exclude": ["node_modules", "dist", "cypress", "email-builder"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "vite.config.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist", "cypress", "email-builder", "src/api/generated"]
 }

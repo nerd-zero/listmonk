@@ -14,7 +14,7 @@
         sort-field="createdAt" sort-order="1" v-model:selection="checked" data-key="id">
         <template #header>
           <div class="table-toolbar">
-            <form class="search-form" @submit.prevent="getUsers">
+            <form class="search-form" @submit.prevent="getUsers()">
               <PvIconField>
                 <PvInputIcon class="pi pi-search" />
                 <PvInputText v-model="queryParams.query" name="query" ref="query"
@@ -91,7 +91,7 @@
                 <i class="pi pi-pencil" />
               </button>
               <button v-if="$can('users:manage')" type="button" class="row-action-btn row-action-btn--danger"
-                data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')" @click="deleteUser(data)">
+                data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')" @click="onDeleteUser(data)">
                 <i class="pi pi-trash" />
               </button>
             </div>
@@ -122,8 +122,10 @@ import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import UserForm from './UserForm.vue';
+import { getUsers as usersApi } from '../api/generated/endpoints/users/users';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { listUsers, getUser, deleteUser } = usersApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -153,16 +155,12 @@ function onFormClose() {
 }
 
 function getUsers() {
-  $api.queryUsers({
-    query: queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
-    order_by: queryParams.orderBy,
-    order: queryParams.order,
-  }).then((resp: any) => { users.value = resp; });
+  listUsers().then((resp: any) => { users.value = resp; });
 }
 
-function deleteUser(item: any) {
+function onDeleteUser(item: any) {
   $utils.confirm(t('globals.messages.confirm'), () => {
-    $api.deleteUser(item.id).then(() => {
+    deleteUser(item.id).then(() => {
       getUsers();
       $utils.toast(t('globals.messages.deleted', { name: item.name }));
     });
@@ -173,7 +171,7 @@ watch(() => refreshTick.value, () => { getUsers(); });
 
 onMounted(() => {
   if (route.params.id) {
-    $api.getUser(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
+    getUser(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
   } else {
     getUsers();
   }

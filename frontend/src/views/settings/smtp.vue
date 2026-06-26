@@ -6,10 +6,10 @@
         <div class="smtp-card-header">
           <div class="flex items-center gap-2">
             <PvToggleSwitch v-model="item.enabled" name="enabled" data-cy="btn-enable-smtp" />
-            <span class="smtp-card-title">{{ item.name || `SMTP #${n + 1}` }}</span>
+            <span class="smtp-card-title">{{ item.name || `SMTP #${Number(n) + 1}` }}</span>
           </div>
           <a v-if="form.smtp.length > 1" href="#" class="delete-link"
-            @click.prevent="$utils.confirm(null, () => removeSMTP(n))" data-cy="btn-delete-smtp">
+            @click.prevent="$utils.confirm(null, () => removeSMTP(Number(n)))" data-cy="btn-delete-smtp">
             <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
           </a>
         </div>
@@ -230,6 +230,7 @@ import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../../store';
 import { useGlobal } from '../../composables/useGlobal';
 import { regDuration } from '../../constants';
+import { getSettings as settingsApi } from '../../api/generated/endpoints/settings/settings';
 
 const smtpTemplates: Record<string, any> = {
   gmail: {
@@ -262,7 +263,8 @@ const smtpTemplates: Record<string, any> = {
 };
 
 const props = defineProps<{ form?: any }>();
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { testSmtpSettings } = settingsApi();
 const { t } = useI18n();
 const { settings } = storeToRefs(useMainStore());
 
@@ -299,10 +301,11 @@ function addSMTP() {
 
 function removeSMTP(i: number) { data.smtp.splice(i, 1); }
 
-function showSMTPHeaders(i: number) {
-  const s = data.smtp[i];
+function showSMTPHeaders(i: number | string) {
+  const n = Number(i);
+  const s = data.smtp[n];
   s.showHeaders = true;
-  data.smtp.splice(i, 1, s);
+  data.smtp.splice(n, 1, s);
 }
 
 function isTestEnabled(item: any) {
@@ -311,41 +314,43 @@ function isTestEnabled(item: any) {
   return true;
 }
 
-function doSMTPTest(item: any, n: number) {
+function doSMTPTest(item: any, n: number | string) {
+  const idx = Number(n);
   if (!isTestEnabled(item)) {
     $utils.toast(t('settings.smtp.testEnterEmail'), 'is-danger');
     nextTick(() => {
-      const i = document.querySelector(`.password-${n}`) as HTMLInputElement;
-      data.smtp[n].password = '';
+      const i = document.querySelector(`.password-${idx}`) as HTMLInputElement;
+      data.smtp[idx].password = '';
       i.focus();
       i.select();
     });
     return;
   }
   errMsg.value = '';
-  $api.testSMTP({ ...item, email: testEmail.value }).then(() => {
+  testSmtpSettings({ ...item, email: testEmail.value }).then(() => {
     $utils.toast(t('campaigns.testSent'));
   }).catch((err: any) => {
     if (err.response?.data?.message) { errMsg.value = err.response.data.message; }
   });
 }
 
-function showTestForm(n: number) {
-  smtpTestItem.value = n;
+function showTestForm(n: number | string) {
+  smtpTestItem.value = Number(n);
   errMsg.value = '';
   nextTick(() => { (document.querySelector(`.test-email-${n}`) as HTMLInputElement)?.focus(); });
 }
 
-function fillSettings(n: number, key: string) {
-  data.smtp.splice(n, 1, {
-    ...data.smtp[n],
+function fillSettings(n: number | string, key: string) {
+  const idx = Number(n);
+  data.smtp.splice(idx, 1, {
+    ...data.smtp[idx],
     ...smtpTemplates[key],
     username: '',
     password: '',
     hello_hostname: '',
     tls_skip_verify: false,
   });
-  nextTick(() => { (document.querySelector(`.smtp-username-${n}`) as HTMLInputElement)?.focus(); });
+  nextTick(() => { (document.querySelector(`.smtp-username-${idx}`) as HTMLInputElement)?.focus(); });
 }
 </script>
 

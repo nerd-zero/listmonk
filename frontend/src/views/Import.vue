@@ -133,7 +133,7 @@
         {{ status.status }}
       </p>
       <p class="import-count">{{ $t('import.recordsCount', { num: status.imported, total: status.total }) }}</p>
-      <PvButton @click="stopImport" :loading="isProcessing" icon="pi pi-upload" severity="primary"
+      <PvButton @click="onStopImport" :loading="isProcessing" icon="pi pi-upload" severity="primary"
         :label="isDone() ? $t('import.importDone') : $t('import.stopImport')" />
       <div class="import-logs">
         <log-view :lines="logs" :loading="false" />
@@ -153,8 +153,12 @@ import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import ListSelector from '../components/ListSelector.vue';
 import LogView from '../components/LogView.vue';
+import { getImport } from '../api/generated/endpoints/import/import';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const {
+  getImportLogs, getImportStatus, stopImport, importSubscribers,
+} = getImport();
 const { t } = useI18n();
 const route = useRoute();
 const { lists } = storeToRefs(useMainStore());
@@ -214,7 +218,7 @@ function isDone() {
 }
 
 function getLogs() {
-  $api.getImportLogs().then((data: any) => {
+  getImportLogs().then((data: any) => {
     logs.value = data.split('\n').map((line: string) => line.replace(/\s+importer\.go:\d+:\s*/, ' *: '));
     nextTick(() => {
       const el = document.getElementById('import-log');
@@ -226,7 +230,7 @@ function getLogs() {
 function pollStatus() {
   clearInterval(pollID.value);
   pollID.value = setInterval(() => {
-    $api.getImportStatus().then((data: any) => {
+    getImportStatus().then((data: any) => {
       isProcessing.value = false;
       isLoading.value = false;
       status.value = data;
@@ -242,9 +246,9 @@ function pollStatus() {
   }, 250);
 }
 
-function stopImport() {
+function onStopImport() {
   isProcessing.value = true;
-  $api.stopImport().then(() => { pollStatus(); form.file = null; });
+  stopImport().then(() => { pollStatus(); form.file = null; });
 }
 
 function renderExample() {
@@ -265,17 +269,17 @@ function resetForm() {
 
 function onSubmit() {
   isProcessing.value = true;
-  const params = new FormData();
-  params.set('params', JSON.stringify({
-    mode: form.mode,
-    subscription_status: form.subStatus,
-    delim: form.delim,
-    lists: form.lists.map((l: any) => l.id),
-    overwrite_userinfo: form.overwriteUserInfo,
-    overwrite_subscription_status: form.overwriteSubStatus,
-  }));
-  params.set('file', form.file as any);
-  $api.importSubscribers(params).then(() => {
+  importSubscribers({
+    file: form.file as Blob,
+    params: JSON.stringify({
+      mode: form.mode,
+      subscription_status: form.subStatus,
+      delim: form.delim,
+      lists: form.lists.map((l: any) => l.id),
+      overwrite_userinfo: form.overwriteUserInfo,
+      overwrite_subscription_status: form.overwriteSubStatus,
+    }),
+  }).then(() => {
     $utils.toast(t('import.importStarted'));
     pollStatus();
   }, () => {

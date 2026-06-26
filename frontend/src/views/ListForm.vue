@@ -84,6 +84,7 @@ import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
+import { getLists as listsApi } from '../api/generated/endpoints/lists/lists';
 
 const props = withDefaults(defineProps<{
   data?: any;
@@ -92,7 +93,8 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['finished', 'close']);
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { createList, updateList } = listsApi();
 const { t } = useI18n();
 const { loading } = storeToRefs(useMainStore());
 
@@ -111,16 +113,16 @@ const isArchived = computed({
   set: (v: boolean) => { form.status = v ? 'archived' : 'active'; },
 });
 
-function createList() {
-  $api.createList(form).then((data: any) => {
+function onCreateList() {
+  createList(form as any).then((data: any) => {
     emit('finished');
     emit('close');
     $utils.toast(t('globals.messages.created', { name: data.name }));
   });
 }
 
-function updateList() {
-  $api.updateList({ id: props.data.id, ...form }).then((data: any) => {
+function onUpdateList() {
+  updateList(props.data.id, form as any).then((data: any) => {
     emit('finished');
     emit('close');
     $utils.toast(t('globals.messages.updated', { name: data.name }));
@@ -128,8 +130,8 @@ function updateList() {
 }
 
 function onSubmit() {
-  if (props.isEditing) { updateList(); return; }
-  createList();
+  if (props.isEditing) { onUpdateList(); return; }
+  onCreateList();
 }
 
 onMounted(() => {

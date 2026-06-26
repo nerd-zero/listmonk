@@ -113,6 +113,8 @@ import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
+import { getUsers as usersApi } from '../api/generated/endpoints/users/users';
+import { getRoles } from '../api/generated/endpoints/roles/roles';
 
 const props = withDefaults(defineProps<{
   data?: any;
@@ -121,9 +123,12 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['finished', 'close']);
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { createUser, updateUser } = usersApi();
+const { listUserRoles, listListRoles } = getRoles();
 const { t } = useI18n();
-const { loading, userRoles, listRoles } = storeToRefs(useMainStore());
+const store = useMainStore();
+const { loading, userRoles, listRoles } = storeToRefs(store);
 
 const focusEl = ref<any>(null);
 const apiToken = ref<string | null>(null);
@@ -143,11 +148,11 @@ const listRoleOptions = computed(() => [
   ...(listRoles.value as any[]),
 ]);
 
-function createUser() {
+function onCreateUser() {
   const payload = {
     ...form, password_login: form.passwordLogin, user_role_id: form.userRoleId, list_role_id: form.listRoleId || null,
   };
-  $api.createUser(payload).then((data: any) => {
+  createUser(payload).then((data: any) => {
     emit('finished');
     $utils.toast(t('globals.messages.created', { name: data.name }));
     if (payload.type === 'api') { apiToken.value = data.password; return; }
@@ -155,11 +160,11 @@ function createUser() {
   });
 }
 
-function updateUser() {
+function onUpdateUser() {
   const payload = {
     ...form, password_login: form.passwordLogin, user_role_id: form.userRoleId, list_role_id: form.listRoleId || null,
   };
-  $api.updateUser({ id: props.data.id, ...payload }).then((data: any) => {
+  updateUser(props.data.id, payload).then((data: any) => {
     emit('finished'); emit('close');
     $utils.toast(t('globals.messages.updated', { name: data.name }));
   });
@@ -171,15 +176,15 @@ function onSubmit() {
     $utils.toast(t('users.passwordMismatch'), 'is-danger');
     return;
   }
-  if (props.isEditing) { updateUser(); } else { createUser(); }
+  if (props.isEditing) { onUpdateUser(); } else { onCreateUser(); }
 }
 
 onMounted(() => {
   Object.assign(form, props.data);
   if (props.data.userRole) form.userRoleId = props.data.userRole.id;
   form.listRoleId = props.data.listRole ? props.data.listRole.id : '';
-  $api.getUserRoles();
-  $api.getListRoles();
+  listUserRoles().then((data: any) => { store.setModelResponse({ model: 'userRoles', data }); });
+  listListRoles().then((data: any) => { store.setModelResponse({ model: 'listRoles', data }); });
   nextTick(() => { focusEl.value?.$el?.focus(); });
 });
 </script>

@@ -101,9 +101,9 @@ import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
-import { useGlobal } from '../composables/useGlobal';
+import { getSettings as settingsApi } from '../api/generated/endpoints/settings/settings';
 
-const { $api } = useGlobal();
+const { getScrubStats } = settingsApi();
 const { t } = useI18n();
 const { loading } = storeToRefs(useMainStore());
 
@@ -122,7 +122,7 @@ async function fetchStats() {
   fetchError.value = null;
   notConfigured.value = false;
   try {
-    const data = await $api.getScrubStats();
+    const data = await getScrubStats();
     rows.value = Array.isArray(data) ? data : (data.data ?? [data]);
   } catch (e: any) {
     const msg = e.response?.data?.message || '';

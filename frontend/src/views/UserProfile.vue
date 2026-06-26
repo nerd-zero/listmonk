@@ -123,8 +123,12 @@ import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
+import { getUsers as usersApi } from '../api/generated/endpoints/users/users';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const {
+  getUserProfile, updateUserProfile, generateTotpQr, enableTotp, disableTotp,
+} = usersApi();
 const { t } = useI18n();
 const { loading } = storeToRefs(useMainStore());
 
@@ -150,7 +154,7 @@ function onSubmit() {
     params.password = form.password;
     params.password2 = form.password2;
   }
-  $api.updateUserProfile(params).then(() => {
+  updateUserProfile(params).then(() => {
     form.password = '';
     form.password2 = '';
     $utils.toast(t('globals.messages.updated', { name: data.value.username }));
@@ -158,7 +162,7 @@ function onSubmit() {
 }
 
 function onToggleEnableTotp() {
-  $api.getTOTPQR(data.value.id).then((d: any) => {
+  generateTotpQr(data.value.id).then((d: any) => {
     totpQR.value = d.qr;
     totpSecret.value = d.secret;
     isTotpVisible.value = true;
@@ -183,13 +187,10 @@ function confirmTOTP() {
     $utils.toast(t('globals.messages.invalidValue'), 'is-danger');
     return;
   }
-  const d = new FormData();
-  d.append('secret', totpSecret.value!);
-  d.append('code', totpCode.value);
-  $api.enableTOTP(data.value.id, d).then(() => {
+  enableTotp(data.value.id, { secret: totpSecret.value!, code: totpCode.value }).then(() => {
     $utils.toast(t('users.twoFAEnabled'));
     onCancelTOTPSetup();
-    $api.getUserProfile().then((p: any) => {
+    getUserProfile().then((p: any) => {
       data.value = { ...p };
       twofaEnabled.value = p.twofaType === 'totp';
     });
@@ -208,13 +209,11 @@ function confirmDisableTOTP() {
     $utils.toast(t('globals.messages.invalidFields'), 'is-danger');
     return;
   }
-  const formData = new FormData();
-  formData.append('password', disableTOTPPassword.value);
-  $api.disableTOTP(data.value.id, formData).then(() => {
+  disableTotp(data.value.id, { password: disableTOTPPassword.value }).then(() => {
     $utils.toast(t('globals.messages.done'));
     showDisableTOTP.value = false;
     disableTOTPPassword.value = '';
-    $api.getUserProfile().then((p: any) => {
+    getUserProfile().then((p: any) => {
       data.value = { ...p };
       twofaEnabled.value = p.twofaType === 'totp';
     });
@@ -224,7 +223,7 @@ function confirmDisableTOTP() {
 }
 
 onMounted(() => {
-  $api.getUserProfile().then((d: any) => {
+  getUserProfile().then((d: any) => {
     data.value = { ...d };
     Object.assign(form, { name: d.name, email: d.email });
     twofaEnabled.value = d.twofaType === 'totp';

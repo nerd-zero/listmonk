@@ -106,13 +106,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useGlobal } from '../composables/useGlobal';
+import { getSubscribers as subscribersApi } from '../api/generated/endpoints/subscribers/subscribers';
 
 const props = defineProps<{
   subscriberId: number;
 }>();
 
-const { $api } = useGlobal();
+const { getSubscriberActivity } = subscribersApi();
 
 const isLoading = ref(false);
 const activity = ref<{ campaignViews: any[]; linkClicks: any[] }>({
@@ -132,7 +132,7 @@ const totalClicks = computed(() => {
 
 function getActivity() {
   isLoading.value = true;
-  $api.getSubscriberActivity(props.subscriberId).then((data: any) => {
+  getSubscriberActivity(props.subscriberId).then((data: any) => {
     activity.value = data;
     isLoading.value = false;
   }).catch(() => {

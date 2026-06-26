@@ -78,6 +78,7 @@ import CampaignPreview from '../components/CampaignPreview.vue';
 import CodeEditor from '../components/CodeEditor.vue';
 import VisualEditor from '../components/VisualEditor.vue';
 import CopyText from '../components/CopyText.vue';
+import { getTemplates as templatesApi } from '../api/generated/endpoints/templates/templates';
 
 const props = withDefaults(defineProps<{
   data?: any;
@@ -86,7 +87,8 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['finished', 'close']);
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { createTemplate, updateTemplate } = templatesApi();
 const { t } = useI18n();
 const { loading } = storeToRefs(useMainStore());
 
@@ -105,23 +107,23 @@ function onPreviewShortcut(e: KeyboardEvent) {
   if (e.key === 'F9') { onTogglePreview(); e.preventDefault(); }
 }
 
-function createTemplate() {
-  $api.createTemplate({
-    id: props.data.id, name: form.name, type: form.type, subject: form.subject, body: form.body, body_source: form.bodySource,
+function onCreateTemplate() {
+  createTemplate({
+    name: form.name, type: form.type, subject: form.subject, body: form.body, body_source: form.bodySource,
   })
     .then((d: any) => { emit('finished'); emit('close'); $utils.toast(t('globals.messages.created', { name: d.name })); });
 }
 
-function updateTemplate() {
-  $api.updateTemplate({
-    id: props.data.id, name: form.name, type: form.type, subject: form.subject, body: form.body, body_source: form.bodySource,
+function onUpdateTemplate() {
+  updateTemplate(props.data.id, {
+    name: form.name, type: form.type, subject: form.subject, body: form.body, body_source: form.bodySource,
   })
     .then((d: any) => { emit('finished'); emit('close'); $utils.toast(`'${d.name}' updated`); });
 }
 
 function onSubmit() {
-  if (props.isEditing) { updateTemplate(); return; }
-  createTemplate();
+  if (props.isEditing) { onUpdateTemplate(); return; }
+  onCreateTemplate();
 }
 
 function onChangeVisualEditor({ source, body }: any) {

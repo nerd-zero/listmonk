@@ -296,8 +296,6 @@ const bounceActionOptions = computed(() => [
   { label: t('globals.buttons.delete'), value: 'delete' },
 ]);
 
-function removeBounceBox(i: number) { data['bounce.mailboxes'].splice(i, 1); }
-
 function getAuthProtocolOptions(type: string) {
   const opts: any[] = [{ label: 'none', value: 'none' }];
   if (type === 'pop') {

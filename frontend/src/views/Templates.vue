@@ -67,7 +67,7 @@
               </button>
               <button v-if="!data.isDefault" type="button" class="row-action-btn row-action-btn--danger"
                 data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')"
-                @click="$utils.confirm(null, () => deleteTemplate(data))">
+                @click="$utils.confirm(null, () => onDeleteTemplate(data))">
                 <i class="pi pi-trash" />
               </button>
             </div>
@@ -100,17 +100,24 @@ import { useGlobal } from '../composables/useGlobal';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import TemplateForm from './TemplateForm.vue';
+import { getTemplates as templatesApi } from '../api/generated/endpoints/templates/templates';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const store = useMainStore();
+const {
+  listTemplates, createTemplate, deleteTemplate, setDefaultTemplate,
+} = templatesApi();
 const { t } = useI18n();
-const { refreshTick, templates, loading } = storeToRefs(useMainStore());
+const { refreshTick, templates, loading } = storeToRefs(store);
 
 const curItem = ref<any>(null);
 const isEditing = ref(false);
 const isFormVisible = ref(false);
 const previewItem = ref<any>(null);
 
-function fetchTemplates() { $api.getTemplates(); }
+function fetchTemplates() {
+  listTemplates().then((data: any) => { store.setModelResponse({ model: 'templates', data }); });
+}
 
 function showEditForm(data: any) {
   curItem.value = data; isFormVisible.value = true; isEditing.value = true;
@@ -120,33 +127,33 @@ function showNewForm() {
   curItem.value = { type: 'campaign' }; isFormVisible.value = true; isEditing.value = false;
 }
 
-function formFinished() { $api.getTemplates(); }
+function formFinished() { fetchTemplates(); }
 function previewTemplate(c: any) { previewItem.value = c; }
 function closePreview() { previewItem.value = null; }
 
 function cloneTemplate(name: string, tpl: any) {
-  $api.createTemplate({
+  createTemplate({
     name, type: tpl.type, subject: tpl.subject, body: tpl.body, body_source: tpl.bodySource,
   })
-    .then((d: any) => { $api.getTemplates(); $utils.toast(`'${d.name}' created`); });
+    .then((d: any) => { fetchTemplates(); $utils.toast(`'${d.name}' created`); });
 }
 
 function makeTemplateDefault(tpl: any) {
-  $api.makeTemplateDefault(tpl.id).then(() => {
-    $api.getTemplates();
+  setDefaultTemplate(tpl.id).then(() => {
+    fetchTemplates();
     $utils.toast(t('globals.messages.created', { name: tpl.name }));
   });
 }
 
-function deleteTemplate(tpl: any) {
-  $api.deleteTemplate(tpl.id).then(() => {
-    $api.getTemplates();
+function onDeleteTemplate(tpl: any) {
+  deleteTemplate(tpl.id).then(() => {
+    fetchTemplates();
     $utils.toast(t('globals.messages.deleted', { name: tpl.name }));
   });
 }
 
 watch(() => refreshTick.value, () => { fetchTemplates(); });
-onMounted(() => { $api.getTemplates(); });
+onMounted(() => { fetchTemplates(); });
 </script>
 
 <style scoped lang="scss">
