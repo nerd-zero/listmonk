@@ -37,7 +37,7 @@
     <PvTabs v-model:value="activeTab" @update:value="onTab">
       <PvTabList>
         <PvTab value="campaign">
-          <i class="pi pi-send mr-1" />{{ $tc('globals.terms.campaign') }}
+          <i class="pi pi-send mr-1" />{{ $t('globals.terms.campaign') }}
         </PvTab>
         <PvTab value="content" :disabled="isNew">
           <i class="pi pi-file mr-1" />{{ $t('campaigns.content') }}
@@ -81,7 +81,7 @@
                   <div class="grid">
                     <div class="col-6">
                       <div class="field">
-                        <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.messenger') }}</label>
+                        <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.messenger') }}</label>
                         <PvSelect v-model="form.messenger" :options="allMessengers" :disabled="!canEdit"
                           required class="w-full" />
                       </div>
@@ -246,7 +246,7 @@
             <div class="grid">
               <div class="col-6">
                 <div class="field">
-                  <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
+                  <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.template') }}</label>
                   <PvSelect v-model="form.archiveTemplateId" :options="campaignTemplates"
                     option-label="name" option-value="id"
                     :disabled="!canArchive || !form.archive || form.content.contentType === 'visual'"

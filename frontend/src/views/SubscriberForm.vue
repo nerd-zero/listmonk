@@ -36,7 +36,7 @@
       <PvTabs v-model:value="activeTab">
         <PvTabList>
           <PvTab value="0">{{ $t('globals.terms.lists') }}</PvTab>
-          <PvTab value="1">{{ `${$tc('globals.terms.subscriptions', 2)} (${data.lists ? data.lists.length : 0})` }}</PvTab>
+          <PvTab value="1">{{ `${$t('globals.terms.subscriptions', 2)} (${data.lists ? data.lists.length : 0})` }}</PvTab>
           <PvTab value="2" :disabled="bounces.length === 0">{{ `${$t('globals.terms.bounces')} (${bounces.length})` }}</PvTab>
           <PvTab value="3" :disabled="!isEditing">{{ $t('subscribers.activity') }}</PvTab>
         </PvTabList>
@@ -67,7 +67,7 @@
           <PvTabPanel value="1">
             <template v-if="data.lists">
               <PvDataTable :value="data.lists" hoverable sort-field="createdAt" class="subscriptions">
-                <PvColumn field="name" :header="$tc('globals.terms.list', 1)">
+                <PvColumn field="name" :header="$t('globals.terms.list', 1)">
                   <template #body="{ data: row }">
                     <div class="sub-name-cell">
                       <router-link v-if="!row.restricted" :to="`/lists/${row.id}`">{{ row.name }}</router-link>
@@ -113,7 +113,7 @@
             </div>
 
             <PvDataTable :value="bounces" hoverable sort-field="createdAt">
-              <PvColumn field="campaign" :header="$tc('globals.terms.campaign', 1)">
+              <PvColumn field="campaign" :header="$t('globals.terms.campaign', 1)">
                 <template #body="{ data: row }">
                   <router-link v-if="row.campaign" :to="{ name: 'bounces', query: { campaign_id: row.campaign.id } }">
                     {{ row.campaign.name }}

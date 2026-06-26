@@ -45,7 +45,7 @@
           </template>
         </PvColumn>
 
-        <PvColumn field="status" :header="$tc('users.role')" header-class="cy-status" sortable>
+        <PvColumn field="status" :header="$t('users.role')" header-class="cy-status" sortable>
           <template #body="{ data }">
             <div class="role-cell">
               <router-link :to="{ name: 'userRoles' }">

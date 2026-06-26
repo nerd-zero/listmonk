@@ -46,7 +46,7 @@
             </PvTag>
           </div>
           <PvButton type="submit" severity="primary" icon="pi pi-upload"
-            :loading="isProcessing" :label="$tc('media.upload')" />
+            :loading="isProcessing" :label="$t('media.upload')" />
         </div>
       </form>
     </div>

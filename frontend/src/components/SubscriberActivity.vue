@@ -35,7 +35,7 @@
       <div v-if="activity.campaignViews && activity.campaignViews.length > 0">
         <PvDataTable :value="activity.campaignViews" :hoverable="true" sort-field="lastViewedAt" :sort-order="-1"
           :paginator="true" :rows="10" class="campaign-views-table">
-          <PvColumn field="subject" :header="$tc('globals.terms.campaign', 1)" sortable>
+          <PvColumn field="subject" :header="$t('globals.terms.campaign', 1)" sortable>
             <template #body="{ data }">
               <div v-if="data.uuid">
                 <router-link :to="{ name: 'campaign', params: { id: data.id } }">{{ data.name }}</router-link>
@@ -75,7 +75,7 @@
               <a :href="data.url" target="_blank" rel="noopener noreferrer">{{ data.url }}</a>
             </template>
           </PvColumn>
-          <PvColumn field="campaignName" :header="$tc('globals.terms.campaign', 1)" sortable>
+          <PvColumn field="campaignName" :header="$t('globals.terms.campaign', 1)" sortable>
             <template #body="{ data }">
               <div v-if="data.campaignUuid">
                 <router-link :to="{ name: 'campaign', params: { id: data.campaignId } }">

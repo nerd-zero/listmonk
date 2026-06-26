@@ -21,9 +21,9 @@
             <label class="lm-label">{{ $t('globals.fields.type') }}</label>
             <PvSelect v-model="form.type" :disabled="isEditing"
               :options="[
-                { label: $tc('templates.typeCampaignHTML'), value: 'campaign' },
-                { label: $tc('templates.typeCampaignVisual'), value: 'campaign_visual' },
-                { label: $tc('templates.typeTransactional'), value: 'tx' },
+                { label: $t('templates.typeCampaignHTML'), value: 'campaign' },
+                { label: $t('templates.typeCampaignVisual'), value: 'campaign_visual' },
+                { label: $t('templates.typeTransactional'), value: 'tx' },
               ]"
               option-label="label" option-value="value" class="w-full" />
           </div>

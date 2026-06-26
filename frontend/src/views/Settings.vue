@@ -75,7 +75,9 @@ import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
-import { getSettings as settingsApi } from '../api/generated/endpoints/settings/settings';
+import {
+  getSettings, updateSettings, getServerConfig,
+} from '../api';
 import AppearanceSettings from './settings/appearance.vue';
 import ScrubSettings from './settings/scrub.vue';
 import BounceSettings from './settings/bounces.vue';
@@ -88,7 +90,6 @@ import SecuritySettings from './settings/security.vue';
 import SmtpSettings from './settings/smtp.vue';
 
 const { $utils } = useGlobal();
-const { getSettings, updateSettings, getServerConfig } = settingsApi();
 const { t } = useI18n();
 const { serverConfig, loading } = storeToRefs(useMainStore());
 

@@ -79,7 +79,8 @@ const BluePreset = definePreset(Aura, {
 const pinia = createPinia();
 
 const i18n = createI18n({
-  legacy: true,
+  legacy: false,
+  globalInjection: true,
   locale: 'en',
   messages: {},
 });
@@ -154,8 +155,8 @@ router.beforeEach((to, _from, next) => {
 });
 
 router.afterEach((to) => {
-  const { te, tc } = i18n.global;
-  const title = to.meta.title && te(to.meta.title as string) ? `${tc(to.meta.title as string, 0)} /` : '';
+  const { te, t } = i18n.global;
+  const title = to.meta.title && te(to.meta.title as string) ? `${t(to.meta.title as string)} /` : '';
   document.title = `${title} listmonk`;
 });
 
@@ -173,7 +174,7 @@ async function initConfig(instance: typeof app) {
   }
 
   const lang = await api.getLang(cfg.lang as string);
-  i18n.global.locale = cfg.lang as string;
+  (i18n.global.locale as unknown as { value: string }).value = cfg.lang as string;
   i18n.global.setLocaleMessage(cfg.lang as string, lang as Record<string, unknown>);
 
   const props = instance.config.globalProperties;
@@ -212,7 +213,7 @@ async function initConfig(instance: typeof app) {
 
   const currentRoute = router.currentRoute.value;
   const routeTitle = currentRoute.meta.title
-    ? `${i18n.global.tc(currentRoute.meta.title as string, 0)} /`
+    ? `${i18n.global.t(currentRoute.meta.title as string)} /`
     : '';
   document.title = `${routeTitle} listmonk`;
 

@@ -47,7 +47,7 @@
 
     <hr />
 
-    <p class="settings-section-label">{{ $tc('globals.terms.subscriptions', 2) }}</p>
+    <p class="settings-section-label">{{ $t('globals.terms.subscriptions', 2) }}</p>
     <div class="field">
       <div class="flex items-center gap-2">
         <PvToggleSwitch v-model="data['app.enable_public_subscription_page']" name="app.enable_public_subscription_page" />

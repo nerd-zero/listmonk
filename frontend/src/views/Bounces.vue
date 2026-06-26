@@ -50,7 +50,7 @@
           </template>
         </PvColumn>
 
-        <PvColumn field="campaign" :header="$tc('globals.terms.campaign')" sortable>
+        <PvColumn field="campaign" :header="$t('globals.terms.campaign')" sortable>
           <template #body="{ data }">
             <router-link v-if="data.campaign" class="row-link"
               :to="{ name: 'bounces', query: { campaign_id: data.campaign.id } }">

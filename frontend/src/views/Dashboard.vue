@@ -19,7 +19,7 @@
             <PvProgressSpinner v-if="isCountsLoading" style="width:1.5rem;height:1.5rem" stroke-width="4" />
             <span v-else>{{ $utils.niceNumber(counts.lists.total) }}</span>
           </div>
-          <div class="stat-label">{{ $tc('globals.terms.list', counts.lists.total) }}</div>
+          <div class="stat-label">{{ $t('globals.terms.list', counts.lists.total) }}</div>
           <div class="stat-breakdown">
             <span>{{ counts.lists.public }} {{ $t('lists.types.public') }}</span>
             <span>{{ counts.lists.private }} {{ $t('lists.types.private') }}</span>
@@ -38,7 +38,7 @@
             <PvProgressSpinner v-if="isCountsLoading" style="width:1.5rem;height:1.5rem" stroke-width="4" />
             <span v-else>{{ $utils.niceNumber(counts.subscribers.total) }}</span>
           </div>
-          <div class="stat-label">{{ $tc('globals.terms.subscriber', counts.subscribers.total) }}</div>
+          <div class="stat-label">{{ $t('globals.terms.subscriber', counts.subscribers.total) }}</div>
           <div class="stat-breakdown">
             <span>{{ counts.subscribers.blocklisted || 0 }} {{ $t('subscribers.status.blocklisted') }}</span>
             <span>{{ counts.subscribers.orphans || 0 }} {{ $t('dashboard.orphanSubs') }}</span>
@@ -55,7 +55,7 @@
             <PvProgressSpinner v-if="isCountsLoading" style="width:1.5rem;height:1.5rem" stroke-width="4" />
             <span v-else>{{ $utils.niceNumber(counts.campaigns.total) }}</span>
           </div>
-          <div class="stat-label">{{ $tc('globals.terms.campaign', counts.campaigns.total) }}</div>
+          <div class="stat-label">{{ $t('globals.terms.campaign', counts.campaigns.total) }}</div>
           <div class="stat-breakdown">
             <span v-for="(num, status) in counts.campaigns.byStatus" :key="status">
               {{ num }} {{ $t(`campaigns.status.${status}`) }}
