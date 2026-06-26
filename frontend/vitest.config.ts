@@ -21,7 +21,7 @@ export default mergeConfig(
       coverage: {
         provider: 'v8',
         reporter: ['text', 'lcov'],
-        include: ['src/**/*.ts', 'src/**/*.vue'],
+        include: ['src/**/*.ts'],
         exclude: ['src/api/generated/**', 'src/test/**'],
       },
     },
