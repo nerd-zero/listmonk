@@ -153,6 +153,7 @@ import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../../store';
 import { useGlobal } from '../../composables/useGlobal';
 import CopyText from '../../components/CopyText.vue';
+import { getRoles } from '../../api/generated/endpoints/roles/roles';
 
 const OIDC_PROVIDERS: Record<string, string> = {
   google: 'https://accounts.google.com',
@@ -162,9 +163,11 @@ const OIDC_PROVIDERS: Record<string, string> = {
 };
 
 const props = defineProps<{ form?: any }>();
-const { $api, $can } = useGlobal();
+const { $can } = useGlobal();
+const { listUserRoles, listListRoles } = getRoles();
 const { t } = useI18n();
-const { serverConfig, userRoles, listRoles } = storeToRefs(useMainStore());
+const store = useMainStore();
+const { serverConfig, userRoles, listRoles } = storeToRefs(store);
 const clientIdEl = ref<any>(null);
 const data = props.form;
 
@@ -214,8 +217,8 @@ const isURLOk = computed(() => {
 
 onMounted(() => {
   if ($can('roles:get')) {
-    $api.getUserRoles();
-    $api.getListRoles();
+    listUserRoles().then((data: any) => { store.setModelResponse({ model: 'userRoles', data }); });
+    listListRoles().then((data: any) => { store.setModelResponse({ model: 'listRoles', data }); });
   }
 });
 

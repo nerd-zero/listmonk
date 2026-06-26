@@ -74,12 +74,15 @@ import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import RoleForm from './RoleForm.vue';
+import { getRoles as rolesApi } from '../api/generated/endpoints/roles/roles';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { listUserRoles, listListRoles, createUserRole, createListRole, deleteRole } = rolesApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const { loading, userRoles, listRoles } = storeToRefs(useMainStore());
+const store = useMainStore();
+const { loading, userRoles, listRoles } = storeToRefs(store);
 
 const curItem = ref<any>(null);
 const curType = ref<string | null>(null);
@@ -92,9 +95,15 @@ const roles = computed<any[]>(() => (isUser.value ? (userRoles.value as any) : (
 
 function fetchRoles() {
   if (isUser.value) {
-    $api.getUserRoles();
+    store.setLoading({ model: 'userRoles', status: true });
+    listUserRoles().then((data: any) => {
+      store.setModelResponse({ model: 'userRoles', data });
+    }).finally(() => { store.setLoading({ model: 'userRoles', status: false }); });
   } else {
-    $api.getListRoles();
+    store.setLoading({ model: 'listRoles', status: true });
+    listListRoles().then((data: any) => {
+      store.setModelResponse({ model: 'listRoles', data });
+    }).finally(() => { store.setLoading({ model: 'listRoles', status: false }); });
   }
 }
 
@@ -122,12 +131,12 @@ function onFormClose() {
 
 function onCloneRole(name: string, item: any) {
   const form: any = { name };
-  let fn: any;
+  let fn: (data: any) => Promise<any>;
   if (isUser.value) {
-    fn = $api.createUserRole;
+    fn = createUserRole;
     form.permissions = item.permissions;
   } else {
-    fn = $api.createListRole;
+    fn = createListRole;
     form.lists = item.lists;
   }
   fn(form).then(() => {
@@ -140,7 +149,7 @@ function onDeleteRole(item: any) {
   $utils.confirm(
     t('globals.messages.confirm'),
     () => {
-      $api.deleteRole(item.id).then(() => {
+      deleteRole(item.id).then(() => {
         fetchRoles();
         $utils.toast(t('globals.messages.deleted', { name: item.name }));
       });

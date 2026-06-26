@@ -76,8 +76,10 @@ import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import { colors } from '../constants';
 import Chart from '../components/Chart.vue';
+import { getCampaigns as campaignsApi } from '../api/generated/endpoints/campaigns/campaigns';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { listCampaigns, getCampaign, getCampaignAnalytics } = campaignsApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -138,16 +140,16 @@ function makeCharts(_typ: string, campaigns: any[], data: any[]) {
 
 const charts = reactive<Record<string, any>>({
   views: {
-    name: '', type: 'line', data: null, loading: false, apiFn: 'getCampaignViewCounts', chartFnName: 'makeCharts',
+    name: '', type: 'line', data: null, loading: false, chartFnName: 'makeCharts',
   },
   clicks: {
-    name: '', type: 'line', data: null, loading: false, apiFn: 'getCampaignClickCounts', chartFnName: 'makeCharts',
+    name: '', type: 'line', data: null, loading: false, chartFnName: 'makeCharts',
   },
   bounces: {
-    name: '', type: 'line', data: null, loading: false, donutColor: chartColorRed, apiFn: 'getCampaignBounceCounts', chartFnName: 'makeCharts',
+    name: '', type: 'line', data: null, loading: false, donutColor: chartColorRed, chartFnName: 'makeCharts',
   },
   links: {
-    name: '', type: 'bar', data: null, loading: false, apiFn: 'getCampaignLinkCounts', chartFnName: 'makeLinksChart', onClick: onLinkClick,
+    name: '', type: 'bar', data: null, loading: false, chartFnName: 'makeLinksChart', onClick: onLinkClick,
   },
 });
 
@@ -155,7 +157,11 @@ const hasChartData = computed(() => Object.values(charts).some((c) => c.data !==
 
 function getData(typ: string, camps: any[]) {
   charts[typ].loading = true;
-  $api[charts[typ].apiFn]({ id: camps.map((c: any) => c.id), from: form.from, to: form.to }).then((data: any) => {
+  getCampaignAnalytics(typ, {
+    id: camps.map((c: any) => c.id),
+    from: dayjs(form.from).format('YYYY-MM-DD'),
+    to: dayjs(form.to).format('YYYY-MM-DD'),
+  }).then((data: any) => {
     (counts as any)[typ] = data.reduce((sum: number, d: any) => sum + d.count, 0);
     const chartFn = charts[typ].chartFnName === 'makeCharts' ? makeCharts : makeLinksChart;
     const { points, donut } = chartFn(typ, camps, data);
@@ -175,7 +181,7 @@ function onToDateChange() {
 
 function queryCampaigns(q: string) {
   isSearchLoading.value = true;
-  $api.getCampaigns({ query: q, order_by: 'created_at', order: 'DESC' }).then((data: any) => {
+  listCampaigns({ query: q, order_by: 'created_at', order: 'DESC' }).then((data: any) => {
     isSearchLoading.value = false;
     queriedCampaigns.value = data.results.map((c: any) => ({ ...c, name: `#${c.id}: ${c.name}` }));
   });
@@ -186,7 +192,6 @@ function onSubmit() {
 }
 
 onMounted(() => {
-  const { t: tFn } = { t };
   charts.views.name = t('campaigns.views');
   charts.clicks.name = t('campaigns.clicks');
   charts.bounces.name = t('globals.terms.bounces');
@@ -200,7 +205,7 @@ onMounted(() => {
   const ids = $utils.parseQueryIDs(route.query.id);
   if (ids.length > 0) {
     isSearchLoading.value = true;
-    Promise.allSettled(ids.map((id: number) => $api.getCampaign(id))).then((data: any[]) => {
+    Promise.allSettled(ids.map((id: number) => getCampaign(id))).then((data: any[]) => {
       data.forEach((d) => {
         if (d.status !== 'fulfilled') return;
         const camp = d.value;

@@ -75,6 +75,7 @@ import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
+import { getSettings as settingsApi } from '../api/generated/endpoints/settings/settings';
 import AppearanceSettings from './settings/appearance.vue';
 import ScrubSettings from './settings/scrub.vue';
 import BounceSettings from './settings/bounces.vue';
@@ -86,7 +87,8 @@ import PrivacySettings from './settings/privacy.vue';
 import SecuritySettings from './settings/security.vue';
 import SmtpSettings from './settings/smtp.vue';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { getSettings, updateSettings, getServerConfig } = settingsApi();
 const { t } = useI18n();
 const { serverConfig, loading } = storeToRefs(useMainStore());
 
@@ -111,9 +113,9 @@ function hasDummy(pwd: string) {
   return pwd.includes('•');
 }
 
-function getSettings() {
+function fetchSettings() {
   isLoading.value = true;
-  $api.getSettings().then((data: any) => {
+  getSettings().then((data: any) => {
     let d: any = {};
     try {
       d = JSON.parse(JSON.stringify(data));
@@ -184,9 +186,9 @@ async function onSubmit() {
 
   isLoading.value = true;
   try {
-    await $api.updateSettings(f);
-    await $api.getServerConfig();
-    getSettings();
+    await updateSettings(f);
+    await getServerConfig();
+    fetchSettings();
   } finally {
     isLoading.value = false;
   }
@@ -204,7 +206,7 @@ onBeforeRouteLeave((_to, _from, next) => {
 
 onMounted(() => {
   tab.value = String($utils.getPref('settings.tab') || '0');
-  getSettings();
+  fetchSettings();
 });
 </script>
 

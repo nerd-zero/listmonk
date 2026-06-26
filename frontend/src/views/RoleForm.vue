@@ -121,6 +121,7 @@ import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
 import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
+import { getRoles as rolesApi } from '../api/generated/endpoints/roles/roles';
 
 const props = withDefaults(defineProps<{
   data?: any;
@@ -130,7 +131,8 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['finished', 'close']);
 
-const { $api, $utils, $can } = useGlobal();
+const { $utils, $can } = useGlobal();
+const { createUserRole, updateUserRole, createListRole, updateListRole } = rolesApi();
 const { t } = useI18n();
 const { loading, serverConfig, lists } = storeToRefs(useMainStore());
 
@@ -174,13 +176,13 @@ function onToggleSelect() {
 }
 
 function createRole() {
-  let fn: any;
+  let fn: (payload: any) => Promise<any>;
   const payload: any = { name: form.name };
   if (props.type === 'user') {
-    fn = $api.createUserRole;
+    fn = createUserRole;
     payload.permissions = form.permissions;
   } else {
-    fn = $api.createListRole;
+    fn = createListRole;
     payload.lists = form.lists.map((item: any) => ({ id: item.id, permissions: item.permissions }));
   }
   fn(payload).then((data: any) => {
@@ -191,16 +193,16 @@ function createRole() {
 }
 
 function updateRole() {
-  let fn: any;
-  const payload: any = { id: props.data.id, name: form.name };
+  const payload: any = { name: form.name };
+  let fn: (id: number, data: any) => Promise<any>;
   if (props.type === 'user') {
-    fn = $api.updateUserRole;
+    fn = updateUserRole;
     payload.permissions = form.permissions;
   } else {
-    fn = $api.updateListRole;
+    fn = updateListRole;
     payload.lists = form.lists.map((item: any) => ({ id: item.id, permissions: item.permissions }));
   }
-  fn(payload).then((data: any) => {
+  fn(props.data.id, payload).then((data: any) => {
     emit('finished');
     $utils.toast(t('globals.messages.updated', { name: data.name }));
     emit('close');

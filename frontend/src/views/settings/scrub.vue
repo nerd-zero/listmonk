@@ -52,9 +52,11 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useGlobal } from '../../composables/useGlobal';
+import { getSettings as settingsApi } from '../../api/generated/endpoints/settings/settings';
 
 const props = defineProps<{ form?: any }>();
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { testScrubSettings } = settingsApi();
 const { t } = useI18n();
 const data = props.form;
 const isTesting = ref(false);
@@ -62,7 +64,7 @@ const isTesting = ref(false);
 async function testConnection() {
   isTesting.value = true;
   try {
-    await $api.testScrub({ url: data.scrub.url, api_key: data.scrub.api_key });
+    await testScrubSettings({ url: data.scrub.url, api_key: data.scrub.api_key });
     $utils.toast(t('settings.scrub.testSuccess'), 'is-success');
   } catch (e: any) {
     $utils.toast(e.response?.data?.message || t('settings.scrub.testError'), 'is-danger');

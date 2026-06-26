@@ -106,10 +106,10 @@
             <button type="button" class="bulk-btn" @click.prevent="showBulkListForm" data-cy="btn-manage-lists">
               <i class="pi pi-list" /> Manage lists
             </button>
-            <button type="button" class="bulk-btn bulk-btn--danger" @click.prevent="deleteSubscribers" data-cy="btn-delete-subscribers">
+            <button type="button" class="bulk-btn bulk-btn--danger" @click.prevent="onDeleteSubscribers" data-cy="btn-delete-subscribers">
               <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
             </button>
-            <button type="button" class="bulk-btn bulk-btn--warn" @click.prevent="blocklistSubscribers" data-cy="btn-manage-blocklist">
+            <button type="button" class="bulk-btn bulk-btn--warn" @click.prevent="onBlocklistSubscribers" data-cy="btn-manage-blocklist">
               <i class="pi pi-user-minus" /> Blocklist
             </button>
           </div>
@@ -177,7 +177,7 @@
                 <i class="pi pi-pencil" />
               </button>
               <button v-if="$can('subscribers:manage')" type="button" class="row-action-btn row-action-btn--danger"
-                data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')" @click="deleteSubscriber(data)">
+                data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')" @click="onDeleteSubscriber(data)">
                 <i class="pi pi-trash" />
               </button>
             </div>
@@ -216,8 +216,14 @@ import { uris } from '../constants';
 import SubscriberBulkList from './SubscriberBulkList.vue';
 import SubscriberForm from './SubscriberForm.vue';
 import CopyText from '../components/CopyText.vue';
+import { getSubscribers as subscribersApi } from '../api/generated/endpoints/subscribers/subscribers';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const {
+  listSubscribers, getSubscriber, deleteSubscriber, deleteSubscribers,
+  blocklistSubscribers, blocklistSubscribersByQuery, deleteSubscribersByQuery,
+  manageSubscriberLists, manageSubscriberListsByQuery,
+} = subscribersApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -332,32 +338,32 @@ function querySubscribers(params?: any) {
     delete qp.query;
   }
   nextTick(() => {
-    $api.getSubscribers(qp).then(() => { bulk.checked = []; });
+    listSubscribers(qp).then(() => { bulk.checked = []; });
   });
 }
 
-function deleteSubscriber(sub: any) {
+function onDeleteSubscriber(sub: any) {
   $utils.confirm(null, () => {
-    $api.deleteSubscriber(sub.id).then(() => {
+    deleteSubscriber(sub.id).then(() => {
       querySubscribers();
       $utils.toast(t('globals.messages.deleted', { name: sub.name }));
     });
   });
 }
 
-function blocklistSubscribers() {
+function onBlocklistSubscribers() {
   let fn: () => void;
   if (!bulk.all && bulk.checked.length > 0) {
     fn = () => {
       const ids = bulk.checked.map((s: any) => s.id);
-      $api.blocklistSubscribers({ ids }).then(() => querySubscribers());
+      blocklistSubscribers({ ids }).then(() => querySubscribers());
     };
   } else {
     fn = () => {
-      $api.blocklistSubscribersByQuery({
+      blocklistSubscribersByQuery({
         search: queryParams.search,
         query: queryParams.queryExp,
-        list_ids: queryParams.listID ? [queryParams.listID] : null,
+        list_ids: queryParams.listID ? [queryParams.listID] : (null as any),
         subscription_status: queryParams.subStatus,
       }).then(() => querySubscribers());
     };
@@ -380,23 +386,23 @@ function exportSubscribers() {
   });
 }
 
-function deleteSubscribers() {
+function onDeleteSubscribers() {
   let fn: () => void;
   if (!bulk.all && bulk.checked.length > 0) {
     fn = () => {
       const ids = bulk.checked.map((s: any) => s.id);
-      $api.deleteSubscribers({ id: ids }).then(() => {
+      deleteSubscribers({ id: ids }).then(() => {
         querySubscribers();
         $utils.toast(t('subscribers.subscribersDeleted', { num: numSelectedSubscribers.value }));
       });
     };
   } else {
     fn = () => {
-      $api.deleteSubscribersByQuery({
+      deleteSubscribersByQuery({
         all: queryParams.queryExp.trim() === '' && queryParams.search.trim() === '',
         search: queryParams.search,
         query: queryParams.queryExp,
-        list_ids: queryParams.listID ? [queryParams.listID] : null,
+        list_ids: queryParams.listID ? [queryParams.listID] : (null as any),
         subscription_status: queryParams.subStatus,
       }).then(() => {
         querySubscribers();
@@ -417,10 +423,10 @@ function bulkChangeLists(action: string, preconfirm: boolean, listItems: any[]) 
   if (preconfirm) data.status = 'confirmed';
   let fn: any;
   if (!bulk.all && bulk.checked.length > 0) {
-    fn = $api.addSubscribersToLists;
+    fn = manageSubscriberLists;
     data.ids = bulk.checked.map((s: any) => s.id);
   } else {
-    fn = $api.addSubscribersToListsByQuery;
+    fn = manageSubscriberListsByQuery;
     data.query = queryParams.queryExp;
     data.subscription_status = queryParams.subStatus;
   }
@@ -436,7 +442,7 @@ onMounted(() => {
   if (route.params.listID) queryParams.listID = parseInt(route.params.listID as string, 10);
   if (route.query.subscription_status) queryParams.subStatus = route.query.subscription_status as string;
   if (route.params.id) {
-    $api.getSubscriber(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
+    getSubscriber(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
   } else {
     querySubscribers();
   }

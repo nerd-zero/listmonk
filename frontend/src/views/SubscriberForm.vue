@@ -175,6 +175,8 @@ import { useGlobal } from '../composables/useGlobal';
 import ListSelector from '../components/ListSelector.vue';
 import CopyText from '../components/CopyText.vue';
 import SubscriberActivity from '../components/SubscriberActivity.vue';
+import { getSubscribers as subscribersApi } from '../api/generated/endpoints/subscribers/subscribers';
+import { getBounces as bouncesApi } from '../api/generated/endpoints/bounces/bounces';
 
 const props = withDefaults(defineProps<{
   data?: any;
@@ -183,7 +185,11 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['finished', 'close']);
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const {
+  createSubscriber, updateSubscriber, sendSubscriberOptin, deleteSubscriberBounces,
+} = subscribersApi();
+const { getSubscriberBounces } = bouncesApi();
 const { t, tc } = useI18n();
 const { lists, loading } = storeToRefs(useMainStore());
 
@@ -217,14 +223,14 @@ function subStatusSeverity(status: string) {
 
 function toggleMeta(id: number) { visibleMeta[id] = !visibleMeta[id]; }
 
-function getBounces() {
-  $api.getSubscriberBounces(form.id).then((data: any) => { bounces.value = data; });
+function fetchBounces() {
+  getSubscriberBounces(form.id).then((data: any) => { bounces.value = data; });
 }
 
 function deleteBounces() {
   $utils.confirm(null, () => {
-    $api.deleteSubscriberBounces(form.id).then(() => {
-      getBounces();
+    deleteSubscriberBounces(form.id).then(() => {
+      fetchBounces();
       $utils.toast(t('globals.messages.deleted', { name: form.name }));
     });
   });
@@ -245,13 +251,13 @@ function validateAttribs(str: string) {
   return attribs;
 }
 
-function createSubscriber() {
+function onCreateSubscriber() {
   let attribs = {};
   if (form.strAttribs) {
     attribs = validateAttribs(form.strAttribs);
     if (!attribs) return;
   }
-  $api.createSubscriber({
+  createSubscriber({
     email: form.email,
     name: form.name,
     status: form.status,
@@ -264,14 +270,13 @@ function createSubscriber() {
   });
 }
 
-function updateSubscriber() {
+function onUpdateSubscriber() {
   let attribs = {};
   if (form.strAttribs) {
     attribs = validateAttribs(form.strAttribs);
     if (!attribs) return;
   }
-  $api.updateSubscriber({
-    id: form.id,
+  updateSubscriber(form.id, {
     email: form.email,
     name: form.name,
     status: form.status,
@@ -285,13 +290,13 @@ function updateSubscriber() {
 }
 
 function onSubmit() {
-  if (props.isEditing) { updateSubscriber(); return; }
-  createSubscriber();
+  if (props.isEditing) { onUpdateSubscriber(); return; }
+  onCreateSubscriber();
 }
 
 function sendOptinConfirmation() {
   if (!hasOptinList.value) return;
-  $api.sendSubscriberOptin(form.id).then(() => {
+  sendSubscriberOptin(form.id).then(() => {
     $utils.toast(t('subscribers.sentOptinConfirm'));
   });
 }
@@ -300,7 +305,7 @@ onMounted(() => {
   if (props.isEditing) {
     Object.assign(form, { ...props.data, strAttribs: JSON.stringify(props.data.attribs, null, 4) });
   }
-  if (form.id) getBounces();
+  if (form.id) fetchBounces();
   nextTick(() => { focusEl.value?.$el?.focus(); });
 });
 </script>

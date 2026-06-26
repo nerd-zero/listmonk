@@ -33,7 +33,7 @@
       >
         <template #header>
           <div class="table-toolbar">
-            <form class="search-form" @submit.prevent="getCampaigns">
+            <form class="search-form" @submit.prevent="fetchCampaigns">
               <PvIconField>
                 <PvInputIcon class="pi pi-search" />
                 <PvInputText v-model="queryParams.query" name="query" class="search-input"
@@ -188,7 +188,7 @@
               </router-link>
               <button v-if="$can('campaigns:manage')" type="button" class="row-action-btn row-action-btn--danger"
                 data-cy="btn-delete" v-tooltip.bottom="$t('globals.buttons.delete')"
-                @click="$utils.confirm($t('campaigns.confirmDelete', { name: data.name }), () => deleteCampaign(data))">
+                @click="$utils.confirm($t('campaigns.confirmDelete', { name: data.name }), () => onDeleteCampaign(data))">
                 <i class="pi pi-trash" />
               </button>
             </div>
@@ -219,8 +219,13 @@ import { useGlobal } from '../composables/useGlobal';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CopyText from '../components/CopyText.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
+import { getCampaigns as campaignsApi } from '../api/generated/endpoints/campaigns/campaigns';
 
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const {
+  listCampaigns, getCampaign, createCampaign, deleteCampaign, deleteCampaigns,
+  updateCampaignStatus, getRunningCampaignStats,
+} = campaignsApi();
 const { t, tc } = useI18n();
 const router = useRouter();
 const { refreshTick, campaigns, loading } = storeToRefs(useMainStore());
@@ -264,8 +269,8 @@ function getCampaignStats(c: any) {
   return c.id in campaignStatsData.value ? campaignStatsData.value[c.id] : c;
 }
 
-function getCampaigns() {
-  $api.getCampaigns({
+function fetchCampaigns() {
+  listCampaigns({
     page: queryParams.page,
     query: queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
     order_by: queryParams.orderBy,
@@ -274,19 +279,19 @@ function getCampaigns() {
   });
 }
 
-function onPageChange(p: number) { queryParams.page = p; getCampaigns(); }
-function onSort(field: string, direction: string) { queryParams.orderBy = field; queryParams.order = direction; getCampaigns(); }
+function onPageChange(p: number) { queryParams.page = p; fetchCampaigns(); }
+function onSort(field: string, direction: string) { queryParams.orderBy = field; queryParams.order = direction; fetchCampaigns(); }
 function previewCampaign(c: any) { previewItem.value = c; }
 function closePreview() { previewItem.value = null; }
 
 function pollStats() {
   clearInterval(pollID.value);
   pollID.value = setInterval(() => {
-    $api.getCampaignStats().then((data: any) => {
+    getRunningCampaignStats().then((data: any) => {
       if (data.length === 0) {
         clearInterval(pollID.value);
         if (Object.keys(campaignStatsData.value).length > 0) {
-          getCampaigns();
+          fetchCampaigns();
           campaignStatsData.value = {};
         }
       } else {
@@ -297,9 +302,9 @@ function pollStats() {
 }
 
 function changeCampaignStatus(c: any, status: string) {
-  $api.changeCampaignStatus(c.id, status).then(() => {
+  updateCampaignStatus(c.id, { status }).then(() => {
     $utils.toast(t('campaigns.statusChanged', { name: c.name, status }));
-    getCampaigns();
+    fetchCampaigns();
     pollStats();
   });
 }
@@ -307,7 +312,7 @@ function changeCampaignStatus(c: any, status: string) {
 async function cloneCampaign(name: string, c: any) {
   let body = '';
   let bodySource = null;
-  await $api.getCampaign(c.id).then((data: any) => { body = data.body; bodySource = data.bodySource; });
+  await getCampaign(c.id).then((data: any) => { body = data.body; bodySource = data.bodySource; });
   const now = $utils.getDate();
   const sendLater = !!c.sendAt;
   let sendAt = null;
@@ -334,12 +339,12 @@ async function cloneCampaign(name: string, c: any) {
     media: c.media.map((m: any) => m.id),
   };
   if (c.archive) data.archive_slug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`;
-  $api.createCampaign(data).then((d: any) => { router.push({ name: 'campaign', params: { id: d.id } }); });
+  createCampaign(data).then((d: any) => { router.push({ name: 'campaign', params: { id: d.id } }); });
 }
 
-function deleteCampaign(c: any) {
-  $api.deleteCampaign(c.id).then(() => {
-    getCampaigns();
+function onDeleteCampaign(c: any) {
+  deleteCampaign(c.id).then(() => {
+    fetchCampaigns();
     $utils.toast(t('globals.messages.deleted', { name: c.name }));
   });
 }
@@ -360,16 +365,16 @@ function deleteCampaigns() {
       params.query = queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' ');
       params.all = bulk.all;
     }
-    $api.deleteCampaigns(params).then(() => {
-      getCampaigns();
+    deleteCampaigns(params).then(() => {
+      fetchCampaigns();
       $utils.toast(tc('globals.messages.deletedCount', numSelectedCampaigns.value, { num: numSelectedCampaigns.value, name }));
     });
   };
   $utils.confirm(tc('globals.messages.confirmDelete', numSelectedCampaigns.value, { num: numSelectedCampaigns.value, name: name.toLowerCase() }), fn);
 }
 
-watch(() => refreshTick.value, () => { getCampaigns(); });
-onMounted(() => { getCampaigns(); pollStats(); });
+watch(() => refreshTick.value, () => { fetchCampaigns(); });
+onMounted(() => { fetchCampaigns(); pollStats(); });
 onUnmounted(() => { clearInterval(pollID.value); });
 </script>
 

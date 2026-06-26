@@ -81,6 +81,8 @@ import VisualEditor from './VisualEditor.vue';
 import RichtextEditor from './RichtextEditor.vue';
 import markdownToVisualBlock from './editor';
 import CodeEditor from './CodeEditor.vue';
+import { getCampaigns as campaignsApi } from '../api/generated/endpoints/campaigns/campaigns';
+import { getTemplates as templatesApi } from '../api/generated/endpoints/templates/templates';
 
 const turndown = new TurndownService();
 
@@ -103,7 +105,9 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits(['update:modelValue']);
-const { $api, $utils, $events } = useGlobal();
+const { $utils, $events } = useGlobal();
+const { setCampaignContent } = campaignsApi();
+const { getTemplate } = templatesApi();
 const { t } = useI18n();
 const { serverConfig, loading } = storeToRefs(useMainStore());
 
@@ -195,9 +199,7 @@ function convertContentType(to: string, from: string) {
     }
   } else if (from === 'markdown' && (to === 'richtext' || to === 'html')) {
     skip = true;
-    $api.convertCampaignContent({
-      id: 1, body, from, to,
-    }).then((data: any) => {
+    setCampaignContent(1, { body, from, to }).then((data: any) => {
       nextTick(() => {
         self.value.contentType = to;
         self.value.body = beautifyHTML(data.trim());
@@ -255,7 +257,7 @@ function onShowVisualTplSelector() {
 function onImportVisualTpl() {
   if (!visualTemplateId.value) return;
   $utils.confirm(t('campaigns.confirmOverwriteContent'), () => {
-    $api.getTemplate(visualTemplateId.value).then((data: any) => {
+    getTemplate(visualTemplateId.value!).then((data: any) => {
       self.value.body = data.body;
       self.value.bodySource = data.bodySource;
       isVisualTplDisabled.value = true;

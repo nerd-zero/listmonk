@@ -230,6 +230,7 @@ import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../../store';
 import { useGlobal } from '../../composables/useGlobal';
 import { regDuration } from '../../constants';
+import { getSettings as settingsApi } from '../../api/generated/endpoints/settings/settings';
 
 const smtpTemplates: Record<string, any> = {
   gmail: {
@@ -262,7 +263,8 @@ const smtpTemplates: Record<string, any> = {
 };
 
 const props = defineProps<{ form?: any }>();
-const { $api, $utils } = useGlobal();
+const { $utils } = useGlobal();
+const { testSmtpSettings } = settingsApi();
 const { t } = useI18n();
 const { settings } = storeToRefs(useMainStore());
 
@@ -323,7 +325,7 @@ function doSMTPTest(item: any, n: number) {
     return;
   }
   errMsg.value = '';
-  $api.testSMTP({ ...item, email: testEmail.value }).then(() => {
+  testSmtpSettings({ ...item, email: testEmail.value }).then(() => {
     $utils.toast(t('campaigns.testSent'));
   }).catch((err: any) => {
     if (err.response?.data?.message) { errMsg.value = err.response.data.message; }
