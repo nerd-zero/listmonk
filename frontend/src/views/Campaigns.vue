@@ -206,291 +206,171 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, watch, onMounted, onUnmounted,
+} from 'vue';
 import dayjs from 'dayjs';
-import { mapState } from 'pinia';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CopyText from '../components/CopyText.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default defineComponent({
-  components: {
-    CampaignPreview,
-    EmptyPlaceholder,
-    CopyText,
-  },
+const { $api, $utils } = useGlobal();
+const { t, tc } = useI18n();
+const router = useRouter();
+const { refreshTick, campaigns, loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      previewItem: null,
-      queryParams: {
-        page: 1,
-        query: '',
-        orderBy: 'created_at',
-        order: 'desc',
-      },
-      pollID: null,
-      campaignStatsData: {},
-
-      // Table bulk row selection states.
-      bulk: {
-        checked: [],
-        all: false,
-      },
-    };
-  },
-
-  methods: {
-    // Campaign statuses.
-    canStart(c) {
-      return c.status === 'draft' && !c.sendAt;
-    },
-    canSchedule(c) {
-      return c.status === 'draft' && c.sendAt;
-    },
-    canPause(c) {
-      return c.status === 'running';
-    },
-    canCancel(c) {
-      return c.status === 'running' || c.status === 'paused';
-    },
-    canResume(c) {
-      return c.status === 'paused';
-    },
-    isSheduled(c) {
-      return c.status === 'scheduled' || c.sendAt !== null;
-    },
-    isDone(c) {
-      return c.status === 'finished' || c.status === 'cancelled';
-    },
-
-    isRunning(id) {
-      if (id in this.campaignStatsData) {
-        return true;
-      }
-      return false;
-    },
-
-    highlightedRow(data) {
-      if (data.status === 'running') {
-        return ['running'];
-      }
-      return '';
-    },
-
-    onPageChange(p) {
-      this.queryParams.page = p;
-      this.getCampaigns();
-    },
-
-    onSort(field, direction) {
-      this.queryParams.orderBy = field;
-      this.queryParams.order = direction;
-      this.getCampaigns();
-    },
-
-    // Campaign actions.
-    previewCampaign(c) {
-      this.previewItem = c;
-    },
-
-    closePreview() {
-      this.previewItem = null;
-    },
-
-    getCampaigns() {
-      this.$api.getCampaigns({
-        page: this.queryParams.page,
-        query: this.queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
-        order_by: this.queryParams.orderBy,
-        order: this.queryParams.order,
-        no_body: true,
-      });
-    },
-
-    // Stats returns the campaign object with stats (sent, toSend etc.)
-    // if there's live stats available for running campaigns. Otherwise,
-    // it returns the incoming campaign object that has the static stats
-    // values.
-    getCampaignStats(c) {
-      if (c.id in this.campaignStatsData) {
-        return this.campaignStatsData[c.id];
-      }
-      return c;
-    },
-
-    pollStats() {
-      // Clear any running status polls.
-      clearInterval(this.pollID);
-
-      // Poll for the status as long as the import is running.
-      this.pollID = setInterval(() => {
-        this.$api.getCampaignStats().then((data) => {
-          // Stop polling. No running campaigns.
-          if (data.length === 0) {
-            clearInterval(this.pollID);
-
-            // There were running campaigns and stats earlier. Clear them
-            // and refetch the campaigns list with up-to-date fields.
-            if (Object.keys(this.campaignStatsData).length > 0) {
-              this.getCampaigns();
-              this.campaignStatsData = {};
-            }
-          } else {
-            // Turn the list of campaigns [{id: 1, ...}, {id: 2, ...}] into
-            // a map indexed by the id: {1: {}, 2: {}}.
-            this.campaignStatsData = data.reduce((obj, cur) => ({ ...obj, [cur.id]: cur }), {});
-          }
-        }, () => {
-          clearInterval(this.pollID);
-        });
-      }, 1000);
-    },
-
-    changeCampaignStatus(c, status) {
-      this.$api.changeCampaignStatus(c.id, status).then(() => {
-        this.$utils.toast(this.$t('campaigns.statusChanged', { name: c.name, status }));
-        this.getCampaigns();
-        this.pollStats();
-      });
-    },
-
-    async cloneCampaign(name, c) {
-      // Fetch the template body from the server.
-      let body = '';
-      let bodySource = null;
-      await this.$api.getCampaign(c.id).then((data) => {
-        body = data.body;
-        bodySource = data.bodySource;
-      });
-
-      const now = this.$utils.getDate();
-      const sendLater = !!c.sendAt;
-      let sendAt = null;
-      if (sendLater) {
-        sendAt = dayjs(c.sendAt).isAfter(now) ? c.sendAt : now.add(7, 'day');
-      }
-
-      const data = {
-        name,
-        subject: c.subject,
-        lists: c.lists.map((l) => l.id),
-        type: c.type,
-        from_email: c.fromEmail,
-        content_type: c.contentType,
-        messenger: c.messenger,
-        tags: c.tags,
-        template_id: c.templateId,
-        body,
-        body_source: bodySource,
-        altbody: c.altbody,
-        headers: c.headers,
-        send_later: sendLater,
-        send_at: sendAt,
-        archive: c.archive,
-        archive_template_id: c.archiveTemplateId,
-        archive_meta: c.archiveMeta,
-        media: c.media.map((m) => m.id),
-      };
-
-      if (c.archive) {
-        data.archive_slug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`;
-      }
-
-      this.$api.createCampaign(data).then((d) => {
-        this.$router.push({ name: 'campaign', params: { id: d.id } });
-      });
-    },
-
-    deleteCampaign(c) {
-      this.$api.deleteCampaign(c.id).then(() => {
-        this.getCampaigns();
-        this.$utils.toast(this.$t('globals.messages.deleted', { name: c.name }));
-      });
-    },
-
-    // Mark all campaigns in the query as selected.
-    onSelectAll() {
-      this.bulk.all = true;
-    },
-
-    onTableCheck() {
-      // Disable bulk.all selection if there are no rows checked in the table.
-      if (this.bulk.checked.length !== this.campaigns.total) {
-        this.bulk.all = false;
-      }
-    },
-
-    deleteCampaigns() {
-      const name = this.$tc('globals.terms.campaign', this.numSelectedCampaigns);
-
-      const fn = () => {
-        const params = {};
-        if (!this.bulk.all && this.bulk.checked.length > 0) {
-          // If 'all' is not selected, delete campaigns by IDs.
-          params.id = this.bulk.checked.map((c) => c.id);
-        } else {
-          // 'All' is selected, delete by query.
-          params.query = this.queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' ');
-          params.all = this.bulk.all;
-        }
-
-        this.$api.deleteCampaigns(params)
-          .then(() => {
-            this.getCampaigns();
-            this.$utils.toast(this.$tc(
-              'globals.messages.deletedCount',
-              this.numSelectedCampaigns,
-              { num: this.numSelectedCampaigns, name },
-            ));
-          });
-      };
-
-      this.$utils.confirm(this.$tc(
-        'globals.messages.confirmDelete',
-        this.numSelectedCampaigns,
-        { num: this.numSelectedCampaigns, name: name.toLowerCase() },
-      ), fn);
-    },
-  },
-
-  watch: {
-    refreshTick() { this.getCampaigns(); },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'campaigns', 'loading']),
-
-    numSelectedCampaigns() {
-      return this.bulk.all ? this.campaigns.total : this.bulk.checked.length;
-    },
-
-    statusSeverity() {
-      return (status) => {
-        const map = {
-          running: 'success',
-          finished: 'info',
-          scheduled: 'warn',
-          paused: 'secondary',
-          cancelled: 'danger',
-          draft: 'secondary',
-        };
-        return map[status] || 'secondary';
-      };
-    },
-  },
-
-  mounted() {
-    this.getCampaigns();
-    this.pollStats();
-  },
-
-  unmounted() {
-    clearInterval(this.pollID);
-  },
+const previewItem = ref<any>(null);
+const pollID = ref<any>(null);
+const campaignStatsData = ref<Record<number, any>>({});
+const bulk = reactive({ checked: [] as any[], all: false });
+const queryParams = reactive({
+  page: 1, query: '', orderBy: 'created_at', order: 'desc',
 });
+
+const numSelectedCampaigns = computed(() => (bulk.all ? (campaigns.value as any).total : bulk.checked.length));
+
+function statusSeverity(status: string) {
+  const map: Record<string, string> = {
+    running: 'success',
+    finished: 'info',
+    scheduled: 'warn',
+    paused: 'secondary',
+    cancelled: 'danger',
+    draft: 'secondary',
+  };
+  return map[status] || 'secondary';
+}
+
+const canStart = (c: any) => c.status === 'draft' && !c.sendAt;
+const canSchedule = (c: any) => c.status === 'draft' && c.sendAt;
+const canPause = (c: any) => c.status === 'running';
+const canCancel = (c: any) => c.status === 'running' || c.status === 'paused';
+const canResume = (c: any) => c.status === 'paused';
+const isSheduled = (c: any) => c.status === 'scheduled' || c.sendAt !== null;
+const isDone = (c: any) => c.status === 'finished' || c.status === 'cancelled';
+const isRunning = (id: number) => id in campaignStatsData.value;
+
+function highlightedRow(data: any) {
+  return data.status === 'running' ? ['running'] : '';
+}
+
+function getCampaignStats(c: any) {
+  return c.id in campaignStatsData.value ? campaignStatsData.value[c.id] : c;
+}
+
+function getCampaigns() {
+  $api.getCampaigns({
+    page: queryParams.page,
+    query: queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
+    order_by: queryParams.orderBy,
+    order: queryParams.order,
+    no_body: true,
+  });
+}
+
+function onPageChange(p: number) { queryParams.page = p; getCampaigns(); }
+function onSort(field: string, direction: string) { queryParams.orderBy = field; queryParams.order = direction; getCampaigns(); }
+function previewCampaign(c: any) { previewItem.value = c; }
+function closePreview() { previewItem.value = null; }
+
+function pollStats() {
+  clearInterval(pollID.value);
+  pollID.value = setInterval(() => {
+    $api.getCampaignStats().then((data: any) => {
+      if (data.length === 0) {
+        clearInterval(pollID.value);
+        if (Object.keys(campaignStatsData.value).length > 0) {
+          getCampaigns();
+          campaignStatsData.value = {};
+        }
+      } else {
+        campaignStatsData.value = data.reduce((obj: any, cur: any) => ({ ...obj, [cur.id]: cur }), {});
+      }
+    }, () => { clearInterval(pollID.value); });
+  }, 1000);
+}
+
+function changeCampaignStatus(c: any, status: string) {
+  $api.changeCampaignStatus(c.id, status).then(() => {
+    $utils.toast(t('campaigns.statusChanged', { name: c.name, status }));
+    getCampaigns();
+    pollStats();
+  });
+}
+
+async function cloneCampaign(name: string, c: any) {
+  let body = '';
+  let bodySource = null;
+  await $api.getCampaign(c.id).then((data: any) => { body = data.body; bodySource = data.bodySource; });
+  const now = $utils.getDate();
+  const sendLater = !!c.sendAt;
+  let sendAt = null;
+  if (sendLater) sendAt = dayjs(c.sendAt).isAfter(now) ? c.sendAt : now.add(7, 'day');
+  const data: any = {
+    name,
+    subject: c.subject,
+    lists: c.lists.map((l: any) => l.id),
+    type: c.type,
+    from_email: c.fromEmail,
+    content_type: c.contentType,
+    messenger: c.messenger,
+    tags: c.tags,
+    template_id: c.templateId,
+    body,
+    body_source: bodySource,
+    altbody: c.altbody,
+    headers: c.headers,
+    send_later: sendLater,
+    send_at: sendAt,
+    archive: c.archive,
+    archive_template_id: c.archiveTemplateId,
+    archive_meta: c.archiveMeta,
+    media: c.media.map((m: any) => m.id),
+  };
+  if (c.archive) data.archive_slug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`;
+  $api.createCampaign(data).then((d: any) => { router.push({ name: 'campaign', params: { id: d.id } }); });
+}
+
+function deleteCampaign(c: any) {
+  $api.deleteCampaign(c.id).then(() => {
+    getCampaigns();
+    $utils.toast(t('globals.messages.deleted', { name: c.name }));
+  });
+}
+
+function onSelectAll() { bulk.all = true; }
+
+function onTableCheck() {
+  if (bulk.checked.length !== (campaigns.value as any).total) bulk.all = false;
+}
+
+function deleteCampaigns() {
+  const name = tc('globals.terms.campaign', numSelectedCampaigns.value);
+  const fn = () => {
+    const params: any = {};
+    if (!bulk.all && bulk.checked.length > 0) {
+      params.id = bulk.checked.map((c: any) => c.id);
+    } else {
+      params.query = queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' ');
+      params.all = bulk.all;
+    }
+    $api.deleteCampaigns(params).then(() => {
+      getCampaigns();
+      $utils.toast(tc('globals.messages.deletedCount', numSelectedCampaigns.value, { num: numSelectedCampaigns.value, name }));
+    });
+  };
+  $utils.confirm(tc('globals.messages.confirmDelete', numSelectedCampaigns.value, { num: numSelectedCampaigns.value, name: name.toLowerCase() }), fn);
+}
+
+watch(() => refreshTick.value, () => { getCampaigns(); });
+onMounted(() => { getCampaigns(); pollStats(); });
+onUnmounted(() => { clearInterval(pollID.value); });
 </script>
 
 <style scoped lang="scss">

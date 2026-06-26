@@ -279,46 +279,36 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { regDuration } from '../../constants';
 
-export default defineComponent({
-  props: {
-    form: { type: Object, default: () => {} },
-  },
+const props = defineProps<{ form?: any }>();
+const { t } = useI18n();
+const data = props.form;
+const bounceTypes = ['soft', 'hard', 'complaint'];
 
-  data() {
-    return { bounceTypes: ['soft', 'hard', 'complaint'], data: this.form, regDuration };
-  },
+const bounceActionOptions = computed(() => [
+  { label: t('globals.terms.none'), value: 'none' },
+  { label: t('email.unsub'), value: 'unsubscribe' },
+  { label: t('settings.bounces.blocklist'), value: 'blocklist' },
+  { label: t('globals.buttons.delete'), value: 'delete' },
+]);
 
-  computed: {
-    bounceActionOptions() {
-      return [
-        { label: this.$t('globals.terms.none'), value: 'none' },
-        { label: this.$t('email.unsub'), value: 'unsubscribe' },
-        { label: this.$t('settings.bounces.blocklist'), value: 'blocklist' },
-        { label: this.$t('globals.buttons.delete'), value: 'delete' },
-      ];
-    },
-  },
+function removeBounceBox(i: number) { data['bounce.mailboxes'].splice(i, 1); }
 
-  methods: {
-    removeBounceBox(i) { this.data['bounce.mailboxes'].splice(i, 1); },
-
-    getAuthProtocolOptions(type) {
-      const opts = [{ label: 'none', value: 'none' }];
-      if (type === 'pop') {
-        opts.push({ label: 'userpass', value: 'userpass' });
-      } else {
-        opts.push({ label: 'cram', value: 'cram' });
-        opts.push({ label: 'plain', value: 'plain' });
-        opts.push({ label: 'login', value: 'login' });
-      }
-      return opts;
-    },
-  },
-});
+function getAuthProtocolOptions(type: string) {
+  const opts: any[] = [{ label: 'none', value: 'none' }];
+  if (type === 'pop') {
+    opts.push({ label: 'userpass', value: 'userpass' });
+  } else {
+    opts.push({ label: 'cram', value: 'cram' });
+    opts.push({ label: 'plain', value: 'plain' });
+    opts.push({ label: 'login', value: 'login' });
+  }
+  return opts;
+}
 </script>
 
 <style scoped lang="scss">

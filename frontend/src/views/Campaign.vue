@@ -59,7 +59,7 @@
                 <form class="campaign-form" @submit.prevent="() => onSubmit(isNew ? 'create' : 'update')">
                   <div class="field">
                     <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
-                    <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name" :disabled="!canEdit"
+                    <PvInputText :maxlength="200" ref="focusEl" v-model="form.name" name="name" :disabled="!canEdit"
                       :placeholder="$t('globals.fields.name')" required autofocus class="w-full" />
                   </div>
 
@@ -256,7 +256,7 @@
 
               <div class="col-6">
                 <div class="field is-grouped" style="justify-content: flex-end;">
-                  <div class="field" v-if="form.archive && (!this.form.archiveMetaStr || this.form.archiveMetaStr === '{}')">
+                  <div class="field" v-if="form.archive && (!form.archiveMetaStr || form.archiveMetaStr === '{}')">
                     <a class="button is-primary" href="#" @click.prevent="onFillArchiveMeta" aria-label="{}"><i class="pi pi-code" /></a>
                   </div>
                   <div class="field" v-if="form.archive">
@@ -296,526 +296,310 @@
   </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount,
+} from 'vue';
 import dayjs from 'dayjs';
 import htmlToPlainText from 'textversionjs';
-import { mapState } from 'pinia';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useMainStore } from '../store';
-
+import { useGlobal } from '../composables/useGlobal';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CopyText from '../components/CopyText.vue';
 import Editor from '../components/Editor.vue';
 import ListSelector from '../components/ListSelector.vue';
 import Media from './Media.vue';
 
-export default defineComponent({
-  components: {
-    ListSelector,
-    Editor,
-    Media,
-    CopyText,
-    CampaignPreview,
+const {
+  $api, $utils, $can, $events,
+} = useGlobal();
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const {
+  serverConfig, loading, lists, templates,
+} = storeToRefs(useMainStore());
+
+const focusEl = ref<any>(null);
+const isNew = ref(false);
+const isEditing = ref(false);
+const isHeadersVisible = ref(false);
+const isAttachFieldVisible = ref(false);
+const isAttachModalOpen = ref(false);
+const isPreviewingArchive = ref(false);
+const activeTab = ref('campaign');
+const data = ref<any>({});
+const selListIDs = ref<number[]>([]);
+
+const form = reactive<any>({
+  archiveSlug: null,
+  name: '',
+  subject: '',
+  fromEmail: '',
+  headersStr: '[]',
+  headers: [],
+  attribsStr: '{}',
+  messenger: 'email',
+  lists: [],
+  tags: [],
+  sendAt: null,
+  content: {
+    contentType: 'richtext', body: '', bodySource: null, templateId: null,
   },
-
-  data() {
-    return {
-      contentTypes: Object.freeze({
-        richtext: this.$t('campaigns.richText'),
-        html: this.$t('campaigns.rawHTML'),
-        markdown: this.$t('campaigns.markdown'),
-        plain: this.$t('campaigns.plainText'),
-        visual: this.$t('campaigns.visual'),
-      }),
-
-      isNew: false,
-      isEditing: false,
-      isHeadersVisible: false,
-      isAttachFieldVisible: false,
-      isAttachModalOpen: false,
-      isPreviewingArchive: false,
-      activeTab: 'campaign',
-
-      data: {},
-
-      // IDs from ?list_id query param.
-      selListIDs: [],
-
-      // Binds form input values.
-      form: {
-        archiveSlug: null,
-        name: '',
-        subject: '',
-        fromEmail: '',
-        headersStr: '[]',
-        headers: [],
-        attribsStr: '{}',
-        messenger: 'email',
-        lists: [],
-        tags: [],
-        sendAt: null,
-        content: {
-          contentType: 'richtext',
-          body: '',
-          bodySource: null,
-          templateId: null,
-        },
-        altbody: null,
-        media: [],
-
-        // Parsed Date() version of send_at from the API.
-        sendAtDate: null,
-        sendLater: false,
-        archive: false,
-        archiveMetaStr: '{}',
-        archiveMeta: {},
-        testEmails: [],
-      },
-    };
-  },
-
-  methods: {
-    formatDateTime(s) {
-      return dayjs(s).format('YYYY-MM-DD HH:mm');
-    },
-
-    onToggleArchivePreview() {
-      this.isPreviewingArchive = !this.isPreviewingArchive;
-    },
-
-    onAddAltBody() {
-      this.form.altbody = htmlToPlainText(this.form.content.body);
-    },
-
-    onRemoveAltBody() {
-      this.form.altbody = null;
-    },
-
-    onShowHeaders() {
-      this.isHeadersVisible = !this.isHeadersVisible;
-    },
-
-    onShowAttachField() {
-      this.isAttachFieldVisible = true;
-      this.$nextTick(() => {
-        this.$refs.media.focus();
-      });
-    },
-
-    onOpenAttach() {
-      this.isAttachModalOpen = true;
-    },
-
-    onAttachSelect(o) {
-      if (this.form.media.some((m) => m.id === o.id)) {
-        return;
-      }
-
-      this.form.media.push(o);
-    },
-
-    isUnsaved() {
-      return this.data.body !== this.form.content.body
-        || this.data.contentType !== this.form.content.contentType;
-    },
-
-    onTab(tab) {
-      if (tab === 'content' && window.tinymce && window.tinymce.editors.length > 0) {
-        this.$nextTick(() => {
-          window.tinymce.editors[0].focus();
-        });
-      }
-
-      // this.$router.replace({ hash: `#${tab}` });
-      window.history.replaceState({}, '', `#${tab}`);
-    },
-
-    onFillArchiveMeta() {
-      const archiveStr = `{"email": "email@domain.com", "name": "${this.$t('globals.fields.name')}", "attribs": {}}`;
-      this.form.archiveMetaStr = this.$utils.getPref('campaign.archiveMetaStr') || JSON.stringify(JSON.parse(archiveStr), null, 4);
-    },
-
-    onSubmit(typ) {
-      // Validate custom JSON headers.
-      if (this.form.headersStr && this.form.headersStr !== '[]') {
-        try {
-          this.form.headers = JSON.parse(this.form.headersStr);
-        } catch (e) {
-          this.$utils.toast(e.toString(), 'is-danger');
-          return;
-        }
-      } else {
-        this.form.headers = [];
-      }
-
-      // Validate archive JSON body.
-      if (this.form.archive && this.form.archiveMetaStr) {
-        try {
-          this.form.archiveMeta = JSON.parse(this.form.archiveMetaStr);
-        } catch (e) {
-          this.$utils.toast(e.toString(), 'is-danger');
-          return;
-        }
-      }
-
-      // Validate custom JSON attribs.
-      let attribs = null;
-      if (this.form.attribsStr && this.form.attribsStr.trim()) {
-        try {
-          attribs = JSON.parse(this.form.attribsStr);
-        } catch (e) {
-          this.$utils.toast(
-            `${this.$t('subscribers.invalidJSON')}: ${e.toString()}`,
-            'is-danger',
-
-            3000,
-          );
-          return;
-        }
-      }
-      this.form.attribs = attribs;
-
-      switch (typ) {
-        case 'create':
-          this.createCampaign();
-          break;
-        case 'test':
-          this.sendTest();
-          break;
-        default:
-          this.updateCampaign();
-          break;
-      }
-    },
-
-    getCampaign(id) {
-      return this.$api.getCampaign(id).then((data) => {
-        this.data = data;
-        this.form = {
-          ...this.form,
-          ...data,
-          headersStr: JSON.stringify(data.headers, null, 4),
-          archiveMetaStr: data.archiveMeta ? JSON.stringify(data.archiveMeta, null, 4) : '{}',
-          attribsStr: data.attribs ? JSON.stringify(data.attribs, null, 4) : '{}',
-
-          // The structure that is populated by editor input event.
-          content: {
-            contentType: data.contentType,
-            body: data.body,
-            bodySource: data.bodySource,
-            templateId: data.templateId,
-          },
-        };
-        this.isAttachFieldVisible = this.form.media.length > 0;
-
-        this.form.media = this.form.media.map((f) => {
-          if (!f.id) {
-            return { ...f, filename: `❌ ${f.filename}` };
-          }
-          return f;
-        });
-      });
-    },
-
-    sendTest() {
-      const data = {
-        id: this.data.id,
-        name: this.form.name,
-        subject: this.form.subject,
-        lists: this.form.lists.map((l) => l.id),
-        from_email: this.form.fromEmail,
-        messenger: this.form.messenger,
-        type: 'regular',
-        headers: this.form.headers,
-        tags: this.form.tags,
-        template_id: this.form.content.templateId,
-        content_type: this.form.content.contentType,
-        body: this.form.content.body,
-        altbody: this.form.content.contentType !== 'plain' ? this.form.altbody : null,
-        subscribers: this.form.testEmails,
-        media: this.form.media.map((m) => m.id),
-      };
-
-      this.$api.testCampaign(data).then(() => {
-        this.$utils.toast(this.$t('campaigns.testSent'));
-      });
-      return false;
-    },
-
-    createCampaign() {
-      const data = {
-        archiveSlug: this.form.subject,
-        name: this.form.name,
-        subject: this.form.subject,
-        lists: this.form.lists.map((l) => l.id),
-        from_email: this.form.fromEmail,
-        content_type: this.form.content.contentType,
-        messenger: this.form.messenger,
-        type: 'regular',
-        tags: this.form.tags,
-        send_at: this.form.sendLater ? this.form.sendAtDate : null,
-        headers: this.form.headers,
-        attribs: this.form.attribs,
-        media: this.form.media.map((m) => m.id),
-      };
-
-      this.$api.createCampaign(data).then((d) => {
-        this.$router.push({ name: 'campaign', hash: '#content', params: { id: d.id } });
-      });
-      return false;
-    },
-
-    async updateCampaign(typ) {
-      const data = {
-        archive_slug: this.form.archiveSlug,
-        name: this.form.name,
-        subject: this.form.subject,
-        lists: this.form.lists.map((l) => l.id),
-        from_email: this.form.fromEmail,
-        messenger: this.form.messenger,
-        type: 'regular',
-        tags: this.form.tags,
-        send_at: this.form.sendLater ? this.form.sendAtDate : null,
-        headers: this.form.headers,
-        attribs: this.form.attribs,
-        template_id: this.form.content.templateId,
-        content_type: this.form.content.contentType,
-        body: this.form.content.body,
-        body_source: this.form.content.bodySource,
-        altbody: this.form.content.contentType !== 'plain' ? this.form.altbody : null,
-        archive: this.form.archive,
-        archive_template_id: this.form.archiveTemplateId,
-        archive_meta: this.form.archiveMeta,
-        media: this.form.media.map((m) => m.id),
-      };
-
-      let typMsg = 'globals.messages.updated';
-      if (typ === 'start') {
-        typMsg = 'campaigns.started';
-      }
-
-      if (!this.form.sendAtDate) {
-        this.form.sendLater = false;
-      }
-
-      // This promise is used by startCampaign to first save before starting.
-      return new Promise((resolve) => {
-        this.$api.updateCampaign(this.data.id, data).then((d) => {
-          this.data = d;
-          this.form.archiveSlug = d.archiveSlug;
-          this.form.attribsStr = d.attribs ? JSON.stringify(d.attribs, null, 4) : '{}';
-
-          this.$utils.toast(this.$t(typMsg, { name: d.name }));
-          resolve();
-        });
-      });
-    },
-
-    onUpdateCampaignArchive() {
-      if (this.isEditing && this.canEdit) {
-        return;
-      }
-
-      const data = {
-        archive: this.form.archive,
-        archive_template_id: this.form.archiveTemplateId,
-        archive_meta: JSON.parse(this.form.archiveMetaStr),
-        archive_slug: this.form.archiveSlug,
-      };
-
-      this.$api.updateCampaignArchive(this.data.id, data).then((d) => {
-        this.form.archiveSlug = d.archiveSlug;
-      });
-    },
-
-    // Starts or schedule a campaign.
-    startCampaign() {
-      if (!this.canStart && !this.canSchedule) {
-        return;
-      }
-
-      this.$utils.confirm(
-        null,
-        () => {
-          // First save the campaign.
-          this.updateCampaign().then(() => {
-            // Then start/schedule it.
-            let status = '';
-            if (this.canStart) {
-              status = 'running';
-            } else if (this.canSchedule) {
-              status = 'scheduled';
-            } else {
-              return;
-            }
-
-            this.$api.changeCampaignStatus(this.data.id, status).then(() => {
-              this.$router.push({ name: 'campaigns' });
-            });
-          });
-        },
-      );
-    },
-
-    unscheduleCampaign() {
-      this.$api.changeCampaignStatus(this.data.id, 'draft').then((d) => {
-        this.data = d;
-      });
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['serverConfig', 'loading', 'lists', 'templates']),
-
-    canManage() {
-      return this.$can('campaigns:manage_all', 'campaigns:manage');
-    },
-
-    canSend() {
-      return this.$can('campaigns:send');
-    },
-
-    canEdit() {
-      return this.isNew
-        || this.data.status === 'draft' || this.data.status === 'scheduled' || this.data.status === 'paused';
-    },
-
-    canSchedule() {
-      return (this.data.status === 'draft' || this.data.status === 'paused') && (this.form.sendLater && this.form.sendAtDate);
-    },
-
-    canUnSchedule() {
-      return this.data.status === 'scheduled';
-    },
-
-    canStart() {
-      return (this.data.status === 'draft' || this.data.status === 'paused') && !this.form.sendLater;
-    },
-
-    canArchive() {
-      return this.data.status !== 'cancelled' && this.data.type !== 'optin';
-    },
-
-    selectedLists() {
-      if (this.selListIDs.length === 0 || !this.lists.results) {
-        return [];
-      }
-
-      return this.lists.results.filter((l) => this.selListIDs.indexOf(l.id) > -1);
-    },
-
-    emailMessengers() {
-      return ['email', ...this.serverConfig.messengers.filter((m) => m.startsWith('email-'))];
-    },
-
-    otherMessengers() {
-      return this.serverConfig.messengers.filter((m) => m !== 'email' && !m.startsWith('email-'));
-    },
-
-    allMessengers() {
-      return [...this.emailMessengers, ...this.otherMessengers];
-    },
-
-    contentTypeOptions() {
-      return Object.entries(this.contentTypes).map(([value, label]) => ({ value, label }));
-    },
-
-    campaignTemplates() {
-      return (this.templates || []).filter((t) => t.type === 'campaign');
-    },
-  },
-
-  beforeRouteLeave(to, from, next) {
-    if (this.isUnsaved()) {
-      this.$utils.confirm(this.$t('globals.messages.confirmDiscard'), () => next(true));
-      return;
-    }
-    next(true);
-  },
-
-  watch: {
-    selectedLists() {
-      this.form.lists = this.selectedLists;
-    },
-
-    // eslint-disable-next-line func-names
-    'data.sendAt': function () {
-      if (this.data.sendAt !== null) {
-        this.form.sendLater = true;
-        this.form.sendAtDate = dayjs(this.data.sendAt).toDate();
-      } else {
-        this.form.sendLater = false;
-        this.form.sendAtDate = null;
-      }
-    },
-  },
-
-  mounted() {
-    window.onbeforeunload = () => this.isUnsaved() || null;
-
-    // Fill default form fields.
-    this.form.fromEmail = this.serverConfig.from_email;
-
-    // New campaign.
-    const { id } = this.$route.params;
-    if (id === 'new') {
-      this.isNew = true;
-
-      if (this.$route.query.list_id) {
-        // Multiple list_id query params.
-        let strIds = [];
-        if (typeof this.$route.query.list_id === 'object') {
-          strIds = this.$route.query.list_id;
-        } else {
-          strIds = [this.$route.query.list_id];
-        }
-
-        this.selListIDs = strIds.map((v) => parseInt(v, 10));
-      }
-    } else {
-      const intID = parseInt(id, 10);
-      if (intID <= 0 || Number.isNaN(intID)) {
-        this.$utils.toast(this.$t('campaigns.invalid'));
-        return;
-      }
-
-      this.isEditing = true;
-    }
-
-    // Get templates list.
-    this.$api.getTemplates().then((data) => {
-      if (data.length > 0) {
-        if (!this.form.templateId) {
-          const tpl = data.find((i) => i.isDefault === true);
-          this.form.templateId = tpl.id;
-        }
-      }
-    });
-
-    // Fetch campaign.
-    if (this.isEditing) {
-      this.getCampaign(id).then(() => {
-        if (this.$route.hash !== '') {
-          this.activeTab = this.$route.hash.replace('#', '');
-        }
-      });
-    } else {
-      this.form.messenger = 'email';
-    }
-
-    this.$nextTick(() => {
-      this.$refs.focus.focus();
-    });
-
-    this.$events.$on('campaign.update', () => {
-      this.onSubmit('update');
-    });
-  },
-
-  beforeUnmount() {
-    this.$events.$off('campaign.update');
-  },
+  altbody: null,
+  media: [],
+  sendAtDate: null,
+  sendLater: false,
+  archive: false,
+  archiveMetaStr: '{}',
+  archiveMeta: {},
+  testEmails: [],
 });
+
+const contentTypes = computed(() => Object.freeze({
+  richtext: t('campaigns.richText'),
+  html: t('campaigns.rawHTML'),
+  markdown: t('campaigns.markdown'),
+  plain: t('campaigns.plainText'),
+  visual: t('campaigns.visual'),
+}));
+
+const canManage = computed(() => $can('campaigns:manage_all', 'campaigns:manage'));
+const canSend = computed(() => $can('campaigns:send'));
+const canEdit = computed(() => isNew.value || data.value.status === 'draft' || data.value.status === 'scheduled' || data.value.status === 'paused');
+const canSchedule = computed(() => (data.value.status === 'draft' || data.value.status === 'paused') && form.sendLater && form.sendAtDate);
+const canUnSchedule = computed(() => data.value.status === 'scheduled');
+const canStart = computed(() => (data.value.status === 'draft' || data.value.status === 'paused') && !form.sendLater);
+const canArchive = computed(() => data.value.status !== 'cancelled' && data.value.type !== 'optin');
+const selectedLists = computed(() => {
+  if (selListIDs.value.length === 0 || !(lists.value as any).results) return [];
+  return (lists.value as any).results.filter((l: any) => selListIDs.value.indexOf(l.id) > -1);
+});
+const allMessengers = computed(() => {
+  const sc = serverConfig.value as any;
+  const email = ['email', ...(sc.messengers || []).filter((m: string) => m.startsWith('email-'))];
+  const others = (sc.messengers || []).filter((m: string) => m !== 'email' && !m.startsWith('email-'));
+  return [...email, ...others];
+});
+const contentTypeOptions = computed(() => Object.entries(contentTypes.value).map(([value, label]) => ({ value, label })));
+const campaignTemplates = computed(() => ((templates.value as any[]) || []).filter((tpl: any) => tpl.type === 'campaign'));
+
+function isUnsaved() {
+  return data.value.body !== form.content.body || data.value.contentType !== form.content.contentType;
+}
+
+function onToggleArchivePreview() { isPreviewingArchive.value = !isPreviewingArchive.value; }
+function onAddAltBody() { form.altbody = htmlToPlainText(form.content.body); }
+function onRemoveAltBody() { form.altbody = null; }
+function onShowHeaders() { isHeadersVisible.value = !isHeadersVisible.value; }
+
+function onShowAttachField() {
+  isAttachFieldVisible.value = true;
+}
+
+function onOpenAttach() { isAttachModalOpen.value = true; }
+
+function onAttachSelect(o: any) {
+  if (!form.media.some((m: any) => m.id === o.id)) form.media.push(o);
+}
+
+function onTab(tab: string) {
+  if (tab === 'content' && (window as any).tinymce && (window as any).tinymce.editors.length > 0) {
+    nextTick(() => { (window as any).tinymce.editors[0].focus(); });
+  }
+  window.history.replaceState({}, '', `#${tab}`);
+}
+
+function onFillArchiveMeta() {
+  const archiveStr = `{"email": "email@domain.com", "name": "${t('globals.fields.name')}", "attribs": {}}`;
+  form.archiveMetaStr = $utils.getPref('campaign.archiveMetaStr') || JSON.stringify(JSON.parse(archiveStr), null, 4);
+}
+
+function onSubmit(typ: string) {
+  if (form.headersStr && form.headersStr !== '[]') {
+    try { form.headers = JSON.parse(form.headersStr); } catch (e: any) { $utils.toast(e.toString(), 'is-danger'); return; }
+  } else { form.headers = []; }
+  if (form.archive && form.archiveMetaStr) {
+    try { form.archiveMeta = JSON.parse(form.archiveMetaStr); } catch (e: any) { $utils.toast(e.toString(), 'is-danger'); return; }
+  }
+  let attribs = null;
+  if (form.attribsStr && form.attribsStr.trim()) {
+    try { attribs = JSON.parse(form.attribsStr); } catch (e: any) { $utils.toast(`${t('subscribers.invalidJSON')}: ${e.toString()}`, 'is-danger', 3000); return; }
+  }
+  form.attribs = attribs;
+  if (typ === 'create') { createCampaign(); } else if (typ === 'test') { sendTest(); } else { updateCampaign(); }
+}
+
+function getCampaign(id: string) {
+  return $api.getCampaign(id).then((d: any) => {
+    data.value = d;
+    Object.assign(form, {
+      ...d,
+      headersStr: JSON.stringify(d.headers, null, 4),
+      archiveMetaStr: d.archiveMeta ? JSON.stringify(d.archiveMeta, null, 4) : '{}',
+      attribsStr: d.attribs ? JSON.stringify(d.attribs, null, 4) : '{}',
+      content: {
+        contentType: d.contentType, body: d.body, bodySource: d.bodySource, templateId: d.templateId,
+      },
+    });
+    isAttachFieldVisible.value = form.media.length > 0;
+    form.media = form.media.map((f: any) => (!f.id ? { ...f, filename: `❌ ${f.filename}` } : f));
+  });
+}
+
+function sendTest() {
+  $api.testCampaign({
+    id: data.value.id,
+    name: form.name,
+    subject: form.subject,
+    lists: form.lists.map((l: any) => l.id),
+    from_email: form.fromEmail,
+    messenger: form.messenger,
+    type: 'regular',
+    headers: form.headers,
+    tags: form.tags,
+    template_id: form.content.templateId,
+    content_type: form.content.contentType,
+    body: form.content.body,
+    altbody: form.content.contentType !== 'plain' ? form.altbody : null,
+    subscribers: form.testEmails,
+    media: form.media.map((m: any) => m.id),
+  }).then(() => { $utils.toast(t('campaigns.testSent')); });
+}
+
+function createCampaign() {
+  $api.createCampaign({
+    archiveSlug: form.subject,
+    name: form.name,
+    subject: form.subject,
+    lists: form.lists.map((l: any) => l.id),
+    from_email: form.fromEmail,
+    content_type: form.content.contentType,
+    messenger: form.messenger,
+    type: 'regular',
+    tags: form.tags,
+    send_at: form.sendLater ? form.sendAtDate : null,
+    headers: form.headers,
+    attribs: form.attribs,
+    media: form.media.map((m: any) => m.id),
+  }).then((d: any) => { router.push({ name: 'campaign', hash: '#content', params: { id: d.id } }); });
+}
+
+async function updateCampaign(typ?: string) {
+  const typMsg = typ === 'start' ? 'campaigns.started' : 'globals.messages.updated';
+  if (!form.sendAtDate) form.sendLater = false;
+  return new Promise<void>((resolve) => {
+    $api.updateCampaign(data.value.id, {
+      archive_slug: form.archiveSlug,
+      name: form.name,
+      subject: form.subject,
+      lists: form.lists.map((l: any) => l.id),
+      from_email: form.fromEmail,
+      messenger: form.messenger,
+      type: 'regular',
+      tags: form.tags,
+      send_at: form.sendLater ? form.sendAtDate : null,
+      headers: form.headers,
+      attribs: form.attribs,
+      template_id: form.content.templateId,
+      content_type: form.content.contentType,
+      body: form.content.body,
+      body_source: form.content.bodySource,
+      altbody: form.content.contentType !== 'plain' ? form.altbody : null,
+      archive: form.archive,
+      archive_template_id: form.archiveTemplateId,
+      archive_meta: form.archiveMeta,
+      media: form.media.map((m: any) => m.id),
+    }).then((d: any) => {
+      data.value = d;
+      form.archiveSlug = d.archiveSlug;
+      form.attribsStr = d.attribs ? JSON.stringify(d.attribs, null, 4) : '{}';
+      $utils.toast(t(typMsg, { name: d.name }));
+      resolve();
+    });
+  });
+}
+
+function onUpdateCampaignArchive() {
+  if (isEditing.value && canEdit.value) return;
+  $api.updateCampaignArchive(data.value.id, {
+    archive: form.archive,
+    archive_template_id: form.archiveTemplateId,
+    archive_meta: JSON.parse(form.archiveMetaStr),
+    archive_slug: form.archiveSlug,
+  }).then((d: any) => { form.archiveSlug = d.archiveSlug; });
+}
+
+function startCampaign() {
+  if (!canStart.value && !canSchedule.value) return;
+  $utils.confirm(null, () => {
+    updateCampaign().then(() => {
+      let status = '';
+      if (canStart.value) { status = 'running'; } else if (canSchedule.value) { status = 'scheduled'; }
+      if (!status) return;
+      $api.changeCampaignStatus(data.value.id, status).then(() => { router.push({ name: 'campaigns' }); });
+    });
+  });
+}
+
+function unscheduleCampaign() {
+  $api.changeCampaignStatus(data.value.id, 'draft').then((d: any) => { data.value = d; });
+}
+
+watch(selectedLists, (v) => { form.lists = v; });
+watch(() => data.value.sendAt, (v) => {
+  if (v !== null) { form.sendLater = true; form.sendAtDate = dayjs(v).toDate(); } else { form.sendLater = false; form.sendAtDate = null; }
+});
+
+onBeforeRouteLeave((_to, _from, next) => {
+  if (isUnsaved()) {
+    $utils.confirm(t('globals.messages.confirmDiscard'), () => next(true));
+    return;
+  }
+  next(true);
+});
+
+onMounted(() => {
+  window.onbeforeunload = () => isUnsaved() || null;
+  form.fromEmail = (serverConfig.value as any).from_email;
+
+  const { id } = route.params as { id: string };
+  if (id === 'new') {
+    isNew.value = true;
+    if (route.query.list_id) {
+      const strIds: string[] = typeof route.query.list_id === 'object'
+        ? (route.query.list_id as string[]) : [route.query.list_id as string];
+      selListIDs.value = strIds.map((v) => parseInt(v, 10));
+    }
+  } else {
+    const intID = parseInt(id, 10);
+    if (intID <= 0 || Number.isNaN(intID)) { $utils.toast(t('campaigns.invalid')); return; }
+    isEditing.value = true;
+  }
+
+  $api.getTemplates().then((tpls: any) => {
+    if (tpls.length > 0 && !form.content.templateId) {
+      const tpl = tpls.find((i: any) => i.isDefault === true);
+      if (tpl) form.content.templateId = tpl.id;
+    }
+  });
+
+  if (isEditing.value) {
+    getCampaign(id).then(() => {
+      if (route.hash !== '') activeTab.value = route.hash.replace('#', '');
+    });
+  } else {
+    form.messenger = 'email';
+  }
+
+  nextTick(() => { focusEl.value?.focus(); });
+  $events.$on('campaign.update', () => { onSubmit('update'); });
+});
+
+onBeforeUnmount(() => { $events.$off('campaign.update'); });
 </script>
 
 <style scoped lang="scss">

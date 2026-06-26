@@ -95,35 +95,27 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import {
+  ref, computed, watch, onMounted,
+} from 'vue';
+import { useGlobal } from '../../composables/useGlobal';
 
-export default defineComponent({
-  props: {
-    form: { type: Object, default: () => {} },
-  },
+const props = defineProps<{ form?: any }>();
+const { $utils } = useGlobal();
+const data = props.form;
+const tab = ref('0');
 
-  data() {
-    return { data: this.form, tab: '0' };
-  },
+function countItems(str: string) {
+  return (str || '').split('\n').filter((line: string) => line.trim()).length;
+}
 
-  methods: {
-    countItems(str) {
-      return str.split('\n').filter((line) => line.trim()).length;
-    },
-  },
+const numBlocked = computed(() => countItems(props.form?.['privacy.domain_blocklist']));
+const numAllowed = computed(() => countItems(props.form?.['privacy.domain_allowlist']));
 
-  mounted() {
-    this.tab = String(this.$utils.getPref('settings.privacyDomainTab') || 0);
-  },
+watch(tab, (t) => { $utils.setPref('settings.privacyDomainTab', t); });
 
-  computed: {
-    numBlocked() { return this.countItems(this.form['privacy.domain_blocklist']); },
-    numAllowed() { return this.countItems(this.form['privacy.domain_allowlist']); },
-  },
-
-  watch: {
-    tab(t) { this.$utils.setPref('settings.privacyDomainTab', t); },
-  },
+onMounted(() => {
+  tab.value = String($utils.getPref('settings.privacyDomainTab') || 0);
 });
 </script>

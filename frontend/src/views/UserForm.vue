@@ -38,7 +38,7 @@
 
       <div class="lm-field">
         <label for="username" class="lm-label">{{ $t('users.username') }}</label>
-        <PvInputText id="username" :maxlength="200" v-model="form.username" name="username" ref="focus"
+        <PvInputText id="username" :maxlength="200" v-model="form.username" name="username" ref="focusEl"
           :placeholder="$t('users.username')" required autocomplete="off"
           pattern="[a-zA-Z0-9_\-\.@]+$" class="w-full" />
         <small class="lm-help">{{ $t('users.usernameHelp') }}</small>
@@ -104,118 +104,83 @@
   </form>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
 
-export default defineComponent({
-  name: 'UserForm',
+const props = withDefaults(defineProps<{
+  data?: any;
+  isEditing?: boolean;
+}>(), { data: () => ({}), isEditing: false });
 
-  components: {
-    CopyText,
-  },
+const emit = defineEmits(['finished', 'close']);
 
-  props: {
-    data: { type: Object, default: () => ({}) },
-    isEditing: { type: Boolean, default: false },
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { loading, userRoles, listRoles } = storeToRefs(useMainStore());
 
-  emits: ['finished', 'close'],
+const focusEl = ref<any>(null);
+const apiToken = ref<string | null>(null);
+const form = reactive<any>({
+  username: '',
+  email: '',
+  name: '',
+  password: '',
+  password2: '',
+  passwordLogin: false,
+  type: 'user',
+  status: 'enabled',
+});
 
-  data() {
-    return {
-      form: {
-        username: '',
-        email: '',
-        name: '',
-        password: '',
-        password2: '',
-        passwordLogin: false,
-        type: 'user',
-        status: 'enabled',
-      },
-      apiToken: null,
-    };
-  },
+const listRoleOptions = computed(() => [
+  { name: `— ${t('globals.terms.none')} —`, id: '' },
+  ...(listRoles.value as any[]),
+]);
 
-  methods: {
-    onSubmit() {
-      if (!this.form.passwordLogin) {
-        this.form.password = null;
-        this.form.password2 = null;
-      }
+function createUser() {
+  const payload = {
+    ...form, password_login: form.passwordLogin, user_role_id: form.userRoleId, list_role_id: form.listRoleId || null,
+  };
+  $api.createUser(payload).then((data: any) => {
+    emit('finished');
+    $utils.toast(t('globals.messages.created', { name: data.name }));
+    if (payload.type === 'api') { apiToken.value = data.password; return; }
+    emit('close');
+  });
+}
 
-      if (this.form.type !== 'api' && this.form.passwordLogin && this.form.password && this.form.password !== this.form.password2) {
-        this.$utils.toast(this.$t('users.passwordMismatch'), 'is-danger');
-        return;
-      }
+function updateUser() {
+  const payload = {
+    ...form, password_login: form.passwordLogin, user_role_id: form.userRoleId, list_role_id: form.listRoleId || null,
+  };
+  $api.updateUser({ id: props.data.id, ...payload }).then((data: any) => {
+    emit('finished'); emit('close');
+    $utils.toast(t('globals.messages.updated', { name: data.name }));
+  });
+}
 
-      if (this.isEditing) {
-        this.updateUser();
-      } else {
-        this.createUser();
-      }
-    },
+function onSubmit() {
+  if (!form.passwordLogin) { form.password = null; form.password2 = null; }
+  if (form.type !== 'api' && form.passwordLogin && form.password && form.password !== form.password2) {
+    $utils.toast(t('users.passwordMismatch'), 'is-danger');
+    return;
+  }
+  if (props.isEditing) { updateUser(); } else { createUser(); }
+}
 
-    createUser() {
-      const form = {
-        ...this.form,
-        password_login: this.form.passwordLogin,
-        user_role_id: this.form.userRoleId,
-        list_role_id: this.form.listRoleId || null,
-      };
-      this.$api.createUser(form).then((data) => {
-        this.$emit('finished');
-        this.$utils.toast(this.$t('globals.messages.created', { name: data.name }));
-
-        if (form.type === 'api') {
-          this.apiToken = data.password;
-          return;
-        }
-
-        this.$emit('close');
-      });
-    },
-
-    updateUser() {
-      const form = {
-        ...this.form,
-        password_login: this.form.passwordLogin,
-        user_role_id: this.form.userRoleId,
-        list_role_id: this.form.listRoleId || null,
-      };
-      this.$api.updateUser({ id: this.data.id, ...form }).then((data) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(this.$t('globals.messages.updated', { name: data.name }));
-      });
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['loading', 'userRoles', 'listRoles']),
-
-    listRoleOptions() {
-      return [{ name: `— ${this.$t('globals.terms.none')} —`, id: '' }, ...this.listRoles];
-    },
-  },
-
-  mounted() {
-    this.form = { ...this.form, ...this.$props.data };
-    if (this.$props.data.userRole) {
-      this.form.userRoleId = this.$props.data.userRole.id;
-    }
-    this.form.listRoleId = this.$props.data.listRole ? this.$props.data.listRole.id : '';
-
-    this.$api.getUserRoles();
-    this.$api.getListRoles();
-
-    this.$nextTick(() => {
-      this.$refs.focus.$el.focus();
-    });
-  },
+onMounted(() => {
+  Object.assign(form, props.data);
+  if (props.data.userRole) form.userRoleId = props.data.userRole.id;
+  form.listRoleId = props.data.listRole ? props.data.listRole.id : '';
+  $api.getUserRoles();
+  $api.getListRoles();
+  nextTick(() => { focusEl.value?.$el?.focus(); });
 });
 </script>
 

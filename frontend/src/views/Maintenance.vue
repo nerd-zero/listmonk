@@ -123,138 +123,99 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
 import dayjs from 'dayjs';
-import { mapState } from 'pinia';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 
-export default defineComponent({
-  components: {
-  },
+const { $api, $utils } = useGlobal();
+const { t, tc } = useI18n();
+const { loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      isLoading: false,
-      subscriberType: 'orphan',
-      analyticsType: 'all',
-      subscriptionType: 'optin',
-      analyticsDate: dayjs().subtract(7, 'day').toDate(),
-      subscriptionDate: dayjs().subtract(7, 'day').toDate(),
-      exportType: 'views',
-      exportDate: dayjs().subtract(30, 'day').toDate(),
-      dbSettings: {
-        vacuum: false,
-        vacuum_cron_interval: '0 2 * * *',
-      },
-    };
-  },
+const isLoading = ref(false);
+const subscriberType = ref('orphan');
+const analyticsType = ref('all');
+const subscriptionType = ref('optin');
+const analyticsDate = ref(dayjs().subtract(7, 'day').toDate());
+const subscriptionDate = ref(dayjs().subtract(7, 'day').toDate());
+const exportType = ref('views');
+const exportDate = ref(dayjs().subtract(30, 'day').toDate());
+const dbSettings = ref({ vacuum: false, vacuum_cron_interval: '0 2 * * *' });
 
-  mounted() {
-    this.loadDBSettings();
-  },
-
-  methods: {
-    formatDateTime(s) {
-      return dayjs(s).format('YYYY-MM-DD');
-    },
-
-    deleteSubscribers() {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteGCSubscribers(this.subscriberType).then((data) => {
-            this.$utils.toast(this.$t(
-              'globals.messages.deletedCount',
-              { name: this.$tc('globals.terms.subscribers', 2), num: data.count },
-            ));
-          });
-        },
-      );
-    },
-
-    deleteSubscriptions() {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteGCSubscriptions(this.subscriptionDate).then((data) => {
-            this.$utils.toast(this.$t(
-              'globals.messages.deletedCount',
-              { name: this.$tc('globals.terms.subscriptions', 2), num: data.count },
-            ));
-          });
-        },
-      );
-    },
-
-    deleteAnalytics() {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteGCCampaignAnalytics(this.analyticsType, this.analyticsDate)
-            .then(() => {
-              this.$utils.toast(this.$t('globals.messages.done'));
-            });
-        },
-      );
-    },
-
-    loadDBSettings() {
-      this.$api.getSettings().then((data) => {
-        if (data['maintenance.db'] !== undefined) {
-          this.dbSettings = { ...data['maintenance.db'] };
-        }
-      });
-    },
-
-    async onUpdateDBSettings() {
-      this.isLoading = true;
-      try {
-        await this.$api.updateSettingsByKey('maintenance.db', this.dbSettings);
-        await this.$api.getServerConfig();
-      } finally {
-        this.isLoading = false;
-      }
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['loading']),
-
-    exportURL() {
-      const since = encodeURIComponent(dayjs(this.exportDate).toISOString());
-      return `/api/maintenance/analytics/${this.exportType}/export?since=${since}`;
-    },
-
-    subscriberTypeOptions() {
-      return [
-        { label: this.$t('dashboard.orphanSubs'), value: 'orphan' },
-        { label: this.$t('subscribers.status.blocklisted'), value: 'blocklisted' },
-      ];
-    },
-
-    subscriptionTypeOptions() {
-      return [
-        { label: this.$t('maintenance.maintenance.unconfirmedOptins'), value: 'optin' },
-      ];
-    },
-
-    analyticsTypeOptions() {
-      return [
-        { label: this.$t('globals.terms.all'), value: 'all' },
-        { label: this.$t('dashboard.campaignViews'), value: 'views' },
-        { label: this.$t('dashboard.linkClicks'), value: 'clicks' },
-      ];
-    },
-
-    exportTypeOptions() {
-      return [
-        { label: this.$t('dashboard.campaignViews'), value: 'views' },
-        { label: this.$t('dashboard.linkClicks'), value: 'clicks' },
-      ];
-    },
-  },
+const exportURL = computed(() => {
+  const since = encodeURIComponent(dayjs(exportDate.value).toISOString());
+  return `/api/maintenance/analytics/${exportType.value}/export?since=${since}`;
 });
+
+const subscriberTypeOptions = computed(() => [
+  { label: t('dashboard.orphanSubs'), value: 'orphan' },
+  { label: t('subscribers.status.blocklisted'), value: 'blocklisted' },
+]);
+
+const subscriptionTypeOptions = computed(() => [
+  { label: t('maintenance.maintenance.unconfirmedOptins'), value: 'optin' },
+]);
+
+const analyticsTypeOptions = computed(() => [
+  { label: t('globals.terms.all'), value: 'all' },
+  { label: t('dashboard.campaignViews'), value: 'views' },
+  { label: t('dashboard.linkClicks'), value: 'clicks' },
+]);
+
+const exportTypeOptions = computed(() => [
+  { label: t('dashboard.campaignViews'), value: 'views' },
+  { label: t('dashboard.linkClicks'), value: 'clicks' },
+]);
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function formatDateTime(s: any) { return dayjs(s).format('YYYY-MM-DD'); }
+
+function deleteSubscribers() {
+  $utils.confirm(null, () => {
+    $api.deleteGCSubscribers(subscriberType.value).then((data: any) => {
+      $utils.toast(t('globals.messages.deletedCount', { name: tc('globals.terms.subscribers', 2), num: data.count }));
+    });
+  });
+}
+
+function deleteSubscriptions() {
+  $utils.confirm(null, () => {
+    $api.deleteGCSubscriptions(subscriptionDate.value).then((data: any) => {
+      $utils.toast(t('globals.messages.deletedCount', { name: tc('globals.terms.subscriptions', 2), num: data.count }));
+    });
+  });
+}
+
+function deleteAnalytics() {
+  $utils.confirm(null, () => {
+    $api.deleteGCCampaignAnalytics(analyticsType.value, analyticsDate.value).then(() => {
+      $utils.toast(t('globals.messages.done'));
+    });
+  });
+}
+
+function loadDBSettings() {
+  $api.getSettings().then((data: any) => {
+    if (data['maintenance.db'] !== undefined) {
+      dbSettings.value = { ...data['maintenance.db'] };
+    }
+  });
+}
+
+async function onUpdateDBSettings() {
+  isLoading.value = true;
+  try {
+    await $api.updateSettingsByKey('maintenance.db', dbSettings.value);
+    await $api.getServerConfig();
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+onMounted(() => { loadDBSettings(); });
 </script>
 
 <style scoped lang="scss">

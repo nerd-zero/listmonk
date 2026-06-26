@@ -10,7 +10,7 @@
         <div v-if="isLoading" class="preview-spinner">
           <PvProgressSpinner style="width:2rem;height:2rem" />
         </div>
-        <form v-if="isPost" method="post" :action="previewURL" target="iframe" ref="form">
+        <form v-if="isPost" method="post" :action="previewURL" target="iframe" ref="formEl">
           <input v-if="templateId" type="hidden" name="template_id" :value="templateId" />
           <input v-if="contentType" type="hidden" name="content_type" :value="contentType" />
           <input v-if="templateType" type="hidden" name="template_type" :value="templateType" />
@@ -18,7 +18,7 @@
           <input v-if="body" type="hidden" name="body" :value="body" />
         </form>
 
-        <iframe id="iframe" name="iframe" ref="iframe" :title="title" :src="isPost ? 'about:blank' : previewURL"
+        <iframe id="iframe" name="iframe" ref="iframeEl" :title="title" :src="isPost ? 'about:blank' : previewURL"
           @load="onLoaded" sandbox="allow-scripts" class="preview-iframe" />
       </div>
 
@@ -29,87 +29,73 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
 import { uris } from '../constants';
 
-export default defineComponent({
-  name: 'CampaignPreview',
+const props = withDefaults(defineProps<{
+  isPost?: boolean;
+  id?: number;
+  title?: string;
+  type?: string;
+  templateType?: string;
+  archiveMeta?: string | null;
+  body?: string;
+  contentType?: string;
+  templateId?: number | null;
+  isArchive?: boolean;
+}>(), {
+  isPost: false,
+  id: 0,
+  title: '',
+  type: '',
+  templateType: '',
+  archiveMeta: null,
+  body: '',
+  contentType: '',
+  templateId: null,
+  isArchive: false,
+});
 
-  props: {
-    isPost: { type: Boolean, default: false },
+const emit = defineEmits(['close']);
 
-    // Template or campaign ID.
-    id: { type: Number, default: 0 },
-    title: { type: String, default: '' },
+const isVisible = ref(true);
+const isLoading = ref(true);
+const formSubmitted = ref(false);
+const formEl = ref<HTMLFormElement | null>(null);
 
-    // campaign | template.
-    type: { type: String, default: '' },
+const previewURL = computed(() => {
+  let uri = 'about:blank';
+  if (props.type === 'campaign') {
+    uri = props.isArchive ? uris.previewCampaignArchive : uris.previewCampaign;
+  } else if (props.type === 'template') {
+    uri = props.id ? uris.previewTemplate : uris.previewRawTemplate;
+  }
+  return uri.replace(':id', String(props.id));
+});
 
-    // campaign | tx.
-    templateType: { type: String, default: '' },
+function close() {
+  emit('close');
+  isVisible.value = false;
+}
 
-    archiveMeta: { type: String, default: null },
+function onLoaded() {
+  if (!props.isPost) {
+    isLoading.value = false;
+    return;
+  }
+  if (formSubmitted.value) {
+    isLoading.value = false;
+  }
+}
 
-    body: { type: String, default: '' },
-    contentType: { type: String, default: '' },
-    templateId: { type: [Number, null], default: null },
-    isArchive: { type: Boolean, default: false },
-  },
-
-  data() {
-    return {
-      isVisible: true,
-      isLoading: true,
-      formSubmitted: false,
-    };
-  },
-
-  methods: {
-    close() {
-      this.$emit('close');
-      this.isVisible = false;
-    },
-
-    // On iframe load, kill the spinner.
-    onLoaded() {
-      if (!this.isPost) {
-        this.isLoading = false;
-        return;
-      }
-
-      if (this.formSubmitted) {
-        this.isLoading = false;
-      }
-    },
-  },
-
-  computed: {
-    previewURL() {
-      let uri = 'about:blank';
-
-      if (this.type === 'campaign') {
-        uri = this.isArchive ? uris.previewCampaignArchive : uris.previewCampaign;
-      } else if (this.type === 'template') {
-        if (this.id) {
-          uri = uris.previewTemplate;
-        } else {
-          uri = uris.previewRawTemplate;
-        }
-      }
-
-      return uri.replace(':id', this.id);
-    },
-  },
-
-  mounted() {
-    if (this.isPost) {
-      setTimeout(() => {
-        this.$refs.form.submit();
-        this.formSubmitted = true;
-      }, 100);
-    }
-  },
+onMounted(() => {
+  if (props.isPost) {
+    setTimeout(() => {
+      formEl.value?.submit();
+      formSubmitted.value = true;
+    }, 100);
+  }
 });
 </script>
 

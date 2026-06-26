@@ -12,7 +12,7 @@
     <div class="lm-form-body">
       <div class="lm-field">
         <label class="lm-label">{{ $t('globals.fields.name') }}</label>
-        <PvInputText :disabled="disabled" :maxlength="200" v-model="form.name" name="name" ref="focus"
+        <PvInputText :disabled="disabled" :maxlength="200" v-model="form.name" name="name" ref="focusEl"
           required class="w-full" />
       </div>
 
@@ -112,155 +112,128 @@
   </form>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
 
-export default defineComponent({
-  name: 'RoleForm',
+const props = withDefaults(defineProps<{
+  data?: any;
+  isEditing?: boolean;
+  type?: string;
+}>(), { data: () => ({}), isEditing: false, type: 'user' });
 
-  components: {
-    CopyText,
-  },
+const emit = defineEmits(['finished', 'close']);
 
-  props: {
-    data: { type: Object, default: () => ({}) },
-    isEditing: { type: Boolean, default: false },
-    type: { type: String, default: 'user' },
-  },
+const { $api, $utils, $can } = useGlobal();
+const { t } = useI18n();
+const { loading, serverConfig, lists } = storeToRefs(useMainStore());
 
-  emits: ['finished', 'close'],
+const focusEl = ref<any>(null);
+const hasToggle = ref(false);
+const disabled = ref(false);
+const form = reactive<any>({
+  curList: null,
+  lists: [],
+  name: null,
+  permissions: [],
+});
 
-  data() {
-    return {
-      form: {
-        curList: null,
-        lists: [],
-        name: null,
-        permissions: {},
-      },
-      hasToggle: false,
-      disabled: false,
-    };
-  },
+const filteredLists = computed(() => {
+  if (!(lists.value as any).results || props.type !== 'list') return [];
+  const subIDs = form.lists.reduce((obj: any, item: any) => ({ ...obj, [item.id]: true }), {});
+  return (lists.value as any).results.filter((l: any) => !(l.id in subIDs));
+});
 
-  methods: {
-    onAddListPerm() {
-      const list = this.lists.results.find((l) => l.id === this.form.curList);
-      this.form.lists.push({ id: list.id, name: list.name, permissions: ['list:get', 'list:manage'] });
-      this.form.curList = (this.filteredLists.length > 0) ? this.filteredLists[0].id : null;
-    },
+function onAddListPerm() {
+  const list = (lists.value as any).results.find((l: any) => l.id === form.curList);
+  form.lists.push({ id: list.id, name: list.name, permissions: ['list:get', 'list:manage'] });
+  form.curList = filteredLists.value.length > 0 ? filteredLists.value[0].id : null;
+}
 
-    onDeleteListPerm(id) {
-      this.form.lists = this.form.lists.filter((p) => p.id !== id);
-      this.form.curList = (this.filteredLists.length > 0) ? this.filteredLists[0].id : null;
-    },
+function onDeleteListPerm(id: number) {
+  form.lists = form.lists.filter((p: any) => p.id !== id);
+  form.curList = filteredLists.value.length > 0 ? filteredLists.value[0].id : null;
+}
 
-    onSubmit() {
-      if (this.isEditing) {
-        this.updateRole();
-        return;
-      }
-      this.createRole();
-    },
+function onToggleSelect() {
+  if (hasToggle.value) {
+    form.permissions = [];
+  } else {
+    form.permissions = (serverConfig.value as any).permissions.reduce((acc: string[], item: any) => {
+      item.permissions.forEach((p: string) => { acc.push(p); });
+      return acc;
+    }, []);
+  }
+  hasToggle.value = !hasToggle.value;
+}
 
-    onToggleSelect() {
-      if (this.hasToggle) {
-        this.form.permissions = [];
-      } else {
-        this.form.permissions = this.serverConfig.permissions.reduce((acc, item) => {
-          item.permissions.forEach((p) => { acc.push(p); });
-          return acc;
-        }, []);
-      }
-      this.hasToggle = !this.hasToggle;
-    },
+function createRole() {
+  let fn: any;
+  const payload: any = { name: form.name };
+  if (props.type === 'user') {
+    fn = $api.createUserRole;
+    payload.permissions = form.permissions;
+  } else {
+    fn = $api.createListRole;
+    payload.lists = form.lists.map((item: any) => ({ id: item.id, permissions: item.permissions }));
+  }
+  fn(payload).then((data: any) => {
+    emit('finished');
+    $utils.toast(t('globals.messages.created', { name: data.name }));
+    emit('close');
+  });
+}
 
-    createRole() {
-      let fn;
-      const form = { name: this.form.name };
+function updateRole() {
+  let fn: any;
+  const payload: any = { id: props.data.id, name: form.name };
+  if (props.type === 'user') {
+    fn = $api.updateUserRole;
+    payload.permissions = form.permissions;
+  } else {
+    fn = $api.updateListRole;
+    payload.lists = form.lists.map((item: any) => ({ id: item.id, permissions: item.permissions }));
+  }
+  fn(payload).then((data: any) => {
+    emit('finished');
+    $utils.toast(t('globals.messages.updated', { name: data.name }));
+    emit('close');
+  });
+}
 
-      if (this.$props.type === 'user') {
-        fn = this.$api.createUserRole;
-        form.permissions = this.form.permissions;
-      } else {
-        fn = this.$api.createListRole;
-        form.lists = this.form.lists.reduce((acc, item) => {
-          acc.push({ id: item.id, permissions: item.permissions });
-          return acc;
-        }, []);
-      }
+function onSubmit() {
+  if (props.isEditing) { updateRole(); return; }
+  createRole();
+}
 
-      fn(form).then((data) => {
-        this.$emit('finished');
-        this.$utils.toast(this.$t('globals.messages.created', { name: data.name }));
-        this.$emit('close');
-      });
-    },
-
-    updateRole() {
-      let fn;
-      const form = { id: this.$props.data.id, name: this.form.name };
-
-      if (this.$props.type === 'user') {
-        fn = this.$api.updateUserRole;
-        form.permissions = this.form.permissions;
-      } else {
-        fn = this.$api.updateListRole;
-        form.lists = this.form.lists.reduce((acc, item) => {
-          acc.push({ id: item.id, permissions: item.permissions });
-          return acc;
-        }, []);
-      }
-
-      fn(form).then((data) => {
-        this.$emit('finished');
-        this.$utils.toast(this.$t('globals.messages.updated', { name: data.name }));
-        this.$emit('close');
-      });
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['loading', 'serverConfig', 'lists']),
-
-    filteredLists() {
-      if (!this.lists.results || this.type !== 'list') {
-        return [];
-      }
-      const subIDs = this.form.lists.reduce((obj, item) => ({ ...obj, [item.id]: true }), {});
-      return this.lists.results.filter((l) => (!(l.id in subIDs)));
-    },
-  },
-
-  mounted() {
-    if (this.isEditing) {
-      this.form = { ...this.form, ...this.$props.data };
-      if (this.$props.data.id === 1 || !this.$can('roles:manage')) {
-        this.disabled = true;
-      }
-    } else {
-      const skip = ['admin', 'users'];
-      this.form.permissions = this.serverConfig.permissions.reduce((acc, item) => {
-        if (skip.includes(item.group)) return acc;
-        item.permissions.forEach((p) => {
-          if (p !== 'subscribers:sql_query' && !p.startsWith('lists:') && !p.startsWith('settings:')) {
-            acc.push(p);
-          }
-        });
-        return acc;
-      }, []);
+onMounted(() => {
+  if (props.isEditing) {
+    Object.assign(form, props.data);
+    if (props.data.id === 1 || !$can('roles:manage')) {
+      disabled.value = true;
     }
-
-    this.$nextTick(() => {
-      if (this.filteredLists.length > 0) {
-        this.form.curList = this.filteredLists[0].id;
-      }
-      this.$refs.focus.$el.focus();
-    });
-  },
+  } else {
+    const skip = ['admin', 'users'];
+    form.permissions = (serverConfig.value as any).permissions.reduce((acc: string[], item: any) => {
+      if (skip.includes(item.group)) return acc;
+      item.permissions.forEach((p: string) => {
+        if (p !== 'subscribers:sql_query' && !p.startsWith('lists:') && !p.startsWith('settings:')) {
+          acc.push(p);
+        }
+      });
+      return acc;
+    }, []);
+  }
+  nextTick(() => {
+    if (filteredLists.value.length > 0) form.curList = filteredLists.value[0].id;
+    focusEl.value?.$el?.focus();
+  });
 });
 </script>
 

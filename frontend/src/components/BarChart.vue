@@ -1,11 +1,11 @@
 <template>
-  <section class="bar-chart">
+  <section class="bar-chart" ref="rootEl">
     <canvas class="bar-chart-canvas" />
   </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
 import Chart from 'chart.js/auto';
 
 const DEFAULT = {
@@ -15,18 +15,14 @@ const DEFAULT = {
     responsive: true,
     indexAxis: 'y',
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: '#fff',
         borderColor: '#ddd',
         borderWidth: 1,
         titleColor: '#666',
         bodyColor: '#666',
-        bodyFont: {
-          size: 15,
-        },
+        bodyFont: { size: 15 },
         bodySpacing: 10,
         padding: 10,
       },
@@ -34,16 +30,17 @@ const DEFAULT = {
   },
 };
 
-export default defineComponent({
-  name: 'BarChart',
+const props = withDefaults(defineProps<{
+  data?: object;
+}>(), {
+  data: () => ({}),
+});
 
-  props: {
-    data: { type: Object, default: () => { } },
-  },
+const rootEl = ref<HTMLElement | null>(null);
 
-  mounted() {
-    const ctx = this.$el.querySelector('.bar-chart-canvas');
-    this.chart = new Chart(ctx, { ...DEFAULT, data: this.$props.data });
-  },
+onMounted(() => {
+  const ctx = rootEl.value?.querySelector('.bar-chart-canvas') as HTMLCanvasElement;
+  // eslint-disable-next-line no-new
+  new Chart(ctx, { ...DEFAULT, data: props.data as never });
 });
 </script>

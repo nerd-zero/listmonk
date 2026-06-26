@@ -15,7 +15,7 @@
     <div class="lm-form-body">
       <div class="lm-field">
         <label class="lm-label">{{ $t('subscribers.email') }}</label>
-        <PvInputText :maxlength="200" v-model="form.email" name="email" ref="focus"
+        <PvInputText :maxlength="200" v-model="form.email" name="email" ref="focusEl"
           :placeholder="$t('subscribers.email')" class="w-full" required />
       </div>
 
@@ -164,202 +164,144 @@
   </form>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import ListSelector from '../components/ListSelector.vue';
 import CopyText from '../components/CopyText.vue';
 import SubscriberActivity from '../components/SubscriberActivity.vue';
 
-export default defineComponent({
-  components: {
-    ListSelector,
-    CopyText,
-    SubscriberActivity,
-  },
+const props = withDefaults(defineProps<{
+  data?: any;
+  isEditing?: boolean;
+}>(), { data: () => ({ lists: [] }), isEditing: false });
 
-  props: {
-    data: {
-      type: Object,
-      default: () => ({ lists: [] }),
-    },
-    isEditing: Boolean,
-  },
+const emit = defineEmits(['finished', 'close']);
 
-  emits: ['finished', 'close'],
+const { $api, $utils } = useGlobal();
+const { t, tc } = useI18n();
+const { lists, loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      form: {
-        lists: [],
-        strAttribs: '{}',
-        status: 'enabled',
-        preconfirm: false,
-      },
-      isBounceVisible: false,
-      bounces: [],
-      visibleMeta: {},
-      activeTab: '0',
+const focusEl = ref<any>(null);
+const isBounceVisible = ref(false);
+const bounces = ref<any[]>([]);
+const visibleMeta = reactive<Record<number, boolean>>({});
+const activeTab = ref('0');
+const egAttribs = '{"job": "developer", "location": "Mars", "has_rocket": true}';
 
-      egAttribs: '{"job": "developer", "location": "Mars", "has_rocket": true}',
+const form = reactive<any>({
+  lists: [],
+  strAttribs: '{}',
+  status: 'enabled',
+  preconfirm: false,
+});
 
-      statusOptions: [
-        { label: this.$t('subscribers.status.enabled'), value: 'enabled' },
-        { label: this.$t('subscribers.status.blocklisted'), value: 'blocklisted' },
-      ],
-    };
-  },
+const statusOptions = computed(() => [
+  { label: t('subscribers.status.enabled'), value: 'enabled' },
+  { label: t('subscribers.status.blocklisted'), value: 'blocklisted' },
+]);
 
-  methods: {
-    subStatusSeverity(status) {
-      const map = {
-        confirmed: 'success',
-        unconfirmed: 'warn',
-        unsubscribed: 'secondary',
-        blocklisted: 'danger',
-      };
-      return map[status] || 'secondary';
-    },
+const hasOptinList = computed(() => form.lists.some((l: any) => l.optin === 'double'));
 
-    toggleBounces() {
-      this.isBounceVisible = !this.isBounceVisible;
-    },
+function subStatusSeverity(status: string) {
+  const map: Record<string, string> = {
+    confirmed: 'success', unconfirmed: 'warn', unsubscribed: 'secondary', blocklisted: 'danger',
+  };
+  return map[status] || 'secondary';
+}
 
-    toggleMeta(id) {
-      this.visibleMeta[id] = !this.visibleMeta[id];
-    },
+function toggleMeta(id: number) { visibleMeta[id] = !visibleMeta[id]; }
 
-    deleteBounces(sub) {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteSubscriberBounces(this.form.id).then(() => {
-            this.getBounces();
-            this.$utils.toast(this.$t('globals.messages.deleted', { name: sub.name }));
-          });
-        },
-      );
-    },
+function getBounces() {
+  $api.getSubscriberBounces(form.id).then((data: any) => { bounces.value = data; });
+}
 
-    getBounces() {
-      this.$api.getSubscriberBounces(this.form.id).then((data) => {
-        this.bounces = data;
-      });
-    },
-
-    onSubmit() {
-      if (this.isEditing) {
-        this.updateSubscriber();
-        return;
-      }
-
-      this.createSubscriber();
-    },
-
-    createSubscriber() {
-      let attribs = {};
-      if (this.form.strAttribs) {
-        attribs = this.validateAttribs(this.form.strAttribs);
-        if (!attribs) {
-          return;
-        }
-      }
-
-      const data = {
-        email: this.form.email,
-        name: this.form.name,
-        status: this.form.status,
-        attribs,
-        preconfirm_subscriptions: this.form.preconfirm,
-        lists: this.form.lists.map((l) => l.id),
-      };
-
-      this.$api.createSubscriber(data).then((d) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(this.$t('globals.messages.created', { name: d.name }));
-      });
-    },
-
-    updateSubscriber() {
-      let attribs = {};
-      if (this.form.strAttribs) {
-        attribs = this.validateAttribs(this.form.strAttribs);
-        if (!attribs) {
-          return;
-        }
-      }
-
-      const data = {
-        id: this.form.id,
-        email: this.form.email,
-        name: this.form.name,
-        status: this.form.status,
-        preconfirm_subscriptions: this.form.preconfirm,
-        attribs,
-        lists: this.form.lists.map((l) => l.id),
-      };
-
-      this.$api.updateSubscriber(data).then((d) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(this.$t('globals.messages.updated', { name: d.name }));
-      });
-    },
-
-    sendOptinConfirmation() {
-      if (!this.hasOptinList) return;
-      this.$api.sendSubscriberOptin(this.form.id).then(() => {
-        this.$utils.toast(this.$t('subscribers.sentOptinConfirm'));
-      });
-    },
-
-    validateAttribs(str) {
-      let attribs = {};
-      try {
-        attribs = JSON.parse(str);
-      } catch (e) {
-        this.$utils.toast(
-          `${this.$t('subscribers.invalidJSON')}: ${e.toString()}`,
-          'is-danger',
-          3000,
-        );
-        return null;
-      }
-      if (attribs instanceof Array) {
-        this.$utils.toast('Attributes should be a map {} and not an array []', 'is-danger', 3000);
-        return null;
-      }
-
-      return attribs;
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['lists', 'loading']),
-
-    hasOptinList() {
-      return this.form.lists.some((l) => l.optin === 'double');
-    },
-  },
-
-  mounted() {
-    if (this.$props.isEditing) {
-      this.form = {
-        ...this.$props.data,
-        strAttribs: JSON.stringify(this.$props.data.attribs, null, 4),
-      };
-    }
-
-    if (this.form.id) {
-      this.getBounces();
-    }
-
-    this.$nextTick(() => {
-      this.$refs.focus.$el.focus();
+function deleteBounces() {
+  $utils.confirm(null, () => {
+    $api.deleteSubscriberBounces(form.id).then(() => {
+      getBounces();
+      $utils.toast(t('globals.messages.deleted', { name: form.name }));
     });
-  },
+  });
+}
+
+function validateAttribs(str: string) {
+  let attribs: any = {};
+  try {
+    attribs = JSON.parse(str);
+  } catch (e: any) {
+    $utils.toast(`${t('subscribers.invalidJSON')}: ${e.toString()}`, 'is-danger', 3000);
+    return null;
+  }
+  if (attribs instanceof Array) {
+    $utils.toast('Attributes should be a map {} and not an array []', 'is-danger', 3000);
+    return null;
+  }
+  return attribs;
+}
+
+function createSubscriber() {
+  let attribs = {};
+  if (form.strAttribs) {
+    attribs = validateAttribs(form.strAttribs);
+    if (!attribs) return;
+  }
+  $api.createSubscriber({
+    email: form.email,
+    name: form.name,
+    status: form.status,
+    attribs,
+    preconfirm_subscriptions: form.preconfirm,
+    lists: form.lists.map((l: any) => l.id),
+  }).then((d: any) => {
+    emit('finished'); emit('close');
+    $utils.toast(t('globals.messages.created', { name: d.name }));
+  });
+}
+
+function updateSubscriber() {
+  let attribs = {};
+  if (form.strAttribs) {
+    attribs = validateAttribs(form.strAttribs);
+    if (!attribs) return;
+  }
+  $api.updateSubscriber({
+    id: form.id,
+    email: form.email,
+    name: form.name,
+    status: form.status,
+    preconfirm_subscriptions: form.preconfirm,
+    attribs,
+    lists: form.lists.map((l: any) => l.id),
+  }).then((d: any) => {
+    emit('finished'); emit('close');
+    $utils.toast(t('globals.messages.updated', { name: d.name }));
+  });
+}
+
+function onSubmit() {
+  if (props.isEditing) { updateSubscriber(); return; }
+  createSubscriber();
+}
+
+function sendOptinConfirmation() {
+  if (!hasOptinList.value) return;
+  $api.sendSubscriberOptin(form.id).then(() => {
+    $utils.toast(t('subscribers.sentOptinConfirm'));
+  });
+}
+
+onMounted(() => {
+  if (props.isEditing) {
+    Object.assign(form, { ...props.data, strAttribs: JSON.stringify(props.data.attribs, null, 4) });
+  }
+  if (form.id) getBounces();
+  nextTick(() => { focusEl.value?.$el?.focus(); });
 });
 </script>
 

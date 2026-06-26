@@ -48,32 +48,28 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useGlobal } from '../../composables/useGlobal';
 
-export default defineComponent({
-  props: {
-    form: { type: Object, default: () => {} },
-  },
+const props = defineProps<{ form?: any }>();
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const data = props.form;
+const isTesting = ref(false);
 
-  data() {
-    return { data: this.form, isTesting: false };
-  },
-
-  methods: {
-    async testConnection() {
-      this.isTesting = true;
-      try {
-        await this.$api.testScrub({ url: this.data.scrub.url, api_key: this.data.scrub.api_key });
-        this.$utils.toast(this.$t('settings.scrub.testSuccess'), 'is-success');
-      } catch (e) {
-        this.$utils.toast(e.response?.data?.message || this.$t('settings.scrub.testError'), 'is-danger');
-      } finally {
-        this.isTesting = false;
-      }
-    },
-  },
-});
+async function testConnection() {
+  isTesting.value = true;
+  try {
+    await $api.testScrub({ url: data.scrub.url, api_key: data.scrub.api_key });
+    $utils.toast(t('settings.scrub.testSuccess'), 'is-success');
+  } catch (e: any) {
+    $utils.toast(e.response?.data?.message || t('settings.scrub.testError'), 'is-danger');
+  } finally {
+    isTesting.value = false;
+  }
+}
 </script>
 
 <style scoped lang="scss">

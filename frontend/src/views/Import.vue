@@ -97,10 +97,10 @@
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('import.csvFile') }}</label>
             <div class="upload-drop-area" @dragover.prevent @drop.prevent="onFileDrop"
-              @click="$refs.fileInput.click()">
+              @click="fileInputEl?.click()">
               <i class="pi pi-upload upload-icon" />
               <p class="upload-label">{{ $t('import.csvFileHelp') }}</p>
-              <input ref="fileInput" type="file" style="display:none" @change="onFileSelect" />
+              <input ref="fileInputEl" type="file" style="display:none" @change="onFileSelect" />
             </div>
           </div>
           <div class="tags" v-if="form.file">
@@ -142,243 +142,165 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, watch, onMounted, nextTick,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import ListSelector from '../components/ListSelector.vue';
 import LogView from '../components/LogView.vue';
 
-export default defineComponent({
-  components: {
-    ListSelector,
-    LogView,
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const route = useRoute();
+const { lists } = storeToRefs(useMainStore());
 
-  props: {
-    data: { type: Object, default: () => { } },
-    isEditing: { type: Boolean, default: false },
-  },
+const form = reactive({
+  mode: 'subscribe',
+  subStatus: 'unconfirmed',
+  delim: ',',
+  lists: [] as any[],
+  overwriteUserInfo: false,
+  overwriteSubStatus: false,
+  file: null as File | null,
+});
 
-  data() {
-    return {
-      form: {
-        mode: 'subscribe',
-        subStatus: 'unconfirmed',
-        delim: ',',
-        lists: [],
-        overwriteUserInfo: false,
-        overwriteSubStatus: false,
-        file: null,
-        example: '',
-      },
+const isLoading = ref(true);
+const isProcessing = ref(false);
+const status = ref<any>({ status: '' });
+const logs = ref<string[]>([]);
+const pollID = ref<any>(null);
+const example = ref('');
+const fileInputEl = ref<HTMLInputElement | null>(null);
 
-      // Initial page load still has to wait for the status API to return
-      // to either show the form or the status box.
-      isLoading: true,
+const progress = computed(() => {
+  if (!status.value || !status.value.total > 0) return 0;
+  return Math.ceil((status.value.imported / status.value.total) * 100);
+});
 
-      isProcessing: false,
-      status: { status: '' },
-      logs: [],
-      pollID: null,
-    };
-  },
+watch(() => form.mode, () => {
+  nextTick(() => {
+    form.subStatus = form.mode === 'subscribe' ? 'unconfirmed' : 'unsubscribed';
+  });
+});
 
-  watch: {
-    'form.mode': function formMode() {
-      // Select the appropriate status radio whenever mode changes.
-      this.$nextTick(() => {
-        if (this.form.mode === 'subscribe') {
-          this.form.subStatus = 'unconfirmed';
-        } else {
-          this.form.subStatus = 'unsubscribed';
-        }
-      });
-    },
-  },
+function clearFile() { form.file = null; }
 
-  methods: {
-    clearFile() {
-      this.form.file = null;
-    },
+function onFileSelect(e: Event) {
+  const target = e.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    [form.file] = target.files as any;
+  }
+}
 
-    onFileSelect(e) {
-      if (e.target.files && e.target.files.length > 0) {
-        [this.form.file] = e.target.files;
-      }
-    },
+function onFileDrop(e: DragEvent) {
+  if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+    [form.file] = e.dataTransfer.files as any;
+  }
+}
 
-    onFileDrop(e) {
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        [this.form.file] = e.dataTransfer.files;
-      }
-    },
+function isFree() { return status.value.status === 'none'; }
+function isRunning() { return status.value.status === 'importing' || status.value.status === 'stopping'; }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function isSuccessful() { return status.value.status === 'finished'; }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function isFailed() { return status.value.status === 'stopped' || status.value.status === 'failed'; }
+function isDone() {
+  return status.value.status === 'finished' || status.value.status === 'stopped' || status.value.status === 'failed';
+}
 
-    // Returns true if we're free to do an upload.
-    isFree() {
-      if (this.status.status === 'none') {
-        return true;
-      }
-      return false;
-    },
+function getLogs() {
+  $api.getImportLogs().then((data: any) => {
+    logs.value = data.split('\n').map((line: string) => line.replace(/\s+importer\.go:\d+:\s*/, ' *: '));
+    nextTick(() => {
+      const el = document.getElementById('import-log');
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  });
+}
 
-    // Returns true if an import is running.
-    isRunning() {
-      if (this.status.status === 'importing'
-        || this.status.status === 'stopping') {
-        return true;
-      }
-      return false;
-    },
+function pollStatus() {
+  clearInterval(pollID.value);
+  pollID.value = setInterval(() => {
+    $api.getImportStatus().then((data: any) => {
+      isProcessing.value = false;
+      isLoading.value = false;
+      status.value = data;
+      getLogs();
+      if (!isRunning()) clearInterval(pollID.value);
+    }, () => {
+      isProcessing.value = false;
+      isLoading.value = false;
+      status.value = { status: 'none' };
+      clearInterval(pollID.value);
+    });
+    return true;
+  }, 250);
+}
 
-    isSuccessful() {
-      return this.status.status === 'finished';
-    },
+function stopImport() {
+  isProcessing.value = true;
+  $api.stopImport().then(() => { pollStatus(); form.file = null; });
+}
 
-    isFailed() {
-      return (
-        this.status.status === 'stopped'
-        || this.status.status === 'failed'
-      );
-    },
+function renderExample() {
+  example.value = 'email,name,attributes\n'
+    + 'user1@mail.com,"User One","{""age"": 42, ""planet"": ""Mars""}"\n'
+    + 'user2@mail.com,"User Two","{""age"": 24, ""job"": ""Time Traveller""}"';
+}
 
-    // Returns true if an import has finished (failed or successful).
-    isDone() {
-      if (this.status.status === 'finished'
-        || this.status.status === 'stopped'
-        || this.status.status === 'failed'
-      ) {
-        return true;
-      }
-      return false;
-    },
+function resetForm() {
+  form.mode = 'subscribe';
+  form.overwriteUserInfo = false;
+  form.overwriteSubStatus = false;
+  form.file = null;
+  form.lists = [];
+  form.subStatus = 'unconfirmed';
+  form.delim = ',';
+}
 
-    pollStatus() {
-      // Clear any running status polls.
-      clearInterval(this.pollID);
+function onSubmit() {
+  isProcessing.value = true;
+  const params = new FormData();
+  params.set('params', JSON.stringify({
+    mode: form.mode,
+    subscription_status: form.subStatus,
+    delim: form.delim,
+    lists: form.lists.map((l: any) => l.id),
+    overwrite_userinfo: form.overwriteUserInfo,
+    overwrite_subscription_status: form.overwriteSubStatus,
+  }));
+  params.set('file', form.file as any);
+  $api.importSubscribers(params).then(() => {
+    $utils.toast(t('import.importStarted'));
+    pollStatus();
+  }, () => {
+    isProcessing.value = false;
+    form.file = null;
+  });
+}
 
-      // Poll for the status as long as the import is running.
-      this.pollID = setInterval(() => {
-        this.$api.getImportStatus().then((data) => {
-          this.isProcessing = false;
-          this.isLoading = false;
-          this.status = data;
-          this.getLogs();
+function onUpload() {
+  if (form.mode === 'subscribe' && form.overwriteSubStatus) {
+    $utils.confirm(t('import.subscribeWarning'), onSubmit, resetForm);
+    return;
+  }
+  onSubmit();
+}
 
-          if (!this.isRunning()) {
-            clearInterval(this.pollID);
-          }
-        }, () => {
-          this.isProcessing = false;
-          this.isLoading = false;
-          this.status = { status: 'none' };
-          clearInterval(this.pollID);
-        });
-        return true;
-      }, 250);
-    },
-
-    getLogs() {
-      this.$api.getImportLogs().then((data) => {
-        this.logs = data.split('\n').map((line) => line.replace(/\s+importer\.go:\d+:\s*/, ' *: '));
-        this.$nextTick(() => {
-          // vue.$refs doesn't work as the logs textarea is rendered dynamically.
-          const ref = document.getElementById('import-log');
-          if (ref) {
-            ref.scrollTop = ref.scrollHeight;
-          }
-        });
-      });
-    },
-
-    // Cancel a running import or clears a finished import.
-    stopImport() {
-      this.isProcessing = true;
-      this.$api.stopImport().then(() => {
-        this.pollStatus();
-        this.form.file = null;
-      });
-    },
-
-    renderExample() {
-      const h = 'email,name,attributes\n'
-        + 'user1@mail.com,"User One","{""age"": 42, ""planet"": ""Mars""}"\n'
-        + 'user2@mail.com,"User Two","{""age"": 24, ""job"": ""Time Traveller""}"';
-
-      this.example = h;
-    },
-
-    resetForm() {
-      this.form.mode = 'subscribe';
-      this.form.overwriteUserInfo = false;
-      this.form.overwriteSubStatus = false;
-      this.form.file = null;
-      this.form.lists = [];
-      this.form.subStatus = 'unconfirmed';
-      this.form.delim = ',';
-    },
-
-    onUpload() {
-      if (this.form.mode === 'subscribe' && this.form.overwriteSubStatus) {
-        this.$utils.confirm(this.$t('import.subscribeWarning'), this.onSubmit, this.resetForm);
-        return;
-      }
-
-      this.onSubmit();
-    },
-
-    onSubmit() {
-      this.isProcessing = true;
-
-      // Prepare the upload payload.
-      const params = new FormData();
-      params.set('params', JSON.stringify({
-        mode: this.form.mode,
-        subscription_status: this.form.subStatus,
-        delim: this.form.delim,
-        lists: this.form.lists.map((l) => l.id),
-        overwrite_userinfo: this.form.overwriteUserInfo,
-        overwrite_subscription_status: this.form.overwriteSubStatus,
-      }));
-      params.set('file', this.form.file);
-
-      // Post.
-      this.$api.importSubscribers(params).then(() => {
-        // On file upload, show a confirmation.
-        this.$utils.toast(this.$t('import.importStarted'));
-
-        // Start polling status.
-        this.pollStatus();
-      }, () => {
-        this.isProcessing = false;
-        this.form.file = null;
-      });
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['lists']),
-
-    // Import progress bar value.
-    progress() {
-      if (!this.status || !this.status.total > 0) {
-        return 0;
-      }
-      return Math.ceil((this.status.imported / this.status.total) * 100);
-    },
-  },
-
-  mounted() {
-    this.renderExample();
-    this.pollStatus();
-
-    const ids = this.$utils.parseQueryIDs(this.$route.query.list_id);
-    if (ids.length > 0 && this.lists.results) {
-      this.$nextTick(() => {
-        this.form.lists = this.lists.results.filter((l) => ids.indexOf(l.id) > -1);
-      });
-    }
-  },
+onMounted(() => {
+  renderExample();
+  pollStatus();
+  const ids = $utils.parseQueryIDs(route.query.list_id);
+  if (ids.length > 0 && (lists.value as any).results) {
+    nextTick(() => {
+      form.lists = (lists.value as any).results.filter((l: any) => ids.indexOf(l.id) > -1);
+    });
+  }
 });
 </script>
 

@@ -48,7 +48,7 @@
 
     <!-- visual editor //-->
     <visual-editor v-if="self.contentType === 'visual'" :source="self.bodySource" @change="onVisualEditorChange"
-      height="65vh" ref="visualEditor" />
+      height="65vh" ref="visualEditorRef" />
 
     <!-- raw html editor //-->
     <code-editor lang="html" v-if="self.contentType === 'html'" v-model="self.body" key="editor-html" />
@@ -57,7 +57,7 @@
     <code-editor lang="markdown" v-if="self.contentType === 'markdown'" v-model="self.body" key="editor-markdown" />
 
     <!-- plain text //-->
-    <PvTextarea v-if="self.contentType === 'plain'" v-model="self.body" name="content" ref="plainEditor"
+    <PvTextarea v-if="self.contentType === 'plain'" v-model="self.body" name="content" ref="plainEditorRef"
       class="plain-editor" />
 
     <!-- campaign preview //-->
@@ -66,13 +66,16 @@
   </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { html as beautifyHTML } from 'js-beautify';
+<script setup lang="ts">
+import {
+  ref, computed, watch, nextTick, onMounted, onBeforeUnmount,
+} from 'vue';
+import { html as beautifyHTMLLib } from 'js-beautify';
 import TurndownService from 'turndown';
-import { mapState } from 'pinia';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
-
+import { useGlobal } from '../composables/useGlobal';
 import CampaignPreview from './CampaignPreview.vue';
 import VisualEditor from './VisualEditor.vue';
 import RichtextEditor from './RichtextEditor.vue';
@@ -81,307 +84,207 @@ import CodeEditor from './CodeEditor.vue';
 
 const turndown = new TurndownService();
 
-export default defineComponent({
-  components: {
-    CampaignPreview,
-    'code-editor': CodeEditor,
-    'visual-editor': VisualEditor,
-    'richtext-editor': RichtextEditor,
-  },
-
-  props: {
-    contentTypes: { type: Object, default: () => ({}) },
-    id: { type: Number, default: 0 },
-    title: { type: String, default: '' },
-    disabled: { type: Boolean, default: false },
-    templates: { type: Array, default: null },
-
-    modelValue: {
-      type: Object,
-      default: () => ({
-        body: '',
-        bodySource: null,
-        contentType: '',
-        templateId: null,
-      }),
-    },
-  },
-
-  data() {
-    return {
-      isPreviewing: false,
-      isVisualTplSelector: false,
-      isVisualTplDisabled: false,
-      contentTypeSel: this.$props.modelValue.contentType,
-      templateId: null,
-      visualTemplateId: null,
-    };
-  },
-
-  methods: {
-    onContentTypeChange(to, from) {
-      if (!this.self.body.trim()) {
-        this.convertContentType(to, from);
-        return;
-      }
-
-      // Ask for confirmation as pretty much all conversions are lossy.
-      this.$utils.confirm(
-        this.$t('campaigns.confirmSwitchFormat'),
-        () => {
-          this.convertContentType(to, from);
-        },
-        () => {
-          // Cancelled. Reset the <select> to the last value.
-          this.contentTypeSel = from;
-        },
-      );
-    },
-
-    convertContentType(to, from) {
-      let body = this.self.body ?? '';
-      let bodySource = null;
-
-      // Skip UI update (markdown => richtext, html requires a backenbd call).
-      let skip = false;
-
-      // If `from` is HTML content, strip out `<body>..` etc. and keep the beautified HTML.
-      let isHTML = false;
-      if (from === 'richtext' || from === 'html' || from === 'visual') {
-        const d = document.createElement('div');
-        d.innerHTML = body;
-        body = this.beautifyHTML(d.innerHTML.trim());
-        isHTML = true;
-      }
-
-      // HTML => Non-HTML.
-      if (isHTML) {
-        switch (to) {
-          case 'plain': {
-            const d = document.createElement('div');
-            d.innerHTML = body;
-            body = this.trimLines(d.innerText.trim(), true);
-            break;
-          }
-
-          case 'markdown': {
-            body = turndown.turndown(body).replace(/\n\n+/ig, '\n\n');
-            break;
-          }
-
-          case 'visual': {
-            const md = turndown.turndown(body).replace(/\n\n+/ig, '\n\n');
-            bodySource = JSON.stringify(markdownToVisualBlock(md));
-            break;
-          }
-
-          default:
-            // Switching between HTML formats, no need to do anything further
-            // as body is already beautified.
-            // richtext|html => visual, the contents are simply lost.
-            break;
-        }
-
-        // Markdown to HTML requires a backend call.
-      } else if (from === 'markdown' && (to === 'richtext' || to === 'html')) {
-        skip = true;
-        this.$api.convertCampaignContent({
-          id: 1, body, from, to,
-        }).then((data) => {
-          this.$nextTick(() => {
-            // Both type + body should be updated in one cycle to avoid firing
-            // multiple events.
-            this.self.contentType = to;
-            this.self.body = this.beautifyHTML(data.trim());
-          });
-        });
-
-        // Plain to an HTML type, change plain line breaks to HTML breaks.
-      } else if (from === 'plain' && (to === 'richtext' || to === 'html')) {
-        body = body.replace(/\n/ig, '<br>\n');
-      } else if (to === 'visual') {
-        bodySource = JSON.stringify(markdownToVisualBlock(body));
-      }
-
-      // =======================================================================
-      // Reset the campaign template ID if its converted to or from visual template.
-      if (to === 'visual' || from === 'visual') {
-        this.templateId = null;
-        this.self.templateId = null;
-      }
-
-      // =======================================================================
-      // Apply the conversion on the editor UI.
-      if (!skip) {
-        this.$nextTick(() => {
-          // Both type + body should be updated in one cycle to avoid firing
-          // multiple events.
-          this.self.contentType = to;
-          this.self.body = body;
-          this.self.bodySource = bodySource;
-        });
-      }
-    },
-
-    onTogglePreview() {
-      this.isPreviewing = !this.isPreviewing;
-    },
-
-    onKeyboardShortcut(e) {
-      // On F9, toggle the preview.
-      if (e.key === 'F9') {
-        this.onTogglePreview();
-        e.preventDefault();
-      }
-
-      // On Ctrl+S, trigger save.
-      if (e.ctrlKey && e.key === 's') {
-        this.$events.$emit('campaign.update');
-        e.preventDefault();
-      }
-    },
-
-    onVisualEditorChange({ body, source }) {
-      this.self.body = body;
-      this.self.bodySource = source;
-    },
-
-    beautifyHTML(str) {
-      // Pad all tags with linebreaks.
-      let s = this.trimLines(str.replace(/(<(?!(\/)?a|span)([^>]+)>)/ig, '\n$1\n'), true);
-      // Remove extra linebreaks.
-      s = s.replace(/\n+/g, '\n');
-
-      return beautifyHTML(s, {
-        indent_size: 4,
-        indent_char: ' ',
-        max_preserve_newlines: 2,
-        inline: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'b', 'strong', 'span', 'em', 'i', 'code', 'a'],
-      }).trim();
-    },
-
-    trimLines(str, removeEmptyLines) {
-      const out = str.split('\n');
-      for (let i = 0; i < out.length; i += 1) {
-        const line = out[i].trim();
-        if (removeEmptyLines) {
-          out[i] = line;
-        } else if (line === '') {
-          out[i] = '';
-        }
-      }
-
-      return out.join('\n').replace(/\n\s*\n\s*\n/g, '\n\n');
-    },
-
-    onShowVisualTplSelector() {
-      this.isVisualTplSelector = true;
-      this.setDefaultTemplate();
-    },
-
-    onImportVisualTpl() {
-      if (!this.visualTemplateId) {
-        return;
-      }
-
-      this.$utils.confirm(
-        this.$t('campaigns.confirmOverwriteContent'),
-        () => {
-          // Fetch the template body from the server.
-          this.$api.getTemplate(this.visualTemplateId).then((data) => {
-            this.self.body = data.body;
-            this.self.bodySource = data.bodySource;
-            this.isVisualTplDisabled = true;
-
-            this.$refs.visualEditor.render(JSON.parse(data.bodySource));
-          });
-        },
-      );
-    },
-
-    setDefaultTemplate() {
-      if (this.self.contentType === 'visual') {
-        this.visualTemplateId = this.validTemplates[0]?.id || null;
-      } else {
-        if (this.templateId) {
-          return;
-        }
-
-        const defaultTemplate = this.validTemplates.find((t) => t.isDefault === true);
-        this.templateId = defaultTemplate?.id || this.validTemplates[0]?.id || null;
-      }
-    },
-  },
-
-  mounted() {
-    this.contentTypeSel = this.modelValue.contentType;
-    this.templateId = this.modelValue.templateId;
-
-    window.addEventListener('keydown', this.onKeyboardShortcut);
-
-    this.$events.$on('campaign.preview', () => {
-      this.isPreviewing = true;
-    });
-  },
-
-  beforeUnmount() {
-    window.removeEventListener('keydown', this.onKeyboardShortcut);
-    this.$events.$off('campaign.preview');
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['serverConfig', 'loading']),
-
-    self: {
-      get() {
-        return this.modelValue;
-      },
-      set(val) {
-        this.$emit('update:modelValue', val);
-      },
-    },
-
-    validTemplates() {
-      const typ = this.self.contentType === 'visual' ? 'campaign_visual' : 'campaign';
-      return this.templates.filter((t) => (t.type === typ));
-    },
-
-    contentTypeOptions() {
-      return Object.entries(this.contentTypes).map(([value, label]) => ({ value, label }));
-    },
-
-    templateOptions() {
-      return [{ id: null, name: this.$t('globals.terms.none') }, ...this.validTemplates];
-    },
-  },
-
-  watch: {
-    validTemplates() {
-      // When the filtered list of validTemplates changes (visual vs. regular),
-      // select the appropriate 'default' in the template select list.
-      this.setDefaultTemplate();
-    },
-
-    contentTypeSel(to, from) {
-      // Show the conversion prompt if the value in the dropdown isn't the same
-      // as the current selection. This happens when eg: contentTypeSel = html -> visual happens
-      // in the selector, the prompt is shown, and Cancel is clicked,
-      // at which point, contentTypeSel = html again, which triggers this event.
-      if (from !== to && to !== this.self.contentType) {
-        this.onContentTypeChange(to, from);
-      }
-    },
-
-    templateId(to) {
-      if (this.self.templateId === to) {
-        return;
-      }
-
-      this.self.templateId = to;
-    },
-  },
+const props = withDefaults(defineProps<{
+  contentTypes?: Record<string, string>;
+  id?: number;
+  title?: string;
+  disabled?: boolean;
+  templates?: any[];
+  modelValue?: { body: string; bodySource: string | null; contentType: string; templateId: number | null };
+}>(), {
+  contentTypes: () => ({}),
+  id: 0,
+  title: '',
+  disabled: false,
+  templates: () => [],
+  modelValue: () => ({
+    body: '', bodySource: null, contentType: '', templateId: null,
+  }),
 });
 
+const emit = defineEmits(['update:modelValue']);
+const { $api, $utils, $events } = useGlobal();
+const { t } = useI18n();
+const { serverConfig, loading } = storeToRefs(useMainStore());
+
+const isPreviewing = ref(false);
+const isVisualTplSelector = ref(false);
+const isVisualTplDisabled = ref(false);
+const contentTypeSel = ref(props.modelValue.contentType);
+const templateId = ref<number | null>(null);
+const visualTemplateId = ref<number | null>(null);
+const visualEditorRef = ref<any>(null);
+const plainEditorRef = ref<any>(null);
+
+const self = computed({
+  get: () => props.modelValue,
+  set: (val: any) => emit('update:modelValue', val),
+});
+
+const validTemplates = computed(() => {
+  const typ = self.value.contentType === 'visual' ? 'campaign_visual' : 'campaign';
+  return (props.templates || []).filter((tpl: any) => tpl.type === typ);
+});
+
+const contentTypeOptions = computed(() => Object.entries(props.contentTypes).map(([value, label]) => ({ value, label })));
+
+const templateOptions = computed(() => [{ id: null, name: t('globals.terms.none') }, ...validTemplates.value]);
+
+function trimLines(str: string, removeEmptyLines: boolean) {
+  const out = str.split('\n');
+  for (let i = 0; i < out.length; i += 1) {
+    const line = out[i].trim();
+    if (removeEmptyLines) { out[i] = line; } else if (line === '') { out[i] = ''; }
+  }
+  return out.join('\n').replace(/\n\s*\n\s*\n/g, '\n\n');
+}
+
+function beautifyHTML(str: string) {
+  let s = trimLines(str.replace(/(<(?!(\/)?a|span)([^>]+)>)/ig, '\n$1\n'), true);
+  s = s.replace(/\n+/g, '\n');
+  return beautifyHTMLLib(s, {
+    indent_size: 4,
+    indent_char: ' ',
+    max_preserve_newlines: 2,
+    inline: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'b', 'strong', 'span', 'em', 'i', 'code', 'a'],
+  }).trim();
+}
+
+function setDefaultTemplate() {
+  if (self.value.contentType === 'visual') {
+    visualTemplateId.value = validTemplates.value[0]?.id || null;
+  } else {
+    if (templateId.value) return;
+    const defaultTpl = validTemplates.value.find((tpl: any) => tpl.isDefault === true);
+    templateId.value = defaultTpl?.id || validTemplates.value[0]?.id || null;
+  }
+}
+
+function convertContentType(to: string, from: string) {
+  let body = self.value.body ?? '';
+  let bodySource: string | null = null;
+  let skip = false;
+  let isHTML = false;
+
+  if (from === 'richtext' || from === 'html' || from === 'visual') {
+    const d = document.createElement('div');
+    d.innerHTML = body;
+    body = beautifyHTML(d.innerHTML.trim());
+    isHTML = true;
+  }
+
+  if (isHTML) {
+    switch (to) {
+      case 'plain': {
+        const d = document.createElement('div');
+        d.innerHTML = body;
+        body = trimLines(d.innerText.trim(), true);
+        break;
+      }
+      case 'markdown': {
+        body = turndown.turndown(body).replace(/\n\n+/ig, '\n\n');
+        break;
+      }
+      case 'visual': {
+        const md = turndown.turndown(body).replace(/\n\n+/ig, '\n\n');
+        bodySource = JSON.stringify(markdownToVisualBlock(md));
+        break;
+      }
+      default:
+        break;
+    }
+  } else if (from === 'markdown' && (to === 'richtext' || to === 'html')) {
+    skip = true;
+    $api.convertCampaignContent({
+      id: 1, body, from, to,
+    }).then((data: any) => {
+      nextTick(() => {
+        self.value.contentType = to;
+        self.value.body = beautifyHTML(data.trim());
+      });
+    });
+  } else if (from === 'plain' && (to === 'richtext' || to === 'html')) {
+    body = body.replace(/\n/ig, '<br>\n');
+  } else if (to === 'visual') {
+    bodySource = JSON.stringify(markdownToVisualBlock(body));
+  }
+
+  if (to === 'visual' || from === 'visual') {
+    templateId.value = null;
+    self.value.templateId = null;
+  }
+
+  if (!skip) {
+    nextTick(() => {
+      self.value.contentType = to;
+      self.value.body = body;
+      self.value.bodySource = bodySource;
+    });
+  }
+}
+
+function onContentTypeChange(to: string, from: string) {
+  if (!self.value.body.trim()) {
+    convertContentType(to, from);
+    return;
+  }
+  $utils.confirm(
+    t('campaigns.confirmSwitchFormat'),
+    () => { convertContentType(to, from); },
+    () => { contentTypeSel.value = from; },
+  );
+}
+
+function onTogglePreview() { isPreviewing.value = !isPreviewing.value; }
+
+function onKeyboardShortcut(e: KeyboardEvent) {
+  if (e.key === 'F9') { onTogglePreview(); e.preventDefault(); }
+  if (e.ctrlKey && e.key === 's') { $events.$emit('campaign.update'); e.preventDefault(); }
+}
+
+function onVisualEditorChange({ body, source }: { body: string; source: string }) {
+  self.value.body = body;
+  self.value.bodySource = source;
+}
+
+function onShowVisualTplSelector() {
+  isVisualTplSelector.value = true;
+  setDefaultTemplate();
+}
+
+function onImportVisualTpl() {
+  if (!visualTemplateId.value) return;
+  $utils.confirm(t('campaigns.confirmOverwriteContent'), () => {
+    $api.getTemplate(visualTemplateId.value).then((data: any) => {
+      self.value.body = data.body;
+      self.value.bodySource = data.bodySource;
+      isVisualTplDisabled.value = true;
+      visualEditorRef.value?.render(JSON.parse(data.bodySource));
+    });
+  });
+}
+
+watch(validTemplates, () => { setDefaultTemplate(); });
+
+watch(contentTypeSel, (to, from) => {
+  if (from !== to && to !== self.value.contentType) { onContentTypeChange(to, from); }
+});
+
+watch(templateId, (to) => {
+  if (self.value.templateId !== to) { self.value.templateId = to; }
+});
+
+onMounted(() => {
+  contentTypeSel.value = props.modelValue.contentType;
+  templateId.value = props.modelValue.templateId;
+  window.addEventListener('keydown', onKeyboardShortcut);
+  $events.$on('campaign.preview', () => { isPreviewing.value = true; });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeyboardShortcut);
+  $events.$off('campaign.preview');
+});
 </script>
 
 <style scoped lang="scss">

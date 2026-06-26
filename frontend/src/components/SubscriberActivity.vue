@@ -29,9 +29,7 @@
 
       <!-- Campaign Views Section -->
       <div class="section-header mb-4">
-        <h5 class="title is-5">
-          {{ $t('campaigns.views') }}
-        </h5>
+        <h5 class="title is-5">{{ $t('campaigns.views') }}</h5>
       </div>
 
       <div v-if="activity.campaignViews && activity.campaignViews.length > 0">
@@ -40,9 +38,7 @@
           <PvColumn field="subject" :header="$tc('globals.terms.campaign', 1)" sortable>
             <template #body="{ data }">
               <div v-if="data.uuid">
-                <router-link :to="{ name: 'campaign', params: { id: data.id } }">
-                  {{ data.name }}
-                </router-link>
+                <router-link :to="{ name: 'campaign', params: { id: data.id } }">{{ data.name }}</router-link>
                 <p class="is-size-7 has-text-grey">{{ data.subject }}</p>
               </div>
               <div v-else>
@@ -50,18 +46,14 @@
               </div>
             </template>
           </PvColumn>
-
           <PvColumn field="viewCount" :header="$t('campaigns.views')" sortable>
             <template #body="{ data }">
               <span class="tag is-light">{{ data.viewCount }}</span>
             </template>
           </PvColumn>
-
           <PvColumn field="lastViewedAt" :header="$t('globals.fields.createdAt')" sortable>
             <template #body="{ data }">
-              <span v-if="data.lastViewedAt">
-                {{ $utils.niceDate(data.lastViewedAt, true) }}
-              </span>
+              <span v-if="data.lastViewedAt">{{ $utils.niceDate(data.lastViewedAt, true) }}</span>
             </template>
           </PvColumn>
         </PvDataTable>
@@ -72,9 +64,7 @@
 
       <!-- Link Clicks Section -->
       <div class="section-header mb-4 mt-6">
-        <h5 class="title is-5">
-          {{ $t('campaigns.clicks') }}
-        </h5>
+        <h5 class="title is-5">{{ $t('campaigns.clicks') }}</h5>
       </div>
 
       <div v-if="activity.linkClicks && activity.linkClicks.length > 0">
@@ -82,12 +72,9 @@
           :paginator="true" :rows="10" class="link-clicks-table">
           <PvColumn field="url" :header="$t('globals.terms.url')" sortable body-class="link-click-url">
             <template #body="{ data }">
-              <a :href="data.url" target="_blank" rel="noopener noreferrer">
-                {{ data.url }}
-              </a>
+              <a :href="data.url" target="_blank" rel="noopener noreferrer">{{ data.url }}</a>
             </template>
           </PvColumn>
-
           <PvColumn field="campaignName" :header="$tc('globals.terms.campaign', 1)" sortable>
             <template #body="{ data }">
               <div v-if="data.campaignUuid">
@@ -95,23 +82,17 @@
                   {{ data.campaignSubject || data.campaignName }}
                 </router-link>
               </div>
-              <div v-else>
-                &mdash;
-              </div>
+              <div v-else>&mdash;</div>
             </template>
           </PvColumn>
-
           <PvColumn field="clickCount" :header="$t('campaigns.clicks')" sortable>
             <template #body="{ data }">
               <span class="tag is-light">{{ data.clickCount }}</span>
             </template>
           </PvColumn>
-
           <PvColumn field="lastClickedAt" :header="$t('globals.fields.createdAt')" sortable>
             <template #body="{ data }">
-              <span v-if="data.lastClickedAt">
-                {{ $utils.niceDate(data.lastClickedAt, true) }}
-              </span>
+              <span v-if="data.lastClickedAt">{{ $utils.niceDate(data.lastClickedAt, true) }}</span>
             </template>
           </PvColumn>
         </PvDataTable>
@@ -123,53 +104,43 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import { useGlobal } from '../composables/useGlobal';
 
-export default defineComponent({
-  props: {
-    subscriberId: {
-      type: Number,
-      required: true,
-    },
-  },
+const props = defineProps<{
+  subscriberId: number;
+}>();
 
-  data() {
-    return {
-      isLoading: false,
-      activity: {
-        campaignViews: [],
-        linkClicks: [],
-      },
-    };
-  },
+const { $api } = useGlobal();
 
-  computed: {
-    totalViews() {
-      if (!this.activity.campaignViews) return 0;
-      return this.activity.campaignViews.reduce((sum, v) => sum + (v.viewCount || 0), 0);
-    },
+const isLoading = ref(false);
+const activity = ref<{ campaignViews: any[]; linkClicks: any[] }>({
+  campaignViews: [],
+  linkClicks: [],
+});
 
-    totalClicks() {
-      if (!this.activity.linkClicks) return 0;
-      return this.activity.linkClicks.reduce((sum, c) => sum + (c.clickCount || 0), 0);
-    },
-  },
+const totalViews = computed(() => {
+  if (!activity.value.campaignViews) return 0;
+  return activity.value.campaignViews.reduce((sum: number, v: any) => sum + (v.viewCount || 0), 0);
+});
 
-  mounted() {
-    this.getActivity();
-  },
+const totalClicks = computed(() => {
+  if (!activity.value.linkClicks) return 0;
+  return activity.value.linkClicks.reduce((sum: number, c: any) => sum + (c.clickCount || 0), 0);
+});
 
-  methods: {
-    getActivity() {
-      this.isLoading = true;
-      this.$api.getSubscriberActivity(this.subscriberId).then((data) => {
-        this.activity = data;
-        this.isLoading = false;
-      }).catch(() => {
-        this.isLoading = false;
-      });
-    },
-  },
+function getActivity() {
+  isLoading.value = true;
+  $api.getSubscriberActivity(props.subscriberId).then((data: any) => {
+    activity.value = data;
+    isLoading.value = false;
+  }).catch(() => {
+    isLoading.value = false;
+  });
+}
+
+onMounted(() => {
+  getActivity();
 });
 </script>

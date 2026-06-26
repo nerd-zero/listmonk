@@ -14,7 +14,7 @@
         <div class="name-type-row">
           <div class="lm-field name-field">
             <label class="lm-label">{{ $t('globals.fields.name') }}</label>
-            <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
+            <PvInputText :maxlength="200" ref="focusEl" v-model="form.name" name="name"
               :placeholder="$t('globals.fields.name')" required class="w-full" />
           </div>
           <div class="lm-field type-field">
@@ -66,124 +66,77 @@
   </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, nextTick, onMounted, onBeforeUnmount,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CodeEditor from '../components/CodeEditor.vue';
 import VisualEditor from '../components/VisualEditor.vue';
 import CopyText from '../components/CopyText.vue';
 
-export default defineComponent({
-  components: {
-    CampaignPreview,
-    CopyText,
-    'code-editor': CodeEditor,
-    'visual-editor': VisualEditor,
-  },
+const props = withDefaults(defineProps<{
+  data?: any;
+  isEditing?: boolean;
+}>(), { data: () => ({}), isEditing: false });
 
-  props: {
-    data: { type: Object, default: () => { } },
-    isEditing: { type: Boolean, default: false },
-  },
+const emit = defineEmits(['finished', 'close']);
 
-  emits: ['finished', 'close'],
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      // Binds form input values.
-      form: {
-        name: '',
-        subject: '',
-        type: 'campaign',
-        optin: '',
-        body: null,
-        bodySource: null,
-      },
-      previewItem: null,
-      egPlaceholder: '{{ template "content" . }}',
-    };
-  },
+const focusEl = ref<any>(null);
+const previewItem = ref<any>(null);
+const egPlaceholder = '{{ template "content" . }}';
+const form = reactive<any>({
+  name: '', subject: '', type: 'campaign', optin: '', body: null, bodySource: null,
+});
 
-  methods: {
-    onTogglePreview() {
-      this.previewItem = !this.previewItem ? this.form : null;
-    },
+function onTogglePreview() {
+  previewItem.value = !previewItem.value ? { ...form } : null;
+}
 
-    onPreviewShortcut(e) {
-      if (e.key === 'F9') {
-        this.onTogglePreview();
-        e.preventDefault();
-      }
-    },
+function onPreviewShortcut(e: KeyboardEvent) {
+  if (e.key === 'F9') { onTogglePreview(); e.preventDefault(); }
+}
 
-    onSubmit() {
-      if (this.isEditing) {
-        this.updateTemplate();
-        return;
-      }
+function createTemplate() {
+  $api.createTemplate({
+    id: props.data.id, name: form.name, type: form.type, subject: form.subject, body: form.body, body_source: form.bodySource,
+  })
+    .then((d: any) => { emit('finished'); emit('close'); $utils.toast(t('globals.messages.created', { name: d.name })); });
+}
 
-      this.createTemplate();
-    },
+function updateTemplate() {
+  $api.updateTemplate({
+    id: props.data.id, name: form.name, type: form.type, subject: form.subject, body: form.body, body_source: form.bodySource,
+  })
+    .then((d: any) => { emit('finished'); emit('close'); $utils.toast(`'${d.name}' updated`); });
+}
 
-    createTemplate() {
-      const data = {
-        id: this.data.id,
-        name: this.form.name,
-        type: this.form.type,
-        subject: this.form.subject,
-        body: this.form.body,
-        body_source: this.form.bodySource,
-      };
+function onSubmit() {
+  if (props.isEditing) { updateTemplate(); return; }
+  createTemplate();
+}
 
-      this.$api.createTemplate(data).then((d) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(this.$t('globals.messages.created', { name: d.name }));
-      });
-    },
+function onChangeVisualEditor({ source, body }: any) {
+  form.body = body;
+  form.bodySource = source;
+}
 
-    updateTemplate() {
-      const data = {
-        id: this.data.id,
-        name: this.form.name,
-        type: this.form.type,
-        subject: this.form.subject,
-        body: this.form.body,
-        body_source: this.form.bodySource,
-      };
+onMounted(() => {
+  Object.assign(form, props.data);
+  nextTick(() => { focusEl.value?.focus(); });
+  window.addEventListener('keydown', onPreviewShortcut);
+});
 
-      this.$api.updateTemplate(data).then((d) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(`'${d.name}' updated`);
-      });
-    },
-
-    onChangeVisualEditor({ source, body }) {
-      this.form.body = body;
-      this.form.bodySource = source;
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['loading']),
-  },
-
-  mounted() {
-    this.form = { ...this.$props.data };
-
-    this.$nextTick(() => {
-      this.$refs.focus.focus();
-    });
-
-    window.addEventListener('keydown', this.onPreviewShortcut);
-  },
-
-  beforeUnmount() {
-    window.removeEventListener('keydown', this.onPreviewShortcut);
-  },
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onPreviewShortcut);
 });
 </script>
 

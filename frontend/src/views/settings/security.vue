@@ -25,13 +25,13 @@
 
         <div class="field">
           <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCName') }}</label>
-          <PvInputText v-model="data['security.oidc']['provider_name']" name="oidc.provider_name" ref="provider_name"
+          <PvInputText v-model="data['security.oidc']['provider_name']" name="oidc.provider_name"
             :disabled="!data['security.oidc']['enabled']" :maxlength="200" class="w-full" />
         </div>
 
         <div class="field">
           <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCClientID') }}</label>
-          <PvInputText v-model="data['security.oidc']['client_id']" name="oidc.client_id" ref="client_id"
+          <PvInputText v-model="data['security.oidc']['client_id']" name="oidc.client_id" ref="clientIdEl"
             :disabled="!data['security.oidc']['enabled']" :maxlength="200" required class="w-full" />
         </div>
 
@@ -144,90 +144,84 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, computed, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../../store';
+import { useGlobal } from '../../composables/useGlobal';
 import CopyText from '../../components/CopyText.vue';
 
-const OIDC_PROVIDERS = {
+const OIDC_PROVIDERS: Record<string, string> = {
   google: 'https://accounts.google.com',
   github: 'https://token.actions.githubusercontent.com',
   microsoft: 'https://login.microsoftonline.com/{TENANT_HERE}/v2.0',
   apple: 'https://appleid.apple.com',
 };
 
-export default defineComponent({
-  components: { CopyText },
+const props = defineProps<{ form?: any }>();
+const { $api, $can } = useGlobal();
+const { t } = useI18n();
+const { serverConfig, userRoles, listRoles } = storeToRefs(useMainStore());
+const clientIdEl = ref<any>(null);
+const data = props.form;
 
-  props: {
-    form: { type: Object, default: () => {} },
+const listRoleOptions = computed(() => [
+  { id: null, name: `— ${t('globals.terms.none')} —` },
+  ...listRoles.value,
+]);
+
+const trustedURLs = computed({
+  get() {
+    const domains = data['security.trusted_urls'];
+    return domains && Array.isArray(domains) ? domains.join('\n') : '';
   },
-
-  data() {
-    return { data: this.form };
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['serverConfig', 'userRoles', 'listRoles']),
-
-    listRoleOptions() {
-      return [{ id: null, name: `— ${this.$t('globals.terms.none')} —` }, ...this.listRoles];
-    },
-
-    trustedURLs: {
-      get() {
-        const domains = this.data['security.trusted_urls'];
-        return domains && Array.isArray(domains) ? domains.join('\n') : '';
-      },
-      set(value) {
-        this.data['security.trusted_urls'] = value.split('\n');
-      },
-    },
-
-    captchaEnabled: {
-      get() {
-        return this.data['security.captcha'].altcha.enabled || this.data['security.captcha'].hcaptcha.enabled;
-      },
-      set(value) {
-        this.data['security.captcha'].altcha.enabled = !!value;
-        this.data['security.captcha'].hcaptcha.enabled = false;
-      },
-    },
-
-    selectedProvider: {
-      get() {
-        return this.data['security.captcha'].hcaptcha.enabled ? 'hcaptcha' : 'altcha';
-      },
-      set(value) {
-        this.data['security.captcha'].hcaptcha.enabled = value === 'hcaptcha';
-        this.data['security.captcha'].altcha.enabled = value === 'altcha';
-      },
-    },
-
-    isURLOk() {
-      try {
-        const u = new URL(this.serverConfig.root_url);
-        return u.hostname !== 'localhost' && u.hostname !== '127.0.0.1';
-      } catch (e) {
-        return false;
-      }
-    },
-  },
-
-  mounted() {
-    if (this.$can('roles:get')) {
-      this.$api.getUserRoles();
-      this.$api.getListRoles();
-    }
-  },
-
-  methods: {
-    setProvider(provider) {
-      this.data['security.oidc'].provider_url = OIDC_PROVIDERS[provider];
-      this.data['security.oidc'].provider_name = provider.charAt(0).toUpperCase() + provider.slice(1);
-      this.$nextTick(() => { this.$refs.client_id.$el.focus(); });
-    },
+  set(value: string) {
+    data['security.trusted_urls'] = value.split('\n');
   },
 });
+
+const captchaEnabled = computed({
+  get() {
+    return data['security.captcha'].altcha.enabled || data['security.captcha'].hcaptcha.enabled;
+  },
+  set(value: boolean) {
+    data['security.captcha'].altcha.enabled = !!value;
+    data['security.captcha'].hcaptcha.enabled = false;
+  },
+});
+
+const selectedProvider = computed({
+  get() {
+    return data['security.captcha'].hcaptcha.enabled ? 'hcaptcha' : 'altcha';
+  },
+  set(value: string) {
+    data['security.captcha'].hcaptcha.enabled = value === 'hcaptcha';
+    data['security.captcha'].altcha.enabled = value === 'altcha';
+  },
+});
+
+const isURLOk = computed(() => {
+  try {
+    const u = new URL(serverConfig.value.root_url);
+    return u.hostname !== 'localhost' && u.hostname !== '127.0.0.1';
+  } catch (e) {
+    return false;
+  }
+});
+
+onMounted(() => {
+  if ($can('roles:get')) {
+    $api.getUserRoles();
+    $api.getListRoles();
+  }
+});
+
+function setProvider(provider: string) {
+  data['security.oidc'].provider_url = OIDC_PROVIDERS[provider];
+  data['security.oidc'].provider_name = provider.charAt(0).toUpperCase() + provider.slice(1);
+  nextTick(() => { clientIdEl.value?.$el?.focus(); });
+}
 </script>

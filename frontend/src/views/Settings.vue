@@ -66,10 +66,15 @@
   </form>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, computed, watch, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { onBeforeRouteLeave } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import AppearanceSettings from './settings/appearance.vue';
 import ScrubSettings from './settings/scrub.vue';
 import BounceSettings from './settings/bounces.vue';
@@ -81,225 +86,125 @@ import PrivacySettings from './settings/privacy.vue';
 import SecuritySettings from './settings/security.vue';
 import SmtpSettings from './settings/smtp.vue';
 
-export default defineComponent({
-  components: {
-    GeneralSettings,
-    PerformanceSettings,
-    PrivacySettings,
-    SecuritySettings,
-    MediaSettings,
-    SmtpSettings,
-    BounceSettings,
-    MessengerSettings,
-    AppearanceSettings,
-    ScrubSettings,
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { serverConfig, loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      // :key="key" is a ack to re-render child components every time settings
-      // is pulled. Otherwise, props don't react.
-      key: 0,
+// :key is used to re-render child components every time settings is pulled.
+const key = ref(0);
+const isLoading = ref(false);
+// formCopy is a stringified copy of the original settings to detect changes.
+const formCopy = ref('');
+const form = ref<any>(null);
+const tab = ref('0');
 
-      isLoading: false,
+const hasFormChanged = computed(() => {
+  if (!formCopy.value) return false;
+  return JSON.stringify(form.value) !== formCopy.value;
+});
 
-      // formCopy is a stringified copy of the original settings against which
-      // form is compared to detect changes.
-      formCopy: '',
-      form: null,
-      tab: '0',
-    };
-  },
+function isDummy(pwd: string) {
+  return !pwd || (pwd.match(/•/g) || []).length === pwd.length;
+}
 
-  methods: {
-    async onSubmit() {
-      const form = JSON.parse(JSON.stringify(this.form));
+function hasDummy(pwd: string) {
+  return pwd.includes('•');
+}
 
-      // SMTP boxes.
-      let hasDummy = '';
-      for (let i = 0; i < form.smtp.length; i += 1) {
-        // trim the host before saving
-        form.smtp[i].host = form.smtp[i].host?.trim();
-
-        // If it's the dummy UI password placeholder, ignore it.
-        if (this.isDummy(form.smtp[i].password)) {
-          form.smtp[i].password = '';
-        } else if (this.hasDummy(form.smtp[i].password)) {
-          hasDummy = `smtp #${i + 1}`;
-        }
-
-        if (form.smtp[i].strEmailHeaders && form.smtp[i].strEmailHeaders !== '[]') {
-          form.smtp[i].email_headers = JSON.parse(form.smtp[i].strEmailHeaders);
-        } else {
-          form.smtp[i].email_headers = [];
-        }
-      }
-
-      // Bounces boxes.
-      for (let i = 0; i < form['bounce.mailboxes'].length; i += 1) {
-        // trim the host before saving
-        form['bounce.mailboxes'][i].host = form['bounce.mailboxes'][i].host?.trim();
-
-        // If it's the dummy UI password placeholder, ignore it.
-        if (this.isDummy(form['bounce.mailboxes'][i].password)) {
-          form['bounce.mailboxes'][i].password = '';
-        } else if (this.hasDummy(form['bounce.mailboxes'][i].password)) {
-          hasDummy = `bounce #${i + 1}`;
-        }
-      }
-
-      if (this.isDummy(form['upload.s3.aws_secret_access_key'])) {
-        form['upload.s3.aws_secret_access_key'] = '';
-      } else if (this.hasDummy(form['upload.s3.aws_secret_access_key'])) {
-        hasDummy = 's3';
-      }
-
-      if (this.isDummy(form['bounce.sendgrid_key'])) {
-        form['bounce.sendgrid_key'] = '';
-      } else if (this.hasDummy(form['bounce.sendgrid_key'])) {
-        hasDummy = 'sendgrid';
-      }
-
-      if (this.isDummy(form['bounce.azure'].shared_secret)) {
-        form['bounce.azure'].shared_secret = '';
-      } else if (this.hasDummy(form['bounce.azure'].shared_secret)) {
-        hasDummy = 'azure shared secret';
-      }
-
-      if (this.isDummy(form['security.captcha'].hcaptcha.secret)) {
-        form['security.captcha'].hcaptcha.secret = '';
-      } else if (this.hasDummy(form['security.captcha'].hcaptcha.secret)) {
-        hasDummy = 'captcha';
-      }
-
-      if (this.isDummy(form['security.oidc'].client_secret)) {
-        form['security.oidc'].client_secret = '';
-      } else if (this.hasDummy(form['security.oidc'].client_secret)) {
-        hasDummy = 'oidc';
-      }
-
-      if (this.isDummy(form['bounce.postmark'].password)) {
-        form['bounce.postmark'].password = '';
-      } else if (this.hasDummy(form['bounce.postmark'].password)) {
-        hasDummy = 'postmark';
-      }
-
-      if (this.isDummy(form['bounce.forwardemail'].key)) {
-        form['bounce.forwardemail'].key = '';
-      } else if (this.hasDummy(form['bounce.forwardemail'].key)) {
-        hasDummy = 'forwardemail';
-      }
-
-      if (this.isDummy(form['bounce.lettermint'].key)) {
-        form['bounce.lettermint'].key = '';
-      } else if (this.hasDummy(form['bounce.lettermint'].key)) {
-        hasDummy = 'lettermint';
-      }
-
-      if (this.isDummy(form.scrub.api_key)) {
-        form.scrub.api_key = '';
-      } else if (this.hasDummy(form.scrub.api_key)) {
-        hasDummy = 'scrub';
-      }
-
-      for (let i = 0; i < form.messengers.length; i += 1) {
-        // If it's the dummy UI password placeholder, ignore it.
-        if (this.isDummy(form.messengers[i].password)) {
-          form.messengers[i].password = '';
-        } else if (this.hasDummy(form.messengers[i].password)) {
-          hasDummy = `messenger #${i + 1}`;
-        }
-      }
-
-      if (hasDummy) {
-        this.$utils.toast(this.$t('globals.messages.passwordChangeFull', { name: hasDummy }), 'is-danger');
-        return false;
-      }
-
-      // Domain blocklist array from multi-line strings.
-      form['privacy.domain_blocklist'] = form['privacy.domain_blocklist'].split('\n').map((v) => v.trim().toLowerCase()).filter((v) => v !== '');
-      form['privacy.domain_allowlist'] = form['privacy.domain_allowlist'].split('\n').map((v) => v.trim().toLowerCase()).filter((v) => v !== '');
-
-      this.isLoading = true;
-      try {
-        await this.$api.updateSettings(form);
-        await this.$api.getServerConfig();
-        this.getSettings();
-      } finally {
-        this.isLoading = false;
-      }
-
-      return false;
-    },
-
-    getSettings() {
-      this.isLoading = true;
-      this.$api.getSettings().then((data) => {
-        let d = {};
-        try {
-          // Create a deep-copy of the settings hierarchy.
-          d = JSON.parse(JSON.stringify(data));
-        } catch (err) {
-          return;
-        }
-
-        // Serialize the `email_headers` array map to display on the form.
-        for (let i = 0; i < d.smtp.length; i += 1) {
-          d.smtp[i].strEmailHeaders = JSON.stringify(d.smtp[i].email_headers, null, 4);
-        }
-
-        // Domain blocklist array to multi-line string.
-        d['privacy.domain_blocklist'] = d['privacy.domain_blocklist'].join('\n');
-        d['privacy.domain_allowlist'] = d['privacy.domain_allowlist'].join('\n');
-
-        this.key += 1;
-        this.form = d;
-        this.formCopy = JSON.stringify(d);
-
-        this.$nextTick(() => {
-          this.isLoading = false;
-        });
-      });
-    },
-
-    isDummy(pwd) {
-      return !pwd || (pwd.match(/•/g) || []).length === pwd.length;
-    },
-
-    hasDummy(pwd) {
-      return pwd.includes('•');
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['serverConfig', 'loading']),
-
-    hasFormChanged() {
-      if (!this.formCopy) {
-        return false;
-      }
-      return JSON.stringify(this.form) !== this.formCopy;
-    },
-  },
-
-  beforeRouteLeave(to, from, next) {
-    if (this.hasFormChanged) {
-      this.$utils.confirm(this.$t('globals.messages.confirmDiscard'), () => next(true));
+function getSettings() {
+  isLoading.value = true;
+  $api.getSettings().then((data: any) => {
+    let d: any = {};
+    try {
+      d = JSON.parse(JSON.stringify(data));
+    } catch (err) {
       return;
     }
-    next(true);
-  },
+    for (let i = 0; i < d.smtp.length; i += 1) {
+      d.smtp[i].strEmailHeaders = JSON.stringify(d.smtp[i].email_headers, null, 4);
+    }
+    d['privacy.domain_blocklist'] = d['privacy.domain_blocklist'].join('\n');
+    d['privacy.domain_allowlist'] = d['privacy.domain_allowlist'].join('\n');
+    key.value += 1;
+    form.value = d;
+    formCopy.value = JSON.stringify(d);
+    nextTick(() => { isLoading.value = false; });
+  });
+}
 
-  mounted() {
-    this.tab = String(this.$utils.getPref('settings.tab') || '0');
-    this.getSettings();
-  },
+async function onSubmit() {
+  const f = JSON.parse(JSON.stringify(form.value));
+  let hasDummyField = '';
 
-  watch: {
-    tab(t) {
-      this.$utils.setPref('settings.tab', t);
-    },
-  },
+  for (let i = 0; i < f.smtp.length; i += 1) {
+    f.smtp[i].host = f.smtp[i].host?.trim();
+    if (isDummy(f.smtp[i].password)) { f.smtp[i].password = ''; } else if (hasDummy(f.smtp[i].password)) { hasDummyField = `smtp #${i + 1}`; }
+    if (f.smtp[i].strEmailHeaders && f.smtp[i].strEmailHeaders !== '[]') {
+      f.smtp[i].email_headers = JSON.parse(f.smtp[i].strEmailHeaders);
+    } else { f.smtp[i].email_headers = []; }
+  }
+
+  for (let i = 0; i < f['bounce.mailboxes'].length; i += 1) {
+    f['bounce.mailboxes'][i].host = f['bounce.mailboxes'][i].host?.trim();
+    if (isDummy(f['bounce.mailboxes'][i].password)) { f['bounce.mailboxes'][i].password = ''; } else if (hasDummy(f['bounce.mailboxes'][i].password)) { hasDummyField = `bounce #${i + 1}`; }
+  }
+
+  const checks: [string, string][] = [
+    ['upload.s3.aws_secret_access_key', 's3'],
+    ['bounce.sendgrid_key', 'sendgrid'],
+  ];
+  for (const [key2, label] of checks) {
+    if (isDummy(f[key2])) { f[key2] = ''; } else if (hasDummy(f[key2])) { hasDummyField = label; }
+  }
+
+  const objChecks: [any, string, string][] = [
+    [f['bounce.azure'], 'shared_secret', 'azure shared secret'],
+    [f['security.captcha'].hcaptcha, 'secret', 'captcha'],
+    [f['security.oidc'], 'client_secret', 'oidc'],
+    [f['bounce.postmark'], 'password', 'postmark'],
+    [f['bounce.forwardemail'], 'key', 'forwardemail'],
+    [f['bounce.lettermint'], 'key', 'lettermint'],
+    [f.scrub, 'api_key', 'scrub'],
+  ];
+  for (const [obj, field, label] of objChecks) {
+    if (isDummy(obj[field])) { obj[field] = ''; } else if (hasDummy(obj[field])) { hasDummyField = label; }
+  }
+
+  for (let i = 0; i < f.messengers.length; i += 1) {
+    if (isDummy(f.messengers[i].password)) { f.messengers[i].password = ''; } else if (hasDummy(f.messengers[i].password)) { hasDummyField = `messenger #${i + 1}`; }
+  }
+
+  if (hasDummyField) {
+    $utils.toast(t('globals.messages.passwordChangeFull', { name: hasDummyField }), 'is-danger');
+    return;
+  }
+
+  f['privacy.domain_blocklist'] = f['privacy.domain_blocklist'].split('\n').map((v: string) => v.trim().toLowerCase()).filter((v: string) => v !== '');
+  f['privacy.domain_allowlist'] = f['privacy.domain_allowlist'].split('\n').map((v: string) => v.trim().toLowerCase()).filter((v: string) => v !== '');
+
+  isLoading.value = true;
+  try {
+    await $api.updateSettings(f);
+    await $api.getServerConfig();
+    getSettings();
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+watch(tab, (t2) => { $utils.setPref('settings.tab', t2); });
+
+onBeforeRouteLeave((_to, _from, next) => {
+  if (hasFormChanged.value) {
+    $utils.confirm(t('globals.messages.confirmDiscard'), () => next(true));
+    return;
+  }
+  next(true);
+});
+
+onMounted(() => {
+  tab.value = String($utils.getPref('settings.tab') || '0');
+  getSettings();
 });
 </script>
 

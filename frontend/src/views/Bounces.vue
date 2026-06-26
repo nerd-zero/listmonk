@@ -103,142 +103,96 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, watch, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default defineComponent({
-  components: {
-    EmptyPlaceholder,
-  },
+const { $api, $utils } = useGlobal();
+const { t, tc } = useI18n();
+const route = useRoute();
+const { refreshTick, loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      bounces: {},
+const bounces = ref<any>({});
+const expandedRows = ref<any[]>([]);
+const bulk = reactive({ checked: [] as any[], all: false });
+const queryParams = reactive({
+  page: 1, orderBy: 'created_at', order: 'desc', campaignId: 0, source: '',
+});
 
-      expandedRows: [],
+const numSelectedBounces = computed(() => (bulk.all ? (bounces.value as any).total : bulk.checked.length));
 
-      // Table bulk row selection states.
-      bulk: {
-        checked: [],
-        all: false,
-      },
+function getBounces() {
+  bulk.checked = [];
+  bulk.all = false;
+  $api.getBounces({
+    page: queryParams.page,
+    order_by: queryParams.orderBy,
+    order: queryParams.order,
+    campaign_id: queryParams.campaignId,
+    source: queryParams.source,
+  }).then((data: any) => { bounces.value = data; });
+}
 
-      // Query params to filter the getSubscribers() API call.
-      queryParams: {
-        page: 1,
-        orderBy: 'created_at',
-        order: 'desc',
-        campaignId: 0,
-        source: '',
-      },
-    };
-  },
+function onSort(field: string, direction: string) {
+  queryParams.orderBy = field;
+  queryParams.order = direction;
+  getBounces();
+}
 
-  methods: {
-    onSort(field, direction) {
-      this.queryParams.orderBy = field;
-      this.queryParams.order = direction;
-      this.getBounces();
-    },
+function onPageChange(p: number) {
+  queryParams.page = p;
+  getBounces();
+}
 
-    onPageChange(p) {
-      this.queryParams.page = p;
-      this.getBounces();
-    },
-    // Mark all bounces in the query as selected.
-    selectAllBounces() {
-      this.bulk.all = true;
-    },
-    onTableCheck() {
-      // Disable bulk.all selection if there are no rows checked in the table.
-      if (this.bulk.checked.length !== this.bounces.total) {
-        this.bulk.all = false;
-      }
-    },
+function selectAllBounces() { bulk.all = true; }
 
-    getBounces() {
-      this.bulk.checked = [];
-      this.bulk.all = false;
+function onTableCheck() {
+  if (bulk.checked.length !== (bounces.value as any).total) bulk.all = false;
+}
 
-      this.$api.getBounces({
-        page: this.queryParams.page,
-        order_by: this.queryParams.orderBy,
-        order: this.queryParams.order,
-        campaign_id: this.queryParams.campaignId,
-        source: this.queryParams.source,
-      }).then((data) => {
-        this.bounces = data;
-      });
-    },
+function deleteBounce(b: any) {
+  $api.deleteBounce(b.id).then(() => {
+    getBounces();
+    $utils.toast(t('globals.messages.deleted', { name: b.email }));
+  });
+}
 
-    deleteBounce(b) {
-      this.$api.deleteBounce(b.id).then(() => {
-        this.getBounces();
-        this.$utils.toast(this.$t('globals.messages.deleted', { name: b.email }));
-      });
-    },
+function deleteBounces() {
+  const params: any = {};
+  if (!bulk.all && bulk.checked.length > 0) {
+    params.id = bulk.checked.map((s: any) => s.id);
+  } else if (bulk.all) {
+    params.all = true;
+  }
+  $api.deleteBounces(params).then(() => {
+    getBounces();
+    $utils.toast(t('globals.messages.deletedCount', { name: tc('globals.terms.bounces'), num: numSelectedBounces.value }));
+  });
+}
 
-    deleteBounces() {
-      const params = {};
-      if (!this.bulk.all && this.bulk.checked.length > 0) {
-        params.id = this.bulk.checked.map((s) => s.id);
-      } else if (this.bulk.all) {
-        params.all = true;
-      }
+function blocklistSubscribers() {
+  const cb = () => { getBounces(); $utils.toast(t('globals.messages.done')); };
+  if (!bulk.all && bulk.checked.length > 0) {
+    const subIds = bulk.checked.map((s: any) => s.subscriberId);
+    $api.blocklistSubscribers({ ids: subIds }).then(cb);
+    return;
+  }
+  $api.blocklistBouncedSubscribers({ all: true }).then(cb);
+}
 
-      this.$api.deleteBounces(params).then(() => {
-        this.getBounces();
-        this.$utils.toast(this.$t(
-          'globals.messages.deletedCount',
-          { name: this.$tc('globals.terms.bounces'), num: this.numSelectedBounces },
-        ));
-      });
-    },
+watch(() => refreshTick.value, () => { getBounces(); });
 
-    blocklistSubscribers() {
-      const cb = () => {
-        this.getBounces();
-        this.$utils.toast(this.$t('globals.messages.done'));
-      };
-
-      if (!this.bulk.all && this.bulk.checked.length > 0) {
-        const subIds = this.bulk.checked.map((s) => s.subscriberId);
-        this.$api.blocklistSubscribers({ ids: subIds }).then(cb);
-        return;
-      }
-
-      this.$api.blocklistBouncedSubscribers({ all: true }).then(cb);
-    },
-  },
-
-  watch: {
-    refreshTick() { this.getBounces(); },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'templates', 'loading']),
-    numSelectedBounces() {
-      if (this.bulk.all) {
-        return this.bounces.total;
-      }
-      return this.bulk.checked.length;
-    },
-  },
-
-  mounted() {
-    if (this.$route.query.campaign_id) {
-      this.queryParams.campaignId = parseInt(this.$route.query.campaign_id, 10);
-    }
-
-    if (this.$route.query.source) {
-      this.queryParams.source = this.$route.query.source;
-    }
-
-    this.getBounces();
-  },
+onMounted(() => {
+  if (route.query.campaign_id) queryParams.campaignId = parseInt(route.query.campaign_id as string, 10);
+  if (route.query.source) queryParams.source = route.query.source as string;
+  getBounces();
 });
 </script>
 

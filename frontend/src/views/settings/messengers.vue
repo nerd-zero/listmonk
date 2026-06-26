@@ -72,40 +72,31 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { nextTick } from 'vue';
 import { regDuration } from '../../constants';
 
-export default defineComponent({
-  props: {
-    form: { type: Object, default: () => {} },
-  },
+const props = defineProps<{ form?: any }>();
+const data = props.form;
 
-  data() {
-    return { data: this.form, regDuration };
-  },
+function addMessenger() {
+  data.messengers.push({
+    enabled: true,
+    root_url: '',
+    name: '',
+    username: '',
+    password: '',
+    max_conns: 25,
+    max_msg_retries: 2,
+    timeout: '5s',
+  });
+  nextTick(() => {
+    const items = document.querySelectorAll('.messengers input[name="name"]');
+    (items[items.length - 1] as HTMLInputElement).focus();
+  });
+}
 
-  methods: {
-    addMessenger() {
-      this.data.messengers.push({
-        enabled: true,
-        root_url: '',
-        name: '',
-        username: '',
-        password: '',
-        max_conns: 25,
-        max_msg_retries: 2,
-        timeout: '5s',
-      });
-      this.$nextTick(() => {
-        const items = document.querySelectorAll('.messengers input[name="name"]');
-        items[items.length - 1].focus();
-      });
-    },
-
-    removeMessenger(i) { this.data.messengers.splice(i, 1); },
-  },
-});
+function removeMessenger(i: number) { data.messengers.splice(i, 1); }
 </script>
 
 <style scoped lang="scss">

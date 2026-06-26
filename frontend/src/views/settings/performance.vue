@@ -85,17 +85,9 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import { regDuration } from '../../constants';
 
-export default defineComponent({
-  props: {
-    form: { type: Object, default: () => {} },
-  },
-
-  data() {
-    return { data: this.form, regDuration };
-  },
-});
+const props = defineProps<{ form?: any }>();
+const data = props.form;
 </script>

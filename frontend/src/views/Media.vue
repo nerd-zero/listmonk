@@ -109,131 +109,93 @@
   </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, watch, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 
-export default defineComponent({
-  components: {
-    EmptyPlaceholder,
-  },
+const props = withDefaults(defineProps<{
+  isModal?: boolean;
+  type?: string;
+}>(), { isModal: false, type: '' });
 
-  name: 'Media',
+const emit = defineEmits(['selected', 'close']);
+const { $api, $utils } = useGlobal();
+const {
+  refreshTick, loading, media, serverConfig,
+} = storeToRefs(useMainStore());
 
-  props: {
-    isModal: Boolean,
-    type: { type: String, default: '' },
-  },
+const form = reactive({ files: [] as File[] });
+const toUpload = ref(0);
+const uploaded = ref(0);
+const showUploadForm = ref(false);
+const queryParams = reactive({ page: 1, query: '' });
 
-  data() {
-    return {
-      form: {
-        files: [],
-      },
-      toUpload: 0,
-      uploaded: 0,
-      showUploadForm: false,
+const isProcessing = computed(() => toUpload.value > 0 && uploaded.value < toUpload.value);
 
-      queryParams: {
-        page: 1,
-        query: '',
-      },
-    };
-  },
+function removeUploadFile(i: number) { form.files.splice(i, 1); }
+function onFilesSelect(event: any) { form.files = event.files ? [...event.files] : []; }
+function onFileRemove(event: any) { form.files = form.files.filter((f) => f !== event.file); }
 
-  methods: {
-    removeUploadFile(i) {
-      this.form.files.splice(i, 1);
-    },
+function getMedia() {
+  $api.getMedia({ page: queryParams.page, query: queryParams.query });
+}
 
-    onFilesSelect(event) {
-      this.form.files = event.files ? [...event.files] : [];
-    },
+function onToggleForm() {
+  showUploadForm.value = !showUploadForm.value;
+  $utils.setPref('media.upload', showUploadForm.value);
+}
 
-    onFileRemove(event) {
-      this.form.files = this.form.files.filter((f) => f !== event.file);
-    },
+function onQueryMedia() {
+  queryParams.page = 1;
+  getMedia();
+}
 
-    getMedia() {
-      this.$api.getMedia({
-        page: this.queryParams.page,
-        query: this.queryParams.query,
-      });
-    },
+function onMediaSelect(m: any, e: Event) {
+  if (props.isModal) {
+    e.preventDefault();
+    emit('selected', m);
+    emit('close');
+  }
+}
 
-    onToggleForm() {
-      this.showUploadForm = !this.showUploadForm;
-      this.$utils.setPref('media.upload', this.showUploadForm);
-    },
+function onUploaded() {
+  uploaded.value += 1;
+  if (uploaded.value >= toUpload.value) {
+    toUpload.value = 0;
+    uploaded.value = 0;
+    form.files = [];
+    getMedia();
+  }
+}
 
-    onQueryMedia() {
-      this.queryParams.page = 1;
-      this.getMedia();
-    },
+function onSubmit() {
+  toUpload.value = form.files.length;
+  for (let i = 0; i < toUpload.value; i += 1) {
+    const params = new FormData();
+    params.set('file', form.files[i]);
+    $api.uploadMedia(params).then(() => { onUploaded(); }, () => { onUploaded(); });
+  }
+}
 
-    onMediaSelect(m, e) {
-      if (this.isModal) {
-        e.preventDefault();
-        this.$emit('selected', m);
-        this.$emit('close');
-      }
-    },
+function onDeleteMedia(id: number) {
+  $api.deleteMedia(id).then(() => { getMedia(); });
+}
 
-    onSubmit() {
-      this.toUpload = this.form.files.length;
-      for (let i = 0; i < this.toUpload; i += 1) {
-        const params = new FormData();
-        params.set('file', this.form.files[i]);
-        this.$api.uploadMedia(params).then(() => {
-          this.onUploaded();
-        }, () => {
-          this.onUploaded();
-        });
-      }
-    },
+function onPageChange(p: number) {
+  queryParams.page = p;
+  getMedia();
+}
 
-    onDeleteMedia(id) {
-      this.$api.deleteMedia(id).then(() => {
-        this.getMedia();
-      });
-    },
+watch(() => refreshTick.value, () => { getMedia(); });
 
-    onUploaded() {
-      this.uploaded += 1;
-      if (this.uploaded >= this.toUpload) {
-        this.toUpload = 0;
-        this.uploaded = 0;
-        this.form.files = [];
-        this.getMedia();
-      }
-    },
-
-    onPageChange(p) {
-      this.queryParams.page = p;
-      this.getMedia();
-    },
-  },
-
-  watch: {
-    refreshTick() { this.getMedia(); },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'loading', 'media', 'serverConfig']),
-
-    isProcessing() {
-      return this.toUpload > 0 && this.uploaded < this.toUpload;
-    },
-  },
-
-  mounted() {
-    this.$api.getMedia();
-    if (this.$utils.getPref('media.upload')) {
-      this.showUploadForm = true;
-    }
-  },
+onMounted(() => {
+  $api.getMedia();
+  if ($utils.getPref('media.upload')) { showUploadForm.value = true; }
 });
 </script>
 

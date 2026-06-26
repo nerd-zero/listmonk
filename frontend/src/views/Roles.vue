@@ -65,117 +65,92 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import RoleForm from './RoleForm.vue';
 
-export default defineComponent({
-  components: {
-    EmptyPlaceholder,
-    RoleForm,
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const { loading, userRoles, listRoles } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      curItem: null,
-      curType: null,
-      isEditing: false,
-      isFormVisible: false,
-    };
-  },
+const curItem = ref<any>(null);
+const curType = ref<string | null>(null);
+const isEditing = ref(false);
+const isFormVisible = ref(false);
 
-  methods: {
-    fetchRoles() {
-      if (this.isUser) {
-        this.$api.getUserRoles();
-      } else {
-        this.$api.getListRoles();
-      }
-    },
+const isUser = computed(() => curType.value === 'user');
+const isLoading = computed(() => (curType.value === 'user' ? loading.value.userRoles : loading.value.listRoles));
+const roles = computed<any[]>(() => (isUser.value ? (userRoles.value as any) : (listRoles.value as any)));
 
-    // Show the edit form.
-    showEditForm(item) {
-      this.curItem = item;
-      this.curType = this.isUser ? 'user' : 'list';
-      this.isFormVisible = true;
-      this.isEditing = true;
-    },
+function fetchRoles() {
+  if (isUser.value) {
+    $api.getUserRoles();
+  } else {
+    $api.getListRoles();
+  }
+}
 
-    // Show the new form.
-    showNewForm() {
-      this.isEditing = false;
-      this.isFormVisible = true;
-    },
+function showEditForm(item: any) {
+  curItem.value = item;
+  curType.value = isUser.value ? 'user' : 'list';
+  isFormVisible.value = true;
+  isEditing.value = true;
+}
 
-    formFinished() {
-      this.fetchRoles();
-    },
+function showNewForm() {
+  isEditing.value = false;
+  isFormVisible.value = true;
+}
 
-    onFormClose() {
-      if (this.$route.params.id) {
-        this.$router.push({ name: 'users' });
-      }
-    },
+function formFinished() {
+  fetchRoles();
+}
 
-    onCloneRole(name, item) {
-      const form = { name };
-      let fn;
-      if (this.isUser) {
-        fn = this.$api.createUserRole;
-        form.permissions = item.permissions;
-      } else {
-        fn = this.$api.createListRole;
-        form.lists = item.lists;
-      }
+function onFormClose() {
+  if (route.params.id) {
+    router.push({ name: 'users' });
+  }
+}
 
-      fn(form).then(() => {
-        this.fetchRoles();
-        this.$utils.toast(this.$t('globals.messages.created', { name }));
+function onCloneRole(name: string, item: any) {
+  const form: any = { name };
+  let fn: any;
+  if (isUser.value) {
+    fn = $api.createUserRole;
+    form.permissions = item.permissions;
+  } else {
+    fn = $api.createListRole;
+    form.lists = item.lists;
+  }
+  fn(form).then(() => {
+    fetchRoles();
+    $utils.toast(t('globals.messages.created', { name }));
+  });
+}
+
+function onDeleteRole(item: any) {
+  $utils.confirm(
+    t('globals.messages.confirm'),
+    () => {
+      $api.deleteRole(item.id).then(() => {
+        fetchRoles();
+        $utils.toast(t('globals.messages.deleted', { name: item.name }));
       });
     },
+  );
+}
 
-    onDeleteRole(item) {
-      this.$utils.confirm(
-        this.$t('globals.messages.confirm'),
-        () => {
-          this.$api.deleteRole(item.id).then(() => {
-            this.fetchRoles();
-
-            this.$utils.toast(this.$t('globals.messages.deleted', { name: item.name }));
-          });
-        },
-      );
-    },
-
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['loading', 'userRoles', 'listRoles']),
-
-    isLoading() {
-      return this.curType === 'user' ? this.loading.userRoles : this.loading.listRoles;
-    },
-
-    isUser() {
-      return this.curType === 'user';
-    },
-
-    isList() {
-      return this.curType === 'list';
-    },
-
-    roles() {
-      return this.isUser ? this.userRoles : this.listRoles;
-    },
-  },
-
-  mounted() {
-    this.curType = this.$route.name === 'userRoles' ? 'user' : 'list';
-    this.fetchRoles();
-  },
+onMounted(() => {
+  curType.value = route.name === 'userRoles' ? 'user' : 'list';
+  fetchRoles();
 });
 </script>
 

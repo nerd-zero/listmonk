@@ -201,7 +201,7 @@
                   </div>
                   <div class="field" style="flex:1">
                     <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.toEmail') }}</label>
-                    <PvInputText type="email" required v-model="testEmail" :ref="'testEmailTo'"
+                    <PvInputText type="email" required v-model="testEmail"
                       placeholder="email@site.com" :class="`test-email-${n}`" class="w-full" />
                   </div>
                   <PvButton severity="primary" type="submit" :label="$t('settings.smtp.sendTest')" />
@@ -223,13 +223,15 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { ref, nextTick } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../../store';
+import { useGlobal } from '../../composables/useGlobal';
 import { regDuration } from '../../constants';
 
-const smtpTemplates = {
+const smtpTemplates: Record<string, any> = {
   gmail: {
     host: 'smtp.gmail.com', port: 465, auth_protocol: 'login', tls_type: 'TLS',
   },
@@ -259,105 +261,92 @@ const smtpTemplates = {
   },
 };
 
-export default defineComponent({
-  props: {
-    form: { type: Object, default: () => {} },
-  },
+const props = defineProps<{ form?: any }>();
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { settings } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      data: this.form,
-      regDuration,
-      smtpTestItem: null,
-      testEmail: '',
-      errMsg: '',
-    };
-  },
+const data = props.form;
+const smtpTestItem = ref<number | null>(null);
+const testEmail = ref('');
+const errMsg = ref('');
 
-  methods: {
-    addSMTP() {
-      this.data.smtp.push({
-        name: '',
-        enabled: true,
-        host: '',
-        hello_hostname: '',
-        port: 587,
-        auth_protocol: 'none',
-        username: '',
-        password: '',
-        email_headers: [],
-        from_addresses: [],
-        max_conns: 10,
-        max_msg_retries: 2,
-        msg_retry_delay: '0s',
-        idle_timeout: '15s',
-        wait_timeout: '5s',
-        tls_type: 'STARTTLS',
-        tls_skip_verify: false,
-      });
-      this.$nextTick(() => {
-        const items = document.querySelectorAll('.smtp-list input[name="host"]');
-        items[items.length - 1].focus();
-      });
-    },
+function addSMTP() {
+  data.smtp.push({
+    name: '',
+    enabled: true,
+    host: '',
+    hello_hostname: '',
+    port: 587,
+    auth_protocol: 'none',
+    username: '',
+    password: '',
+    email_headers: [],
+    from_addresses: [],
+    max_conns: 10,
+    max_msg_retries: 2,
+    msg_retry_delay: '0s',
+    idle_timeout: '15s',
+    wait_timeout: '5s',
+    tls_type: 'STARTTLS',
+    tls_skip_verify: false,
+  });
+  nextTick(() => {
+    const items = document.querySelectorAll('.smtp-list input[name="host"]');
+    (items[items.length - 1] as HTMLInputElement).focus();
+  });
+}
 
-    removeSMTP(i) { this.data.smtp.splice(i, 1); },
+function removeSMTP(i: number) { data.smtp.splice(i, 1); }
 
-    showSMTPHeaders(i) {
-      const s = this.data.smtp[i];
-      s.showHeaders = true;
-      this.data.smtp.splice(i, 1, s);
-    },
+function showSMTPHeaders(i: number) {
+  const s = data.smtp[i];
+  s.showHeaders = true;
+  data.smtp.splice(i, 1, s);
+}
 
-    doSMTPTest(item, n) {
-      if (!this.isTestEnabled(item)) {
-        this.$utils.toast(this.$t('settings.smtp.testEnterEmail'), 'is-danger');
-        this.$nextTick(() => {
-          const i = document.querySelector(`.password-${n}`);
-          this.data.smtp[n].password = '';
-          i.focus();
-          i.select();
-        });
-        return;
-      }
-      this.errMsg = '';
-      this.$api.testSMTP({ ...item, email: this.testEmail }).then(() => {
-        this.$utils.toast(this.$t('campaigns.testSent'));
-      }).catch((err) => {
-        if (err.response?.data?.message) { this.errMsg = err.response.data.message; }
-      });
-    },
+function isTestEnabled(item: any) {
+  if (!item.host || !item.port) return false;
+  if (item.auth_protocol !== 'none' && item.password.includes('•')) return false;
+  return true;
+}
 
-    showTestForm(n) {
-      this.smtpTestItem = n;
-      this.testItem = this.form.smtp[n];
-      this.errMsg = '';
-      this.$nextTick(() => { document.querySelector(`.test-email-${n}`).focus(); });
-    },
+function doSMTPTest(item: any, n: number) {
+  if (!isTestEnabled(item)) {
+    $utils.toast(t('settings.smtp.testEnterEmail'), 'is-danger');
+    nextTick(() => {
+      const i = document.querySelector(`.password-${n}`) as HTMLInputElement;
+      data.smtp[n].password = '';
+      i.focus();
+      i.select();
+    });
+    return;
+  }
+  errMsg.value = '';
+  $api.testSMTP({ ...item, email: testEmail.value }).then(() => {
+    $utils.toast(t('campaigns.testSent'));
+  }).catch((err: any) => {
+    if (err.response?.data?.message) { errMsg.value = err.response.data.message; }
+  });
+}
 
-    isTestEnabled(item) {
-      if (!item.host || !item.port) return false;
-      if (item.auth_protocol !== 'none' && item.password.includes('•')) return false;
-      return true;
-    },
+function showTestForm(n: number) {
+  smtpTestItem.value = n;
+  errMsg.value = '';
+  nextTick(() => { (document.querySelector(`.test-email-${n}`) as HTMLInputElement)?.focus(); });
+}
 
-    fillSettings(n, key) {
-      this.data.smtp.splice(n, 1, {
-        ...this.data.smtp[n],
-        ...smtpTemplates[key],
-        username: '',
-        password: '',
-        hello_hostname: '',
-        tls_skip_verify: false,
-      });
-      this.$nextTick(() => { document.querySelector(`.smtp-username-${n}`).focus(); });
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['settings']),
-  },
-});
+function fillSettings(n: number, key: string) {
+  data.smtp.splice(n, 1, {
+    ...data.smtp[n],
+    ...smtpTemplates[key],
+    username: '',
+    password: '',
+    hello_hostname: '',
+    tls_skip_verify: false,
+  });
+  nextTick(() => { (document.querySelector(`.smtp-username-${n}`) as HTMLInputElement)?.focus(); });
+}
 </script>
 
 <style scoped lang="scss">

@@ -42,48 +42,25 @@
   </form>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { reactive, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useMainStore } from '../store';
 import ListSelector from '../components/ListSelector.vue';
 
-export default defineComponent({
-  components: {
-    ListSelector,
-  },
+withDefaults(defineProps<{ numSubscribers?: number }>(), { numSubscribers: 0 });
+const emit = defineEmits(['finished', 'close']);
 
-  props: {
-    numSubscribers: { type: Number, default: 0 },
-  },
+const { lists } = storeToRefs(useMainStore());
 
-  emits: ['finished', 'close'],
+const form = reactive({ action: 'add', lists: [] as any[], preconfirm: false });
 
-  data() {
-    return {
-      form: {
-        action: 'add',
-        lists: [],
-        preconfirm: false,
-      },
-    };
-  },
+const hasOptinList = computed(() => form.lists.some((l: any) => l.optin === 'double'));
 
-  methods: {
-    onSubmit() {
-      this.$emit('finished', this.form.action, this.form.preconfirm, this.form.lists);
-      this.$emit('close');
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['lists', 'loading']),
-
-    hasOptinList() {
-      return this.form.lists.some((l) => l.optin === 'double');
-    },
-  },
-});
+function onSubmit() {
+  emit('finished', form.action, form.preconfirm, form.lists);
+  emit('close');
+}
 </script>
 
 <style scoped lang="scss">

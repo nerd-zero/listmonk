@@ -69,7 +69,7 @@
               <form @submit.prevent="confirmTOTP">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('users.totpCode') }}</label>
-                  <PvInputText ref="totpCodeInput" v-model="totpCode" maxlength="6"
+                  <PvInputText ref="totpCodeInputEl" v-model="totpCode" maxlength="6"
                     pattern="[0-9]{6}" placeholder="000000" required class="w-full" />
                 </div>
                 <div class="flex gap-2 mt-3">
@@ -99,7 +99,7 @@
           <form v-if="showDisableTOTP" class="mt-4" @submit.prevent="confirmDisableTOTP">
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('users.password') }}</label>
-              <PvPassword ref="disablePasswordInput" v-model="disableTOTPPassword"
+              <PvPassword ref="disablePasswordInputEl" v-model="disableTOTPPassword"
                 minlength="8" required :feedback="false" class="w-full" />
             </div>
             <div class="flex gap-2 mt-3">
@@ -114,132 +114,121 @@
   </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
 
-export default defineComponent({
-  name: 'UserProfile',
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { loading } = storeToRefs(useMainStore());
 
-  components: { CopyText },
+const form = reactive<any>({});
+const data = ref<any>({});
+const isTotpVisible = ref(false);
+const totpQR = ref<string | null>(null);
+const totpSecret = ref<string | null>(null);
+const totpCode = ref('');
+const showDisableTOTP = ref(false);
+const disableTOTPPassword = ref('');
+const twofaEnabled = ref(false);
+const totpCodeInputEl = ref<any>(null);
+const disablePasswordInputEl = ref<any>(null);
 
-  data() {
-    return {
-      form: {},
-      data: {},
-      isTotpVisible: false,
-      totpQR: null,
-      totpSecret: null,
-      totpCode: '',
-      showDisableTOTP: false,
-      disableTOTPPassword: '',
-      twofaEnabled: false,
-    };
-  },
+function onSubmit() {
+  const params: any = { name: form.name, email: form.email };
+  if (data.value.passwordLogin && form.password) {
+    if (form.password !== form.password2) {
+      $utils.toast(t('users.passwordMismatch'), 'is-danger');
+      return;
+    }
+    params.password = form.password;
+    params.password2 = form.password2;
+  }
+  $api.updateUserProfile(params).then(() => {
+    form.password = '';
+    form.password2 = '';
+    $utils.toast(t('globals.messages.updated', { name: data.value.username }));
+  });
+}
 
-  methods: {
-    onSubmit() {
-      const params = {
-        name: this.form.name,
-        email: this.form.email,
-      };
+function onToggleEnableTotp() {
+  $api.getTOTPQR(data.value.id).then((d: any) => {
+    totpQR.value = d.qr;
+    totpSecret.value = d.secret;
+    isTotpVisible.value = true;
+    nextTick(() => { totpCodeInputEl.value?.focus(); });
+  }).catch(() => {
+    $utils.toast(t('globals.messages.errorFetching'), 'is-danger');
+  });
+}
 
-      if (this.data.passwordLogin && this.form.password) {
-        if (this.form.password !== this.form.password2) {
-          this.$utils.toast(this.$t('users.passwordMismatch'), 'is-danger');
-          return;
-        }
-        params.password = this.form.password;
-        params.password2 = this.form.password2;
-      }
+function onCancelTOTPSetup() {
+  isTotpVisible.value = false;
+  totpQR.value = null;
+  totpSecret.value = null;
+  totpCode.value = '';
+  twofaEnabled.value = data.value.twofaType === 'totp';
+  showDisableTOTP.value = false;
+  disableTOTPPassword.value = '';
+}
 
-      this.$api.updateUserProfile(params).then(() => {
-        this.form.password = '';
-        this.form.password2 = '';
-        this.$utils.toast(this.$t('globals.messages.updated', { name: this.data.username }));
-      });
-    },
-
-    onToggleEnableTotp() {
-      this.$api.getTOTPQR(this.data.id).then((data) => {
-        this.totpQR = data.qr;
-        this.totpSecret = data.secret;
-        this.isTotpVisible = true;
-        this.$nextTick(() => { this.$refs.totpCodeInput?.focus(); });
-      }).catch(() => {
-        this.$utils.toast(this.$t('globals.messages.errorFetching'), 'is-danger');
-      });
-    },
-
-    onCancelTOTPSetup() {
-      this.isTotpVisible = false;
-      this.totpQR = null;
-      this.totpSecret = null;
-      this.totpCode = '';
-      this.twofaEnabled = this.data.twofaType === 'totp';
-      this.showDisableTOTP = false;
-      this.disableTOTPPassword = '';
-    },
-
-    confirmTOTP() {
-      if (!this.totpCode || this.totpCode.length !== 6) {
-        this.$utils.toast(this.$t('globals.messages.invalidValue'), 'is-danger');
-        return;
-      }
-      const d = new FormData();
-      d.append('secret', this.totpSecret);
-      d.append('code', this.totpCode);
-      this.$api.enableTOTP(this.data.id, d).then(() => {
-        this.$utils.toast(this.$t('users.twoFAEnabled'));
-        this.onCancelTOTPSetup();
-        this.$api.getUserProfile().then((data) => {
-          this.data = { ...data };
-          this.twofaEnabled = data.twofaType === 'totp';
-        });
-      }).catch(() => {
-        this.$utils.toast(this.$t('globals.messages.invalidValue'), 'is-danger');
-      });
-    },
-
-    toggleDisableTOTP() {
-      this.showDisableTOTP = true;
-      this.$nextTick(() => { this.$refs.disablePasswordInput?.focus(); });
-    },
-
-    confirmDisableTOTP() {
-      if (!this.disableTOTPPassword) {
-        this.$utils.toast(this.$t('globals.messages.invalidFields'), 'is-danger');
-        return;
-      }
-      const formData = new FormData();
-      formData.append('password', this.disableTOTPPassword);
-      this.$api.disableTOTP(this.data.id, formData).then(() => {
-        this.$utils.toast(this.$t('globals.messages.done'));
-        this.showDisableTOTP = false;
-        this.disableTOTPPassword = '';
-        this.$api.getUserProfile().then((data) => {
-          this.data = { ...data };
-          this.twofaEnabled = data.twofaType === 'totp';
-        });
-      }).catch(() => {
-        this.$utils.toast(this.$t('users.invalidPassword'), 'is-danger');
-      });
-    },
-  },
-
-  mounted() {
-    this.$api.getUserProfile().then((data) => {
-      this.data = { ...data };
-      this.form = { name: data.name, email: data.email };
-      this.twofaEnabled = data.twofaType === 'totp';
+function confirmTOTP() {
+  if (!totpCode.value || totpCode.value.length !== 6) {
+    $utils.toast(t('globals.messages.invalidValue'), 'is-danger');
+    return;
+  }
+  const d = new FormData();
+  d.append('secret', totpSecret.value!);
+  d.append('code', totpCode.value);
+  $api.enableTOTP(data.value.id, d).then(() => {
+    $utils.toast(t('users.twoFAEnabled'));
+    onCancelTOTPSetup();
+    $api.getUserProfile().then((p: any) => {
+      data.value = { ...p };
+      twofaEnabled.value = p.twofaType === 'totp';
     });
-  },
+  }).catch(() => {
+    $utils.toast(t('globals.messages.invalidValue'), 'is-danger');
+  });
+}
 
-  computed: {
-    ...mapState(useMainStore, ['loading']),
-  },
+function toggleDisableTOTP() {
+  showDisableTOTP.value = true;
+  nextTick(() => { disablePasswordInputEl.value?.focus(); });
+}
+
+function confirmDisableTOTP() {
+  if (!disableTOTPPassword.value) {
+    $utils.toast(t('globals.messages.invalidFields'), 'is-danger');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('password', disableTOTPPassword.value);
+  $api.disableTOTP(data.value.id, formData).then(() => {
+    $utils.toast(t('globals.messages.done'));
+    showDisableTOTP.value = false;
+    disableTOTPPassword.value = '';
+    $api.getUserProfile().then((p: any) => {
+      data.value = { ...p };
+      twofaEnabled.value = p.twofaType === 'totp';
+    });
+  }).catch(() => {
+    $utils.toast(t('users.invalidPassword'), 'is-danger');
+  });
+}
+
+onMounted(() => {
+  $api.getUserProfile().then((d: any) => {
+    data.value = { ...d };
+    Object.assign(form, { name: d.name, email: d.email });
+    twofaEnabled.value = d.twofaType === 'totp';
+  });
 });
 </script>
 

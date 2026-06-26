@@ -44,43 +44,19 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
-import { useMainStore } from '../../store';
+<script setup lang="ts">
+import { ref, watch, onMounted } from 'vue';
+import { useGlobal } from '../../composables/useGlobal';
 import CodeEditor from '../../components/CodeEditor.vue';
 
-export default defineComponent({
-  components: {
-    'code-editor': CodeEditor,
-  },
+const props = defineProps<{ form?: any }>();
+const { $utils } = useGlobal();
+const data = props.form;
+const tab = ref('0');
 
-  props: {
-    form: {
-      type: Object, default: () => { },
-    },
-  },
-
-  data() {
-    return {
-      data: this.form,
-      tab: '0',
-    };
-  },
-
-  mounted() {
-    this.tab = String(this.$utils.getPref('settings.apperanceTab') || '0');
-  },
-
-  watch: {
-    tab(t) {
-      this.$utils.setPref('settings.apperanceTab', t);
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['settings']),
-  },
+onMounted(() => {
+  tab.value = String($utils.getPref('settings.apperanceTab') || '0');
 });
 
+watch(tab, (t) => { $utils.setPref('settings.apperanceTab', t); });
 </script>

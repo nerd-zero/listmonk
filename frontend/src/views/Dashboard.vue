@@ -122,84 +122,74 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import {
+  ref, computed, watch, onMounted,
+} from 'vue';
 import dayjs from 'dayjs';
-import { mapState } from 'pinia';
+import { storeToRefs } from 'pinia';
 import { useMainStore } from '../store';
 import { colors } from '../constants';
+import { useGlobal } from '../composables/useGlobal';
 import Chart from '../components/Chart.vue';
 
-export default defineComponent({
-  components: { Chart },
+const { $api } = useGlobal();
+const { refreshTick, settings, profile } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      isChartsLoading: true,
-      isCountsLoading: true,
-      campaignViews: null,
-      campaignClicks: null,
-      counts: {
-        lists: {},
-        subscribers: {},
-        campaigns: {},
-        messages: 0,
-      },
-    };
-  },
+const isChartsLoading = ref(true);
+const isCountsLoading = ref(true);
+const campaignViews = ref<any>(null);
+const campaignClicks = ref<any>(null);
+const counts = ref<any>({
+  lists: {},
+  subscribers: {},
+  campaigns: {},
+  messages: 0,
+});
 
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'settings', 'profile']),
+const greeting = computed(() => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+});
 
-    greeting() {
-      const h = new Date().getHours();
-      if (h < 12) return 'Good morning';
-      if (h < 18) return 'Good afternoon';
-      return 'Good evening';
-    },
-  },
+function makeChart(data: any) {
+  if (!data || data.length === 0) return null;
+  return {
+    labels: data.map((d: any) => dayjs(d.date).format('DD MMM')),
+    datasets: [{
+      data: data.map((d: any) => d.count),
+      borderColor: colors.primary,
+      borderWidth: 2,
+      pointHoverBorderWidth: 5,
+      pointBorderWidth: 0.5,
+      fill: true,
+      backgroundColor: 'rgba(99,102,241,0.07)',
+    }],
+  };
+}
 
-  watch: {
-    refreshTick() { this.fetchData(); },
-  },
+function fetchData() {
+  isCountsLoading.value = true;
+  isChartsLoading.value = true;
 
-  mounted() {
-    this.fetchData();
-  },
+  $api.getDashboardCounts().then((data: any) => {
+    counts.value = data;
+    isCountsLoading.value = false;
+  });
 
-  methods: {
-    fetchData() {
-      this.isCountsLoading = true;
-      this.isChartsLoading = true;
+  $api.getDashboardCharts().then((data: any) => {
+    isChartsLoading.value = false;
+    campaignViews.value = makeChart(data.campaignViews);
+    campaignClicks.value = makeChart(data.linkClicks);
+  });
+}
 
-      this.$api.getDashboardCounts().then((data) => {
-        this.counts = data;
-        this.isCountsLoading = false;
-      });
+watch(() => refreshTick.value, () => { fetchData(); });
 
-      this.$api.getDashboardCharts().then((data) => {
-        this.isChartsLoading = false;
-        this.campaignViews = this.makeChart(data.campaignViews);
-        this.campaignClicks = this.makeChart(data.linkClicks);
-      });
-    },
-
-    makeChart(data) {
-      if (!data || data.length === 0) return null;
-      return {
-        labels: data.map((d) => dayjs(d.date).format('DD MMM')),
-        datasets: [{
-          data: data.map((d) => d.count),
-          borderColor: colors.primary,
-          borderWidth: 2,
-          pointHoverBorderWidth: 5,
-          pointBorderWidth: 0.5,
-          fill: true,
-          backgroundColor: 'rgba(99,102,241,0.07)',
-        }],
-      };
-    },
-  },
+onMounted(() => {
+  fetchData();
 });
 </script>
 

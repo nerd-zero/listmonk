@@ -187,14 +187,12 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-  name: 'Navigation',
-  props: {
-    activeItem: { type: Object, default: () => ({}) },
-  },
-  emits: ['toggle-group'],
+<script setup lang="ts">
+withDefaults(defineProps<{
+  activeItem?: Record<string, unknown>;
+}>(), {
+  activeItem: () => ({}),
 });
+
+defineEmits(['toggle-group']);
 </script>

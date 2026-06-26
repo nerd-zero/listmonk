@@ -96,83 +96,56 @@
   </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 
-export default defineComponent({
-  name: 'ScrubDashboard',
+const { $api } = useGlobal();
+const { t } = useI18n();
+const { loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      rows: [],
-      notConfigured: false,
-      fetchError: null,
-    };
-  },
+const rows = ref<any[]>([]);
+const notConfigured = ref(false);
+const fetchError = ref<string | null>(null);
 
-  computed: {
-    ...mapState(useMainStore, ['loading']),
+const todayDate = computed(() => new Date().toISOString().slice(0, 10));
+const periodTotal = computed(() => rows.value.reduce((s: number, r: any) => s + (r.emailScrubs || 0), 0));
+const todayCount = computed(() => rows.value.find((r: any) => r.date === todayDate.value)?.emailScrubs ?? 0);
+const peakDay = computed(() => rows.value.reduce((best: any, r: any) => (r.emailScrubs > (best.emailScrubs || 0) ? r : best), {}));
+const activeDays = computed(() => rows.value.filter((r: any) => r.emailScrubs > 0).length);
+const recentRows = computed(() => [...rows.value].reverse().slice(0, 14));
 
-    todayDate() {
-      return new Date().toISOString().slice(0, 10);
-    },
+async function fetchStats() {
+  fetchError.value = null;
+  notConfigured.value = false;
+  try {
+    const data = await $api.getScrubStats();
+    rows.value = Array.isArray(data) ? data : (data.data ?? [data]);
+  } catch (e: any) {
+    const msg = e.response?.data?.message || '';
+    if (e.response?.status === 400 && msg.toLowerCase().includes('not enabled')) {
+      notConfigured.value = true;
+    } else {
+      fetchError.value = msg || t('settings.scrub.statsError');
+    }
+  }
+}
 
-    periodTotal() {
-      return this.rows.reduce((s, r) => s + (r.emailScrubs || 0), 0);
-    },
+function fmt(n: any) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString();
+}
 
-    todayCount() {
-      return this.rows.find((r) => r.date === this.todayDate)?.emailScrubs ?? 0;
-    },
+function barHeight(val: number) {
+  const max = peakDay.value.emailScrubs || 1;
+  const h = Math.max(2, Math.round((val / max) * 100));
+  return `${h}%`;
+}
 
-    peakDay() {
-      return this.rows.reduce((best, r) => (r.emailScrubs > (best.emailScrubs || 0) ? r : best), {});
-    },
-
-    activeDays() {
-      return this.rows.filter((r) => r.emailScrubs > 0).length;
-    },
-
-    recentRows() {
-      return [...this.rows].reverse().slice(0, 14);
-    },
-  },
-
-  methods: {
-    async fetchStats() {
-      this.fetchError = null;
-      this.notConfigured = false;
-      try {
-        const data = await this.$api.getScrubStats();
-        this.rows = Array.isArray(data) ? data : (data.data ?? [data]);
-      } catch (e) {
-        const msg = e.response?.data?.message || '';
-        if (e.response?.status === 400 && msg.toLowerCase().includes('not enabled')) {
-          this.notConfigured = true;
-        } else {
-          this.fetchError = msg || this.$t('settings.scrub.statsError');
-        }
-      }
-    },
-
-    fmt(n) {
-      if (n == null) return '—';
-      return Number(n).toLocaleString();
-    },
-
-    barHeight(val) {
-      const max = this.peakDay.emailScrubs || 1;
-      const h = Math.max(2, Math.round((val / max) * 100));
-      return `${h}%`;
-    },
-  },
-
-  mounted() {
-    this.fetchStats();
-  },
-});
+onMounted(() => { fetchStats(); });
 </script>
 
 <style scoped lang="scss">

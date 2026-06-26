@@ -67,115 +67,89 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
 import CodeEditor from '../components/CodeEditor.vue';
 
-export default defineComponent({
-  name: 'ListForm',
+const { t } = useI18n();
+const { loading, lists, serverConfig } = storeToRefs(useMainStore());
 
-  components: {
-    'code-editor': CodeEditor,
-  },
+const checked = ref<any[]>([]);
+const html = ref('');
+const selectedRedirectURL = ref('');
 
-  data() {
-    return {
-      checked: [],
-      html: '',
-      selectedRedirectURL: '',
-    };
-  },
-
-  methods: {
-    escapeAttr(value) {
-      return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    },
-
-    renderHTML() {
-      let h = `<form method="post" action="${this.serverConfig.root_url}/subscription/form" class="listmonk-form">\n`
-        + '  <div>\n'
-        + `    <h3>${this.$t('public.sub')}</h3>\n`
-        + '    <input type="hidden" name="nonce" />\n';
-
-      if (this.selectedRedirectURL) {
-        h += `    <input type="hidden" name="next" value="${this.escapeAttr(this.selectedRedirectURL)}" />\n`;
-      }
-
-      h += '\n'
-        + `    <p><input type="email" name="email" required placeholder="${this.$t('subscribers.email')}" /></p>\n`
-        + `    <p><input type="text" name="name" placeholder="${this.$t('public.subName')}" /></p>\n\n`;
-
-      this.checked.forEach((i) => {
-        const l = this.publicLists[parseInt(i, 10)];
-
-        h += '    <p>\n'
-          + `      <input id="${l.uuid.substr(0, 5)}" type="checkbox" name="l" checked value="${l.uuid}" />\n`
-          + `      <label for="${l.uuid.substr(0, 5)}">${l.name}</label>\n`;
-
-        if (l.description) {
-          h += '      <br />\n'
-            + `      <span>${l.description}</span>\n`;
-        }
-
-        h += '    </p>\n';
-      });
-
-      if (this.serverConfig.public_subscription.captcha_enabled) {
-        if (this.serverConfig.public_subscription.captcha_provider === 'altcha') {
-          h += '\n'
-            + `    <altcha-widget challengeurl="${this.serverConfig.root_url}/api/public/captcha/altcha"></altcha-widget>\n`
-            + `    <${'script'} type="module" src="${this.serverConfig.root_url}/public/static/altcha.umd.js" async defer></${'script'}>\n`;
-        } else if (this.serverConfig.public_subscription.captcha_provider === 'hcaptcha') {
-          h += '\n'
-            + `    <div class="h-captcha" data-sitekey="${this.serverConfig.public_subscription.captcha_key}"></div>\n`
-            + `    <${'script'} src="https://js.hcaptcha.com/1/api.js" async defer></${'script'}>\n`;
-        }
-      }
-
-      h += '\n'
-        + `    <input type="submit" value="${this.$t('public.sub')} " />\n`
-        + '  </div>\n'
-        + '</form>';
-
-      this.html = h;
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['loading', 'lists', 'serverConfig']),
-
-    publicLists() {
-      if (!this.lists.results) {
-        return [];
-      }
-      return this.lists.results.filter((l) => l.type === 'public');
-    },
-
-    redirectURLs() {
-      const urls = this.serverConfig.public_subscription
-        ? this.serverConfig.public_subscription.redirect_urls
-        : [];
-      return Array.isArray(urls) ? urls : [];
-    },
-  },
-
-  watch: {
-    checked() {
-      this.renderHTML();
-    },
-
-    selectedRedirectURL() {
-      this.renderHTML();
-    },
-  },
+const publicLists = computed(() => {
+  if (!(lists.value as any).results) return [];
+  return (lists.value as any).results.filter((l: any) => l.type === 'public');
 });
+
+const redirectURLs = computed(() => {
+  const urls = (serverConfig.value as any).public_subscription
+    ? (serverConfig.value as any).public_subscription.redirect_urls
+    : [];
+  return Array.isArray(urls) ? urls : [];
+});
+
+function escapeAttr(value: any) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderHTML() {
+  const sc = serverConfig.value as any;
+  let h = `<form method="post" action="${sc.root_url}/subscription/form" class="listmonk-form">\n`
+    + '  <div>\n'
+    + `    <h3>${t('public.sub')}</h3>\n`
+    + '    <input type="hidden" name="nonce" />\n';
+
+  if (selectedRedirectURL.value) {
+    h += `    <input type="hidden" name="next" value="${escapeAttr(selectedRedirectURL.value)}" />\n`;
+  }
+
+  h += '\n'
+    + `    <p><input type="email" name="email" required placeholder="${t('subscribers.email')}" /></p>\n`
+    + `    <p><input type="text" name="name" placeholder="${t('public.subName')}" /></p>\n\n`;
+
+  checked.value.forEach((i) => {
+    const l = publicLists.value[parseInt(i, 10)];
+    h += '    <p>\n'
+      + `      <input id="${l.uuid.substr(0, 5)}" type="checkbox" name="l" checked value="${l.uuid}" />\n`
+      + `      <label for="${l.uuid.substr(0, 5)}">${l.name}</label>\n`;
+    if (l.description) {
+      h += `      <br />\n      <span>${l.description}</span>\n`;
+    }
+    h += '    </p>\n';
+  });
+
+  if (sc.public_subscription.captcha_enabled) {
+    if (sc.public_subscription.captcha_provider === 'altcha') {
+      h += '\n'
+        + `    <altcha-widget challengeurl="${sc.root_url}/api/public/captcha/altcha"></altcha-widget>\n`
+        + `    <${'script'} type="module" src="${sc.root_url}/public/static/altcha.umd.js" async defer></${'script'}>\n`;
+    } else if (sc.public_subscription.captcha_provider === 'hcaptcha') {
+      h += '\n'
+        + `    <div class="h-captcha" data-sitekey="${sc.public_subscription.captcha_key}"></div>\n`
+        + `    <${'script'} src="https://js.hcaptcha.com/1/api.js" async defer></${'script'}>\n`;
+    }
+  }
+
+  h += '\n'
+    + `    <input type="submit" value="${t('public.sub')} " />\n`
+    + '  </div>\n'
+    + '</form>';
+
+  html.value = h;
+}
+
+watch(() => checked.value, () => { renderHTML(); });
+watch(() => selectedRedirectURL.value, () => { renderHTML(); });
 </script>
 
 <style scoped lang="scss">

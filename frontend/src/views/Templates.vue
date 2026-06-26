@@ -91,104 +91,62 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { ref, watch, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
-
 import TemplateForm from './TemplateForm.vue';
 
-export default defineComponent({
-  components: {
-    CampaignPreview,
-    TemplateForm,
-    EmptyPlaceholder,
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { refreshTick, templates, loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      curItem: null,
-      isEditing: false,
-      isFormVisible: false,
-      previewItem: null,
-    };
-  },
+const curItem = ref<any>(null);
+const isEditing = ref(false);
+const isFormVisible = ref(false);
+const previewItem = ref<any>(null);
 
-  methods: {
-    fetchTemplates() {
-      this.$api.getTemplates();
-    },
+function fetchTemplates() { $api.getTemplates(); }
 
-    // Show the edit form.
-    showEditForm(data) {
-      this.curItem = data;
-      this.isFormVisible = true;
-      this.isEditing = true;
-    },
+function showEditForm(data: any) {
+  curItem.value = data; isFormVisible.value = true; isEditing.value = true;
+}
 
-    // Show the new form.
-    showNewForm() {
-      this.curItem = { type: 'campaign' };
-      this.isFormVisible = true;
-      this.isEditing = false;
-    },
+function showNewForm() {
+  curItem.value = { type: 'campaign' }; isFormVisible.value = true; isEditing.value = false;
+}
 
-    formFinished() {
-      this.$api.getTemplates();
-    },
+function formFinished() { $api.getTemplates(); }
+function previewTemplate(c: any) { previewItem.value = c; }
+function closePreview() { previewItem.value = null; }
 
-    previewTemplate(c) {
-      this.previewItem = c;
-    },
+function cloneTemplate(name: string, tpl: any) {
+  $api.createTemplate({
+    name, type: tpl.type, subject: tpl.subject, body: tpl.body, body_source: tpl.bodySource,
+  })
+    .then((d: any) => { $api.getTemplates(); $utils.toast(`'${d.name}' created`); });
+}
 
-    closePreview() {
-      this.previewItem = null;
-    },
+function makeTemplateDefault(tpl: any) {
+  $api.makeTemplateDefault(tpl.id).then(() => {
+    $api.getTemplates();
+    $utils.toast(t('globals.messages.created', { name: tpl.name }));
+  });
+}
 
-    cloneTemplate(name, t) {
-      const data = {
-        name,
-        type: t.type,
-        subject: t.subject,
-        body: t.body,
-        body_source: t.bodySource,
-      };
-      this.$api.createTemplate(data).then((d) => {
-        this.$api.getTemplates();
-        this.$emit('finished');
-        this.$utils.toast(`'${d.name}' created`);
-      });
-    },
+function deleteTemplate(tpl: any) {
+  $api.deleteTemplate(tpl.id).then(() => {
+    $api.getTemplates();
+    $utils.toast(t('globals.messages.deleted', { name: tpl.name }));
+  });
+}
 
-    makeTemplateDefault(tpl) {
-      this.$api.makeTemplateDefault(tpl.id).then(() => {
-        this.$api.getTemplates();
-        this.$utils.toast(this.$t('globals.messages.created', { name: tpl.name }));
-      });
-    },
-
-    deleteTemplate(tpl) {
-      this.$api.deleteTemplate(tpl.id).then(() => {
-        this.$api.getTemplates();
-        this.$utils.toast(this.$t('globals.messages.deleted', { name: tpl.name }));
-      });
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'templates', 'loading']),
-  },
-
-  watch: {
-    refreshTick() { this.fetchTemplates(); },
-  },
-
-  mounted() {
-    this.$api.getTemplates();
-  },
-});
+watch(() => refreshTick.value, () => { fetchTemplates(); });
+onMounted(() => { $api.getTemplates(); });
 </script>
 
 <style scoped lang="scss">

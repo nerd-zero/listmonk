@@ -1,11 +1,11 @@
 <template>
-  <section class="chart">
+  <section class="chart" ref="rootEl">
     <canvas class="chart-canvas" />
   </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
 import Chart from 'chart.js/auto';
 
 const DEFAULT_DONUT = {
@@ -16,24 +16,20 @@ const DEFAULT_DONUT = {
     cutout: '70%',
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: '#fff',
         borderColor: '#ddd',
         borderWidth: 1,
         titleColor: '#666',
         bodyColor: '#666',
-        bodyFont: {
-          size: 15,
-        },
+        bodyFont: { size: 15 },
         bodySpacing: 10,
         padding: 10,
         callbacks: {
-          label: (item) => {
+          label: (item: any) => {
             const data = item.chart.data.datasets[item.datasetIndex];
-            const total = data.data.reduce((acc, val) => acc + val, 0);
+            const total = data.data.reduce((acc: number, val: number) => acc + val, 0);
             const val = data.data[item.dataIndex];
             const percentage = ((val / total) * 100).toFixed(2);
             return `${val} (${percentage}%)`;
@@ -51,41 +47,23 @@ const DEFAULT_LINE = {
     responsive: true,
     lineTension: 0.5,
     maintainAspectRatio: false,
-    interaction: {
-      intersect: false,
-      axis: 'index',
-    },
+    interaction: { intersect: false, axis: 'index' },
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: '#fff',
         borderColor: '#ddd',
         borderWidth: 1,
         bodyColor: '#666',
         displayColors: true,
-        bodyFont: {
-          size: 15,
-        },
+        bodyFont: { size: 15 },
         bodySpacing: 10,
         padding: 10,
       },
     },
     scales: {
-      x: {
-        grid: {
-          display: false,
-        },
-      },
-      y: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          precision: 0,
-        },
-      },
+      x: { grid: { display: false } },
+      y: { grid: { display: false }, ticks: { precision: 0 } },
     },
   },
 };
@@ -99,70 +77,55 @@ const DEFAULT_BAR = {
     barThickness: 40,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: '#fff',
         borderColor: '#ddd',
         borderWidth: 1,
         titleColor: '#666',
         bodyColor: '#666',
-        bodyFont: {
-          size: 15,
-        },
+        bodyFont: { size: 15 },
         bodySpacing: 10,
         padding: 10,
       },
     },
     scales: {
-      x: {
-        grid: {
-          display: false,
-        },
-      },
-      y: {
-        grid: {
-          display: false,
-        },
-      },
+      x: { grid: { display: false } },
+      y: { grid: { display: false } },
     },
   },
 };
 
-export default defineComponent({
-  name: 'Chart',
+const props = withDefaults(defineProps<{
+  data?: object;
+  type?: string;
+  onClick?:(e: unknown) => void;
+}>(), {
+  data: () => ({}),
+  type: 'line',
+  onClick: () => () => {},
+});
 
-  props: {
-    data: { type: Object, default: () => { } },
-    type: { type: String, default: 'line' },
-    onClick: { type: Function, default: () => { } },
-  },
+const rootEl = ref<HTMLElement | null>(null);
 
-  mounted() {
-    if (!this.$props.data) return;
+onMounted(() => {
+  if (!props.data) return;
 
-    const ctx = this.$el.querySelector('.chart-canvas');
+  const ctx = rootEl.value?.querySelector('.chart-canvas') as HTMLCanvasElement;
 
-    let def = {};
-    switch (this.$props.type) {
-      case 'donut':
-        def = DEFAULT_DONUT;
-        break;
-      case 'bar':
-        def = DEFAULT_BAR;
-        break;
-      default:
-        def = DEFAULT_LINE;
-        break;
-    }
+  let def: Record<string, unknown> = {};
+  switch (props.type) {
+    case 'donut': def = DEFAULT_DONUT; break;
+    case 'bar': def = DEFAULT_BAR; break;
+    default: def = DEFAULT_LINE; break;
+  }
 
-    const conf = { ...def, data: this.$props.data };
-    if (this.$props.onClick) {
-      conf.options.onClick = this.$props.onClick;
-    }
-    this.chart = new Chart(ctx, conf);
-  },
+  const conf: any = { ...def, data: props.data };
+  if (props.onClick) {
+    conf.options.onClick = props.onClick;
+  }
+  // eslint-disable-next-line no-new
+  new Chart(ctx, conf);
 });
 </script>
 
