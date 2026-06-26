@@ -1,0 +1,22 @@
+import { defineConfig } from 'orval';
+
+export default defineConfig({
+  listmonk: {
+    input: {
+      target: '../docs/swagger/collections.yaml',
+    },
+    output: {
+      mode: 'tags-split',
+      target: 'src/api/generated/endpoints',
+      schemas: 'src/api/generated/model',
+      client: 'axios',
+      formatter: 'prettier',
+      override: {
+        mutator: {
+          path: 'src/api/mutator.ts',
+          name: 'httpMutator',
+        },
+      },
+    },
+  },
+});
