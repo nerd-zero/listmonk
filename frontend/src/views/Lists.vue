@@ -89,7 +89,10 @@
         <PvColumn field="name" :header="$t('globals.fields.name')" header-class="cy-name" sortable>
           <template #body="{ data }">
             <a class="row-name" :href="`/lists/${data.id}`" @click.prevent="showEditForm(data)">{{ data.name }}</a>
-            <div v-if="data.tags?.length" class="row-tags">
+            <div class="row-tags">
+              <PvTag v-if="scrubStatus[data.id]?.activeJobRequestId" severity="warn" :value="$t('settings.scrub.validating')" />
+              <PvTag v-else-if="scrubStatus[data.id]?.lastResult" severity="secondary"
+                :value="`${$t('settings.scrub.lastValidated')}: ${$utils.niceDate(scrubStatus[data.id].lastResult.completedAt)}`" />
               <PvTag v-for="t in data.tags" :key="t" :value="t" severity="secondary" />
             </div>
           </template>
@@ -115,7 +118,7 @@
                 data-cy="btn-send-optin-campaign"
                 v-tooltip.bottom="$t('lists.sendOptinCampaign')"
               >
-                <i class="pi pi-send" /> {{ $t('lists.sendOptinCampaign') }}
+                <i class="pi pi-send" />
               </a>
             </div>
           </template>
@@ -180,6 +183,19 @@
 <i class="pi pi-pencil" />
 </button>
 
+              <button
+                v-if="serverConfig.scrubEnabled && $can('settings:manage')"
+                type="button"
+                class="row-action-btn"
+                :class="{ 'row-action-btn--active': scrubStatus[data.id]?.activeJobRequestId }"
+                data-cy="btn-scrub"
+                v-tooltip.bottom="$t('settings.scrub.scrubList')"
+                :disabled="!!scrubStatus[data.id]?.activeJobRequestId"
+                @click="$utils.confirm($t('settings.scrub.scrubListConfirm', { name: data.name }), () => scrubList(data))"
+              >
+                <i class="pi pi-shield" />
+              </button>
+
               <router-link
                 v-if="$can('subscribers:import')"
                 :to="{ name: 'import', query: { list_id: data.id } }"
@@ -224,199 +240,170 @@
   </div>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, watch, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import ListForm from './ListForm.vue';
 
-export default {
-  components: {
-    ListForm,
-    EmptyPlaceholder,
-  },
+const { $api, $utils } = useGlobal();
+const { t, tc } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const {
+  refreshTick, loading, settings, serverConfig,
+} = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      // Current list item being edited.
-      curItem: null,
-      isEditing: false,
-      isFormVisible: false,
-      lists: [],
-      queryParams: {
-        page: 1,
-        query: '',
-        orderBy: 'id',
-        order: 'asc',
-        status: this.$route.query.status || 'active',
-      },
+const curItem = ref<any>(null);
+const isEditing = ref(false);
+const isFormVisible = ref(false);
+const lists = ref<any>([]);
+const scrubStatus = ref<Record<number, any>>({});
+const bulk = reactive({ checked: [] as any[], all: false });
 
-      // Table bulk row selection states.
-      bulk: {
-        checked: [],
-        all: false,
-      },
-    };
-  },
+const queryParams = reactive({
+  page: 1,
+  query: '',
+  orderBy: 'id',
+  order: 'asc',
+  status: (route.query.status as string) || 'active',
+});
 
-  methods: {
-    onPageChange(p) {
-      this.queryParams.page = p;
-      this.getLists();
-    },
+const numSelectedLists = computed(() => (bulk.all ? (lists.value as any).total : bulk.checked.length));
 
-    onSort(field, direction) {
-      this.queryParams.orderBy = field;
-      this.queryParams.order = direction;
-      this.getLists();
-    },
+function onPageChange(p: number) {
+  queryParams.page = p;
+  getLists();
+}
 
-    // Show the edit list form.
-    showEditForm(list) {
-      this.curItem = list;
-      this.isFormVisible = true;
-      this.isEditing = true;
-    },
+function onSort(field: string, direction: string) {
+  queryParams.orderBy = field;
+  queryParams.order = direction;
+  getLists();
+}
 
-    // Show the new list form.
-    showNewForm() {
-      this.curItem = {};
-      this.isFormVisible = true;
-      this.isEditing = false;
-    },
+function showEditForm(list: any) {
+  curItem.value = list;
+  isFormVisible.value = true;
+  isEditing.value = true;
+}
 
-    formFinished() {
-      this.getLists();
-    },
+function showNewForm() {
+  curItem.value = {};
+  isFormVisible.value = true;
+  isEditing.value = false;
+}
 
-    onFormClose() {
-      if (this.$route.params.id) {
-        this.$router.push({ name: 'lists' });
-      }
-    },
+function formFinished() { getLists(); }
 
-    filterStatuses(list) {
-      const out = { ...list.subscriberStatuses };
-      if (list.optin === 'single') {
-        delete out.unconfirmed;
-        delete out.confirmed;
-      }
-      return out;
-    },
+function onFormClose() {
+  if (route.params.id) router.push({ name: 'lists' });
+}
 
-    getLists() {
-      this.$api.queryLists({
-        page: this.queryParams.page,
-        query: this.queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
-        order_by: this.queryParams.orderBy,
-        order: this.queryParams.order,
-        status: this.queryParams.status,
-      }).then((resp) => {
-        this.lists = resp;
+function filterStatuses(list: any) {
+  const out = { ...list.subscriberStatuses };
+  if (list.optin === 'single') {
+    delete out.unconfirmed;
+    delete out.confirmed;
+  }
+  return out;
+}
+
+function fetchScrubStatus() {
+  $api.getScrubListStatus().then((data: any) => {
+    const m: Record<number, any> = {};
+    (Array.isArray(data) ? data : []).forEach((l: any) => {
+      m[l.id] = { activeJobRequestId: l.activeJobRequestId, lastResult: l.lastResult };
+    });
+    scrubStatus.value = m;
+  }).catch(() => {});
+}
+
+function getLists() {
+  $api.queryLists({
+    page: queryParams.page,
+    query: queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
+    order_by: queryParams.orderBy,
+    order: queryParams.order,
+    status: queryParams.status,
+  }).then((resp: any) => { lists.value = resp; });
+  $api.getLists({ minimal: true, per_page: 'all', status: 'active' });
+  if ((serverConfig.value as any).scrubEnabled) fetchScrubStatus();
+}
+
+function scrubList(list: any) {
+  $api.scrubList(list.id).then(() => {
+    $utils.toast(t('settings.scrub.scrubJobStarted'));
+    fetchScrubStatus();
+  });
+}
+
+function deleteList(list: any) {
+  $utils.confirm(
+    t('lists.confirmDelete'),
+    () => {
+      $api.deleteList(list.id).then(() => {
+        getLists();
+        $utils.toast(t('globals.messages.deleted', { name: list.name }));
       });
-
-      // Also fetch the minimal lists for the global store that appears
-      // in dropdown menus on other pages like import and campaigns.
-      this.$api.getLists({ minimal: true, per_page: 'all', status: 'active' });
     },
+  );
+}
 
-    deleteList(list) {
-      this.$utils.confirm(
-        this.$t('lists.confirmDelete'),
-        () => {
-          this.$api.deleteList(list.id).then(() => {
-            this.getLists();
+function onSelectAll() { bulk.all = true; }
 
-            this.$utils.toast(this.$t('globals.messages.deleted', { name: list.name }));
-          });
-        },
-      );
-    },
+function onTableCheck() {
+  if (bulk.checked.length !== (lists.value as any).total) bulk.all = false;
+}
 
-    // Mark all lists in the query as selected.
-    onSelectAll() {
-      this.bulk.all = true;
-    },
-
-    onTableCheck() {
-      // Disable bulk.all selection if there are no rows checked in the table.
-      if (this.bulk.checked.length !== this.lists.total) {
-        this.bulk.all = false;
-      }
-    },
-
-    deleteLists() {
-      const name = this.$tc('globals.terms.list', this.numSelectedCampaigns);
-
-      const fn = () => {
-        const params = {};
-        if (!this.bulk.all && this.bulk.checked.length > 0) {
-          // If 'all' is not selected, delete lists by IDs.
-          params.id = this.bulk.checked.map((l) => l.id);
-        } else {
-          // 'All' is selected, delete by query.
-          params.query = this.queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' ');
-          params.all = this.bulk.all;
-        }
-
-        this.$api.deleteLists(params)
-          .then(() => {
-            this.getLists();
-            this.$utils.toast(this.$tc(
-              'globals.messages.deletedCount',
-              this.numSelectedLists,
-              { num: this.numSelectedLists, name },
-            ));
-          });
-      };
-
-      this.$utils.confirm(this.$tc(
-        'globals.messages.confirmDelete',
-        this.numSelectedLists,
-        { num: this.numSelectedLists, name: name.toLowerCase() },
-      ), fn);
-    },
-
-    createOptinCampaign(list) {
-      const data = {
-        name: this.$t('lists.optinTo', { name: list.name }),
-        subject: this.$t('lists.confirmSub', { name: list.name }),
-        lists: [list.id],
-        from_email: this.settings['app.from_email'],
-        content_type: 'richtext',
-        messenger: 'email',
-        type: 'optin',
-      };
-
-      this.$api.createCampaign(data).then((d) => {
-        this.$router.push({ name: 'campaign', hash: '#content', params: { id: d.id } });
-      });
-      return false;
-    },
-  },
-
-  watch: {
-    refreshTick() { this.getLists(); },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'loading', 'settings']),
-
-    numSelectedLists() {
-      return this.bulk.all ? this.lists.total : this.bulk.checked.length;
-    },
-  },
-
-  mounted() {
-    if (this.$route.params.id) {
-      this.$api.getList(parseInt(this.$route.params.id, 10)).then((data) => {
-        this.showEditForm(data);
-      });
+function deleteLists() {
+  const name = tc('globals.terms.list', numSelectedLists.value);
+  const fn = () => {
+    const params: any = {};
+    if (!bulk.all && bulk.checked.length > 0) {
+      params.id = bulk.checked.map((l: any) => l.id);
     } else {
-      this.getLists();
+      params.query = queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' ');
+      params.all = bulk.all;
     }
-  },
-};
+    $api.deleteLists(params).then(() => {
+      getLists();
+      $utils.toast(tc('globals.messages.deletedCount', numSelectedLists.value, { num: numSelectedLists.value, name }));
+    });
+  };
+  $utils.confirm(tc('globals.messages.confirmDelete', numSelectedLists.value, { num: numSelectedLists.value, name: name.toLowerCase() }), fn);
+}
+
+function createOptinCampaign(list: any) {
+  const data = {
+    name: t('lists.optinTo', { name: list.name }),
+    subject: t('lists.confirmSub', { name: list.name }),
+    lists: [list.id],
+    from_email: (settings.value as any)['app.from_email'],
+    content_type: 'richtext',
+    messenger: 'email',
+    type: 'optin',
+  };
+  $api.createCampaign(data).then((d: any) => {
+    router.push({ name: 'campaign', hash: '#content', params: { id: d.id } });
+  });
+}
+
+watch(() => refreshTick.value, () => { getLists(); });
+
+onMounted(() => {
+  if (route.params.id) {
+    $api.getList(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
+  } else {
+    getLists();
+  }
+});
 </script>
 
 <style scoped lang="scss">
@@ -475,14 +462,26 @@ export default {
 }
 .row-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
 
+// Make secondary PvTags visible (Aura theme has no default background for secondary)
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+
 .type-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .optin-send {
-  font-size: 0.75rem;
-  color: var(--lm-text-muted);
-  text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  color: var(--lm-text-muted);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  i { font-size: 0.8rem; }
+  &:hover { background: var(--lm-primary-light); color: var(--lm-primary); }
 }
 
 .sub-count-link { text-decoration: none; display: flex; flex-direction: column; }

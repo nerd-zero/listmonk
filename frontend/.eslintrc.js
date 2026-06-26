@@ -12,6 +12,11 @@ module.exports = {
     '@vue/eslint-config-airbnb',
   ],
   parser: 'vue-eslint-parser',
+  parserOptions: {
+    parser: '@typescript-eslint/parser',
+    ecmaVersion: 2022,
+    sourceType: 'module',
+  },
   rules: {
     'class-methods-use-this': 'off',
     'vue/multi-word-component-names': 'off',
@@ -31,6 +36,60 @@ module.exports = {
     'vuejs-accessibility/click-events-have-key-events': 'off',
     'vuejs-accessibility/anchor-has-content': 'off',
     'import/no-unresolved': ['error', { ignore: ['@primeuix/themes'] }],
+    'import/extensions': ['error', 'ignorePackages', {
+      js: 'never',
+      ts: 'never',
+      vue: 'always',
+    }],
+  },
+  settings: {
+    'import/resolver': {
+      typescript: {
+        alwaysTryTypes: true,
+        project: './tsconfig.json',
+      },
+    },
   },
   ignorePatterns: ['src/email-builder.js'],
+  overrides: [
+    {
+      files: ['*.ts'],
+      parser: '@typescript-eslint/parser',
+      plugins: ['@typescript-eslint'],
+      extends: [
+        'plugin:@typescript-eslint/recommended',
+      ],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+        'no-unused-vars': 'off',
+        'import/extensions': 'off',
+        'import/no-unresolved': 'off',
+        '@typescript-eslint/ban-ts-comment': 'off',
+      },
+    },
+    {
+      files: ['*.vue'],
+      parser: 'vue-eslint-parser',
+      parserOptions: {
+        parser: '@typescript-eslint/parser',
+        ecmaVersion: 2022,
+        sourceType: 'module',
+      },
+      plugins: ['@typescript-eslint'],
+      extends: [
+        'plugin:@typescript-eslint/recommended',
+      ],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+        'no-unused-vars': 'off',
+        'import/extensions': 'off',
+        'import/no-unresolved': 'off',
+        '@typescript-eslint/ban-ts-comment': 'off',
+        'no-use-before-define': ['error', { functions: false, classes: false }],
+        'no-restricted-syntax': 'off',
+      },
+    },
+  ],
 };

@@ -16,8 +16,7 @@
         <nav class="sidebar-nav">
           <navigation :active-item="activeItem" />
         </nav>
-
-      </aside>
+</aside>
 
       <!-- ─── Main ─── -->
       <div class="app-main">
@@ -57,7 +56,7 @@
               v-if="profile.username"
               type="button"
               class="topbar-user-btn"
-              @click="(e) => $refs.userMenu.show(e)"
+              @click="(e) => userMenuRef.show(e)"
             >
               <PvAvatar
                 :label="profile.username[0].toUpperCase()"
@@ -68,7 +67,7 @@
               <span class="topbar-username">{{ profile.username }}</span>
               <i class="pi pi-chevron-down topbar-chevron" />
             </button>
-            <PvMenu ref="userMenu" :model="userMenuItems" popup />
+            <PvMenu ref="userMenuRef" :model="userMenuItems" popup />
           </div>
         </header>
 
@@ -118,109 +117,91 @@
   </div>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, computed, watch, onMounted,
+} from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { uris } from './constants';
 import { useMainStore } from './store';
 import { setToastInstance, setConfirmInstance } from './toastService';
+import { useGlobal } from './composables/useGlobal';
 import Navigation from './components/Navigation.vue';
 
-export default {
-  name: 'App',
-  components: { Navigation },
+setToastInstance(useToast());
+setConfirmInstance(useConfirm());
 
-  setup() {
-    setToastInstance(useToast());
-    setConfirmInstance(useConfirm());
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const { serverConfig, profile } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      isLoaded: false,
-      isDark: false,
-      sidebarCollapsed: window.innerWidth < 992,
-      activeItem: {},
-    };
-  },
+const isLoaded = ref(false);
+const isDark = ref(false);
+const sidebarCollapsed = ref(window.innerWidth < 992);
+const activeItem = ref<Record<string, boolean>>({});
+const userMenuRef = ref<any>(null);
 
-  computed: {
-    ...mapState(useMainStore, ['serverConfig', 'profile']),
+const userMenuItems = computed(() => [
+  { label: t('users.profile'), icon: 'pi pi-user', command: () => router.push('/user/profile') },
+  { separator: true },
+  { label: t('users.logout'), icon: 'pi pi-sign-out', command: () => doLogout() },
+]);
 
-    userMenuItems() {
-      return [
-        {
-          label: this.$t('users.profile'),
-          icon: 'pi pi-user',
-          command: () => this.$router.push('/user/profile'),
-        },
-        { separator: true },
-        {
-          label: this.$t('users.logout'),
-          icon: 'pi pi-sign-out',
-          command: () => this.doLogout(),
-        },
-      ];
-    },
-  },
+function toggleDark() {
+  isDark.value = !isDark.value;
+  document.documentElement.classList.toggle('app-dark', isDark.value);
+}
 
-  watch: {
-    $route(to) {
-      this.activeItem = { [to.name]: true };
-      if (window.innerWidth < 992) this.sidebarCollapsed = true;
-    },
-  },
+function triggerRefresh() { useMainStore().refresh(); }
 
-  methods: {
-    toggleDark() {
-      this.isDark = !this.isDark;
-      document.documentElement.classList.toggle('app-dark', this.isDark);
-    },
+function doLogout() {
+  $api.logout().then(() => { document.location.href = uris.root; });
+}
 
-    triggerRefresh() {
-      useMainStore().refresh();
-    },
+function reloadApp() {
+  $api.reloadApp().then(() => {
+    $utils.toast('Reloading…');
+    const poll = setInterval(() => {
+      $api.getHealth().then(() => { clearInterval(poll); document.location.reload(); });
+    }, 500);
+  });
+}
 
-    doLogout() {
-      this.$api.logout().then(() => { document.location.href = uris.root; });
-    },
+function listenEvents() {
+  const re = /(.+?)\.go:\d+:(.+?)$/im;
+  const src = new EventSource(uris.errorEvents, { withCredentials: true });
+  let n = 0;
+  src.onmessage = (e) => {
+    if (n > 50) return;
+    n += 1;
+    const d = JSON.parse(e.data);
+    if (d?.type === 'error') {
+      const m = re.exec(d.message.trim());
+      if (m) $utils.toast(m[2], 'is-danger', null, true);
+    }
+  };
+}
 
-    reloadApp() {
-      this.$api.reloadApp().then(() => {
-        this.$utils.toast('Reloading…');
-        const poll = setInterval(() => {
-          this.$api.getHealth().then(() => { clearInterval(poll); document.location.reload(); });
-        }, 500);
-      });
-    },
+watch(() => route.name, (name) => {
+  activeItem.value = { [name as string]: true };
+  if (window.innerWidth < 992) sidebarCollapsed.value = true;
+});
 
-    listenEvents() {
-      const re = /(.+?)\.go:\d+:(.+?)$/im;
-      const src = new EventSource(uris.errorEvents, { withCredentials: true });
-      let n = 0;
-      src.onmessage = (e) => {
-        if (n > 50) return;
-        n += 1;
-        const d = JSON.parse(e.data);
-        if (d?.type === 'error') {
-          const m = re.exec(d.message.trim());
-          if (m) this.$utils.toast(m[2], 'is-danger', null, true);
-        }
-      };
-    },
-  },
-
-  mounted() {
-    this.isLoaded = true;
-    this.$api.getLists({ minimal: true, per_page: 'all', status: 'active' });
-    this.listenEvents();
-    this.activeItem = { [this.$route.name]: true };
-    window.addEventListener('resize', () => {
-      if (window.innerWidth >= 992) this.sidebarCollapsed = false;
-    });
-  },
-};
+onMounted(() => {
+  isLoaded.value = true;
+  $api.getLists({ minimal: true, per_page: 'all', status: 'active' });
+  listenEvents();
+  activeItem.value = { [route.name as string]: true };
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 992) sidebarCollapsed.value = false;
+  });
+});
 </script>
 
 <style lang="scss">

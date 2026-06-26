@@ -1,10 +1,9 @@
 import vue from '@vitejs/plugin-vue';
 import { defineConfig, loadEnv } from 'vite';
-
-const path = require('path');
+import { fileURLToPath, URL } from 'node:url';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ _, mode }) => {
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [vue()],
@@ -12,14 +11,14 @@ export default defineConfig(({ _, mode }) => {
     mode,
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
     build: {
       assetsDir: 'static',
     },
     server: {
-      port: env.LISTMONK_FRONTEND_PORT || 8080,
+      port: parseInt(env.LISTMONK_FRONTEND_PORT, 10) || 8080,
       proxy: {
         '^/$': {
           target: env.LISTMONK_API_URL || 'http://127.0.0.1:9000',
@@ -30,7 +29,7 @@ export default defineConfig(({ _, mode }) => {
         '^/admin/login': {
           target: env.LISTMONK_API_URL || 'http://127.0.0.1:9000',
         },
-        '^/(admin\/custom\.(css|js))': {
+        '^/(admin\\/custom\\.(css|js))': {
           target: env.LISTMONK_API_URL || 'http://127.0.0.1:9000',
         },
       },

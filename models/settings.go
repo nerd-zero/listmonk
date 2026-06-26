@@ -167,8 +167,9 @@ type Settings struct {
 	PublicCustomJS  string `json:"appearance.public.custom_js"`
 
 	Scrub struct {
-		Enabled bool   `json:"enabled"`
-		URL     string `json:"url"`
-		APIKey  string `json:"api_key"`
+		Enabled       bool   `json:"enabled"`
+		URL           string `json:"url"`
+		APIKey        string `json:"api_key"`
+		IntegrationID int    `json:"integration_id"`
 	} `json:"scrub"`
 }

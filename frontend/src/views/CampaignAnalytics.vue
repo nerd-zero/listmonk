@@ -64,277 +64,160 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import {
+  ref, reactive, computed, nextTick, onMounted,
+} from 'vue';
 import dayjs from 'dayjs';
-import { mapState } from 'pinia';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import { colors } from '../constants';
 import Chart from '../components/Chart.vue';
 
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const { serverConfig } = storeToRefs(useMainStore());
+
 const chartColorRed = '#ee7d5b';
-const chartColors = [
-  colors.primary,
-  '#FFB50D',
-  '#41AC9C',
-  chartColorRed,
-  '#7FC7BC',
-  '#3a82d6',
-  '#688ED9',
-  '#FFC43D',
-];
+const chartColors = [colors.primary, '#FFB50D', '#41AC9C', chartColorRed, '#7FC7BC', '#3a82d6', '#688ED9', '#FFC43D'];
 
-export default {
-  components: {
-    Chart,
-  },
+const isSearchLoading = ref(false);
+const queriedCampaigns = ref<any[]>([]);
+const urls = ref<string[]>([]);
+const counts = reactive({
+  views: 0, clicks: 0, bounces: 0, links: 0,
+});
+const form = reactive({ campaigns: [] as any[], from: null as any, to: null as any });
 
-  data() {
+function formatDateTime(s: any) { return dayjs(s).format('YYYY-MM-DD HH:mm'); }
+
+function onLinkClick(e: any) {
+  const bars = e.chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+  if (bars.length > 0) window.open(urls.value[bars[0].index], '_blank', 'noopener noreferrer');
+}
+
+function makeLinksChart(_typ: string, _camps: any[], data: any[]) {
+  const labels = data.map((l) => {
+    try {
+      urls.value.push(l.url);
+      const u = new URL(l.url);
+      return l.url.length > 80 ? `${u.hostname}${u.pathname.substr(0, 50)}..` : u.hostname + u.pathname;
+    } catch { return l.url; }
+  });
+  return { points: { labels, datasets: [{ data: data.map((l) => l.count), backgroundColor: chartColors }] }, donut: null };
+}
+
+function makeCharts(_typ: string, campaigns: any[], data: any[]) {
+  const camps = campaigns.reduce((obj: any, c: any) => ({ ...obj, [c.id]: c }), {});
+  const campIDs = Object.keys(camps);
+  const lines = campIDs.map((id, n) => {
+    const cId = parseInt(id, 10);
+    const points = data.filter((item) => item.campaignId === cId);
     return {
-      isSearchLoading: false,
-      queriedCampaigns: [],
-
-      // Data for each view.
-      counts: {
-        views: 0,
-        clicks: 0,
-        bounces: 0,
-        links: 0,
-      },
-      urls: [],
-      charts: {
-        views: {
-          name: this.$t('campaigns.views'),
-          type: 'line',
-          data: null,
-          fn: this.$api.getCampaignViewCounts,
-          chartFn: this.makeCharts,
-          loading: false,
-        },
-
-        clicks: {
-          name: this.$t('campaigns.clicks'),
-          type: 'line',
-          data: null,
-          fn: this.$api.getCampaignClickCounts,
-          chartFn: this.makeCharts,
-          loading: false,
-        },
-
-        bounces: {
-          name: this.$t('globals.terms.bounces'),
-          type: 'line',
-          data: null,
-          fn: this.$api.getCampaignBounceCounts,
-          chartFn: this.makeCharts,
-          donutColor: chartColorRed,
-          loading: false,
-        },
-
-        links: {
-          name: this.$t('analytics.links'),
-          type: 'bar',
-          data: null,
-          loading: false,
-          fn: this.$api.getCampaignLinkCounts,
-          chartFn: this.makeLinksChart,
-          onClick: this.onLinkClick,
-        },
-      },
-
-      form: {
-        campaigns: [],
-        from: null,
-        to: null,
-      },
+      label: camps[id].name,
+      data: points.map((item: any) => ({ x: formatDateTime(item.timestamp), y: item.count })),
+      borderColor: chartColors[n % chartColors.length],
+      borderWidth: 2,
+      pointHoverBorderWidth: 5,
+      pointBorderWidth: 0.5,
     };
+  });
+  const labels: string[] = [];
+  const points = campIDs.map((id) => {
+    labels.push(camps[id].name);
+    const cId = parseInt(id, 10);
+    return data.reduce((a: number, item: any) => (item.campaignId === cId ? a + item.count : a), 0);
+  });
+  return { points: { datasets: lines }, donut: { labels, datasets: [{ data: points, backgroundColor: chartColors, borderWidth: 6 }] } };
+}
+
+const charts = reactive<Record<string, any>>({
+  views: {
+    name: '', type: 'line', data: null, loading: false, apiFn: 'getCampaignViewCounts', chartFnName: 'makeCharts',
   },
+  clicks: {
+    name: '', type: 'line', data: null, loading: false, apiFn: 'getCampaignClickCounts', chartFnName: 'makeCharts',
+  },
+  bounces: {
+    name: '', type: 'line', data: null, loading: false, donutColor: chartColorRed, apiFn: 'getCampaignBounceCounts', chartFnName: 'makeCharts',
+  },
+  links: {
+    name: '', type: 'bar', data: null, loading: false, apiFn: 'getCampaignLinkCounts', chartFnName: 'makeLinksChart', onClick: onLinkClick,
+  },
+});
 
-  methods: {
-    onFromDateChange() {
-      if (this.form.from > this.form.to) {
-        this.form.to = dayjs(this.form.from).add(7, 'day').toDate();
-      }
-    },
+const hasChartData = computed(() => Object.values(charts).some((c) => c.data !== null || c.loading));
 
-    onToDateChange() {
-      if (this.form.from > this.form.to) {
-        this.form.from = dayjs(this.form.to).add(-7, 'day').toDate();
-      }
-    },
+function getData(typ: string, camps: any[]) {
+  charts[typ].loading = true;
+  $api[charts[typ].apiFn]({ id: camps.map((c: any) => c.id), from: form.from, to: form.to }).then((data: any) => {
+    (counts as any)[typ] = data.reduce((sum: number, d: any) => sum + d.count, 0);
+    const chartFn = charts[typ].chartFnName === 'makeCharts' ? makeCharts : makeLinksChart;
+    const { points, donut } = chartFn(typ, camps, data);
+    charts[typ].data = points;
+    charts[typ].donutData = donut;
+    charts[typ].loading = false;
+  });
+}
 
-    formatDateTime(s) {
-      return dayjs(s).format('YYYY-MM-DD HH:mm');
-    },
+function onFromDateChange() {
+  if (form.from > form.to) form.to = dayjs(form.from).add(7, 'day').toDate();
+}
 
-    isCampaignSelected(camp) {
-      return !this.form.campaigns.find(({ id }) => id === camp.id);
-    },
+function onToDateChange() {
+  if (form.from > form.to) form.from = dayjs(form.to).add(-7, 'day').toDate();
+}
 
-    makeLinksChart(typ, camps, data) {
-      const labels = data.map((l) => {
-        try {
-          this.urls.push(l.url);
-          const u = new URL(l.url);
-          if (l.url.length > 80) {
-            return `${u.hostname}${u.pathname.substr(0, 50)}..`;
-          }
-          return u.hostname + u.pathname;
-        } catch {
-          return l.url;
-        }
+function queryCampaigns(q: string) {
+  isSearchLoading.value = true;
+  $api.getCampaigns({ query: q, order_by: 'created_at', order: 'DESC' }).then((data: any) => {
+    isSearchLoading.value = false;
+    queriedCampaigns.value = data.results.map((c: any) => ({ ...c, name: `#${c.id}: ${c.name}` }));
+  });
+}
+
+function onSubmit() {
+  router.push({ query: { id: form.campaigns.map((c: any) => c.id), from: dayjs(form.from).unix(), to: dayjs(form.to).unix() } });
+}
+
+onMounted(() => {
+  const { t: tFn } = { t };
+  charts.views.name = t('campaigns.views');
+  charts.clicks.name = t('campaigns.clicks');
+  charts.bounces.name = t('globals.terms.bounces');
+  charts.links.name = t('analytics.links');
+
+  const now = dayjs().set('hour', 23).set('minute', 59).set('seconds', 0);
+  const weekAgo = now.subtract(7, 'day').set('hour', 0).set('minute', 0);
+  form.from = (route.query.from ? dayjs.unix(Number(route.query.from)) : weekAgo).toDate();
+  form.to = (route.query.to ? dayjs.unix(Number(route.query.to)) : now).toDate();
+
+  const ids = $utils.parseQueryIDs(route.query.id);
+  if (ids.length > 0) {
+    isSearchLoading.value = true;
+    Promise.allSettled(ids.map((id: number) => $api.getCampaign(id))).then((data: any[]) => {
+      data.forEach((d) => {
+        if (d.status !== 'fulfilled') return;
+        const camp = d.value;
+        camp.name = `#${camp.id}: ${camp.name}`;
+        form.campaigns.push(camp);
       });
-
-      const out = {
-        labels,
-        datasets: [
-          {
-            data: data.map((l) => l.count),
-            backgroundColor: chartColors,
-          }],
-      };
-
-      return { points: out, donut: null };
-    },
-
-    makeCharts(typ, campaigns, data) {
-      // Make a campaign id => camp lookup map to group incoming
-      // data by campaigns.
-      const camps = campaigns.reduce((obj, c) => {
-        const out = { ...obj };
-        out[c.id] = c;
-        return out;
-      }, {});
-      const campIDs = Object.keys(camps);
-      // datasets[] array for line chart.
-      const lines = campIDs.map((id, n) => {
-        const cId = parseInt(id, 10);
-        const points = data.filter((item) => item.campaignId === cId);
-
-        return {
-          label: camps[id].name,
-          data: points.map((item) => ({ x: this.formatDateTime(item.timestamp), y: item.count })),
-          borderColor: chartColors[n % chartColors.length],
-          borderWidth: 2,
-          pointHoverBorderWidth: 5,
-          pointBorderWidth: 0.5,
-        };
-      });
-
-      // Donut.
-      const labels = [];
-      const points = campIDs.map((id) => {
-        labels.push(camps[id].name);
-        const cId = parseInt(id, 10);
-        const sum = data.reduce((a, item) => (item.campaignId === cId ? a + item.count : a), 0);
-        return sum;
-      });
-
-      const donut = {
-        labels,
-        datasets: [{
-          data: points, backgroundColor: chartColors, borderWidth: 6,
-        }],
-      };
-      return { points: { datasets: lines }, donut };
-    },
-
-    onSubmit() {
-      this.$router.push({ query: { id: this.form.campaigns.map((c) => c.id), from: dayjs(this.form.from).unix(), to: dayjs(this.form.to).unix() } });
-    },
-
-    queryCampaigns(q) {
-      this.isSearchLoading = true;
-      this.$api.getCampaigns({
-        query: q,
-        order_by: 'created_at',
-        order: 'DESC',
-      }).then((data) => {
-        this.isSearchLoading = false;
-        this.queriedCampaigns = data.results.map((c) => {
-          // Change the name to include the ID in the auto-suggest results.
-          const camp = c;
-          camp.name = `#${c.id}: ${c.name}`;
-          return camp;
+      nextTick(() => {
+        isSearchLoading.value = false;
+        Object.keys(charts).forEach((k) => {
+          charts[k].data = null;
+          charts[k].donutData = null;
+          getData(k, form.campaigns);
         });
       });
-    },
-
-    getData(typ, camps) {
-      this.charts[typ].loading = true;
-      // Call the HTTP API.
-      this.charts[typ].fn({
-        id: camps.map((c) => c.id),
-        from: this.form.from,
-        to: this.form.to,
-      }).then((data) => {
-        // Set the total count.
-        this.counts[typ] = data.reduce((sum, d) => sum + d.count, 0);
-
-        const { points, donut } = this.charts[typ].chartFn(typ, camps, data);
-        this.charts[typ].data = points;
-        this.charts[typ].donutData = donut;
-        this.charts[typ].loading = false;
-      });
-    },
-
-    onLinkClick(e) {
-      const bars = e.chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
-      if (bars.length > 0) {
-        window.open(this.urls[bars[0].index], '_blank', 'noopener noreferrer');
-      }
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['serverConfig']),
-
-    hasChartData() {
-      return Object.values(this.charts).some((c) => c.data !== null || c.loading);
-    },
-  },
-
-  created() {
-    const now = dayjs().set('hour', 23).set('minute', 59).set('seconds', 0);
-    const weekAgo = now.subtract(7, 'day').set('hour', 0).set('minute', 0);
-    const from = this.$route.query.from ? dayjs.unix(this.$route.query.from) : weekAgo;
-    const to = this.$route.query.to ? dayjs.unix(this.$route.query.to) : now;
-    this.form.from = from.toDate();
-    this.form.to = to.toDate();
-  },
-
-  mounted() {
-    // Fetch one or more campaigns if there are ?id params, wait for the fetches
-    // to finish, add them to the campaign selector and submit the form.
-    const ids = this.$utils.parseQueryIDs(this.$route.query.id);
-    if (ids.length > 0) {
-      this.isSearchLoading = true;
-      Promise.allSettled(ids.map((id) => this.$api.getCampaign(id))).then((data) => {
-        data.forEach((d) => {
-          if (d.status !== 'fulfilled') {
-            return;
-          }
-
-          const camp = d.value;
-          camp.name = `#${camp.id}: ${camp.name}`;
-          this.form.campaigns.push(camp);
-        });
-
-        this.$nextTick(() => {
-          this.isSearchLoading = false;
-
-          // Fetch count for each analytics type (views, counts, bounces);
-          Object.keys(this.charts).forEach((k) => {
-            this.charts[k].data = null;
-            this.charts[k].donutData = null;
-
-            // Fetch views, clicks, bounces for every campaign.
-            this.getData(k, this.form.campaigns);
-          });
-        });
-      });
-    }
-  },
-};
+    });
+  }
+});
 </script>
 
 <style scoped lang="scss">
@@ -350,7 +233,7 @@ export default {
 .analytics-filters { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--lm-bg-subtle); }
 .filter-form { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
 .filter-field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 180px; }
-.filter-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+.filter-label { font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
 .filter-action { padding-bottom: 0; align-self: flex-end; }
 
 .charts-section { display: flex; flex-direction: column; }

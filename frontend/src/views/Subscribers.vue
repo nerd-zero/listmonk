@@ -202,361 +202,245 @@
   </div>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, watch, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import { uris } from '../constants';
 import SubscriberBulkList from './SubscriberBulkList.vue';
 import SubscriberForm from './SubscriberForm.vue';
 import CopyText from '../components/CopyText.vue';
 
-export default {
-  components: {
-    SubscriberForm,
-    SubscriberBulkList,
-    CopyText,
-    EmptyPlaceholder,
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const {
+  refreshTick, subscribers, lists, loading,
+} = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      // Current subscriber item being edited.
-      curItem: null,
-      isSearchAdvanced: false,
-      isEditing: false,
-      isFormVisible: false,
-      isBulkListFormVisible: false,
+const curItem = ref<any>(null);
+const isSearchAdvanced = ref(false);
+const isEditing = ref(false);
+const isFormVisible = ref(false);
+const isBulkListFormVisible = ref(false);
+const queryEl = ref<any>(null);
+const bulk = reactive({ checked: [] as any[], all: false });
+const queryInput = ref('');
+const queryParams = reactive({
+  queryExp: '',
+  search: '',
+  listID: null as number | null,
+  page: 1,
+  orderBy: 'id',
+  order: 'desc',
+  subStatus: null as string | null,
+});
 
-      // Table bulk row selection states.
-      bulk: {
-        checked: [],
-        all: false,
-      },
+const numSelectedSubscribers = computed(() => (bulk.all ? (subscribers.value as any).total : bulk.checked.length));
 
-      queryInput: '',
+const currentList = computed(() => {
+  if (!queryParams.listID || !(lists.value as any).results) return null;
+  return (lists.value as any).results.find((l: any) => l.id === queryParams.listID);
+});
 
-      // Query params to filter the getSubscribers() API call.
-      queryParams: {
-        // Search query expression.
-        queryExp: '',
-        search: '',
+function listCount(ls: any[]) {
+  return ls.reduce((n: number, item: any) => n + (item.subscriptionStatus !== 'unsubscribed' ? 1 : 0), 0);
+}
 
-        // ID of the list the current subscriber view is filtered by.
-        listID: null,
-        page: 1,
-        orderBy: 'id',
-        order: 'desc',
-        subStatus: null,
-      },
-    };
-  },
-
-  methods: {
-    // Count the lists from which a subscriber has not unsubscribed.
-    listCount(lists) {
-      return lists.reduce((defVal, item) => (defVal + (item.subscriptionStatus !== 'unsubscribed' ? 1 : 0)), 0);
-    },
-
-    toggleAdvancedSearch() {
-      this.isSearchAdvanced = !this.isSearchAdvanced;
-      this.queryParams.search = '';
-
-      // Toggling to simple search.
-      if (!this.isSearchAdvanced) {
-        this.queryInput = '';
-        this.queryParams.queryExp = '';
-        this.queryParams.page = 1;
-        this.querySubscribers();
-        this.$refs.query.$el.focus();
-        return;
-      }
-
-      // Toggling to advanced search.
-      const q = this.queryInput.replace(/'/, "''").trim();
-      if (q) {
-        if (this.$utils.validateEmail(q)) {
-          this.queryParams.queryExp = `email = '${q.toLowerCase()}'`;
-        } else {
-          this.queryParams.queryExp = `(name ~* '${q}' OR email ~* '${q.toLowerCase()}')`;
-        }
-      }
-
-      // Toggling to advanced search.
-      this.$nextTick(() => {
-        this.$refs.queryExp.$el.focus();
-      });
-    },
-
-    // Mark all subscribers in the query as selected.
-    selectAllSubscribers() {
-      this.bulk.all = true;
-    },
-
-    onTableCheck() {
-      // Disable bulk.all selection if there are no rows checked in the table.
-      if (this.bulk.checked.length !== this.subscribers.total) {
-        this.bulk.all = false;
-      }
-    },
-
-    // Show the edit list form.
-    showEditForm(sub) {
-      this.curItem = sub;
-      this.isFormVisible = true;
-      this.isEditing = true;
-    },
-
-    // Show the new list form.
-    showNewForm() {
-      this.curItem = {};
-      this.isFormVisible = true;
-      this.isEditing = false;
-    },
-
-    showBulkListForm() {
-      this.isBulkListFormVisible = true;
-    },
-
-    onFormClose() {
-      if (this.$route.params.id) {
-        this.$router.push({ name: 'subscribers' });
-      }
-    },
-
-    onPageChange(p) {
-      this.querySubscribers({ page: p });
-    },
-
-    onSort(field, direction) {
-      this.querySubscribers({ orderBy: field, order: direction });
-    },
-
-    // Prepares an SQL expression for simple name search inputs and saves it
-    // in this.queryExp.
-    onSimpleQueryInput(v) {
-      const q = v.replace(/'/, "''").trim();
-      this.queryParams.queryExp = '';
-      this.queryParams.page = 1;
-      this.queryParams.search = q.toLowerCase();
-    },
-
-    // Ctrl + Enter on the advanced query searches.
-    onAdvancedQueryEnter(e) {
-      if (e.ctrlKey && e.key === 'Enter') {
-        this.onSubmit();
-      }
-    },
-
-    onSubmit() {
-      this.querySubscribers({ page: 1 });
-    },
-
-    // Search / query subscribers.
-    querySubscribers(params) {
-      this.queryParams = { ...this.queryParams, ...params };
-
-      const qp = {
-        list_id: this.queryParams.listID,
-        search: this.queryParams.search,
-        query: this.queryParams.queryExp,
-        page: this.queryParams.page,
-        subscription_status: this.queryParams.subStatus,
-        order_by: this.queryParams.orderBy,
-        order: this.queryParams.order,
-      };
-
-      if (this.queryParams.queryExp) {
-        delete qp.search;
-      } else {
-        delete qp.queryExp;
-      }
-
-      this.$nextTick(() => {
-        this.$api.getSubscribers(qp).then(() => {
-          this.bulk.checked = [];
-        });
-      });
-    },
-
-    deleteSubscriber(sub) {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteSubscriber(sub.id).then(() => {
-            this.querySubscribers();
-
-            this.$utils.toast(this.$t('globals.messages.deleted', { name: sub.name }));
-          });
-        },
-      );
-    },
-
-    blocklistSubscribers() {
-      let fn = null;
-      if (!this.bulk.all && this.bulk.checked.length > 0) {
-        // If 'all' is not selected, blocklist subscribers by IDs.
-        fn = () => {
-          const ids = this.bulk.checked.map((s) => s.id);
-          this.$api.blocklistSubscribers({ ids })
-            .then(() => this.querySubscribers());
-        };
-      } else {
-        // 'All' is selected, blocklist by query.
-        fn = () => {
-          this.$api.blocklistSubscribersByQuery({
-            search: this.queryParams.search,
-            query: this.queryParams.queryExp,
-            list_ids: this.queryParams.listID ? [this.queryParams.listID] : null,
-            subscription_status: this.queryParams.subStatus,
-          }).then(() => this.querySubscribers());
-        };
-      }
-
-      this.$utils.confirm(this.$t('subscribers.confirmBlocklist', { num: this.numSelectedSubscribers }), fn);
-    },
-
-    exportSubscribers() {
-      const num = !this.bulk.all && this.bulk.checked.length > 0
-        ? this.bulk.checked.length : this.subscribers.total;
-
-      this.$utils.confirm(this.$t('subscribers.confirmExport', { num }), () => {
-        const q = new URLSearchParams();
-
-        if (this.queryParams.search) {
-          q.append('search', this.queryParams.search);
-        } else if (this.queryParams.queryExp) {
-          q.append('query', this.queryParams.queryExp);
-        }
-
-        if (this.queryParams.listID) {
-          q.append('list_id', this.queryParams.listID);
-        }
-
-        if (this.queryParams.subStatus) {
-          q.append('subscription_status', this.queryParams.subStatus);
-        }
-
-        // Export selected subscribers.
-        if (!this.bulk.all && this.bulk.checked.length > 0) {
-          this.bulk.checked.map((s) => q.append('id', s.id));
-        }
-
-        document.location.href = `${uris.exportSubscribers}?${q.toString()}`;
-      });
-    },
-
-    deleteSubscribers() {
-      let fn = null;
-      if (!this.bulk.all && this.bulk.checked.length > 0) {
-        // If 'all' is not selected, delete subscribers by IDs.
-        fn = () => {
-          const ids = this.bulk.checked.map((s) => s.id);
-          this.$api.deleteSubscribers({ id: ids })
-            .then(() => {
-              this.querySubscribers();
-
-              this.$utils.toast(this.$t('subscribers.subscribersDeleted', { num: this.numSelectedSubscribers }));
-            });
-        };
-      } else {
-        // 'All' is selected, delete by query.
-        fn = () => {
-          this.$api.deleteSubscribersByQuery({
-            // If the query expression is empty, explicitly pass `all=true`
-            // so that the backend deletes all records in the DB with an empty query string.
-            all: this.queryParams.queryExp.trim() === '' && this.queryParams.search.trim() === '',
-            search: this.queryParams.search,
-            query: this.queryParams.queryExp,
-            list_ids: this.queryParams.listID ? [this.queryParams.listID] : null,
-            subscription_status: this.queryParams.subStatus,
-          }).then(() => {
-            this.querySubscribers();
-
-            this.$utils.toast(this.$t(
-              'subscribers.subscribersDeleted',
-              { num: this.numSelectedSubscribers },
-            ));
-          });
-        };
-      }
-
-      this.$utils.confirm(this.$t('subscribers.confirmDelete', { num: this.numSelectedSubscribers }), fn);
-    },
-
-    bulkChangeLists(action, preconfirm, lists) {
-      const data = {
-        action,
-        query: this.fullQueryExp,
-        search: this.queryParams.search,
-        list_ids: this.queryParams.listID ? [this.queryParams.listID] : null,
-        target_list_ids: lists.map((l) => l.id),
-      };
-
-      if (preconfirm) {
-        data.status = 'confirmed';
-      }
-
-      let fn = null;
-      if (!this.bulk.all && this.bulk.checked.length > 0) {
-        // If 'all' is not selected, perform by IDs.
-        fn = this.$api.addSubscribersToLists;
-        data.ids = this.bulk.checked.map((s) => s.id);
-      } else {
-        // 'All' is selected, perform by query.
-        data.query = this.queryParams.queryExp;
-        data.subscription_status = this.queryParams.subStatus;
-        fn = this.$api.addSubscribersToListsByQuery;
-      }
-
-      fn(data).then(() => {
-        this.querySubscribers();
-        this.$utils.toast(this.$t('subscribers.listChangeApplied'));
-      });
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'subscribers', 'lists', 'loading']),
-
-    numSelectedSubscribers() {
-      if (this.bulk.all) {
-        return this.subscribers.total;
-      }
-      return this.bulk.checked.length;
-    },
-
-    // Returns the list that the subscribers are being filtered by in.
-    currentList() {
-      if (!this.queryParams.listID || !this.lists.results) {
-        return null;
-      }
-
-      return this.lists.results.find((l) => l.id === this.queryParams.listID);
-    },
-  },
-
-  watch: {
-    refreshTick() { this.querySubscribers(); },
-  },
-
-  mounted() {
-    if (this.$route.params.listID) {
-      this.queryParams.listID = parseInt(this.$route.params.listID, 10);
-    }
-    if (this.$route.query.subscription_status) {
-      this.queryParams.subStatus = this.$route.query.subscription_status;
-    }
-
-    if (this.$route.params.id) {
-      this.$api.getSubscriber(parseInt(this.$route.params.id, 10)).then((data) => {
-        this.showEditForm(data);
-      });
+function toggleAdvancedSearch() {
+  isSearchAdvanced.value = !isSearchAdvanced.value;
+  queryParams.search = '';
+  if (!isSearchAdvanced.value) {
+    queryInput.value = '';
+    queryParams.queryExp = '';
+    queryParams.page = 1;
+    querySubscribers();
+    nextTick(() => { queryEl.value?.$el?.focus(); });
+    return;
+  }
+  const q = queryInput.value.replace(/'/, "''").trim();
+  if (q) {
+    if ($utils.validateEmail(q)) {
+      queryParams.queryExp = `email = '${q.toLowerCase()}'`;
     } else {
-      this.querySubscribers();
+      queryParams.queryExp = `(name ~* '${q}' OR email ~* '${q.toLowerCase()}')`;
     }
-  },
-};
+  }
+}
+
+function selectAllSubscribers() { bulk.all = true; }
+
+function onTableCheck() {
+  if (bulk.checked.length !== (subscribers.value as any).total) bulk.all = false;
+}
+
+function showEditForm(sub: any) {
+  curItem.value = sub;
+  isFormVisible.value = true;
+  isEditing.value = true;
+}
+
+function showNewForm() {
+  curItem.value = {};
+  isFormVisible.value = true;
+  isEditing.value = false;
+}
+
+function showBulkListForm() { isBulkListFormVisible.value = true; }
+
+function onFormClose() {
+  if (route.params.id) router.push({ name: 'subscribers' });
+}
+
+function onPageChange(p: number) { querySubscribers({ page: p }); }
+function onSort(field: string, direction: string) { querySubscribers({ orderBy: field, order: direction }); }
+
+function onSimpleQueryInput(v: any) {
+  const q = (v.target ? v.target.value : v).replace(/'/, "''").trim();
+  queryParams.queryExp = '';
+  queryParams.page = 1;
+  queryParams.search = q.toLowerCase();
+}
+
+function onAdvancedQueryEnter(e: KeyboardEvent) {
+  if (e.ctrlKey && e.key === 'Enter') onSubmit();
+}
+
+function onSubmit() { querySubscribers({ page: 1 }); }
+
+function querySubscribers(params?: any) {
+  if (params) Object.assign(queryParams, params);
+  const qp: any = {
+    list_id: queryParams.listID,
+    search: queryParams.search,
+    query: queryParams.queryExp,
+    page: queryParams.page,
+    subscription_status: queryParams.subStatus,
+    order_by: queryParams.orderBy,
+    order: queryParams.order,
+  };
+  if (queryParams.queryExp) {
+    delete qp.search;
+  } else {
+    delete qp.query;
+  }
+  nextTick(() => {
+    $api.getSubscribers(qp).then(() => { bulk.checked = []; });
+  });
+}
+
+function deleteSubscriber(sub: any) {
+  $utils.confirm(null, () => {
+    $api.deleteSubscriber(sub.id).then(() => {
+      querySubscribers();
+      $utils.toast(t('globals.messages.deleted', { name: sub.name }));
+    });
+  });
+}
+
+function blocklistSubscribers() {
+  let fn: () => void;
+  if (!bulk.all && bulk.checked.length > 0) {
+    fn = () => {
+      const ids = bulk.checked.map((s: any) => s.id);
+      $api.blocklistSubscribers({ ids }).then(() => querySubscribers());
+    };
+  } else {
+    fn = () => {
+      $api.blocklistSubscribersByQuery({
+        search: queryParams.search,
+        query: queryParams.queryExp,
+        list_ids: queryParams.listID ? [queryParams.listID] : null,
+        subscription_status: queryParams.subStatus,
+      }).then(() => querySubscribers());
+    };
+  }
+  $utils.confirm(t('subscribers.confirmBlocklist', { num: numSelectedSubscribers.value }), fn);
+}
+
+function exportSubscribers() {
+  const num = !bulk.all && bulk.checked.length > 0 ? bulk.checked.length : (subscribers.value as any).total;
+  $utils.confirm(t('subscribers.confirmExport', { num }), () => {
+    const q = new URLSearchParams();
+    if (queryParams.search) q.append('search', queryParams.search);
+    else if (queryParams.queryExp) q.append('query', queryParams.queryExp);
+    if (queryParams.listID) q.append('list_id', String(queryParams.listID));
+    if (queryParams.subStatus) q.append('subscription_status', queryParams.subStatus);
+    if (!bulk.all && bulk.checked.length > 0) {
+      bulk.checked.forEach((s: any) => q.append('id', s.id));
+    }
+    document.location.href = `${uris.exportSubscribers}?${q.toString()}`;
+  });
+}
+
+function deleteSubscribers() {
+  let fn: () => void;
+  if (!bulk.all && bulk.checked.length > 0) {
+    fn = () => {
+      const ids = bulk.checked.map((s: any) => s.id);
+      $api.deleteSubscribers({ id: ids }).then(() => {
+        querySubscribers();
+        $utils.toast(t('subscribers.subscribersDeleted', { num: numSelectedSubscribers.value }));
+      });
+    };
+  } else {
+    fn = () => {
+      $api.deleteSubscribersByQuery({
+        all: queryParams.queryExp.trim() === '' && queryParams.search.trim() === '',
+        search: queryParams.search,
+        query: queryParams.queryExp,
+        list_ids: queryParams.listID ? [queryParams.listID] : null,
+        subscription_status: queryParams.subStatus,
+      }).then(() => {
+        querySubscribers();
+        $utils.toast(t('subscribers.subscribersDeleted', { num: numSelectedSubscribers.value }));
+      });
+    };
+  }
+  $utils.confirm(t('subscribers.confirmDelete', { num: numSelectedSubscribers.value }), fn);
+}
+
+function bulkChangeLists(action: string, preconfirm: boolean, listItems: any[]) {
+  const data: any = {
+    action,
+    search: queryParams.search,
+    list_ids: queryParams.listID ? [queryParams.listID] : null,
+    target_list_ids: listItems.map((l: any) => l.id),
+  };
+  if (preconfirm) data.status = 'confirmed';
+  let fn: any;
+  if (!bulk.all && bulk.checked.length > 0) {
+    fn = $api.addSubscribersToLists;
+    data.ids = bulk.checked.map((s: any) => s.id);
+  } else {
+    fn = $api.addSubscribersToListsByQuery;
+    data.query = queryParams.queryExp;
+    data.subscription_status = queryParams.subStatus;
+  }
+  fn(data).then(() => {
+    querySubscribers();
+    $utils.toast(t('subscribers.listChangeApplied'));
+  });
+}
+
+watch(() => refreshTick.value, () => { querySubscribers(); });
+
+onMounted(() => {
+  if (route.params.listID) queryParams.listID = parseInt(route.params.listID as string, 10);
+  if (route.query.subscription_status) queryParams.subStatus = route.query.subscription_status as string;
+  if (route.params.id) {
+    $api.getSubscriber(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
+  } else {
+    querySubscribers();
+  }
+});
 </script>
 
 <style scoped lang="scss">
@@ -605,6 +489,19 @@ export default {
   color: var(--lm-text-muted); border-color: var(--lm-border);
   &--danger { color: var(--lm-danger); border-color: var(--lm-danger-border); &:hover { background: var(--lm-danger-bg); } }
   &--warn { color: var(--lm-warn); border-color: var(--lm-warn-border); &:hover { background: var(--lm-warn-bg); } }
+}
+
+// Make secondary PvTags visible
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+
+.toolbar-btn:hover {
+  background: var(--lm-bg-subtle);
+  border-color: var(--lm-text-muted);
+  color: var(--lm-text);
 }
 
 // Row cells

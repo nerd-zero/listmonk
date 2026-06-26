@@ -25,6 +25,7 @@
       </div>
 
       <!-- Subscriptions -->
+
       <div class="maint-card">
         <div class="maint-card-header">
           <i class="pi pi-list maint-icon" />
@@ -122,134 +123,99 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
 import dayjs from 'dayjs';
-import { mapState } from 'pinia';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 
-export default {
-  components: {
-  },
+const { $api, $utils } = useGlobal();
+const { t, tc } = useI18n();
+const { loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      isLoading: false,
-      subscriberType: 'orphan',
-      analyticsType: 'all',
-      subscriptionType: 'optin',
-      analyticsDate: dayjs().subtract(7, 'day').toDate(),
-      subscriptionDate: dayjs().subtract(7, 'day').toDate(),
-      exportType: 'views',
-      exportDate: dayjs().subtract(30, 'day').toDate(),
-      dbSettings: {
-        vacuum: false,
-        vacuum_cron_interval: '0 2 * * *',
-      },
-    };
-  },
+const isLoading = ref(false);
+const subscriberType = ref('orphan');
+const analyticsType = ref('all');
+const subscriptionType = ref('optin');
+const analyticsDate = ref(dayjs().subtract(7, 'day').toDate());
+const subscriptionDate = ref(dayjs().subtract(7, 'day').toDate());
+const exportType = ref('views');
+const exportDate = ref(dayjs().subtract(30, 'day').toDate());
+const dbSettings = ref({ vacuum: false, vacuum_cron_interval: '0 2 * * *' });
 
-  mounted() {
-    this.loadDBSettings();
-  },
+const exportURL = computed(() => {
+  const since = encodeURIComponent(dayjs(exportDate.value).toISOString());
+  return `/api/maintenance/analytics/${exportType.value}/export?since=${since}`;
+});
 
-  methods: {
-    formatDateTime(s) {
-      return dayjs(s).format('YYYY-MM-DD');
-    },
+const subscriberTypeOptions = computed(() => [
+  { label: t('dashboard.orphanSubs'), value: 'orphan' },
+  { label: t('subscribers.status.blocklisted'), value: 'blocklisted' },
+]);
 
-    deleteSubscribers() {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteGCSubscribers(this.subscriberType).then((data) => {
-            this.$utils.toast(this.$t(
-              'globals.messages.deletedCount',
-              { name: this.$tc('globals.terms.subscribers', 2), num: data.count },
-            ));
-          });
-        },
-      );
-    },
+const subscriptionTypeOptions = computed(() => [
+  { label: t('maintenance.maintenance.unconfirmedOptins'), value: 'optin' },
+]);
 
-    deleteSubscriptions() {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteGCSubscriptions(this.subscriptionDate).then((data) => {
-            this.$utils.toast(this.$t(
-              'globals.messages.deletedCount',
-              { name: this.$tc('globals.terms.subscriptions', 2), num: data.count },
-            ));
-          });
-        },
-      );
-    },
+const analyticsTypeOptions = computed(() => [
+  { label: t('globals.terms.all'), value: 'all' },
+  { label: t('dashboard.campaignViews'), value: 'views' },
+  { label: t('dashboard.linkClicks'), value: 'clicks' },
+]);
 
-    deleteAnalytics() {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteGCCampaignAnalytics(this.analyticsType, this.analyticsDate)
-            .then(() => {
-              this.$utils.toast(this.$t('globals.messages.done'));
-            });
-        },
-      );
-    },
+const exportTypeOptions = computed(() => [
+  { label: t('dashboard.campaignViews'), value: 'views' },
+  { label: t('dashboard.linkClicks'), value: 'clicks' },
+]);
 
-    loadDBSettings() {
-      this.$api.getSettings().then((data) => {
-        if (data['maintenance.db'] !== undefined) {
-          this.dbSettings = { ...data['maintenance.db'] };
-        }
-      });
-    },
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function formatDateTime(s: any) { return dayjs(s).format('YYYY-MM-DD'); }
 
-    async onUpdateDBSettings() {
-      this.isLoading = true;
-      const data = await this.$api.updateSettingsByKey('maintenance.db', this.dbSettings);
-      await this.$root.awaitRestart(data);
-      this.isLoading = false;
-    },
-  },
+function deleteSubscribers() {
+  $utils.confirm(null, () => {
+    $api.deleteGCSubscribers(subscriberType.value).then((data: any) => {
+      $utils.toast(t('globals.messages.deletedCount', { name: tc('globals.terms.subscribers', 2), num: data.count }));
+    });
+  });
+}
 
-  computed: {
-    ...mapState(useMainStore, ['loading']),
+function deleteSubscriptions() {
+  $utils.confirm(null, () => {
+    $api.deleteGCSubscriptions(subscriptionDate.value).then((data: any) => {
+      $utils.toast(t('globals.messages.deletedCount', { name: tc('globals.terms.subscriptions', 2), num: data.count }));
+    });
+  });
+}
 
-    exportURL() {
-      const since = encodeURIComponent(dayjs(this.exportDate).toISOString());
-      return `/api/maintenance/analytics/${this.exportType}/export?since=${since}`;
-    },
+function deleteAnalytics() {
+  $utils.confirm(null, () => {
+    $api.deleteGCCampaignAnalytics(analyticsType.value, analyticsDate.value).then(() => {
+      $utils.toast(t('globals.messages.done'));
+    });
+  });
+}
 
-    subscriberTypeOptions() {
-      return [
-        { label: this.$t('dashboard.orphanSubs'), value: 'orphan' },
-        { label: this.$t('subscribers.status.blocklisted'), value: 'blocklisted' },
-      ];
-    },
+function loadDBSettings() {
+  $api.getSettings().then((data: any) => {
+    if (data['maintenance.db'] !== undefined) {
+      dbSettings.value = { ...data['maintenance.db'] };
+    }
+  });
+}
 
-    subscriptionTypeOptions() {
-      return [
-        { label: this.$t('maintenance.maintenance.unconfirmedOptins'), value: 'optin' },
-      ];
-    },
+async function onUpdateDBSettings() {
+  isLoading.value = true;
+  try {
+    await $api.updateSettingsByKey('maintenance.db', dbSettings.value);
+    await $api.getServerConfig();
+  } finally {
+    isLoading.value = false;
+  }
+}
 
-    analyticsTypeOptions() {
-      return [
-        { label: this.$t('globals.terms.all'), value: 'all' },
-        { label: this.$t('dashboard.campaignViews'), value: 'views' },
-        { label: this.$t('dashboard.linkClicks'), value: 'clicks' },
-      ];
-    },
-
-    exportTypeOptions() {
-      return [
-        { label: this.$t('dashboard.campaignViews'), value: 'views' },
-        { label: this.$t('dashboard.linkClicks'), value: 'clicks' },
-      ];
-    },
-  },
-};
+onMounted(() => { loadDBSettings(); });
 </script>
 
 <style scoped lang="scss">
@@ -278,13 +244,14 @@ export default {
 .maint-card-header { display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid var(--lm-bg-subtle); padding-bottom: 0.75rem; }
 .maint-icon { font-size: 1rem; color: var(--lm-primary); }
 .maint-title { font-size: 1rem; font-weight: 700; color: var(--lm-text); margin: 0; }
-.maint-subtitle { font-size: 0.9rem; font-weight: 600; color: #374151; margin: 0; }
+.maint-subtitle { font-size: 0.9rem; font-weight: 600; color: var(--lm-text); margin: 0; }
 
 .maint-field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; }
 .maint-field--inline { flex-direction: row; align-items: center; justify-content: space-between; }
 .maint-field--disabled { opacity: 0.45; pointer-events: none; }
 .maint-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.maint-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+.maint-label { font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
+.maint-card--wide { grid-column: 1 / -1; }
 .maint-help { font-size: 0.75rem; color: var(--lm-text-subtle); line-height: 1.4; margin: 0; }
 .maint-footer { display: flex; justify-content: flex-end; }
 

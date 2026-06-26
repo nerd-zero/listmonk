@@ -27,9 +27,9 @@
         :all="lists.results" />
 
       <div class="lm-field">
-        <div class="flex items-center gap-2">
+        <div class="check-row">
           <PvCheckbox v-model="form.preconfirm" data-cy="preconfirm" :binary="true" :true-value="true" :false-value="false" :disabled="!hasOptinList" input-id="preconfirm" />
-          <label for="preconfirm" class="lm-label" style="margin:0">{{ $t('subscribers.preconfirm') }}</label>
+          <label for="preconfirm" class="check-label">{{ $t('subscribers.preconfirm') }}</label>
         </div>
         <small class="lm-help">{{ $t('subscribers.preconfirmHelp') }}</small>
       </div>
@@ -42,56 +42,34 @@
   </form>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { reactive, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useMainStore } from '../store';
 import ListSelector from '../components/ListSelector.vue';
 
-export default {
-  components: {
-    ListSelector,
-  },
+withDefaults(defineProps<{ numSubscribers?: number }>(), { numSubscribers: 0 });
+const emit = defineEmits(['finished', 'close']);
 
-  props: {
-    numSubscribers: { type: Number, default: 0 },
-  },
+const { lists } = storeToRefs(useMainStore());
 
-  emits: ['finished', 'close'],
+const form = reactive({ action: 'add', lists: [] as any[], preconfirm: false });
 
-  data() {
-    return {
-      form: {
-        action: 'add',
-        lists: [],
-        preconfirm: false,
-      },
-    };
-  },
+const hasOptinList = computed(() => form.lists.some((l: any) => l.optin === 'double'));
 
-  methods: {
-    onSubmit() {
-      this.$emit('finished', this.form.action, this.form.preconfirm, this.form.lists);
-      this.$emit('close');
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['lists', 'loading']),
-
-    hasOptinList() {
-      return this.form.lists.some((l) => l.optin === 'double');
-    },
-  },
-};
+function onSubmit() {
+  emit('finished', form.action, form.preconfirm, form.lists);
+  emit('close');
+}
 </script>
 
 <style scoped lang="scss">
-
 .lm-field { display: flex; flex-direction: column; gap: 0.35rem; }
-.lm-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+.lm-label { font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
 .lm-help { font-size: 0.75rem; color: var(--lm-text-subtle); line-height: 1.4; }
+.check-row { display: flex; align-items: center; gap: 0.5rem; }
+.check-label { font-size: 0.875rem; color: var(--lm-text); cursor: pointer; }
 
 .radio-group { display: flex; flex-direction: column; gap: 0.5rem; }
-.radio-item { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; color: #374151; }
-
+.radio-item { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; color: var(--lm-text); }
 </style>

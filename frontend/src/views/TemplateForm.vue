@@ -11,57 +11,48 @@
         </p>
       </div>
       <div class="lm-form-body">
-          <div class="grid">
-            <div class="col-9">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
-                <PvInputText :maxlength="200" ref="focus" v-model="form.name" name="name"
-                  :placeholder="$t('globals.fields.name')" required class="w-full" />
-              </div>
-            </div>
-            <div class="col-3">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.type') }}</label>
-                <PvSelect v-model="form.type" :disabled="isEditing"
-                  :options="[
-                    { label: $tc('templates.typeCampaignHTML'), value: 'campaign' },
-                    { label: $tc('templates.typeCampaignVisual'), value: 'campaign_visual' },
-                    { label: $tc('templates.typeTransactional'), value: 'tx' },
-                  ]"
-                  option-label="label" option-value="value" class="w-full" />
-              </div>
-            </div>
+        <div class="name-type-row">
+          <div class="lm-field name-field">
+            <label class="lm-label">{{ $t('globals.fields.name') }}</label>
+            <PvInputText :maxlength="200" ref="focusEl" v-model="form.name" name="name"
+              :placeholder="$t('globals.fields.name')" required class="w-full" />
           </div>
-          <div class="grid" v-if="form.type === 'tx'">
-            <div class="col-12">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('templates.subject') }}</label>
-                <PvInputText :maxlength="200" v-model="form.subject" name="subject"
-                  :placeholder="$t('templates.subject')" required class="w-full" />
-              </div>
-            </div>
+          <div class="lm-field type-field">
+            <label class="lm-label">{{ $t('globals.fields.type') }}</label>
+            <PvSelect v-model="form.type" :disabled="isEditing"
+              :options="[
+                { label: $tc('templates.typeCampaignHTML'), value: 'campaign' },
+                { label: $tc('templates.typeCampaignVisual'), value: 'campaign_visual' },
+                { label: $tc('templates.typeTransactional'), value: 'tx' },
+              ]"
+              option-label="label" option-value="value" class="w-full" />
           </div>
+        </div>
 
-          <template v-if="form.body !== null">
-            <div v-if="form.type === 'campaign_visual'" class="field mb-1">
-              <visual-editor v-if="form.type === 'campaign_visual'" name="body" :source="form.bodySource"
-                @change="onChangeVisualEditor" height="70vh" />
-            </div>
+        <div v-if="form.type === 'tx'" class="lm-field">
+          <label class="lm-label">{{ $t('templates.subject') }}</label>
+          <PvInputText :maxlength="200" v-model="form.subject" name="subject"
+            :placeholder="$t('templates.subject')" required class="w-full" />
+        </div>
 
-            <div v-else class="field">
-              <label class="block mb-1 text-sm font-medium">{{ $t('templates.rawHTML') }}</label>
-              <code-editor lang="html" v-model="form.body" name="body" />
-            </div>
+        <template v-if="form.body !== null">
+          <visual-editor v-if="form.type === 'campaign_visual'" name="body" :source="form.bodySource"
+            @change="onChangeVisualEditor" height="70vh" />
+
+          <div v-else class="lm-field">
+            <label class="lm-label">{{ $t('templates.rawHTML') }}</label>
+            <code-editor lang="html" v-model="form.body" name="body" />
+          </div>
+        </template>
+
+        <p class="template-help">
+          <template v-if="form.type === 'campaign'">
+            {{ $t('templates.placeholderHelp', { placeholder: egPlaceholder }) }}
           </template>
-
-          <p class="template-help">
-            <template v-if="form.type === 'campaign'">
-              {{ $t('templates.placeholderHelp', { placeholder: egPlaceholder }) }}
-            </template>
-            <a target="_blank" rel="noopener noreferer" href="https://listmonk.app/docs/templating">
-              {{ $t('globals.buttons.learnMore') }}
-            </a>
-          </p>
+          <a target="_blank" rel="noopener noreferer" href="https://listmonk.app/docs/templating">
+            {{ $t('globals.buttons.learnMore') }}
+          </a>
+        </p>
       </div>
 
       <div class="lm-form-footer">
@@ -75,127 +66,90 @@
   </section>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, nextTick, onMounted, onBeforeUnmount,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CampaignPreview from '../components/CampaignPreview.vue';
 import CodeEditor from '../components/CodeEditor.vue';
 import VisualEditor from '../components/VisualEditor.vue';
 import CopyText from '../components/CopyText.vue';
 
-export default {
-  components: {
-    CampaignPreview,
-    CopyText,
-    'code-editor': CodeEditor,
-    'visual-editor': VisualEditor,
-  },
+const props = withDefaults(defineProps<{
+  data?: any;
+  isEditing?: boolean;
+}>(), { data: () => ({}), isEditing: false });
 
-  props: {
-    data: { type: Object, default: () => { } },
-    isEditing: { type: Boolean, default: false },
-  },
+const emit = defineEmits(['finished', 'close']);
 
-  emits: ['finished', 'close'],
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      // Binds form input values.
-      form: {
-        name: '',
-        subject: '',
-        type: 'campaign',
-        optin: '',
-        body: null,
-        bodySource: null,
-      },
-      previewItem: null,
-      egPlaceholder: '{{ template "content" . }}',
-    };
-  },
+const focusEl = ref<any>(null);
+const previewItem = ref<any>(null);
+const egPlaceholder = '{{ template "content" . }}';
+const form = reactive<any>({
+  name: '', subject: '', type: 'campaign', optin: '', body: null, bodySource: null,
+});
 
-  methods: {
-    onTogglePreview() {
-      this.previewItem = !this.previewItem ? this.form : null;
-    },
+function onTogglePreview() {
+  previewItem.value = !previewItem.value ? { ...form } : null;
+}
 
-    onPreviewShortcut(e) {
-      if (e.key === 'F9') {
-        this.onTogglePreview();
-        e.preventDefault();
-      }
-    },
+function onPreviewShortcut(e: KeyboardEvent) {
+  if (e.key === 'F9') { onTogglePreview(); e.preventDefault(); }
+}
 
-    onSubmit() {
-      if (this.isEditing) {
-        this.updateTemplate();
-        return;
-      }
+function createTemplate() {
+  $api.createTemplate({
+    id: props.data.id, name: form.name, type: form.type, subject: form.subject, body: form.body, body_source: form.bodySource,
+  })
+    .then((d: any) => { emit('finished'); emit('close'); $utils.toast(t('globals.messages.created', { name: d.name })); });
+}
 
-      this.createTemplate();
-    },
+function updateTemplate() {
+  $api.updateTemplate({
+    id: props.data.id, name: form.name, type: form.type, subject: form.subject, body: form.body, body_source: form.bodySource,
+  })
+    .then((d: any) => { emit('finished'); emit('close'); $utils.toast(`'${d.name}' updated`); });
+}
 
-    createTemplate() {
-      const data = {
-        id: this.data.id,
-        name: this.form.name,
-        type: this.form.type,
-        subject: this.form.subject,
-        body: this.form.body,
-        body_source: this.form.bodySource,
-      };
+function onSubmit() {
+  if (props.isEditing) { updateTemplate(); return; }
+  createTemplate();
+}
 
-      this.$api.createTemplate(data).then((d) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(this.$t('globals.messages.created', { name: d.name }));
-      });
-    },
+function onChangeVisualEditor({ source, body }: any) {
+  form.body = body;
+  form.bodySource = source;
+}
 
-    updateTemplate() {
-      const data = {
-        id: this.data.id,
-        name: this.form.name,
-        type: this.form.type,
-        subject: this.form.subject,
-        body: this.form.body,
-        body_source: this.form.bodySource,
-      };
+onMounted(() => {
+  Object.assign(form, props.data);
+  nextTick(() => { focusEl.value?.focus(); });
+  window.addEventListener('keydown', onPreviewShortcut);
+});
 
-      this.$api.updateTemplate(data).then((d) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(`'${d.name}' updated`);
-      });
-    },
-
-    onChangeVisualEditor({ source, body }) {
-      this.form.body = body;
-      this.form.bodySource = source;
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['loading']),
-  },
-
-  mounted() {
-    this.form = { ...this.$props.data };
-
-    this.$nextTick(() => {
-      this.$refs.focus.focus();
-    });
-
-    window.addEventListener('keydown', this.onPreviewShortcut);
-  },
-
-  beforeUnmount() {
-    window.removeEventListener('keydown', this.onPreviewShortcut);
-  },
-};
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onPreviewShortcut);
+});
 </script>
 
 <style scoped lang="scss">
+.lm-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0; }
+.lm-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
+
+.name-type-row {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 1rem;
+  align-items: start;
+}
 
 .template-help { font-size: 0.78rem; color: var(--lm-text-subtle); margin: 0; }
 </style>

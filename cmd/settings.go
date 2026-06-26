@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -485,6 +486,134 @@ func (a *App) TestScrubSettings(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, okResp{true})
+}
+
+// GetScrubStats fetches daily usage stats from the configured Scrub service.
+func (a *App) GetScrubStats(c echo.Context) error {
+	s, err := a.core.GetSettings()
+	if err != nil {
+		return err
+	}
+	if !s.Scrub.Enabled || s.Scrub.URL == "" || s.Scrub.APIKey == "" {
+		return echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.T("settings.scrub.notConfigured"))
+	}
+
+	scrubURL := strings.TrimRight(strings.TrimSpace(s.Scrub.URL), "/")
+	httpReq, err := http.NewRequestWithContext(c.Request().Context(),
+		http.MethodGet, scrubURL+"/usage/daily", nil)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.Ts("globals.messages.errorCreating", "name", "request", "error", err.Error()))
+	}
+	httpReq.Header.Set("X-API-Key", s.Scrub.APIKey)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", err.Error()))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("settings.scrub.invalidKey"))
+	}
+	if resp.StatusCode >= 400 {
+		return echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", resp.Status))
+	}
+
+	var stats interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, okResp{stats})
+}
+
+// GetScrubListStatus proxies the Scrub integration lists endpoint, which returns
+// each list along with its active job request_id and last validation result.
+func (a *App) GetScrubListStatus(c echo.Context) error {
+	s, err := a.core.GetSettings()
+	if err != nil {
+		return err
+	}
+	if !s.Scrub.Enabled || s.Scrub.URL == "" || s.Scrub.APIKey == "" || s.Scrub.IntegrationID == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("settings.scrub.notConfigured"))
+	}
+
+	scrubURL := strings.TrimRight(strings.TrimSpace(s.Scrub.URL), "/")
+	apiURL := fmt.Sprintf("%s/listmonk/integrations/%d/lists", scrubURL, s.Scrub.IntegrationID)
+	httpReq, err := http.NewRequestWithContext(c.Request().Context(), http.MethodGet, apiURL, nil)
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("X-API-Key", s.Scrub.APIKey)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadGateway,
+			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", err.Error()))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return echo.NewHTTPError(http.StatusBadGateway,
+			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", resp.Status))
+	}
+
+	var out interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	return c.JSON(http.StatusOK, okResp{out})
+}
+
+// ScrubList triggers a Scrub email validation job on a subscriber list.
+func (a *App) ScrubList(c echo.Context) error {
+	id := getID(c)
+
+	s, err := a.core.GetSettings()
+	if err != nil {
+		return err
+	}
+	if !s.Scrub.Enabled || s.Scrub.URL == "" || s.Scrub.APIKey == "" || s.Scrub.IntegrationID == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("settings.scrub.notConfigured"))
+	}
+
+	scrubURL := strings.TrimRight(strings.TrimSpace(s.Scrub.URL), "/")
+	apiURL := fmt.Sprintf("%s/listmonk/integrations/%d/lists/%d/validate", scrubURL, s.Scrub.IntegrationID, id)
+	body := bytes.NewBufferString(`{"scan_mode":"full"}`)
+	httpReq, err := http.NewRequestWithContext(c.Request().Context(), http.MethodPost, apiURL, body)
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("X-API-Key", s.Scrub.APIKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadGateway,
+			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", err.Error()))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("settings.scrub.tooManyJobs"))
+	}
+	if resp.StatusCode >= 400 {
+		return echo.NewHTTPError(http.StatusBadGateway,
+			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", resp.Status))
+	}
+
+	var out interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	return c.JSON(http.StatusOK, okResp{out})
 }
 
 func (a *App) GetAboutInfo(c echo.Context) error {

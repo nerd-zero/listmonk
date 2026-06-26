@@ -89,7 +89,10 @@
             <PvProgressSpinner style="width:2rem;height:2rem" stroke-width="3" />
           </div>
           <chart v-else-if="campaignViews" type="line" :data="campaignViews" />
-          <p v-else class="chart-empty">No data</p>
+          <div v-else class="chart-empty">
+            <i class="pi pi-chart-line chart-empty-icon" />
+            <span>No campaign data yet</span>
+          </div>
         </div>
       </div>
 
@@ -102,7 +105,10 @@
             <PvProgressSpinner style="width:2rem;height:2rem" stroke-width="3" />
           </div>
           <chart v-else-if="campaignClicks" type="line" :data="campaignClicks" />
-          <p v-else class="chart-empty">No data</p>
+          <div v-else class="chart-empty">
+            <i class="pi pi-chart-line chart-empty-icon" />
+            <span>No campaign data yet</span>
+          </div>
         </div>
       </div>
     </div>
@@ -116,84 +122,75 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import {
+  ref, computed, watch, onMounted,
+} from 'vue';
 import dayjs from 'dayjs';
-import { mapState } from 'pinia';
+import { storeToRefs } from 'pinia';
 import { useMainStore } from '../store';
 import { colors } from '../constants';
+import { useGlobal } from '../composables/useGlobal';
 import Chart from '../components/Chart.vue';
 
-export default {
-  components: { Chart },
+const { $api } = useGlobal();
+const { refreshTick, settings, profile } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      isChartsLoading: true,
-      isCountsLoading: true,
-      campaignViews: null,
-      campaignClicks: null,
-      counts: {
-        lists: {},
-        subscribers: {},
-        campaigns: {},
-        messages: 0,
-      },
-    };
-  },
+const isChartsLoading = ref(true);
+const isCountsLoading = ref(true);
+const campaignViews = ref<any>(null);
+const campaignClicks = ref<any>(null);
+const counts = ref<any>({
+  lists: {},
+  subscribers: {},
+  campaigns: {},
+  messages: 0,
+});
 
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'settings', 'profile']),
+const greeting = computed(() => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+});
 
-    greeting() {
-      const h = new Date().getHours();
-      if (h < 12) return 'Good morning';
-      if (h < 18) return 'Good afternoon';
-      return 'Good evening';
-    },
-  },
+function makeChart(data: any) {
+  if (!data || data.length === 0) return null;
+  return {
+    labels: data.map((d: any) => dayjs(d.date).format('DD MMM')),
+    datasets: [{
+      data: data.map((d: any) => d.count),
+      borderColor: colors.primary,
+      borderWidth: 2,
+      pointHoverBorderWidth: 5,
+      pointBorderWidth: 0.5,
+      fill: true,
+      backgroundColor: 'rgba(99,102,241,0.07)',
+    }],
+  };
+}
 
-  watch: {
-    refreshTick() { this.fetchData(); },
-  },
+function fetchData() {
+  isCountsLoading.value = true;
+  isChartsLoading.value = true;
 
-  mounted() {
-    this.fetchData();
-  },
+  $api.getDashboardCounts().then((data: any) => {
+    counts.value = data;
+    isCountsLoading.value = false;
+  });
 
-  methods: {
-    fetchData() {
-      this.isCountsLoading = true;
-      this.isChartsLoading = true;
+  $api.getDashboardCharts().then((data: any) => {
+    isChartsLoading.value = false;
+    campaignViews.value = makeChart(data.campaignViews);
+    campaignClicks.value = makeChart(data.linkClicks);
+  });
+}
 
-      this.$api.getDashboardCounts().then((data) => {
-        this.counts = data;
-        this.isCountsLoading = false;
-      });
+watch(() => refreshTick.value, () => { fetchData(); });
 
-      this.$api.getDashboardCharts().then((data) => {
-        this.isChartsLoading = false;
-        this.campaignViews = this.makeChart(data.campaignViews);
-        this.campaignClicks = this.makeChart(data.linkClicks);
-      });
-    },
-
-    makeChart(data) {
-      if (!data || data.length === 0) return null;
-      return {
-        labels: data.map((d) => dayjs(d.date).format('DD MMM')),
-        datasets: [{
-          data: data.map((d) => d.count),
-          borderColor: colors.primary,
-          borderWidth: 2,
-          pointHoverBorderWidth: 5,
-          pointBorderWidth: 0.5,
-          fill: true,
-          backgroundColor: 'rgba(99,102,241,0.07)',
-        }],
-      };
-    },
-  },
-};
+onMounted(() => {
+  fetchData();
+});
 </script>
 
 <style scoped lang="scss">
@@ -241,7 +238,12 @@ export default {
   display: flex;
   gap: 1rem;
   align-items: flex-start;
-  transition: box-shadow 0.15s;
+  transition: box-shadow 0.18s, transform 0.18s;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    transform: translateY(-1px);
+  }
 }
 
 .stat-icon {
@@ -254,8 +256,10 @@ export default {
   flex-shrink: 0;
 
   i { font-size: 1.15rem; }
-  &--green  { background: var(--lm-success-bg); color: var(--lm-success); }
-  &--orange { background: var(--lm-surface)7ed; color: #f97316; }
+  &--blue   { background: #eff6ff; color: #2563eb; }
+  &--green  { background: var(--lm-success-bg); color: #16a34a; }
+  &--purple { background: #f5f3ff; color: #7c3aed; }
+  &--orange { background: #fff7ed; color: #ea580c; }
 }
 
 .stat-body {
@@ -325,14 +329,27 @@ export default {
   justify-content: center;
 }
 
-.chart-loading,
-.chart-empty {
+.chart-loading {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
+}
+
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
   color: var(--lm-text-subtle);
   font-size: 0.875rem;
+}
+
+.chart-empty-icon {
+  font-size: 1.75rem;
+  opacity: 0.4;
 }
 
 .dash-cache-note {

@@ -173,16 +173,26 @@
         <i class="pi pi-align-left nav-icon" />
         <span>{{ $t('menu.logs') }}</span>
       </router-link>
+      <router-link
+        v-if="$can('settings:manage')"
+        :to="{ name: 'scrub' }"
+        class="nav-item"
+        exact-active-class="nav-item--active"
+        data-cy="scrub"
+      >
+        <i class="pi pi-envelope nav-icon" />
+        <span>{{ $t('settings.scrub.name') }}</span>
+      </router-link>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Navigation',
-  props: {
-    activeItem: { type: Object, default: () => ({}) },
-  },
-  emits: ['toggle-group'],
-};
+<script setup lang="ts">
+withDefaults(defineProps<{
+  activeItem?: Record<string, unknown>;
+}>(), {
+  activeItem: () => ({}),
+});
+
+defineEmits(['toggle-group']);
 </script>

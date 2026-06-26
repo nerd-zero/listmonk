@@ -22,9 +22,11 @@ export const models = Object.freeze({
   maintenance: 'maintenance',
 });
 
+export type ModelName = keyof typeof models;
+
 // Ad-hoc URIs that are used outside of vuex requests.
 const rootURL = import.meta.env.VUE_APP_ROOT_URL || '/';
-const baseURL = import.meta.env.BASE_URL.replace(/\/$/, '');
+const baseURL = (import.meta.env.BASE_URL as string).replace(/\/$/, '');
 
 export const uris = Object.freeze({
   previewCampaign: '/api/campaigns/:id/preview',

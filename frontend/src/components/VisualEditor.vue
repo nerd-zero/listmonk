@@ -1,6 +1,6 @@
 <template>
   <div class="visual-editor-wrapper">
-    <iframe ref="visualEditor" id="visual-editor" class="visual-editor email-builder-container"
+    <iframe ref="visualEditorEl" id="visual-editor" class="visual-editor email-builder-container"
       title="Visual email editor" />
 
     <!-- image picker -->
@@ -14,160 +14,107 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
 import Media from '../views/Media.vue';
 
-export default {
-  components: {
-    Media,
-  },
+const props = withDefaults(defineProps<{
+  source?: string;
+  height?: string;
+}>(), { source: '', height: 'auto' });
 
-  props: {
-    source: { type: String, default: '' },
-    height: { type: String, default: 'auto' },
-  },
+const emit = defineEmits(['change']);
 
-  data() {
-    return {
-      isMediaVisible: false,
-    };
-  },
+const visualEditorEl = ref<HTMLIFrameElement | null>(null);
+const isMediaVisible = ref(false);
 
-  methods: {
-    loadScript() {
-      return new Promise((resolve, reject) => {
-        const iframe = this.$refs.visualEditor;
-        if (iframe.contentWindow.EmailBuilder) {
-          resolve();
-          return;
-        }
+function loadScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const iframe = visualEditorEl.value!;
+    if ((iframe.contentWindow as any).EmailBuilder) { resolve(); return; }
+    const script = document.createElement('script');
+    script.id = 'email-builder-script';
+    script.src = '/admin/static/email-builder/email-builder.umd.js';
+    script.onload = () => { resolve(); };
+    script.onerror = reject;
+    iframe.contentDocument!.head.appendChild(script);
+  });
+}
 
-        const script = document.createElement('script');
-        script.id = 'email-builder-script';
-        script.src = '/admin/static/email-builder/email-builder.umd.js';
-        script.onload = () => {
-          resolve();
-        };
-        script.onerror = reject;
+function render(source: any) {
+  const iframe = visualEditorEl.value!;
+  const em = (iframe.contentWindow as any).EmailBuilder;
+  if (!em || !em.isRendered('visual-editor-container')) {
+    (iframe.contentWindow as any).EmailBuilder.render('visual-editor-container', {
+      data: {},
+      onChange: (data: any, body: string) => {
+        const tpl = body.replace(/\{\{[^}]*\}\}/g, (match) => match.replace(/&quot;/g, '"'));
+        emit('change', { source: JSON.stringify(data), body: tpl });
+      },
+    });
+  }
+  if (!source) return;
+  let n = 10;
+  const timer = window.setInterval(() => {
+    const container = iframe.contentWindow!.document.getElementById('visual-editor-container');
+    if (container && container.hasChildNodes()) {
+      em.resetDocument(source);
+      window.clearInterval(timer);
+      return;
+    }
+    n += 1;
+    if (n > 10) { window.clearInterval(timer); }
+  }, 100);
+}
 
-        // Append script to iframe's head
-        iframe.contentDocument.head.appendChild(script);
-      });
-    },
+function onMediaSelect(media: any) {
+  const iframe = visualEditorEl.value!;
+  const input = iframe.contentDocument!.querySelector('.image-url input') as HTMLInputElement;
+  if (input) {
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set;
+    nativeInputValueSetter!.call(input, media.url);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
 
-    render(source) {
-      const iframe = this.$refs.visualEditor;
+function onSidebarMount(msg: MessageEvent) {
+  if (!msg.data) return;
+  if (msg.data === 'visualeditor.select-media') { isMediaVisible.value = true; }
+}
 
-      // If the editor is not-rendered, render it the first time. This can happen
-      // on first loads and importing an email template via render().
-      const em = iframe.contentWindow.EmailBuilder;
-      if (!em || !em.isRendered('visual-editor-container')) {
-        iframe.contentWindow.EmailBuilder.render('visual-editor-container', {
-          data: {},
-          onChange: (data, body) => {
-            // Hack to fix quotes in Go {{ templating }} in the HTML body.
-            const tpl = body.replace(/\{\{[^}]*\}\}/g, (match) => match.replace(/&quot;/g, '"'));
-            this.$emit('change', { source: JSON.stringify(data), body: tpl });
-          },
-        });
-      }
+onMounted(() => {
+  const iframe = visualEditorEl.value!;
+  iframe.style.height = props.height!;
+  iframe.srcdoc = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { margin: 0; padding: 0; }
+          #visual-editor-container { width: 100%; height: 100%; }
+        </style>
+      </head>
+      <body>
+        <div id="visual-editor-container"></div>
+      </body>
+    </html>
+  `;
+  iframe.onload = () => {
+    loadScript().then(() => {
+      const source = props.source ? JSON.parse(props.source) : null;
+      render(source);
+    }).catch((error) => {
+      console.error('Failed to load email-builder script:', error);
+    });
+  };
+  window.addEventListener('message', onSidebarMount, false);
+});
 
-      if (!source) {
-        return;
-      }
+onUnmounted(() => {
+  window.removeEventListener('message', onSidebarMount, false);
+});
 
-      // setDocument() will trigger onChange() that produces both bodySource and body (HTML).
-      // On init, the `data: source` above sets the content in the editor, but doesn't trigger
-      // onChange(), which is required to set the source+HTML state in the parent for preview to work.
-      // Couldn't figure out if there was an on load/on init event etc. in email-builder, so brute force it
-      // with a timer.
-      let n = 10;
-      const timer = window.setInterval(() => {
-        const container = iframe.contentWindow.document.getElementById('visual-editor-container');
-        if (container && container.hasChildNodes()) {
-          em.resetDocument(source);
-          window.clearInterval(timer);
-          return;
-        }
-
-        n += 1;
-        if (n > 10) {
-          window.clearInterval(timer);
-        }
-      }, 100);
-    },
-
-    // Inject media URL into the image URL input field in the visual edior sidebar.
-    onMediaSelect(media) {
-      const iframe = this.$refs.visualEditor;
-      const input = iframe.contentDocument.querySelector('.image-url input');
-      if (input) {
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-          window.HTMLInputElement.prototype,
-          'value',
-        ).set;
-        nativeInputValueSetter.call(input, media.url);
-
-        const inputEvent = new Event('input', { bubbles: true });
-        input.dispatchEvent(inputEvent);
-      }
-    },
-
-    // Observe DOM changes in the iframe to inject media selector
-    // into the image URL input fields.
-    onSidebarMount(msg) {
-      if (!msg.data) {
-        return;
-      }
-
-      if (msg.data === 'visualeditor.select-media') {
-        this.isMediaVisible = true;
-      }
-    },
-  },
-
-  mounted() {
-    // Initialize iframe content
-    const iframe = this.$refs.visualEditor;
-    iframe.style.height = this.height;
-
-    // Set basic iframe HTML structure
-    iframe.srcdoc = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { margin: 0; padding: 0; }
-            #visual-editor-container { width: 100%; height: 100%; }
-          </style>
-        </head>
-        <body>
-          <div id="visual-editor-container"></div>
-        </body>
-      </html>
-    `;
-
-    iframe.onload = () => {
-      this.loadScript().then(() => {
-        let source = null;
-        if (this.$props.source) {
-          source = JSON.parse(this.$props.source);
-        }
-
-        this.render(source);
-      }).catch((error) => {
-        /* eslint-disable-next-line no-console */
-        console.error('Failed to load email-builer script:', error);
-      });
-    };
-
-    window.addEventListener('message', this.onSidebarMount, false);
-  },
-
-  unmounted() {
-    window.removeEventListener('message', this.onSidebarMount, false);
-  },
-};
+defineExpose({ render });
 </script>
 
 <style lang="css">

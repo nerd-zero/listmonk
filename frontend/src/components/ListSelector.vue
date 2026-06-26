@@ -8,7 +8,7 @@
           <sup v-if="l.optin === 'double' && l.subscriptionStatus">
             {{ $t(`subscribers.status.${l.subscriptionStatus}`) }}
           </sup>
-          <i v-if="!$props.disabled && !l.restricted" class="pi pi-times ml-1 cursor-pointer" @click="removeList(l.id)" />
+          <i v-if="!disabled && !l.restricted" class="pi pi-times ml-1 cursor-pointer" @click="removeList(l.id)" />
         </PvTag>
       </div>
     </div>
@@ -16,7 +16,7 @@
     <div class="field">
       <label class="block mb-1 text-sm font-medium">{{ label + (selectedItems ? ` (${selectedItems.length})` : '') }}</label>
       <PvAutoComplete v-model="query" :placeholder="placeholder"
-        :disabled="all.length === 0 || $props.disabled"
+        :disabled="all.length === 0 || disabled"
         :suggestions="suggestions" @complete="onSearch" @item-select="onSelect" option-label="name"
         :dropdown="true" force-selection class="w-full" />
       <small v-if="message" class="block mt-1 text-color-secondary">{{ message }}</small>
@@ -24,90 +24,75 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import {
+  ref, watch, nextTick, onMounted,
+} from 'vue';
 
-export default {
-  name: 'ListSelector',
+const props = withDefaults(defineProps<{
+  label?: string;
+  placeholder?: string;
+  message?: string;
+  required?: boolean;
+  disabled?: boolean;
+  classes?: unknown[];
+  selected?: unknown[];
+  all?: unknown[];
+}>(), {
+  label: '',
+  placeholder: '',
+  message: '',
+  required: false,
+  disabled: false,
+  classes: () => [],
+  selected: () => [],
+  all: () => [],
+});
 
-  props: {
-    label: { type: String, default: '' },
-    placeholder: { type: String, default: '' },
-    message: { type: String, default: '' },
-    required: Boolean,
-    disabled: Boolean,
-    classes: {
-      type: Array,
-      default: () => [],
-    },
-    selected: {
-      type: Array,
-      default: () => [],
-    },
-    all: {
-      type: Array,
-      default: () => [],
-    },
+const emit = defineEmits(['update:modelValue']);
+
+const query = ref('');
+const selectedItems = ref<any[]>([]);
+const suggestions = ref<unknown[]>([]);
+
+function onSearch(event: { query: string }) {
+  const q = (event.query || '').toLowerCase();
+  const subIDs = selectedItems.value.reduce((obj: Record<number, boolean>, item: any) => ({ ...obj, [item.id]: true }), {});
+  suggestions.value = (props.all as any[]).filter(
+    (l) => !(l.id in subIDs) && l.name.toLowerCase().includes(q),
+  );
+}
+
+function onSelect(event: { value: unknown }) {
+  selectList(event.value);
+}
+
+function selectList(l: any) {
+  if (!l) return;
+  selectedItems.value.push(l);
+  query.value = '';
+  nextTick(() => {
+    emit('update:modelValue', selectedItems.value);
+  });
+}
+
+function removeList(id: number) {
+  selectedItems.value = selectedItems.value.filter((l: any) => l.id !== id);
+  nextTick(() => {
+    emit('update:modelValue', selectedItems.value);
+  });
+}
+
+watch(
+  () => props.selected,
+  () => {
+    selectedItems.value = JSON.parse(JSON.stringify(props.selected));
   },
+);
 
-  data() {
-    return {
-      query: '',
-      selectedItems: [],
-      suggestions: [],
-    };
-  },
-
-  methods: {
-    onSearch(event) {
-      const q = (event.query || '').toLowerCase();
-      const subIDs = this.selectedItems.reduce((obj, item) => ({ ...obj, [item.id]: true }), {});
-      this.suggestions = this.$props.all.filter(
-        (l) => !(l.id in subIDs) && l.name.toLowerCase().includes(q),
-      );
-    },
-
-    onSelect(event) {
-      this.selectList(event.value);
-    },
-
-    selectList(l) {
-      if (!l) {
-        return;
-      }
-      this.selectedItems.push(l);
-      this.query = '';
-
-      // Propagate the items to the parent's v-model binding.
-      this.$nextTick(() => {
-        this.$emit('update:modelValue', this.selectedItems);
-      });
-    },
-
-    removeList(id) {
-      this.selectedItems = this.selectedItems.filter((l) => l.id !== id);
-
-      // Propagate the items to the parent's v-model binding.
-      this.$nextTick(() => {
-        this.$emit('update:modelValue', this.selectedItems);
-      });
-    },
-  },
-
-  computed: {},
-
-  watch: {
-    // This is required to update the array of lists to propagate from parent
-    // components and "react" on the selector.
-    selected() {
-      // Deep-copy.
-      this.selectedItems = JSON.parse(JSON.stringify(this.selected));
-    },
-  },
-
-  mounted() {
-    if (this.selected) {
-      this.selectedItems = JSON.parse(JSON.stringify(this.selected));
-    }
-  },
-};
+onMounted(() => {
+  if (props.selected) {
+    selectedItems.value = JSON.parse(JSON.stringify(props.selected));
+  }
+});
 </script>

@@ -101,25 +101,16 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { regDuration } from '../../constants';
 
-export default {
-  props: {
-    form: { type: Object, default: () => {} },
-  },
+const props = defineProps<{ form?: any }>();
+const data = props.form;
 
-  data() {
-    return { data: this.form, regDuration };
-  },
-
-  methods: {
-    onS3URLChange() {
-      if (this.data['upload.s3.url'] !== '' && !this.data['upload.s3.url'].match(/amazonaws\.com/)) {
-        return;
-      }
-      this.data['upload.s3.url'] = `https://s3.${this.data['upload.s3.aws_default_region']}.amazonaws.com`;
-    },
-  },
-};
+function onS3URLChange() {
+  if (data['upload.s3.url'] !== '' && !data['upload.s3.url'].match(/amazonaws\.com/)) {
+    return;
+  }
+  data['upload.s3.url'] = `https://s3.${data['upload.s3.aws_default_region']}.amazonaws.com`;
+}
 </script>

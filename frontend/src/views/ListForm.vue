@@ -75,84 +75,75 @@
   </form>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, onMounted, nextTick,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
 
-export default {
-  name: 'ListForm',
+const props = withDefaults(defineProps<{
+  data?: any;
+  isEditing?: boolean;
+}>(), { data: () => ({}), isEditing: false });
 
-  components: { CopyText },
+const emit = defineEmits(['finished', 'close']);
 
-  props: {
-    data: { type: Object, default: () => ({}) },
-    isEditing: { type: Boolean, default: false },
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { loading } = storeToRefs(useMainStore());
 
-  emits: ['finished', 'close'],
+const focusEl = ref<any>(null);
 
-  data() {
-    return {
-      // Binds form input values.
-      form: {
-        name: '',
-        type: 'private',
-        optin: 'single',
-        status: 'active',
-        tags: [],
-      },
-    };
-  },
+const form = reactive({
+  name: '',
+  type: 'private',
+  optin: 'single',
+  status: 'active',
+  tags: [] as string[],
+});
 
-  methods: {
-    onSubmit() {
-      if (this.isEditing) {
-        this.updateList();
-        return;
-      }
+const isArchived = computed({
+  get: () => form.status === 'archived',
+  set: (v: boolean) => { form.status = v ? 'archived' : 'active'; },
+});
 
-      this.createList();
-    },
+function createList() {
+  $api.createList(form).then((data: any) => {
+    emit('finished');
+    emit('close');
+    $utils.toast(t('globals.messages.created', { name: data.name }));
+  });
+}
 
-    createList() {
-      this.$api.createList(this.form).then((data) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(this.$t('globals.messages.created', { name: data.name }));
-      });
-    },
+function updateList() {
+  $api.updateList({ id: props.data.id, ...form }).then((data: any) => {
+    emit('finished');
+    emit('close');
+    $utils.toast(t('globals.messages.updated', { name: data.name }));
+  });
+}
 
-    updateList() {
-      this.$api.updateList({ id: this.data.id, ...this.form }).then((data) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(this.$t('globals.messages.updated', { name: data.name }));
-      });
-    },
-  },
+function onSubmit() {
+  if (props.isEditing) { updateList(); return; }
+  createList();
+}
 
-  computed: {
-    ...mapState(useMainStore, ['loading', 'profile']),
-
-    isArchived: {
-      get() {
-        return this.form.status === 'archived';
-      },
-      set(v) {
-        this.form.status = v ? 'archived' : 'active';
-      },
-    },
-  },
-
-  mounted() {
-    this.form = { ...this.form, ...this.$props.data };
-    this.$nextTick(() => { this.$refs.focus.$el.focus(); });
-  },
-};
+onMounted(() => {
+  Object.assign(form, props.data);
+  nextTick(() => { focusEl.value?.$el?.focus(); });
+});
 </script>
 
 <style scoped lang="scss">
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
 
 .lm-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .lm-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -173,7 +164,7 @@ export default {
   display: block;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--lm-text);
 }
 .lm-help {
   display: block;

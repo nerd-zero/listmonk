@@ -9,13 +9,12 @@
   </section>
 </template>
 
-<script>
-export default {
-  name: 'EmptyPlaceholder',
-
-  props: {
-    icon: { type: String, default: '' },
-    label: { type: String, default: '' },
-  },
-};
+<script setup lang="ts">
+withDefaults(defineProps<{
+  icon?: string;
+  label?: string;
+}>(), {
+  icon: '',
+  label: '',
+});
 </script>

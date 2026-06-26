@@ -13,161 +13,147 @@
     </div>
 
     <div class="lm-form-body">
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('subscribers.email') }}</label>
-          <PvInputText :maxlength="200" v-model="form.email" name="email" ref="focus"
-            :placeholder="$t('subscribers.email')" required />
-        </div>
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('subscribers.email') }}</label>
+        <PvInputText :maxlength="200" v-model="form.email" name="email" ref="focusEl"
+          :placeholder="$t('subscribers.email')" class="w-full" required />
+      </div>
 
-        <div class="grid">
-          <div class="col-8">
-            <div class="field">
-              <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
-              <PvInputText :maxlength="200" v-model="form.name" name="name"
-                :placeholder="$t('globals.fields.name')" />
-            </div>
-          </div>
-          <div class="col-4">
-            <div class="field">
-              <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
-              <PvSelect v-model="form.status" name="status" :placeholder="$t('globals.fields.status')" required
-                :options="statusOptions" option-label="label" option-value="value" />
-              <small class="block mt-1 text-color-secondary">{{ $t('subscribers.blocklistedHelp') }}</small>
-            </div>
-          </div>
+      <div class="lm-field-row">
+        <div class="lm-field">
+          <label class="lm-label">{{ $t('globals.fields.name') }}</label>
+          <PvInputText :maxlength="200" v-model="form.name" name="name"
+            :placeholder="$t('globals.fields.name')" class="w-full" />
         </div>
+        <div class="lm-field">
+          <label class="lm-label">{{ $t('globals.fields.status') }}</label>
+          <PvSelect v-model="form.status" name="status" :placeholder="$t('globals.fields.status')" required
+            :options="statusOptions" option-label="label" option-value="value" class="w-full" />
+          <small class="lm-help">{{ $t('subscribers.blocklistedHelp') }}</small>
+        </div>
+      </div>
 
-        <PvTabs v-model:value="activeTab">
-          <PvTabList>
-            <PvTab value="0">{{ $t('globals.terms.lists') }}</PvTab>
-            <PvTab value="1">{{ `${$tc('globals.terms.subscriptions', 2)} (${data.lists ? data.lists.length : 0})` }}</PvTab>
-            <PvTab value="2" :disabled="bounces.length === 0">{{ `${$t('globals.terms.bounces')} (${bounces.length})` }}</PvTab>
-            <PvTab value="3" :disabled="!isEditing">{{ $t('subscribers.activity') }}</PvTab>
-          </PvTabList>
-          <PvTabPanels>
-            <!-- lists -->
-            <PvTabPanel value="0">
-              <list-selector :label="$t('subscribers.lists')" :placeholder="$t('subscribers.listsPlaceholder')"
-                :message="$t('subscribers.listsHelp')" v-model="form.lists" :selected="form.lists" :all="lists.results" />
-              <div class="grid">
-                <div class="col-7">
-                  <div class="field">
-                    <small class="block mt-1 text-color-secondary">{{ $t('subscribers.preconfirmHelp') }}</small>
-                    <div class="flex items-center gap-2">
-                      <PvCheckbox v-model="form.preconfirm" :binary="true" :disabled="!hasOptinList" />
-                      <span>{{ $t('subscribers.preconfirm') }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div v-if="$can('subscribers:manage') && isEditing" style="text-align:right">
-                  <a href="#" @click.prevent="sendOptinConfirmation" :class="{ 'is-disabled': !hasOptinList }">
-                    <i class="pi pi-envelope" />
-                    {{ $t('subscribers.sendOptinConfirm') }}</a>
+      <PvTabs v-model:value="activeTab">
+        <PvTabList>
+          <PvTab value="0">{{ $t('globals.terms.lists') }}</PvTab>
+          <PvTab value="1">{{ `${$tc('globals.terms.subscriptions', 2)} (${data.lists ? data.lists.length : 0})` }}</PvTab>
+          <PvTab value="2" :disabled="bounces.length === 0">{{ `${$t('globals.terms.bounces')} (${bounces.length})` }}</PvTab>
+          <PvTab value="3" :disabled="!isEditing">{{ $t('subscribers.activity') }}</PvTab>
+        </PvTabList>
+        <PvTabPanels>
+          <!-- lists -->
+          <PvTabPanel value="0">
+            <list-selector :label="$t('subscribers.lists')" :placeholder="$t('subscribers.listsPlaceholder')"
+              :message="$t('subscribers.listsHelp')" v-model="form.lists" :selected="form.lists" :all="lists.results" />
+            <div class="lm-field-row lm-field-row--preconfirm">
+              <div class="lm-field">
+                <small class="lm-help">{{ $t('subscribers.preconfirmHelp') }}</small>
+                <div class="check-row">
+                  <PvCheckbox v-model="form.preconfirm" :binary="true" :disabled="!hasOptinList" />
+                  <span class="check-label">{{ $t('subscribers.preconfirm') }}</span>
                 </div>
               </div>
-            </PvTabPanel><!-- lists -->
+              <div v-if="$can('subscribers:manage') && isEditing" class="optin-action">
+                <a href="#" @click.prevent="sendOptinConfirmation"
+                  :class="['optin-link', { 'optin-link--disabled': !hasOptinList }]">
+                  <i class="pi pi-envelope" />
+                  {{ $t('subscribers.sendOptinConfirm') }}
+                </a>
+              </div>
+            </div>
+          </PvTabPanel><!-- lists -->
 
-            <!-- subscriptions -->
-            <PvTabPanel value="1">
-              <template v-if="data.lists">
-                <PvDataTable :value="data.lists" hoverable sort-field="createdAt" class="subscriptions">
-                  <PvColumn field="name" :header="$tc('globals.terms.list', 1)">
-                    <template #body="{ data: row }">
-                      <div>
-                        <router-link v-if="!row.restricted" :to="`/lists/${row.id}`">
-                          {{ row.name }}
-                        </router-link>
-                        <span v-else class="has-text-grey-light is-italic">{{ row.name }}</span>
-                        <br />
-                        <PvTag :class="row.optin" :data-cy="`optin-${row.optin}`">
-                          <i :class="row.optin === 'double' ? 'pi pi-check-circle' : 'pi pi-times-circle'" />
-                          {{ ' ' }}
-                          {{ $t(`lists.optins.${row.optin}`) }}
-                        </PvTag>{{ ' ' }}
-                      </div>
-                    </template>
-                  </PvColumn>
-
-                  <PvColumn field="status" :header="$t('globals.fields.status')" class="status">
-                    <template #body="{ data: row }">
-                      <PvTag :class="`status-${row.subscriptionStatus}`"
-                        :value="$t(`subscribers.status.${row.subscriptionStatus}`)" />
-                      <template v-if="row.optin === 'double' && row.subscriptionMeta.optinIp">
-                        <br /><span class="is-size-7">{{ row.subscriptionMeta.optinIp }}</span>
-                      </template>
-                    </template>
-                  </PvColumn>
-
-                  <PvColumn field="createdAt" :header="$t('globals.fields.createdAt')">
-                    <template #body="{ data: row }">
-                      {{ $utils.niceDate(row.subscriptionCreatedAt, true) }}
-                    </template>
-                  </PvColumn>
-
-                  <PvColumn field="updatedAt" :header="$t('globals.fields.updatedAt')">
-                    <template #body="{ data: row }">
-                      {{ $utils.niceDate(row.subscriptionCreatedAt, true) }}
-                    </template>
-                  </PvColumn>
-                </PvDataTable>
-              </template>
-            </PvTabPanel><!-- subscriptions -->
-
-            <!-- bounces -->
-            <PvTabPanel value="2" class="bounces">
-              <a href="#" class="is-size-6 is-pulled-right" disabed="true" @click.prevent="deleteBounces"
-                v-if="isBounceVisible">
-                <i class="pi pi-trash" />
-                {{ $t('globals.buttons.delete') }}
-              </a>
-
-              <PvDataTable :value="bounces" hoverable sort-field="createdAt" class="bounces">
-                <PvColumn field="campaign" :header="$tc('globals.terms.campaign', 1)">
+          <!-- subscriptions -->
+          <PvTabPanel value="1">
+            <template v-if="data.lists">
+              <PvDataTable :value="data.lists" hoverable sort-field="createdAt" class="subscriptions">
+                <PvColumn field="name" :header="$tc('globals.terms.list', 1)">
                   <template #body="{ data: row }">
-                    <div v-if="row.campaign">
-                      <router-link :to="{ name: 'bounces', query: { campaign_id: row.campaign.id } }">
-                        {{ row.campaign.name }}
-                      </router-link>
+                    <div class="sub-name-cell">
+                      <router-link v-if="!row.restricted" :to="`/lists/${row.id}`">{{ row.name }}</router-link>
+                      <span v-else class="sub-restricted">{{ row.name }}</span>
+                      <PvTag :severity="row.optin === 'double' ? 'success' : 'secondary'" size="small"
+                        :data-cy="`optin-${row.optin}`">
+                        <i :class="row.optin === 'double' ? 'pi pi-check-circle' : 'pi pi-times-circle'" />
+                        {{ ' ' }}{{ $t(`lists.optins.${row.optin}`) }}
+                      </PvTag>
+                    </div>
+                  </template>
+                </PvColumn>
+
+                <PvColumn field="status" :header="$t('globals.fields.status')" class="status">
+                  <template #body="{ data: row }">
+                    <div class="sub-status-cell">
+                      <PvTag :severity="subStatusSeverity(row.subscriptionStatus)" size="small"
+                        :value="$t(`subscribers.status.${row.subscriptionStatus}`)" />
+                      <span v-if="row.optin === 'double' && row.subscriptionMeta.optinIp" class="sub-ip">
+                        {{ row.subscriptionMeta.optinIp }}
+                      </span>
                     </div>
                   </template>
                 </PvColumn>
 
                 <PvColumn field="createdAt" :header="$t('globals.fields.createdAt')">
-                  <template #body="{ data: row }">
-                    {{ $utils.niceDate(row.createdAt, true) }}
-                  </template>
+                  <template #body="{ data: row }">{{ $utils.niceDate(row.subscriptionCreatedAt, true) }}</template>
                 </PvColumn>
 
-                <PvColumn field="action" :header="$t('globals.fields.type')">
-                  <template #body="{ data: row }">
-                    <span class="is-pulled-right">
-                      <a href="#" @click.prevent="toggleMeta(row.id)">
-                        {{ row.source }}
-                        <i :class="visibleMeta[row.id] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" />
-                      </a>
-                    </span>
-                    <span class="is-clearfix" />
-                    <pre v-if="visibleMeta[row.id]">{{ row.meta }}</pre>
-                  </template>
+                <PvColumn field="updatedAt" :header="$t('globals.fields.updatedAt')">
+                  <template #body="{ data: row }">{{ $utils.niceDate(row.subscriptionCreatedAt, true) }}</template>
                 </PvColumn>
               </PvDataTable>
-            </PvTabPanel><!-- bounces -->
+            </template>
+          </PvTabPanel><!-- subscriptions -->
 
-            <!-- activity -->
-            <PvTabPanel value="3" class="activity">
-              <subscriber-activity v-if="isEditing && data.id" :subscriber-id="data.id" />
-            </PvTabPanel><!-- activity -->
-          </PvTabPanels>
-        </PvTabs>
+          <!-- bounces -->
+          <PvTabPanel value="2" class="bounces">
+            <div class="bounces-header">
+              <a v-if="isBounceVisible" href="#" class="delete-link" @click.prevent="deleteBounces">
+                <i class="pi pi-trash" /> {{ $t('globals.buttons.delete') }}
+              </a>
+            </div>
 
-        <div class="attribs-field">
-          <h5 class="attribs-title">{{ $t('globals.terms.attribs') }}</h5>
-          <small class="attribs-help">{{ $t('subscribers.attribsHelp') + ' ' + egAttribs }}</small>
-          <PvTextarea v-model="form.strAttribs" name="attribs" rows="4" class="w-full" />
-          <a href="https://listmonk.app/docs/concepts" target="_blank" rel="noopener noreferrer" class="learn-more-link">
-            {{ $t('globals.buttons.learnMore') }} <i class="pi pi-external-link" />
-          </a>
-        </div>
+            <PvDataTable :value="bounces" hoverable sort-field="createdAt">
+              <PvColumn field="campaign" :header="$tc('globals.terms.campaign', 1)">
+                <template #body="{ data: row }">
+                  <router-link v-if="row.campaign" :to="{ name: 'bounces', query: { campaign_id: row.campaign.id } }">
+                    {{ row.campaign.name }}
+                  </router-link>
+                </template>
+              </PvColumn>
+
+              <PvColumn field="createdAt" :header="$t('globals.fields.createdAt')">
+                <template #body="{ data: row }">{{ $utils.niceDate(row.createdAt, true) }}</template>
+              </PvColumn>
+
+              <PvColumn field="action" :header="$t('globals.fields.type')">
+                <template #body="{ data: row }">
+                  <div class="bounce-meta-row">
+                    <a href="#" class="bounce-source" @click.prevent="toggleMeta(row.id)">
+                      {{ row.source }}
+                      <i :class="visibleMeta[row.id] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" />
+                    </a>
+                  </div>
+                  <pre v-if="visibleMeta[row.id]" class="bounce-meta-pre">{{ row.meta }}</pre>
+                </template>
+              </PvColumn>
+            </PvDataTable>
+          </PvTabPanel><!-- bounces -->
+
+          <!-- activity -->
+          <PvTabPanel value="3" class="activity">
+            <subscriber-activity v-if="isEditing && data.id" :subscriber-id="data.id" />
+          </PvTabPanel><!-- activity -->
+        </PvTabPanels>
+      </PvTabs>
+
+      <div class="attribs-field">
+        <h5 class="attribs-title">{{ $t('globals.terms.attribs') }}</h5>
+        <small class="lm-help">{{ $t('subscribers.attribsHelp') + ' ' + egAttribs }}</small>
+        <PvTextarea v-model="form.strAttribs" name="attribs" rows="4" class="w-full" />
+        <a href="https://listmonk.app/docs/concepts" target="_blank" rel="noopener noreferrer" class="learn-more-link">
+          {{ $t('globals.buttons.learnMore') }} <i class="pi pi-external-link" />
+        </a>
+      </div>
     </div>
 
     <div class="lm-form-footer">
@@ -178,211 +164,185 @@
   </form>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import ListSelector from '../components/ListSelector.vue';
 import CopyText from '../components/CopyText.vue';
 import SubscriberActivity from '../components/SubscriberActivity.vue';
 
-export default {
-  components: {
-    ListSelector,
-    CopyText,
-    SubscriberActivity,
-  },
+const props = withDefaults(defineProps<{
+  data?: any;
+  isEditing?: boolean;
+}>(), { data: () => ({ lists: [] }), isEditing: false });
 
-  props: {
-    data: {
-      type: Object,
-      default: () => ({ lists: [] }),
-    },
-    isEditing: Boolean,
-  },
+const emit = defineEmits(['finished', 'close']);
 
-  emits: ['finished', 'close'],
+const { $api, $utils } = useGlobal();
+const { t, tc } = useI18n();
+const { lists, loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      // Binds form input values. This is populated by subscriber props passed
-      // from the parent component in mounted().
-      form: {
-        lists: [],
-        strAttribs: '{}',
-        status: 'enabled',
-        preconfirm: false,
-      },
-      isBounceVisible: false,
-      bounces: [],
-      visibleMeta: {},
-      activeTab: '0',
+const focusEl = ref<any>(null);
+const isBounceVisible = ref(false);
+const bounces = ref<any[]>([]);
+const visibleMeta = reactive<Record<number, boolean>>({});
+const activeTab = ref('0');
+const egAttribs = '{"job": "developer", "location": "Mars", "has_rocket": true}';
 
-      egAttribs: '{"job": "developer", "location": "Mars", "has_rocket": true}',
+const form = reactive<any>({
+  lists: [],
+  strAttribs: '{}',
+  status: 'enabled',
+  preconfirm: false,
+});
 
-      statusOptions: [
-        { label: this.$t('subscribers.status.enabled'), value: 'enabled' },
-        { label: this.$t('subscribers.status.blocklisted'), value: 'blocklisted' },
-      ],
-    };
-  },
+const statusOptions = computed(() => [
+  { label: t('subscribers.status.enabled'), value: 'enabled' },
+  { label: t('subscribers.status.blocklisted'), value: 'blocklisted' },
+]);
 
-  methods: {
-    toggleBounces() {
-      this.isBounceVisible = !this.isBounceVisible;
-    },
+const hasOptinList = computed(() => form.lists.some((l: any) => l.optin === 'double'));
 
-    toggleMeta(id) {
-      let v = false;
-      if (!this.visibleMeta[id]) {
-        v = true;
-      }
-      this.visibleMeta[id] = v;
-    },
+function subStatusSeverity(status: string) {
+  const map: Record<string, string> = {
+    confirmed: 'success', unconfirmed: 'warn', unsubscribed: 'secondary', blocklisted: 'danger',
+  };
+  return map[status] || 'secondary';
+}
 
-    deleteBounces(sub) {
-      this.$utils.confirm(
-        null,
-        () => {
-          this.$api.deleteSubscriberBounces(this.form.id).then(() => {
-            this.getBounces();
-            this.$utils.toast(this.$t('globals.messages.deleted', { name: sub.name }));
-          });
-        },
-      );
-    },
+function toggleMeta(id: number) { visibleMeta[id] = !visibleMeta[id]; }
 
-    getBounces() {
-      this.$api.getSubscriberBounces(this.form.id).then((data) => {
-        this.bounces = data;
-      });
-    },
+function getBounces() {
+  $api.getSubscriberBounces(form.id).then((data: any) => { bounces.value = data; });
+}
 
-    onSubmit() {
-      if (this.isEditing) {
-        this.updateSubscriber();
-        return;
-      }
-
-      this.createSubscriber();
-    },
-
-    createSubscriber() {
-      let attribs = {};
-      if (this.form.strAttribs) {
-        attribs = this.validateAttribs(this.form.strAttribs);
-        if (!attribs) {
-          return;
-        }
-      }
-
-      const data = {
-        email: this.form.email,
-        name: this.form.name,
-        status: this.form.status,
-        attribs,
-        preconfirm_subscriptions: this.form.preconfirm,
-
-        // List IDs.
-        lists: this.form.lists.map((l) => l.id),
-      };
-
-      this.$api.createSubscriber(data).then((d) => {
-        this.$emit('finished');
-        this.$parent.close();
-        this.$utils.toast(this.$t('globals.messages.created', { name: d.name }));
-      });
-    },
-
-    updateSubscriber() {
-      let attribs = {};
-      if (this.form.strAttribs) {
-        attribs = this.validateAttribs(this.form.strAttribs);
-        if (!attribs) {
-          return;
-        }
-      }
-
-      const data = {
-        id: this.form.id,
-        email: this.form.email,
-        name: this.form.name,
-        status: this.form.status,
-        preconfirm_subscriptions: this.form.preconfirm,
-        attribs,
-
-        // List IDs.
-        lists: this.form.lists.map((l) => l.id),
-      };
-
-      this.$api.updateSubscriber(data).then((d) => {
-        this.$emit('finished');
-        this.$parent.close();
-        this.$utils.toast(this.$t('globals.messages.updated', { name: d.name }));
-      });
-    },
-
-    sendOptinConfirmation() {
-      this.$api.sendSubscriberOptin(this.form.id).then(() => {
-        this.$utils.toast(this.$t('subscribers.sentOptinConfirm'));
-      });
-    },
-
-    validateAttribs(str) {
-      // Parse and validate attributes JSON.
-      let attribs = {};
-      try {
-        attribs = JSON.parse(str);
-      } catch (e) {
-        this.$utils.toast(
-          `${this.$t('subscribers.invalidJSON')}: ${e.toString()}`,
-          'is-danger',
-
-          3000,
-        );
-        return null;
-      }
-      if (attribs instanceof Array) {
-        this.$utils.toast('Attributes should be a map {} and not an array []', 'is-danger', 3000);
-        return null;
-      }
-
-      return attribs;
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['lists', 'loading']),
-
-    hasOptinList() {
-      return this.form.lists.some((l) => l.optin === 'double');
-    },
-  },
-
-  mounted() {
-    if (this.$props.isEditing) {
-      this.form = {
-        ...this.$props.data,
-
-        // Deep-copy the lists array on to the form.
-        strAttribs: JSON.stringify(this.$props.data.attribs, null, 4),
-      };
-    }
-
-    if (this.form.id) {
-      this.getBounces();
-    }
-
-    this.$nextTick(() => {
-      this.$refs.focus.$el.focus();
+function deleteBounces() {
+  $utils.confirm(null, () => {
+    $api.deleteSubscriberBounces(form.id).then(() => {
+      getBounces();
+      $utils.toast(t('globals.messages.deleted', { name: form.name }));
     });
-  },
-};
+  });
+}
+
+function validateAttribs(str: string) {
+  let attribs: any = {};
+  try {
+    attribs = JSON.parse(str);
+  } catch (e: any) {
+    $utils.toast(`${t('subscribers.invalidJSON')}: ${e.toString()}`, 'is-danger', 3000);
+    return null;
+  }
+  if (attribs instanceof Array) {
+    $utils.toast('Attributes should be a map {} and not an array []', 'is-danger', 3000);
+    return null;
+  }
+  return attribs;
+}
+
+function createSubscriber() {
+  let attribs = {};
+  if (form.strAttribs) {
+    attribs = validateAttribs(form.strAttribs);
+    if (!attribs) return;
+  }
+  $api.createSubscriber({
+    email: form.email,
+    name: form.name,
+    status: form.status,
+    attribs,
+    preconfirm_subscriptions: form.preconfirm,
+    lists: form.lists.map((l: any) => l.id),
+  }).then((d: any) => {
+    emit('finished'); emit('close');
+    $utils.toast(t('globals.messages.created', { name: d.name }));
+  });
+}
+
+function updateSubscriber() {
+  let attribs = {};
+  if (form.strAttribs) {
+    attribs = validateAttribs(form.strAttribs);
+    if (!attribs) return;
+  }
+  $api.updateSubscriber({
+    id: form.id,
+    email: form.email,
+    name: form.name,
+    status: form.status,
+    preconfirm_subscriptions: form.preconfirm,
+    attribs,
+    lists: form.lists.map((l: any) => l.id),
+  }).then((d: any) => {
+    emit('finished'); emit('close');
+    $utils.toast(t('globals.messages.updated', { name: d.name }));
+  });
+}
+
+function onSubmit() {
+  if (props.isEditing) { updateSubscriber(); return; }
+  createSubscriber();
+}
+
+function sendOptinConfirmation() {
+  if (!hasOptinList.value) return;
+  $api.sendSubscriberOptin(form.id).then(() => {
+    $utils.toast(t('subscribers.sentOptinConfirm'));
+  });
+}
+
+onMounted(() => {
+  if (props.isEditing) {
+    Object.assign(form, { ...props.data, strAttribs: JSON.stringify(props.data.attribs, null, 4) });
+  }
+  if (form.id) getBounces();
+  nextTick(() => { focusEl.value?.$el?.focus(); });
+});
 </script>
 
 <style scoped lang="scss">
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+
+.lm-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0; }
+.lm-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.lm-field-row--preconfirm { align-items: start; margin-top: 0.75rem; }
+
+.lm-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
+.lm-help { display: block; font-size: 0.75rem; color: var(--lm-text-subtle); line-height: 1.4; }
+
+.check-row { display: flex; align-items: center; gap: 0.5rem; }
+.check-label { font-size: 0.875rem; color: var(--lm-text); }
+
+.optin-action { display: flex; align-items: flex-end; padding-bottom: 0.1rem; }
+.optin-link {
+  font-size: 0.85rem; color: var(--lm-primary); text-decoration: none;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  &:hover { text-decoration: underline; }
+  &--disabled { opacity: 0.4; pointer-events: none; }
+}
+
+.sub-name-cell { display: flex; flex-direction: column; gap: 0.25rem; }
+.sub-restricted { color: var(--lm-text-subtle); font-style: italic; }
+.sub-status-cell { display: flex; flex-direction: column; gap: 0.2rem; }
+.sub-ip { font-size: 0.75rem; color: var(--lm-text-subtle); }
+
+.bounces-header { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+.delete-link { font-size: 0.85rem; color: var(--lm-danger); text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; &:hover { text-decoration: underline; } }
+
+.bounce-meta-row { display: flex; justify-content: flex-end; }
+.bounce-source { font-size: 0.85rem; color: var(--lm-text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; &:hover { color: var(--lm-text); } }
+.bounce-meta-pre { font-size: 0.75rem; margin-top: 0.4rem; background: var(--lm-bg); border-radius: 4px; padding: 0.5rem; overflow-x: auto; }
 
 .attribs-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .attribs-title { font-size: 0.9rem; font-weight: 600; color: var(--lm-text); margin: 0; }
-.attribs-help { font-size: 0.75rem; color: var(--lm-text-subtle); }
 .learn-more-link { font-size: 0.78rem; color: var(--lm-primary); text-decoration: none; &:hover { text-decoration: underline; } }
 </style>

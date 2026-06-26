@@ -9,101 +9,89 @@
 
     <div class="lm-form-body">
       <div class="type-status-row">
-        <div class="field type-field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.type') }}</label>
+        <div class="lm-field type-field">
+          <label class="lm-label">{{ $t('globals.fields.type') }}</label>
           <div class="radio-group">
-            <div class="flex items-center gap-2">
+            <div class="check-row">
               <PvRadioButton v-model="form.type" name="type" value="user"
                 input-id="type-user" :disabled="isEditing" />
-              <label for="type-user" class="cursor-pointer flex items-center gap-1">
+              <label for="type-user" class="radio-label">
                 <i class="pi pi-user" /> {{ $t('users.type.user') }}
               </label>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="check-row">
               <PvRadioButton v-model="form.type" name="type" value="api"
                 input-id="type-api" :disabled="isEditing" />
-              <label for="type-api" class="cursor-pointer flex items-center gap-1">
+              <label for="type-api" class="radio-label">
                 <i class="pi pi-code" /> {{ $t('users.type.api') }}
               </label>
             </div>
           </div>
         </div>
-        <div class="field status-field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
+        <div class="lm-field status-field">
+          <label class="lm-label">{{ $t('globals.fields.status') }}</label>
           <PvSelect v-model="form.status" name="status" required
             :options="[{ label: $t('users.status.enabled'), value: 'enabled' }, { label: $t('users.status.disabled'), value: 'disabled' }]"
             option-label="label" option-value="value" class="w-full" />
         </div>
       </div>
 
-      <div class="field">
-        <label for="username" class="block mb-1 text-sm font-medium">{{ $t('users.username') }}</label>
-        <PvInputText id="username" :maxlength="200" v-model="form.username" name="username" ref="focus"
+      <div class="lm-field">
+        <label for="username" class="lm-label">{{ $t('users.username') }}</label>
+        <PvInputText id="username" :maxlength="200" v-model="form.username" name="username" ref="focusEl"
           :placeholder="$t('users.username')" required autocomplete="off"
           pattern="[a-zA-Z0-9_\-\.@]+$" class="w-full" />
-        <small class="block mt-1 text-color-secondary">{{ $t('users.usernameHelp') }}</small>
+        <small class="lm-help">{{ $t('users.usernameHelp') }}</small>
       </div>
 
-      <div class="field">
-        <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
+      <div class="lm-field">
+        <label class="lm-label">{{ $t('globals.fields.name') }}</label>
         <PvInputText :maxlength="200" v-model="form.name" name="name"
           :placeholder="$t('globals.fields.name')" class="w-full" />
       </div>
 
-      <div v-if="form.type !== 'api'" class="field">
-        <label class="block mb-1 text-sm font-medium">{{ $t('subscribers.email') }}</label>
+      <div v-if="form.type !== 'api'" class="lm-field">
+        <label class="lm-label">{{ $t('subscribers.email') }}</label>
         <PvInputText :maxlength="200" v-model="form.email" name="email" type="email"
           :placeholder="$t('subscribers.email')" required class="w-full" />
       </div>
 
       <div v-if="form.type !== 'api'" class="form-section">
-        <div class="flex items-center gap-2">
+        <div class="check-row">
           <PvCheckbox v-model="form.passwordLogin" :binary="true" input-id="passwordLogin" />
-          <label for="passwordLogin" class="cursor-pointer text-sm font-medium">
-            {{ $t('users.passwordEnable') }}
-          </label>
+          <label for="passwordLogin" class="check-label">{{ $t('users.passwordEnable') }}</label>
         </div>
-        <div v-if="form.passwordLogin" class="grid">
-          <div class="col-6">
-            <div class="field">
-              <label class="block mb-1 text-sm font-medium">{{ $t('users.password') }}</label>
-              <PvPassword v-model="form.password" name="password"
-                :placeholder="$t('users.password')" :minlength="8" :maxlength="200"
-                :required="!isEditing" :feedback="false" class="w-full" />
-            </div>
+        <div v-if="form.passwordLogin" class="lm-field-row">
+          <div class="lm-field">
+            <label class="lm-label">{{ $t('users.password') }}</label>
+            <PvPassword v-model="form.password" name="password"
+              :placeholder="$t('users.password')" :minlength="8" :maxlength="200"
+              :required="!isEditing" :feedback="false" class="w-full" />
           </div>
-          <div class="col-6">
-            <div class="field">
-              <label class="block mb-1 text-sm font-medium">{{ $t('users.passwordRepeat') }}</label>
-              <PvPassword v-model="form.password2" name="password2"
-                :required="!isEditing && !!form.password" :feedback="false" class="w-full" />
-            </div>
+          <div class="lm-field">
+            <label class="lm-label">{{ $t('users.passwordRepeat') }}</label>
+            <PvPassword v-model="form.password2" name="password2"
+              :required="!isEditing && !!form.password" :feedback="false" class="w-full" />
           </div>
         </div>
       </div>
 
       <p class="form-section-label">{{ $tc('users.roles') }}</p>
-      <div class="form-section">
-        <div class="grid">
-          <div class="col-6">
-            <div class="field">
-              <label class="block mb-1 text-sm font-medium">{{ $tc('users.userRole') }}</label>
-              <PvSelect v-model="form.userRoleId" name="user_role" required
-                :options="userRoles" option-label="name" option-value="id" class="w-full" />
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="field">
-              <label class="block mb-1 text-sm font-medium">{{ $tc('users.listRole', 0) }}</label>
-              <PvSelect v-model="form.listRoleId" name="list_role"
-                :options="listRoleOptions" option-label="name" option-value="id" class="w-full" />
-            </div>
-          </div>
+      <div class="lm-field-row">
+        <div class="lm-field">
+          <label class="lm-label">{{ $tc('users.userRole') }}</label>
+          <PvSelect v-model="form.userRoleId" name="user_role" required
+            :options="userRoles" option-label="name" option-value="id" class="w-full" />
+        </div>
+        <div class="lm-field">
+          <label class="lm-label">{{ $tc('users.listRole', 0) }}</label>
+          <PvSelect v-model="form.listRoleId" name="list_role"
+            :options="listRoleOptions" option-label="name" option-value="id" class="w-full" />
         </div>
       </div>
 
       <div v-if="apiToken" class="user-api-token">
-        <p class="font-medium mb-1">{{ $t('users.apiOneTimeToken') }}</p>
+        <p class="api-token-label">{{ $t('users.apiOneTimeToken') }}</p>
         <copy-text :text="apiToken" />
       </div>
     </div>
@@ -116,134 +104,100 @@
   </form>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, computed, nextTick, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import CopyText from '../components/CopyText.vue';
 
-export default {
-  name: 'UserForm',
+const props = withDefaults(defineProps<{
+  data?: any;
+  isEditing?: boolean;
+}>(), { data: () => ({}), isEditing: false });
 
-  components: {
-    CopyText,
-  },
+const emit = defineEmits(['finished', 'close']);
 
-  props: {
-    data: { type: Object, default: () => ({}) },
-    isEditing: { type: Boolean, default: false },
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const { loading, userRoles, listRoles } = storeToRefs(useMainStore());
 
-  emits: ['finished', 'close'],
+const focusEl = ref<any>(null);
+const apiToken = ref<string | null>(null);
+const form = reactive<any>({
+  username: '',
+  email: '',
+  name: '',
+  password: '',
+  password2: '',
+  passwordLogin: false,
+  type: 'user',
+  status: 'enabled',
+});
 
-  data() {
-    return {
-      form: {
-        username: '',
-        email: '',
-        name: '',
-        password: '',
-        password2: '',
-        passwordLogin: false,
-        type: 'user',
-        status: 'enabled',
-      },
-      apiToken: null,
-    };
-  },
+const listRoleOptions = computed(() => [
+  { name: `— ${t('globals.terms.none')} —`, id: '' },
+  ...(listRoles.value as any[]),
+]);
 
-  methods: {
-    onSubmit() {
-      if (!this.form.passwordLogin) {
-        this.form.password = null;
-        this.form.password2 = null;
-      }
+function createUser() {
+  const payload = {
+    ...form, password_login: form.passwordLogin, user_role_id: form.userRoleId, list_role_id: form.listRoleId || null,
+  };
+  $api.createUser(payload).then((data: any) => {
+    emit('finished');
+    $utils.toast(t('globals.messages.created', { name: data.name }));
+    if (payload.type === 'api') { apiToken.value = data.password; return; }
+    emit('close');
+  });
+}
 
-      if (this.form.type !== 'api' && this.form.passwordLogin && this.form.password && this.form.password !== this.form.password2) {
-        this.$utils.toast(this.$t('users.passwordMismatch'), 'is-danger');
-        return;
-      }
+function updateUser() {
+  const payload = {
+    ...form, password_login: form.passwordLogin, user_role_id: form.userRoleId, list_role_id: form.listRoleId || null,
+  };
+  $api.updateUser({ id: props.data.id, ...payload }).then((data: any) => {
+    emit('finished'); emit('close');
+    $utils.toast(t('globals.messages.updated', { name: data.name }));
+  });
+}
 
-      if (this.isEditing) {
-        this.updateUser();
-      } else {
-        this.createUser();
-      }
-    },
+function onSubmit() {
+  if (!form.passwordLogin) { form.password = null; form.password2 = null; }
+  if (form.type !== 'api' && form.passwordLogin && form.password && form.password !== form.password2) {
+    $utils.toast(t('users.passwordMismatch'), 'is-danger');
+    return;
+  }
+  if (props.isEditing) { updateUser(); } else { createUser(); }
+}
 
-    createUser() {
-      const form = {
-        ...this.form,
-        password_login: this.form.passwordLogin,
-        user_role_id: this.form.userRoleId,
-        list_role_id: this.form.listRoleId || null,
-      };
-      this.$api.createUser(form).then((data) => {
-        this.$emit('finished');
-        this.$utils.toast(this.$t('globals.messages.created', { name: data.name }));
-
-        if (form.type === 'api') {
-          this.apiToken = data.password;
-          return;
-        }
-
-        this.$emit('close');
-      });
-    },
-
-    updateUser() {
-      const form = {
-        ...this.form,
-        password_login: this.form.passwordLogin,
-        user_role_id: this.form.userRoleId,
-        list_role_id: this.form.listRoleId || null,
-      };
-      this.$api.updateUser({ id: this.data.id, ...form }).then((data) => {
-        this.$emit('finished');
-        this.$emit('close');
-        this.$utils.toast(this.$t('globals.messages.updated', { name: data.name }));
-      });
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['loading', 'userRoles', 'listRoles']),
-
-    listRoleOptions() {
-      return [{ name: `— ${this.$t('globals.terms.none')} —`, id: '' }, ...this.listRoles];
-    },
-  },
-
-  mounted() {
-    this.form = { ...this.form, ...this.$props.data };
-    if (this.$props.data.userRole) {
-      this.form.userRoleId = this.$props.data.userRole.id;
-    }
-    this.form.listRoleId = this.$props.data.listRole ? this.$props.data.listRole.id : '';
-
-    this.$api.getUserRoles();
-    this.$api.getListRoles();
-
-    this.$nextTick(() => {
-      this.$refs.focus.$el.focus();
-    });
-  },
-};
+onMounted(() => {
+  Object.assign(form, props.data);
+  if (props.data.userRole) form.userRoleId = props.data.userRole.id;
+  form.listRoleId = props.data.listRole ? props.data.listRole.id : '';
+  $api.getUserRoles();
+  $api.getListRoles();
+  nextTick(() => { focusEl.value?.$el?.focus(); });
+});
 </script>
 
 <style scoped lang="scss">
-.type-status-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 1.5rem;
-}
+.lm-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0; }
+.lm-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.lm-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--lm-text); }
+.lm-help { display: block; font-size: 0.75rem; color: var(--lm-text-subtle); line-height: 1.4; }
+
+.check-row { display: flex; align-items: center; gap: 0.5rem; }
+.check-label { font-size: 0.875rem; color: var(--lm-text); cursor: pointer; font-weight: 500; }
+.radio-label { cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; color: var(--lm-text); }
+
+.type-status-row { display: flex; align-items: flex-end; gap: 1.5rem; }
 .type-field { flex: 1; }
 .status-field { flex: 0 0 180px; }
-.radio-group {
-  display: flex;
-  gap: 1.25rem;
-  align-items: center;
-  height: 2.375rem; // matches PvSelect height
-}
+.radio-group { display: flex; gap: 1.25rem; align-items: center; height: 2.375rem; }
 
 .form-section {
   border: 1px solid var(--lm-border);
@@ -263,7 +217,6 @@ export default {
   margin: 0.25rem 0 -0.25rem;
 }
 
-// PvPassword needs explicit width on the inner input
 :deep(.p-password) { width: 100%; }
 :deep(.p-password-input) { width: 100%; }
 
@@ -273,6 +226,10 @@ export default {
   border-radius: 8px;
   padding: 1rem;
   font-size: 0.85rem;
-  color: #166534;
+  color: var(--lm-success-text, #166534);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
+.api-token-label { font-weight: 600; margin: 0; }
 </style>

@@ -35,6 +35,7 @@ type serverConfig struct {
 	Update        *AppUpdate      `json:"update"`
 	NeedsRestart  bool            `json:"needs_restart"`
 	HasLegacyUser bool            `json:"has_legacy_user"`
+	ScrubEnabled  bool            `json:"scrub_enabled"`
 	Version       string          `json:"version"`
 }
 
@@ -86,6 +87,10 @@ func (a *App) GetServerConfig(c echo.Context) error {
 	out.Messengers = make([]string, 0, len(a.messengers))
 	for _, m := range a.messengers {
 		out.Messengers = append(out.Messengers, m.Name())
+	}
+
+	if s, err := a.core.GetSettings(); err == nil {
+		out.ScrubEnabled = s.Scrub.Enabled && s.Scrub.URL != "" && s.Scrub.APIKey != ""
 	}
 
 	a.Lock()

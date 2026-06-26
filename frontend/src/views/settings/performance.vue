@@ -85,16 +85,9 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { regDuration } from '../../constants';
 
-export default {
-  props: {
-    form: { type: Object, default: () => {} },
-  },
-
-  data() {
-    return { data: this.form, regDuration };
-  },
-};
+const props = defineProps<{ form?: any }>();
+const data = props.form;
 </script>

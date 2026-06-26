@@ -11,7 +11,7 @@ dayjs.extend(dayDuration);
 const reEmail = /(.+?)@(.+?)/ig;
 const prefKey = 'listmonk_pref';
 
-const htmlEntities = {
+const htmlEntities: Record<string, string> = {
   '&': '&amp;',
   '<': '&lt;',
   '>': '&gt;',
@@ -23,7 +23,11 @@ const htmlEntities = {
 };
 
 export default class Utils {
-  constructor(i18n) {
+  i18n: ReturnType<typeof import('vue-i18n').useI18n>;
+
+  intlNumFormat: Intl.NumberFormat;
+
+  constructor(i18n: ReturnType<typeof import('vue-i18n').useI18n>) {
     this.i18n = i18n;
     this.intlNumFormat = new Intl.NumberFormat();
 
@@ -48,10 +52,10 @@ export default class Utils {
     }
   }
 
-  getDate = (d) => dayjs(d);
+  getDate = (d: string | Date) => dayjs(d);
 
   // Parses an ISO timestamp to a simpler form.
-  niceDate = (stamp, showTime) => {
+  niceDate = (stamp: string | null | undefined, showTime?: boolean): string => {
     if (!stamp) {
       return '';
     }
@@ -67,7 +71,7 @@ export default class Utils {
     return out;
   };
 
-  duration = (start, end) => {
+  duration = (start: string | Date, end: string | Date): string => {
     const a = dayjs(start);
     const b = dayjs(end);
     const d = dayjs.duration(Math.abs(b.diff(a)));
@@ -83,9 +87,9 @@ export default class Utils {
   };
 
   // Simple, naive, e-mail address check.
-  validateEmail = (e) => e.match(reEmail);
+  validateEmail = (e: string) => e.match(reEmail);
 
-  niceNumber = (n) => {
+  niceNumber = (n: number | null | undefined): number | string => {
     if (n === null || n === undefined) {
       return 0;
     }
@@ -106,7 +110,6 @@ export default class Utils {
       return n;
     }
 
-    // Whole number without decimals.
     const out = (n / div);
     if (Math.floor(out) === n) {
       return out + pfx;
@@ -115,12 +118,12 @@ export default class Utils {
     return out.toFixed(2) + pfx;
   };
 
-  formatNumber(v) {
+  formatNumber(v: number): string {
     return this.intlNumFormat.format(v);
   }
 
   // Parse one or more numeric ids as query params and return as an array of ints.
-  parseQueryIDs = (ids) => {
+  parseQueryIDs = (ids: string | number | string[] | number[] | null | undefined): number[] => {
     if (!ids) {
       return [];
     }
@@ -130,51 +133,50 @@ export default class Utils {
     }
 
     if (typeof ids === 'number') {
-      return [parseInt(ids, 10)];
+      return [parseInt(String(ids), 10)];
     }
 
-    return ids.map((id) => parseInt(id, 10));
+    return (ids as (string | number)[]).map((id) => parseInt(String(id), 10));
   };
 
   // https://stackoverflow.com/a/12034334
-  escapeHTML = (html) => html.replace(/[&<>"'`=/]/g, (s) => htmlEntities[s]);
+  escapeHTML = (html: string): string => html.replace(/[&<>"'`=/]/g, (s) => htmlEntities[s]);
 
-  titleCase = (str) => str[0].toUpperCase() + str.substr(1).toLowerCase();
+  titleCase = (str: string): string => str[0].toUpperCase() + str.substr(1).toLowerCase();
 
   // UI shortcuts.
-  confirm = (msg, onConfirm, onCancel) => {
+  confirm = (msg: string | null, onConfirm?: () => void, onCancel?: () => void): void => {
     showConfirm(
-      !msg ? this.i18n.t('globals.messages.confirm') : this.escapeHTML(msg),
+      !msg ? this.i18n.t('globals.messages.confirm') as string : this.escapeHTML(msg),
       onConfirm,
       onCancel,
     );
   };
 
-  prompt = (msg, inputAttrs, onConfirm, onCancel) => {
+  prompt = (
+    msg: string,
+    inputAttrs: unknown,
+    onConfirm?: (value: string) => void,
+    onCancel?: () => void,
+  ): void => {
     showPrompt(this.escapeHTML(msg), onConfirm, onCancel);
   };
 
-  toast = (msg, typ, duration) => {
+  toast = (msg: string, typ?: string, duration?: number): void => {
     showToast(this.escapeHTML(msg), typ || 'is-success', duration || 3000);
   };
 
   // Takes a props.row from a Buefy b-column <td> template and
   // returns a `data-id` attribute which Buefy then applies to the td.
-  tdID = (row) => ({ 'data-id': row.id.toString() });
+  tdID = (row: { id: number | string }) => ({ 'data-id': row.id.toString() });
 
-  camelString = (str) => {
-    const s = str.replace(/[-_\s]+(.)?/g, (match, chr) => (chr ? chr.toUpperCase() : ''));
+  camelString = (str: string): string => {
+    const s = str.replace(/[-_\s]+(.)?/g, (_match, chr) => (chr ? chr.toUpperCase() : ''));
     return s.substr(0, 1).toLowerCase() + s.substr(1);
   };
 
   // camelKeys recursively camelCases all keys in a given object (array or {}).
-  // For each key it traverses, it passes a dot separated key path to an optional testFunc() bool.
-  // so that it can camelcase or leave a particular key alone based on what testFunc() returns.
-  // eg: The keypath for {"data": {"results": ["created_at": 123]}} is
-  // .data.results.*.created_at (array indices become *)
-  // testFunc() can examine this key and return true to convert it to camelcase
-  // or false to leave it as-is.
-  camelKeys = (obj, testFunc, keys) => {
+  camelKeys = (obj: unknown, testFunc?: (keyPath: string) => boolean, keys?: string): unknown => {
     if (obj === null) {
       return obj;
     }
@@ -183,19 +185,18 @@ export default class Utils {
       return obj.map((o) => this.camelKeys(o, testFunc, `${keys || ''}.*`));
     }
 
-    if (obj.constructor === Object) {
-      return Object.keys(obj).reduce((result, key) => {
+    if (obj !== null && typeof obj === 'object' && (obj as object).constructor === Object) {
+      return Object.keys(obj as object).reduce((result: Record<string, unknown>, key) => {
         const keyPath = `${keys || ''}.${key}`;
         let k = key;
 
-        // If there's no testfunc or if a function is defined and it returns true, convert.
         if (testFunc === undefined || testFunc(keyPath)) {
           k = this.camelString(key);
         }
 
         return {
           ...result,
-          [k]: this.camelKeys(obj[key], testFunc, keyPath),
+          [k]: this.camelKeys((obj as Record<string, unknown>)[key], testFunc, keyPath),
         };
       }, {});
     }
@@ -203,19 +204,19 @@ export default class Utils {
     return obj;
   };
 
-  getPref = (key) => {
+  getPref = (key: string): unknown => {
     if (localStorage.getItem(prefKey) === null) {
       return null;
     }
 
-    const p = JSON.parse(localStorage.getItem(prefKey));
+    const p = JSON.parse(localStorage.getItem(prefKey)!);
     return key in p ? p[key] : null;
   };
 
-  setPref = (key, val) => {
-    let p = {};
+  setPref = (key: string, val: unknown): void => {
+    let p: Record<string, unknown> = {};
     if (localStorage.getItem(prefKey) !== null) {
-      p = JSON.parse(localStorage.getItem(prefKey));
+      p = JSON.parse(localStorage.getItem(prefKey)!);
     }
 
     p[key] = val;

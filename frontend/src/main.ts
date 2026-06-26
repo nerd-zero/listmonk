@@ -62,17 +62,17 @@ import eventBus from './eventBus';
 const BluePreset = definePreset(Aura, {
   semantic: {
     primary: {
-      50: '{blue.50}',
-      100: '{blue.100}',
-      200: '{blue.200}',
-      300: '{blue.300}',
-      400: '{blue.400}',
-      500: '{blue.500}',
-      600: '{blue.600}',
-      700: '{blue.700}',
-      800: '{blue.800}',
-      900: '{blue.900}',
-      950: '{blue.950}',
+      50: '{indigo.50}',
+      100: '{indigo.100}',
+      200: '{indigo.200}',
+      300: '{indigo.300}',
+      400: '{indigo.400}',
+      500: '{indigo.500}',
+      600: '{indigo.600}',
+      700: '{indigo.700}',
+      800: '{indigo.800}',
+      900: '{indigo.900}',
+      950: '{indigo.950}',
     },
   },
 });
@@ -146,7 +146,7 @@ app.component('PvFileUpload', FileUpload);
 
 app.directive('tooltip', Tooltip);
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   if (to.matched.length === 0) {
     next('/404');
   } else {
@@ -156,60 +156,64 @@ router.beforeEach((to, from, next) => {
 
 router.afterEach((to) => {
   const { te, tc } = i18n.global;
-  const title = to.meta.title && te(to.meta.title) ? `${tc(to.meta.title, 0)} /` : '';
+  const title = to.meta.title && te(to.meta.title as string) ? `${tc(to.meta.title as string, 0)} /` : '';
   document.title = `${title} listmonk`;
 });
 
-async function initConfig(instance) {
-  let profile;
-  let cfg;
+async function initConfig(instance: typeof app) {
+  let profile: Record<string, unknown>;
+  let cfg: Record<string, unknown>;
   try {
     [profile, cfg] = await Promise.all([api.getUserProfile(), api.getServerConfig()]);
-  } catch (err) {
-    if (err.response && err.response.status === 403) {
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { status: number } };
+    if (axiosErr.response && axiosErr.response.status === 403) {
       window.location.href = '/admin/login';
     }
     return;
   }
 
-  const lang = await api.getLang(cfg.lang);
-  i18n.global.locale = cfg.lang;
-  i18n.global.setLocaleMessage(cfg.lang, lang);
+  const lang = await api.getLang(cfg.lang as string);
+  i18n.global.locale = cfg.lang as string;
+  i18n.global.setLocaleMessage(cfg.lang as string, lang as Record<string, unknown>);
 
   const props = instance.config.globalProperties;
-  props.$utils = new Utils(i18n.global);
+  props.$utils = new Utils(i18n.global as Parameters<typeof Utils>[0]);
   props.$api = api;
   props.$events = eventBus;
 
-  props.$can = (...perms) => {
-    if (profile.userRole.id === 1) {
+  props.$can = (...perms: string[]) => {
+    const { userRole } = profile as { userRole: { id: number; permissions: string[] } };
+    if (userRole.id === 1) {
       return true;
     }
     return perms.some((perm) => {
       if (perm.endsWith('*')) {
         const group = `${perm.split(':')[0]}:`;
-        return profile.userRole.permissions.some((p) => p.startsWith(group));
+        return userRole.permissions.some((p: string) => p.startsWith(group));
       }
-      return profile.userRole.permissions.includes(perm);
+      return userRole.permissions.includes(perm);
     });
   };
 
-  props.$canList = (id, perm) => {
-    if (profile.userRole.id === 1) {
+  props.$canList = (id: number, perm: string) => {
+    const { userRole } = profile as { userRole: { id: number } };
+    if (userRole.id === 1) {
       return true;
     }
     const can = props.$can('lists:get_all', 'lists:manage_all');
     if (can) {
       return true;
     }
-    return profile.listRole.lists.some(
+    const { listRole } = profile as { listRole: { lists: { id: number; permissions: string[] }[] } };
+    return listRole.lists.some(
       (list) => list.id === id && list.permissions.includes(perm),
     );
   };
 
   const currentRoute = router.currentRoute.value;
   const routeTitle = currentRoute.meta.title
-    ? `${i18n.global.tc(currentRoute.meta.title, 0)} /`
+    ? `${i18n.global.tc(currentRoute.meta.title as string, 0)} /`
     : '';
   document.title = `${routeTitle} listmonk`;
 

@@ -1,8 +1,11 @@
 <template>
-  <div ref="editor" class="code-editor" />
+  <div ref="editorEl" class="code-editor" />
 </template>
 
-<script>
+<script setup lang="ts">
+import {
+  ref, watch, onMounted, onBeforeUnmount, nextTick,
+} from 'vue';
 import { EditorState } from '@codemirror/state';
 import {
   EditorView, keymap, highlightActiveLine, lineNumbers, highlightActiveLineGutter,
@@ -18,114 +21,81 @@ import { defaultHighlightStyle, syntaxHighlighting, bracketMatching } from '@cod
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { vsCodeLight } from './editor-theme';
 
-export default {
-  props: {
-    modelValue: { type: String, default: '' },
-    lang: { type: String, default: 'html' },
-    disabled: Boolean,
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: string;
+  lang?: string;
+  disabled?: boolean;
+}>(), {
+  modelValue: '',
+  lang: 'html',
+  disabled: false,
+});
 
-  data() {
-    return {
-      data: '',
-      editor: null,
-      internalUpdate: false,
-    };
-  },
+const emit = defineEmits(['update:modelValue']);
 
-  methods: {
-  },
+const editorEl = ref<HTMLElement | null>(null);
+let editor: EditorView | null = null;
+let internalUpdate = false;
 
-  mounted() {
-    const onUpdate = EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        this.internalUpdate = true;
-        this.$emit('update:modelValue', update.state.doc.toString());
-      }
-    });
-
-    // Set the chosen language.
-    let langs = [];
-    switch (this.lang) {
-      case 'html':
-        langs = [html()];
-        break;
-      case 'css':
-        langs = [css()];
-        break;
-      case 'javascript':
-        langs = [javascript()];
-        break;
-      case 'markdown':
-        langs = [markdown()];
-        break;
-      default:
-        langs = [html()];
+onMounted(() => {
+  const onUpdate = EditorView.updateListener.of((update) => {
+    if (update.docChanged) {
+      internalUpdate = true;
+      emit('update:modelValue', update.state.doc.toString());
     }
+  });
 
-    // Prepare the full config.
-    const stateCfg = EditorState.create({
-      // Initial value.
-      doc: this.modelValue,
+  let langs: any[] = [];
+  switch (props.lang) {
+    case 'html': langs = [html()]; break;
+    case 'css': langs = [css()]; break;
+    case 'javascript': langs = [javascript()]; break;
+    case 'markdown': langs = [markdown()]; break;
+    default: langs = [html()];
+  }
 
-      extensions: [
-        EditorView.baseTheme({}),
-        ...langs,
-        history(),
-        highlightActiveLine(),
-        bracketMatching(),
-        highlightSelectionMatches(),
-        lineNumbers(),
-        highlightActiveLineGutter(),
-        keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+  const stateCfg = EditorState.create({
+    doc: props.modelValue,
+    extensions: [
+      EditorView.baseTheme({}),
+      ...langs,
+      history(),
+      highlightActiveLine(),
+      bracketMatching(),
+      highlightSelectionMatches(),
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+      EditorState.readOnly.of(props.disabled),
+      EditorView.editable.of(!props.disabled),
+      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      EditorView.lineWrapping,
+      vsCodeLight,
+      search({ top: true }),
+      onUpdate,
+    ],
+  });
 
-        // Readonly?
-        EditorState.readOnly.of(this.disabled),
-        EditorView.editable.of(!this.disabled),
+  editor = new EditorView({ state: stateCfg, parent: editorEl.value! });
 
-        // Syntax highlighting and theme.
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        EditorView.lineWrapping,
+  nextTick(() => {
+    window.setTimeout(() => { editor?.focus(); }, 100);
+  });
+});
 
-        vsCodeLight,
+onBeforeUnmount(() => {
+  editor?.destroy();
+});
 
-        search({
-          top: true, // Places the search panel at the top of the editor
-        }),
-
-        // On content change.
-        onUpdate,
-      ],
-    });
-
-    // Create the editor.
-    this.editor = new EditorView({
-      state: stateCfg,
-      parent: this.$refs.editor,
-    });
-
-    this.$nextTick(() => {
-      window.setTimeout(() => {
-        this.editor.focus();
-      }, 100);
-    });
-  },
-
-  beforeUnmount() {
-    if (this.editor) {
-      this.editor.destroy();
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (!internalUpdate && editor) {
+      editor.dispatch({
+        changes: { from: 0, to: editor.state.doc.length, insert: val },
+      });
     }
+    internalUpdate = false;
   },
-
-  watch: {
-    modelValue(val) {
-      if (!this.internalUpdate) {
-        this.editor.dispatch({
-          changes: { from: 0, to: this.editor.state.doc.length, insert: val },
-        });
-        this.internalUpdate = false;
-      }
-    },
-  },
-};
+);
 </script>

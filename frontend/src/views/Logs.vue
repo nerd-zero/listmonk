@@ -9,49 +9,35 @@
   </div>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import LogView from '../components/LogView.vue';
 
-export default {
-  components: {
-    LogView,
-  },
+const { $api } = useGlobal();
+const { loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      lines: [],
-      pollId: null,
-    };
-  },
+const lines = ref<unknown[]>([]);
+let pollId: ReturnType<typeof setInterval> | null = null;
 
-  methods: {
-    getLogs() {
-      this.$api.getLogs().then((data) => {
-        this.lines = data;
-      });
-    },
-  },
+function getLogs() {
+  $api.getLogs().then((data: unknown) => {
+    lines.value = data as unknown[];
+  });
+}
 
-  computed: {
-    ...mapState(useMainStore, ['logs', 'loading']),
-  },
+onMounted(() => {
+  getLogs();
+  pollId = setInterval(() => getLogs(), 10000);
+});
 
-  mounted() {
-    this.getLogs();
-
-    // Update the logs every 10 seconds.
-    this.pollId = setInterval(() => this.getLogs(), 10000);
-  },
-
-  unmounted() {
-    clearInterval(this.pollId);
-  },
-};
+onUnmounted(() => {
+  if (pollId !== null) clearInterval(pollId);
+});
 </script>
 
 <style scoped lang="scss">
 .logs-page { display: flex; flex-direction: column; gap: 1.5rem; }
-
 </style>

@@ -1,35 +1,38 @@
 <template>
-  <a href="#" class="copy-text" ref="text" @click.prevent="onClick">
-    <template v-if="!hideText">{{ $props.text }}</template>
+  <a href="#" class="copy-text" ref="textEl" @click.prevent="onClick">
+    <template v-if="!hideText">{{ text }}</template>
     <i class="pi pi-copy" />
   </a>
 </template>
 
-<script>
-export default {
-  name: 'CopyText',
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+import { useGlobal } from '../composables/useGlobal';
 
-  props: {
-    text: { type: String, default: '' },
-    hideText: { type: Boolean, default: false },
-  },
+const props = withDefaults(defineProps<{
+  text?: string;
+  hideText?: boolean;
+}>(), {
+  text: '',
+  hideText: false,
+});
 
-  methods: {
-    onClick(e) {
-      e.preventDefault();
-      e.stopPropagation();
+const { t } = useI18n();
+const { $utils } = useGlobal();
 
-      const input = document.createElement('input');
-      input.setAttribute('type', 'text');
-      input.style.opacity = '0';
-      input.value = this.$props.text;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand('copy');
-      document.body.removeChild(input);
+function onClick(e: Event) {
+  e.preventDefault();
+  e.stopPropagation();
 
-      this.$utils.toast(this.$t('globals.messages.copied'));
-    },
-  },
-};
+  const input = document.createElement('input');
+  input.setAttribute('type', 'text');
+  input.style.opacity = '0';
+  input.value = props.text;
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  document.body.removeChild(input);
+
+  $utils.toast(t('globals.messages.copied'));
+}
 </script>

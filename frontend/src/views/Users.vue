@@ -111,119 +111,83 @@
   </div>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import {
+  ref, reactive, watch, onMounted,
+} from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useMainStore } from '../store';
+import { useGlobal } from '../composables/useGlobal';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
-
 import UserForm from './UserForm.vue';
 
-export default {
-  components: {
-    EmptyPlaceholder,
-    UserForm,
-  },
+const { $api, $utils } = useGlobal();
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const { refreshTick, loading } = storeToRefs(useMainStore());
 
-  data() {
-    return {
-      curItem: null,
-      isEditing: false,
-      isFormVisible: false,
-      users: [],
-      checked: [],
-      queryParams: {
-        page: 1,
-        query: '',
-        orderBy: 'id',
-        order: 'asc',
-      },
-    };
-  },
+const curItem = ref<any>(null);
+const isEditing = ref(false);
+const isFormVisible = ref(false);
+const users = ref<any[]>([]);
+const checked = ref<any[]>([]);
+const queryParams = reactive({
+  page: 1, query: '', orderBy: 'id', order: 'asc',
+});
 
-  methods: {
-    onSort(field, direction) {
-      this.queryParams.orderBy = field;
-      this.queryParams.order = direction;
-      this.getUsers();
-    },
+function showEditForm(item: any) {
+  curItem.value = item; isFormVisible.value = true; isEditing.value = true;
+}
 
-    onTableCheck() {
-      // Disable bulk.all selection if there are no rows checked in the table.
-      if (this.bulk.checked.length !== this.subscribers.total) {
-        this.bulk.all = false;
-      }
-    },
+function showNewForm() {
+  curItem.value = {}; isFormVisible.value = true; isEditing.value = false;
+}
 
-    // Show the edit form.
-    showEditForm(item) {
-      this.curItem = item;
-      this.isFormVisible = true;
-      this.isEditing = true;
-    },
+function formFinished() { getUsers(); }
 
-    // Show the new form.
-    showNewForm() {
-      this.curItem = {};
-      this.isFormVisible = true;
-      this.isEditing = false;
-    },
+function onFormClose() {
+  if (route.params.id) router.push({ name: 'users' });
+}
 
-    formFinished() {
-      this.getUsers();
-    },
+function getUsers() {
+  $api.queryUsers({
+    query: queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
+    order_by: queryParams.orderBy,
+    order: queryParams.order,
+  }).then((resp: any) => { users.value = resp; });
+}
 
-    onFormClose() {
-      if (this.$route.params.id) {
-        this.$router.push({ name: 'users' });
-      }
-    },
+function deleteUser(item: any) {
+  $utils.confirm(t('globals.messages.confirm'), () => {
+    $api.deleteUser(item.id).then(() => {
+      getUsers();
+      $utils.toast(t('globals.messages.deleted', { name: item.name }));
+    });
+  });
+}
 
-    getUsers() {
-      this.$api.queryUsers({
-        query: this.queryParams.query.replace(/[^\p{L}\p{N}\s]/gu, ' '),
-        order_by: this.queryParams.orderBy,
-        order: this.queryParams.order,
-      }).then((resp) => {
-        this.users = resp;
-      });
-    },
+watch(() => refreshTick.value, () => { getUsers(); });
 
-    deleteUser(item) {
-      this.$utils.confirm(
-        this.$t('globals.messages.confirm'),
-        () => {
-          this.$api.deleteUser(item.id).then(() => {
-            this.getUsers();
-
-            this.$utils.toast(this.$t('globals.messages.deleted', { name: item.name }));
-          });
-        },
-      );
-    },
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['refreshTick', 'loading', 'settings']),
-  },
-
-  watch: {
-    refreshTick() { this.getUsers(); },
-  },
-
-  mounted() {
-    if (this.$route.params.id) {
-      this.$api.getUser(parseInt(this.$route.params.id, 10)).then((data) => {
-        this.showEditForm(data);
-      });
-    } else {
-      this.getUsers();
-    }
-  },
-};
+onMounted(() => {
+  if (route.params.id) {
+    $api.getUser(parseInt(route.params.id as string, 10)).then((data: any) => { showEditForm(data); });
+  } else {
+    getUsers();
+  }
+});
 </script>
 
 <style scoped lang="scss">
 .users-page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
 
 .table-toolbar { display: flex; align-items: center; gap: 1rem; }
 .search-form { flex: 0 0 260px; }

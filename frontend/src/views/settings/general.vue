@@ -113,21 +113,11 @@
   </div>
 </template>
 
-<script>
-import { mapState } from 'pinia';
+<script setup lang="ts">
+import { storeToRefs } from 'pinia';
 import { useMainStore } from '../../store';
 
-export default {
-  props: {
-    form: { type: Object, default: () => {} },
-  },
-
-  data() {
-    return { data: this.form };
-  },
-
-  computed: {
-    ...mapState(useMainStore, ['serverConfig', 'loading']),
-  },
-};
+const props = defineProps<{ form?: any }>();
+const data = props.form;
+const { serverConfig, loading } = storeToRefs(useMainStore());
 </script>
