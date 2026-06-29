@@ -76,15 +76,15 @@
         </div>
       </div>
 
-      <p class="form-section-label">{{ $tc('users.roles') }}</p>
+      <p class="form-section-label">{{ $t('users.roles') }}</p>
       <div class="lm-field-row">
         <div class="lm-field">
-          <label class="lm-label">{{ $tc('users.userRole') }}</label>
+          <label class="lm-label">{{ $t('users.userRole') }}</label>
           <PvSelect v-model="form.userRoleId" name="user_role" required
             :options="userRoles" option-label="name" option-value="id" class="w-full" />
         </div>
         <div class="lm-field">
-          <label class="lm-label">{{ $tc('users.listRole', 0) }}</label>
+          <label class="lm-label">{{ $t('users.listRole', 0) }}</label>
           <PvSelect v-model="form.listRoleId" name="list_role"
             :options="listRoleOptions" option-label="name" option-value="id" class="w-full" />
         </div>

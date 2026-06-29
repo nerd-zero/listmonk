@@ -21,7 +21,7 @@
 
         <div class="list-add-row">
           <PvSelect v-model="form.curList" name="list"
-            :placeholder="$tc('globals.terms.list')"
+            :placeholder="$t('globals.terms.list')"
             :disabled="disabled || filteredLists.length < 1"
             :options="filteredLists"
             option-label="name"
@@ -38,7 +38,7 @@
         </div>
 
         <PvDataTable v-if="form.lists.length > 0" :value="form.lists">
-          <PvColumn field="name" :header="$tc('globals.terms.list')">
+          <PvColumn field="name" :header="$t('globals.terms.list')">
             <template #body="{ data }">
               <router-link :to="`/lists/${data.id}`" target="_blank">{{ data.name }}</router-link>
             </template>
@@ -77,7 +77,7 @@
         <PvDataTable :value="serverConfig.permissions">
           <PvColumn field="group" :header="$t('users.roleGroup')" style="width:160px">
             <template #body="{ data }">
-              <span class="group-label">{{ $tc(`globals.terms.${data.group}`) }}</span>
+              <span class="group-label">{{ $t(`globals.terms.${data.group}`) }}</span>
             </template>
           </PvColumn>
           <PvColumn field="permissions" :header="$t('users.perms')">

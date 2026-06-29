@@ -565,15 +565,15 @@ select { height: auto; padding: 0.5rem 0.75rem; }
 
 $sidebar-w:      260px;
 $topbar-h:       56px;
-$sidebar-bg:     #1e293b;           // dark sidebar
-$sidebar-border: rgba(255,255,255,0.08);
-$sidebar-hover:  rgba(255,255,255,0.07);
-$sidebar-active: rgba(99,102,241,0.18);  // indigo tint
-$nav-text:       #94a3b8;               // slate-400
-$nav-text-hover: #f1f5f9;               // slate-100
-$nav-text-active:#a5b4fc;               // indigo-300
+$sidebar-bg:     #ffffff;           // white
+$sidebar-border: #e5e7eb;           // gray-200
+$sidebar-hover:  #f3f4f6;           // gray-100
+$sidebar-active: #eef2ff;           // indigo-50
+$nav-text:       #6b7280;               // gray-500
+$nav-text-hover: #111827;               // gray-900
+$nav-text-active:#4338ca;               // indigo-700
 $nav-active-bar: #6366f1;               // indigo-500
-$nav-label:      #475569;               // slate-600
+$nav-label:      #9ca3af;               // gray-400
 $ease:           cubic-bezier(0.4, 0, 0.2, 1);
 
 .app-shell {

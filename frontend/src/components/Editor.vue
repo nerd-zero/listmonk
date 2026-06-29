@@ -10,7 +10,7 @@
         </div>
 
         <div class="field" v-if="self.contentType !== 'visual'">
-          <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
+          <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.template') }}</label>
           <PvSelect v-model="templateId" :options="templateOptions" option-label="name" option-value="id"
             :disabled="disabled" name="template" />
         </div>
@@ -20,7 +20,7 @@
             icon="pi pi-file-find" data-cy="btn-select-visual-tpl"
             :label="$t('campaigns.importVisualTemplate')" />
           <template v-else>
-            <label class="block mb-1 text-sm font-medium">{{ $tc('globals.terms.template') }}</label>
+            <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.template') }}</label>
             <div class="flex items-center gap-2">
               <PvSelect v-model="visualTemplateId" :options="templateOptions" option-label="name" option-value="id"
                 @change="() => isVisualTplDisabled = false" name="template" :disabled="disabled"

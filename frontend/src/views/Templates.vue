@@ -26,11 +26,11 @@
         <PvColumn field="type" :header="$t('globals.fields.type')" sortable style="width:14rem">
           <template #body="{ data }">
             <PvTag v-if="data.type === 'campaign'" severity="info" size="small" :data-cy="`type-${data.type}`"
-              :value="$tc('templates.typeCampaignHTML')" />
+              :value="$t('templates.typeCampaignHTML')" />
             <PvTag v-else-if="data.type === 'campaign_visual'" severity="warn" size="small"
-              :data-cy="`type-${data.type}`" :value="$tc('templates.typeCampaignVisual')" />
+              :data-cy="`type-${data.type}`" :value="$t('templates.typeCampaignVisual')" />
             <PvTag v-else severity="secondary" size="small" :data-cy="`type-${data.type}`"
-              :value="$tc('templates.typeTransactional')" />
+              :value="$t('templates.typeTransactional')" />
           </template>
         </PvColumn>
 

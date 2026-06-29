@@ -43,11 +43,11 @@
 
             <div v-if="bulk.checked.length > 0" class="bulk-bar">
               <span class="bulk-count">
-                {{ $tc('globals.messages.numSelected', numSelectedCampaigns, { num: numSelectedCampaigns }) }}
+                {{ $t('globals.messages.numSelected', numSelectedCampaigns, { num: numSelectedCampaigns }) }}
                 <template v-if="!bulk.all && campaigns.total > campaigns.perPage">
                   &mdash;
                   <a href="#" @click.prevent="onSelectAll" data-cy="select-all-campaigns">
-                    {{ $tc('globals.messages.selectAll', campaigns.total, { num: campaigns.total }) }}
+                    {{ $t('globals.messages.selectAll', campaigns.total, { num: campaigns.total }) }}
                   </a>
                 </template>
               </span>

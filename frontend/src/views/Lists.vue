@@ -69,11 +69,11 @@
 
             <div v-if="bulk.checked.length > 0" class="bulk-bar">
               <span class="bulk-count">
-                {{ $tc('globals.messages.numSelected', numSelectedLists, { num: numSelectedLists }) }}
+                {{ $t('globals.messages.numSelected', numSelectedLists, { num: numSelectedLists }) }}
                 <template v-if="!bulk.all && lists.total > lists.perPage">
                   &mdash;
                   <a href="#" @click.prevent="onSelectAll" data-cy="select-all-lists">
-                    {{ $tc('globals.messages.selectAll', lists.total, { num: lists.total }) }}
+                    {{ $t('globals.messages.selectAll', lists.total, { num: lists.total }) }}
                   </a>
                 </template>
               </span>
@@ -141,7 +141,7 @@
                 <router-link :to="`/subscribers/lists/${data.id}?subscription_status=${status}`" :class="`status-link status-link--${status}`">
                   {{ $utils.formatNumber(count) }}
                 </router-link>
-                <span class="status-label">{{ $tc(`subscribers.status.${status}`, count) }}</span>
+                <span class="status-label">{{ $t(`subscribers.status.${status}`, count) }}</span>
               </span>
             </div>
           </template>

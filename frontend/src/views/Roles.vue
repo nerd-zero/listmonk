@@ -11,7 +11,7 @@
 
     <div class="table-card">
       <PvDataTable :value="roles" :loading="isLoading">
-        <PvColumn field="role" :header="$tc('users.role')" sortable>
+        <PvColumn field="role" :header="$t('users.role')" sortable>
           <template #body="{ data }">
             <div class="role-name-cell">
               <a href="#" class="row-name" @click.prevent="showEditForm(data, 'user')">{{ data.name }}</a>

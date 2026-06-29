@@ -29,7 +29,7 @@
       <div class="maint-card">
         <div class="maint-card-header">
           <i class="pi pi-list maint-icon" />
-          <h4 class="maint-title">{{ $tc('globals.terms.subscriptions', 2) }}</h4>
+          <h4 class="maint-title">{{ $t('globals.terms.subscriptions', 2) }}</h4>
         </div>
         <div class="maint-field-row">
           <div class="maint-field">
