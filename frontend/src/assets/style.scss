@@ -51,7 +51,7 @@ $grey-light:   #b5b5b5;
 $grey:         #7a7a7a;
 $grey-dark:    #4a4a4a;
 $black:        #363636;
-$primary:      #6366f1;
+$primary:      #0077b6;
 $green:        #36995b;
 $red:          #FF5722;
 $body-family:  "Inter", "Helvetica Neue", sans-serif;
@@ -1401,8 +1401,8 @@ section.import {
 section.campaigns {
   table tbody {
     tr.running {
-      background: color.adjust(#6366f1, $lightness: 38%);
-      td { border-bottom: 1px solid color.adjust(#6366f1, $lightness: 25%); }
+      background: color.adjust(#0077b6, $lightness: 44%);
+      td { border-bottom: 1px solid color.adjust(#0077b6, $lightness: 35%); }
     }
     td {
       .tags { margin-top: 5px; }
