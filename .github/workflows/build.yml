@@ -1,0 +1,113 @@
+name: Build and push to GHCR
+
+on:
+  push:
+    branches:
+      - master
+      - "feature/**"
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  prepare_build:
+    runs-on: ubuntu-latest
+    outputs:
+      APP_IMAGE_REPOSITORY: ${{ steps.set_variables.outputs.APP_IMAGE_REPOSITORY }}
+      APP_VERSION: ${{ steps.set_variables.outputs.APP_VERSION }}
+      APP_BUILD_DATE: ${{ steps.set_variables.outputs.APP_BUILD_DATE }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: set_variables
+        name: Set variables
+        env:
+          APP_IMAGE_REPOSITORY: ghcr.io/nerd-zero/listmonk
+        run: |
+          YEAR_MONTH=$(date -u +"%Y.%m")
+          COUNT=$(git tag -l "${YEAR_MONTH}.*" | wc -l)
+          BUILD_NUM=$(printf "%03d" $((COUNT + 1)))
+          VER="${YEAR_MONTH}.${BUILD_NUM}"
+          echo "APP_VERSION=${VER}" >> $GITHUB_OUTPUT
+          echo "APP_IMAGE_REPOSITORY=${APP_IMAGE_REPOSITORY}:${VER}" >> $GITHUB_OUTPUT
+          echo "APP_BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
+
+  verify_build:
+    if: github.event_name == 'pull_request'
+    needs: prepare_build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify image tag doesn't exist
+        env:
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Logging into container repository..."
+          skopeo login --username "$DOCKER_USERNAME" --password "$DOCKER_PASSWORD" ghcr.io
+
+          if skopeo inspect docker://${{ needs.prepare_build.outputs.APP_IMAGE_REPOSITORY }} > /dev/null 2>&1; then
+            echo "${{ needs.prepare_build.outputs.APP_IMAGE_REPOSITORY }} already exists. Remember to bump the version."
+            exit 1
+          else
+            echo "${{ needs.prepare_build.outputs.APP_IMAGE_REPOSITORY }} does not exist, continuing with build."
+          fi
+
+  deploy:
+    needs: [prepare_build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.1"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Generate API client
+        working-directory: frontend
+        run: yarn gen:api
+
+      - name: Build distribution (Go binary + frontend)
+        run: make dist
+        env:
+          LISTMONK_VERSION: ${{ needs.prepare_build.outputs.APP_VERSION }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build . \
+            --build-arg "GIT_COMMIT=${{ github.sha }}" \
+            --build-arg "APP_VERSION=${{ needs.prepare_build.outputs.APP_VERSION }}" \
+            --build-arg "APP_BUILD_DATE=${{ needs.prepare_build.outputs.APP_BUILD_DATE }}" \
+            --tag "${{ needs.prepare_build.outputs.APP_IMAGE_REPOSITORY }}" \
+            --tag "ghcr.io/nerd-zero/listmonk:latest"
+
+          docker push ${{ needs.prepare_build.outputs.APP_IMAGE_REPOSITORY }}
+          docker push ghcr.io/nerd-zero/listmonk:latest
