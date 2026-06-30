@@ -62,6 +62,7 @@ type Importer struct {
 	hasAllowlistWildcards bool
 	hasAllowlist          bool
 
+	titler cases.Caser
 	stop   chan bool
 	status Status
 	sync.RWMutex
@@ -146,6 +147,7 @@ func New(opt Options, db *sql.DB, i *i18n.I18n) *Importer {
 		domainAllowlist: make(map[string]struct{}, len(opt.DomainAllowlist)),
 		status:          Status{Status: StatusNone, logBuf: bytes.NewBuffer(nil)},
 		stop:            make(chan bool, 1),
+		titler:          cases.Title(language.Und),
 	}
 
 	// Domain blocklist.
@@ -236,14 +238,10 @@ func (im *Importer) getStatus() string {
 
 // isDone returns true if the importer is working (importing|stopping).
 func (im *Importer) isDone() bool {
-	s := true
 	im.RLock()
-	if im.getStatus() == StatusImporting || im.getStatus() == StatusStopping {
-		s = false
-	}
-	im.RUnlock()
-
-	return s
+	defer im.RUnlock()
+	s := im.status.Status
+	return s != StatusImporting && s != StatusStopping
 }
 
 // incrementImportCount sets the Importer's "imported" counter.
@@ -263,7 +261,7 @@ func (im *Importer) sendNotif(status string) error {
 			Imported: s.Imported,
 			Total:    s.Total,
 		}
-		subject = fmt.Sprintf("%s: %s import", cases.Title(language.Und).String(status), s.Name)
+		subject = fmt.Sprintf("%s: %s import", im.titler.String(status), s.Name)
 	)
 	return im.opt.PostCB(subject, out)
 }
@@ -282,6 +280,7 @@ func (s *Session) Start() {
 
 	listIDs := make([]int, len(s.opt.ListIDs))
 	copy(listIDs, s.opt.ListIDs)
+	listIDsArr := pq.Array(listIDs)
 
 	for sub := range s.subQueue {
 		if cur == 0 {
@@ -307,7 +306,7 @@ func (s *Session) Start() {
 		}
 
 		if s.opt.Mode == ModeSubscribe {
-			_, err = stmt.Exec(uu, sub.Email, sub.Name, sub.Attribs, pq.Array(listIDs), s.opt.SubStatus, s.opt.OverwriteUserInfo, s.opt.OverwriteSubStatus)
+			_, err = stmt.Exec(uu, sub.Email, sub.Name, sub.Attribs, listIDsArr, s.opt.SubStatus, s.opt.OverwriteUserInfo, s.opt.OverwriteSubStatus)
 		} else if s.opt.Mode == ModeBlocklist {
 			_, err = stmt.Exec(uu, sub.Email, sub.Name, sub.Attribs)
 		}
@@ -337,7 +336,7 @@ func (s *Session) Start() {
 	if cur == 0 {
 		s.im.setStatus(StatusFinished)
 		s.log.Printf("imported finished")
-		if _, err := s.im.opt.UpdateListDateStmt.Exec(pq.Array(listIDs)); err != nil {
+		if _, err := s.im.opt.UpdateListDateStmt.Exec(listIDsArr); err != nil {
 			s.log.Printf("error updating lists date: %v", err)
 		}
 		s.im.sendNotif(StatusFinished)
@@ -356,7 +355,7 @@ func (s *Session) Start() {
 	s.im.incrementImportCount(cur)
 	s.im.setStatus(StatusFinished)
 	s.log.Printf("imported finished")
-	if _, err := s.im.opt.UpdateListDateStmt.Exec(pq.Array(listIDs)); err != nil {
+	if _, err := s.im.opt.UpdateListDateStmt.Exec(listIDsArr); err != nil {
 		s.log.Printf("error updating lists date: %v", err)
 	}
 
@@ -472,28 +471,9 @@ func (s *Session) LoadCSV(srcPath string, delim rune) error {
 		return err
 	}
 
-	// Count the total number of lines in the file. This doesn't distinguish
-	// between "blank" and non "blank" lines, and is only used to derive
-	// the progress percentage for the frontend.
-	numLines, err := countLines(f)
-	if err != nil {
-		s.log.Printf("error counting lines in '%s': '%v'", srcPath, err)
-		return err
-	}
-
-	if numLines == 0 {
-		return errors.New("empty file")
-	}
-
-	// Exclude the header from count.
-	s.im.Lock()
-	s.im.status.Total = numLines - 1
-	s.im.Unlock()
-
-	// Rewind, now that we've done a linecount on the same handler.
-	_, _ = f.Seek(0, 0)
 	rd := csv.NewReader(f)
 	rd.Comma = delim
+	rd.ReuseRecord = true
 
 	// Read the header.
 	csvHdr, err := rd.Read()
@@ -539,24 +519,17 @@ func (s *Session) LoadCSV(srcPath string, delim rune) error {
 			}
 		}
 
-		lnCols := len(cols)
-		if lnCols < lnHdr {
-			s.log.Printf("skipping line %d. column count (%d) does not match minimum header count (%d)", i, lnCols, lnHdr)
+		if len(cols) < lnHdr {
+			s.log.Printf("skipping line %d. column count (%d) does not match minimum header count (%d)", i, len(cols), lnHdr)
 			continue
 		}
 
-		// Iterate the key map and based on the indices mapped earlier,
-		// form a map of key: csv_value, eg: email: user@user.com.
-		row := make(map[string]string, lnCols)
-		for key := range hdrKeys {
-			row[key] = cols[hdrKeys[key]]
-		}
-
 		sub := SubReq{}
-		sub.Email = row["email"]
-
-		if v, ok := row["name"]; ok {
-			sub.Name = v
+		if idx, ok := hdrKeys["email"]; ok {
+			sub.Email = cols[idx]
+		}
+		if idx, ok := hdrKeys["name"]; ok {
+			sub.Name = cols[idx]
 		}
 
 		sub, err = s.im.ValidateFields(sub)
@@ -566,10 +539,10 @@ func (s *Session) LoadCSV(srcPath string, delim rune) error {
 		}
 
 		// JSON attributes.
-		if len(row["attributes"]) > 0 {
+		if idx, ok := hdrKeys["attributes"]; ok && len(cols[idx]) > 0 {
 			var (
 				attribs models.JSON
-				b       = []byte(row["attributes"])
+				b       = []byte(cols[idx])
 			)
 			if err := json.Unmarshal(b, &attribs); err != nil {
 				s.log.Printf("skipping invalid attributes JSON on line %d for '%s': %v", i, sub.Email, err)
@@ -580,7 +553,17 @@ func (s *Session) LoadCSV(srcPath string, delim rune) error {
 
 		// Send the subscriber to the queue.
 		s.subQueue <- sub
+
+		if i%commitBatchSize == 0 {
+			s.im.Lock()
+			s.im.status.Total = i
+			s.im.Unlock()
+		}
 	}
+
+	s.im.Lock()
+	s.im.status.Total = i
+	s.im.Unlock()
 
 	close(s.subQueue)
 	failed = false
@@ -658,7 +641,7 @@ func (im *Importer) ValidateFields(s SubReq) (SubReq, error) {
 
 		parts := strings.Fields(strings.ReplaceAll(name, ".", " "))
 		for n, p := range parts {
-			parts[n] = cases.Title(language.Und).String(p)
+			parts[n] = im.titler.String(p)
 		}
 
 		s.Name = strings.Join(parts, " ")
@@ -709,39 +692,6 @@ func (s *Session) mapCSVHeaders(csvHdrs []string, knownHdrs map[string]bool) map
 	}
 
 	return hdrKeys
-}
-
-// countLines counts the number of line breaks in a file. This does not
-// distinguish between "blank" and non "blank" lines.
-// Credit: https://stackoverflow.com/a/24563853
-func countLines(r io.Reader) (int, error) {
-	var (
-		buf      = make([]byte, 32*1024)
-		count    = 0
-		lineSep  = byte('\n')
-		lastByte byte
-	)
-
-	for {
-		c, err := r.Read(buf)
-		if c > 0 {
-			count += bytes.Count(buf[:c], []byte{lineSep})
-			lastByte = buf[c-1]
-		}
-
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return count, err
-		}
-	}
-
-	if lastByte != 0 && lastByte != lineSep {
-		count++
-	}
-
-	return count, nil
 }
 
 func makeDomainMap(domains []string) (map[string]struct{}, bool) {
