@@ -5,11 +5,17 @@
 // CSS Custom Properties (design tokens)
 // ============================================================
 :root {
-  --lm-primary:         #6366f1;
-  --lm-primary-hover:   #4f46e5;
-  --lm-primary-light:   #eef2ff;
-  --lm-primary-border:  #c7d2fe;
-  --lm-primary-text:    #4338ca;
+  --deep-twilight:      #03045e;
+  --bright-teal-blue:   #0077b6;
+  --turquoise-surf:     #00b4d8;
+  --frosted-blue:       #90e0ef;
+  --light-cyan:         #caf0f8;
+
+  --lm-primary:         #0077b6;
+  --lm-primary-hover:   #005f91;
+  --lm-primary-light:   #e0f7fc;
+  --lm-primary-border:  #90e0ef;
+  --lm-primary-text:    #03045e;
 
   --lm-text:            #0f172a;
   --lm-text-secondary:  #334155;
@@ -565,15 +571,15 @@ select { height: auto; padding: 0.5rem 0.75rem; }
 
 $sidebar-w:      260px;
 $topbar-h:       56px;
-$sidebar-bg:     #ffffff;           // white
-$sidebar-border: #e5e7eb;           // gray-200
-$sidebar-hover:  #f3f4f6;           // gray-100
-$sidebar-active: #eef2ff;           // indigo-50
-$nav-text:       #6b7280;               // gray-500
-$nav-text-hover: #111827;               // gray-900
-$nav-text-active:#4338ca;               // indigo-700
-$nav-active-bar: #6366f1;               // indigo-500
-$nav-label:      #9ca3af;               // gray-400
+$sidebar-bg:     #ffffff;
+$sidebar-border: #e2e8f0;
+$sidebar-hover:  #e0f7fc;           // light-cyan tint
+$sidebar-active: #caf0f8;           // light-cyan
+$nav-text:       #64748b;
+$nav-text-hover: #03045e;           // deep-twilight
+$nav-text-active:#0077b6;           // bright-teal-blue
+$nav-active-bar: #00b4d8;           // turquoise-surf
+$nav-label:      #94a3b8;
 $ease:           cubic-bezier(0.4, 0, 0.2, 1);
 
 .app-shell {
