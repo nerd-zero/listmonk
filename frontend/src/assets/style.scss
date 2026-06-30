@@ -942,53 +942,67 @@ section {
 // ============================================================
 .lm-tabs {
   .p-tablist {
-    border-bottom: none;
+    background: var(--lm-bg-subtle);
+    border: 1px solid var(--lm-border);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 2px;
+    width: fit-content;
+    overflow: visible;
 
-    .p-tablist-content {
-      background: #e2e8f0;
-      border-radius: 10px;
-      padding: 0.25rem;
-    }
-
-    .p-tablist-tab-list {
-      background: transparent;
-      border: none;
-      gap: 0.15rem;
-      flex-wrap: wrap;
-    }
-
-    .p-tablist-active-bar { display: none; }
+    .p-tablist-active-bar { display: none !important; }
+    .p-tablist-nav-button,
     .p-tablist-prev-button,
-    .p-tablist-next-button { display: none; }
+    .p-tablist-next-button { display: none !important; }
+  }
+
+  .p-tablist-content { background: transparent; }
+
+  .p-tablist-tab-list {
+    background: transparent;
+    border: none;
+    gap: 0;
+    flex-wrap: wrap;
   }
 
   .p-tab {
     border: none;
     border-radius: 7px;
-    padding: 0.45rem 0.9rem;
-    font-size: 0.85rem;
+    background: transparent;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--lm-text-muted);
-    background: transparent;
-    margin: 0;
-    transition: background 0.15s, color 0.15s;
+    margin-bottom: 0;
+    gap: 0.4rem;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 
-    &:hover:not([aria-selected="true"]) {
-      background: rgba(255, 255, 255, 0.6);
-      color: var(--lm-text);
+    &:hover:not([aria-selected="true"]):not([data-p-disabled="true"]) {
+      background: rgba(255, 255, 255, 0.65);
+      color: var(--lm-text-secondary);
     }
 
     &[aria-selected="true"] {
       background: var(--lm-surface);
       color: var(--lm-primary);
       font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+      border-bottom: none;
+    }
+
+    &[data-p-disabled="true"] {
+      opacity: 0.4;
+      pointer-events: none;
+      cursor: not-allowed;
     }
   }
 
   .p-tabpanels {
+    border: none;
+    box-shadow: none;
+    padding: 1.5rem 0 0;
     background: transparent;
-    padding: 1.25rem 0 0;
   }
 
   .p-tabpanel { padding: 0; }
@@ -1843,8 +1857,8 @@ th.role-toggle-select a { font-weight: normal; }
 
   // Pill tabs
   .lm-tabs {
-    .p-tablist-content { background: #172032; }
-    .p-tab:hover:not([aria-selected="true"]) { background: rgba(255, 255, 255, 0.05); color: var(--lm-text); }
+    .p-tablist { background: var(--lm-bg-subtle); border-color: var(--lm-border); }
+    .p-tab:hover:not([aria-selected="true"]):not([data-p-disabled="true"]) { background: rgba(255, 255, 255, 0.05); color: var(--lm-text); }
     .p-tab[aria-selected="true"] { background: var(--lm-surface); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
   }
 

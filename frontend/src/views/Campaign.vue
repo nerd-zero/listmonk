@@ -620,63 +620,6 @@ onBeforeUnmount(() => { $events.$off('campaign.update'); });
   flex-wrap: wrap;
 }
 
-// Pill / segmented-control tabs
-:deep(.p-tabs) {
-  .p-tablist {
-    background: var(--lm-bg-subtle);
-    border: 1px solid var(--lm-border);
-    border-radius: 10px;
-    padding: 4px;
-    gap: 2px;
-    width: fit-content;
-    // hide the sliding ink bar and scroll nav buttons
-    .p-tablist-active-bar { display: none !important; }
-    .p-tablist-nav-button  { display: none !important; }
-    // let the pill container scroll internally if viewport is very narrow
-    overflow: visible;
-  }
-
-  .p-tab {
-    border: none;
-    border-radius: 7px;
-    background: transparent;
-    padding: 0.5rem 1.1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--lm-text-muted);
-    margin-bottom: 0;
-    gap: 0.4rem;
-    white-space: nowrap;
-    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-
-    &:hover:not([aria-selected='true']):not([data-p-disabled='true']) {
-      background: rgba(255, 255, 255, 0.65);
-      color: var(--lm-text-secondary);
-    }
-
-    &[aria-selected='true'] {
-      background: var(--lm-surface);
-      color: var(--lm-primary);
-      font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-      border-bottom: none;
-    }
-
-    &[data-p-disabled='true'] {
-      opacity: 0.4;
-      pointer-events: none;
-      cursor: not-allowed;
-    }
-  }
-
-  .p-tabpanels {
-    border: none;
-    box-shadow: none;
-    padding: 1.5rem 0 0 0;
-    background: transparent;
-  }
-}
-
 // Two-column layout
 .campaign-layout {
   display: grid;
