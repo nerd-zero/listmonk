@@ -72,7 +72,7 @@
 
     <hr />
 
-    <PvTabs v-model:value="tab">
+    <PvTabs class="lm-tabs" v-model:value="tab">
       <PvTabList>
         <PvTab value="0">{{ `${$t('settings.privacy.domainBlocklist')} (${numBlocked})` }}</PvTab>
         <PvTab value="1">{{ `${$t('settings.privacy.domainAllowlist')} (${numAllowed})` }}</PvTab>

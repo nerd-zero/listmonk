@@ -34,7 +34,7 @@
       <PvProgressSpinner />
     </div>
 
-    <PvTabs v-model:value="activeTab" @update:value="onTab">
+    <PvTabs class="lm-tabs" v-model:value="activeTab" @update:value="onTab">
       <PvTabList>
         <PvTab value="campaign">
           <i class="pi pi-send mr-1" />{{ $t('globals.terms.campaign') }}

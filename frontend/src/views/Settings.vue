@@ -15,7 +15,7 @@
       </div>
 
       <section class="wrap settings-wrap" v-if="form">
-        <PvTabs class="settings-tabs" v-model:value="tab">
+        <PvTabs class="lm-tabs" v-model:value="tab">
           <PvTabList>
             <PvTab value="0">{{ $t('settings.general.name') }}</PvTab><!-- general -->
             <PvTab value="1">{{ $t('settings.performance.name') }}</PvTab><!-- performance -->
@@ -211,58 +211,3 @@ onMounted(() => {
 });
 </script>
 
-<style scoped lang="scss">
-:deep(.settings-tabs) {
-  .p-tablist {
-    border-bottom: none;
-
-    .p-tablist-content {
-      background: #e2e8f0;
-      border-radius: 10px;
-      padding: 0.25rem;
-    }
-
-    .p-tablist-tab-list {
-      background: transparent;
-      border: none;
-      gap: 0.15rem;
-      flex-wrap: wrap;
-    }
-
-      .p-tablist-active-bar { display: none; }
-    .p-tablist-prev-button,
-    .p-tablist-next-button { display: none; }
-  }
-
-  .p-tab {
-    border: none;
-    border-radius: 7px;
-    padding: 0.45rem 0.9rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--lm-text-muted);
-    background: transparent;
-    margin: 0;
-    transition: background 0.15s, color 0.15s;
-
-    &:hover:not([aria-selected="true"]) {
-      background: rgba(255, 255, 255, 0.6);
-      color: var(--lm-text);
-    }
-
-    &[aria-selected="true"] {
-      background: var(--lm-surface);
-      color: var(--lm-primary);
-      font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    }
-  }
-
-  .p-tabpanels {
-    background: transparent;
-    padding: 1.75rem 0 0;
-  }
-
-  .p-tabpanel { padding: 0; }
-}
-</style>
