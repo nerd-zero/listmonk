@@ -8,127 +8,120 @@
       <PvProgressSpinner />
     </div>
 
-    <section v-if="isFree()" class="wrap">
-      <form @submit.prevent="onUpload" class="box">
-        <div>
-          <div class="grid">
-            <div class="col">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('import.mode') }}</label>
-                <div>
-                  <label class="flex items-center gap-2 mb-1">
-                    <PvRadioButton v-model="form.mode" name="mode" value="subscribe" data-cy="check-subscribe" />
-                    <span>{{ $t('import.subscribe') }}</span>
-                  </label>
-                  <br />
-                  <label class="flex items-center gap-2">
-                    <PvRadioButton v-model="form.mode" name="mode" value="blocklist" data-cy="check-blocklist" />
-                    <span>{{ $t('import.blocklist') }}</span>
-                  </label>
-                </div>
-              </div>
+    <div v-if="isFree()" class="import-layout">
+      <!-- Main form card -->
+      <form @submit.prevent="onUpload" class="box import-form">
+        <!-- Mode & Status row -->
+        <div class="import-row">
+          <div class="import-field">
+            <label class="field-label">{{ $t('import.mode') }}</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <PvRadioButton v-model="form.mode" name="mode" value="subscribe" data-cy="check-subscribe" />
+                <span>{{ $t('import.subscribe') }}</span>
+              </label>
+              <label class="radio-option">
+                <PvRadioButton v-model="form.mode" name="mode" value="blocklist" data-cy="check-blocklist" />
+                <span>{{ $t('import.blocklist') }}</span>
+              </label>
             </div>
-            <div class="col">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.status') }}</label>
-                <template v-if="form.mode === 'subscribe'">
-                  <label class="flex items-center gap-2 mb-1">
-                    <PvRadioButton v-model="form.subStatus" name="subStatus" value="unconfirmed"
-                      data-cy="check-unconfirmed" />
-                    <span>{{ $t('subscribers.status.unconfirmed') }}</span>
-                  </label>
-                  <label class="flex items-center gap-2">
-                    <PvRadioButton v-model="form.subStatus" name="subStatus" value="confirmed"
-                      data-cy="check-confirmed" />
-                    <span>{{ $t('subscribers.status.confirmed') }}</span>
-                  </label>
-                </template>
+          </div>
 
-                <label v-else class="flex items-center gap-2">
-                  <PvRadioButton v-model="form.subStatus" name="subStatus" value="unsubscribed"
-                    data-cy="check-unsubscribed" />
-                  <span>{{ $t('subscribers.status.unsubscribed') }}</span>
+          <div class="import-field">
+            <label class="field-label">{{ $t('globals.fields.status') }}</label>
+            <div class="radio-group">
+              <template v-if="form.mode === 'subscribe'">
+                <label class="radio-option">
+                  <PvRadioButton v-model="form.subStatus" name="subStatus" value="unconfirmed" data-cy="check-unconfirmed" />
+                  <span>{{ $t('subscribers.status.unconfirmed') }}</span>
                 </label>
-              </div>
-            </div>
-
-            <div class="col">
-              <div class="field delimiter">
-                <label class="block mb-1 text-sm font-medium">{{ $t('import.csvDelim') }}</label>
-                <PvInputText v-model="form.delim" name="delim" placeholder="," :maxlength="1" required />
-                <small class="block mt-1 text-color-secondary">{{ $t('import.csvDelimHelp') }}</small>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid">
-            <div class="col-4">
-              <div v-if="form.mode === 'subscribe'" class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('import.overwriteUserInfo') }}</label>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <PvToggleSwitch v-model="form.overwriteUserInfo" name="overwriteUserInfo"
-                      data-cy="overwrite-user-info" />
-                  </div>
-                </div>
-                <small class="block mt-1 text-color-secondary">{{ $t('import.overwriteUserInfoHelp') }}</small>
-              </div>
-            </div>
-
-            <div class="col">
-              <div v-if="form.mode === 'subscribe'" class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('import.overwriteSubStatus') }}</label>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <PvToggleSwitch v-model="form.overwriteSubStatus" name="overwriteSubStatus"
-                      data-cy="overwrite-sub-status" />
-                  </div>
-                </div>
-                <small class="block mt-1 text-color-secondary">{{ $t('import.overwriteSubStatusHelp') }}</small>
-              </div>
+                <label class="radio-option">
+                  <PvRadioButton v-model="form.subStatus" name="subStatus" value="confirmed" data-cy="check-confirmed" />
+                  <span>{{ $t('subscribers.status.confirmed') }}</span>
+                </label>
+              </template>
+              <label v-else class="radio-option">
+                <PvRadioButton v-model="form.subStatus" name="subStatus" value="unsubscribed" data-cy="check-unsubscribed" />
+                <span>{{ $t('subscribers.status.unsubscribed') }}</span>
+              </label>
             </div>
           </div>
 
-          <list-selector v-if="form.mode === 'subscribe'" :label="$t('globals.terms.lists')"
+          <div class="import-field import-field--narrow">
+            <label class="field-label">{{ $t('import.csvDelim') }}</label>
+            <PvInputText v-model="form.delim" name="delim" placeholder="," :maxlength="1" required style="width:80px" />
+            <small class="field-help">{{ $t('import.csvDelimHelp') }}</small>
+          </div>
+        </div>
+
+        <!-- Overwrite options (subscribe mode only) -->
+        <div v-if="form.mode === 'subscribe'" class="import-row">
+          <div class="import-field">
+            <div class="toggle-field">
+              <div class="toggle-field-header">
+                <PvToggleSwitch v-model="form.overwriteUserInfo" name="overwriteUserInfo" data-cy="overwrite-user-info" />
+                <label class="field-label" style="margin-bottom:0">{{ $t('import.overwriteUserInfo') }}</label>
+              </div>
+              <small class="field-help">{{ $t('import.overwriteUserInfoHelp') }}</small>
+            </div>
+          </div>
+          <div class="import-field">
+            <div class="toggle-field">
+              <div class="toggle-field-header">
+                <PvToggleSwitch v-model="form.overwriteSubStatus" name="overwriteSubStatus" data-cy="overwrite-sub-status" />
+                <label class="field-label" style="margin-bottom:0">{{ $t('import.overwriteSubStatus') }}</label>
+              </div>
+              <small class="field-help">{{ $t('import.overwriteSubStatusHelp') }}</small>
+            </div>
+          </div>
+          <div class="import-field import-field--narrow" />
+        </div>
+
+        <!-- Lists selector -->
+        <div v-if="form.mode === 'subscribe'" class="field" style="margin-bottom:1.25rem">
+          <list-selector :label="$t('globals.terms.lists')"
             :placeholder="$t('import.listSubHelp')" :message="$t('import.listSubHelp')" v-model="form.lists"
             :selected="form.lists" :all="lists.results" />
-          <hr />
+        </div>
 
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('import.csvFile') }}</label>
-            <div class="upload-drop-area" @dragover.prevent @drop.prevent="onFileDrop"
-              @click="fileInputEl?.click()">
-              <i class="pi pi-upload upload-icon" />
-              <p class="upload-label">{{ $t('import.csvFileHelp') }}</p>
-              <input ref="fileInputEl" type="file" style="display:none" @change="onFileSelect" />
-            </div>
+        <!-- File upload -->
+        <div class="field" style="margin-bottom:0.75rem">
+          <label class="field-label">{{ $t('import.csvFile') }}</label>
+          <div class="upload-drop-area" @dragover.prevent @drop.prevent="onFileDrop" @click="fileInputEl?.click()">
+            <i class="pi pi-cloud-upload upload-icon" />
+            <p class="upload-label">{{ $t('import.csvFileHelp') }}</p>
+            <input ref="fileInputEl" type="file" style="display:none" @change="onFileSelect" />
           </div>
-          <div class="tags" v-if="form.file">
-            <PvTag :value="form.file.name" severity="secondary" style="margin-right:4px" />
-            <PvButton icon="pi pi-times" severity="secondary" size="small" text @click="clearFile" />
+        </div>
+
+        <div class="import-footer">
+          <div class="file-tag" v-if="form.file">
+            <PvTag :value="form.file.name" severity="secondary" />
+            <PvButton icon="pi pi-times" severity="secondary" size="small" text rounded @click="clearFile" />
           </div>
-          <div class="buttons">
-            <PvButton type="submit" severity="primary"
-              :disabled="!form.file || (form.mode === 'subscribe' && form.lists.length === 0)"
-              :loading="isProcessing" :label="$t('import.upload')" />
-          </div>
+          <PvButton type="submit" severity="primary" icon="pi pi-upload"
+            :disabled="!form.file || (form.mode === 'subscribe' && form.lists.length === 0)"
+            :loading="isProcessing" :label="$t('import.upload')" />
         </div>
       </form>
 
-      <div class="import-help">
+      <!-- Instructions card -->
+      <div class="box import-help">
         <h5 class="import-help-title">{{ $t('import.instructions') }}</h5>
-        <p>{{ $t('import.instructionsHelp') }}</p>
-        <blockquote class="csv-example">
-          <code class="csv-headers"> <span>email,</span> <span>name,</span> <span>attributes</span></code>
-        </blockquote>
-        <hr />
+        <p class="import-help-text">{{ $t('import.instructionsHelp') }}</p>
+        <div class="csv-headers">
+          <code><span>email,</span> <span>name,</span> <span>attributes</span></code>
+        </div>
+
+        <PvDivider />
+
         <h5 class="import-help-title">{{ $t('import.csvExample') }}</h5>
         <pre class="csv-example" v-text="example" />
       </div>
-    </section>
+    </div>
 
     <section v-if="isRunning() || isDone()" class="import-status">
-      <PvProgressBar :value="progress" style="height:6px" />
+      <PvProgressBar :value="progress" style="height:6px;width:100%" />
       <p :class="['import-status-text', { 'import-status-text--success': status.status === 'finished', 'import-status-text--danger': (status.status === 'failed' || status.status === 'stopped') }]">
         {{ status.status }}
       </p>
@@ -311,17 +304,48 @@ onMounted(() => {
 <style scoped lang="scss">
 .import-page { display: flex; flex-direction: column; gap: 1.5rem; }
 
-:deep(.p-tag-secondary) {
-  background: var(--lm-bg-subtle);
-  color: var(--lm-text-secondary);
-  border: 1px solid var(--lm-border);
+.import-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+  align-items: start;
 }
+
+.import-form { display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* Horizontal row of fields */
+.import-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--lm-border);
+}
+
+.import-field { display: flex; flex-direction: column; }
+.import-field--narrow { max-width: 160px; }
+
+.field-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.6rem;
+  display: block;
+}
+.field-help { font-size: 0.8rem; color: var(--lm-text-muted); margin-top: 0.35rem; }
+
+.radio-group { display: flex; flex-direction: column; gap: 0.6rem; }
+.radio-option { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; }
+
+.toggle-field-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem; }
 
 .upload-drop-area {
   border: 2px dashed var(--lm-border);
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  padding: 2rem;
+  padding: 2.5rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -330,23 +354,63 @@ onMounted(() => {
 
   &:hover {
     border-color: var(--lm-primary);
-    background: var(--lm-primary-light);
+    background: #eef2ff;
   }
 }
-
 .upload-icon { font-size: 2rem; color: var(--lm-text-muted); }
 .upload-label { font-size: 0.875rem; color: var(--lm-text-muted); margin: 0; }
 
-.import-help-title { font-size: 0.95rem; font-weight: 600; color: #374151; margin: 0 0 0.5rem; }
+.import-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+.file-tag { display: flex; align-items: center; gap: 0.25rem; flex: 1; }
+
+/* Instructions card */
+.import-help { display: flex; flex-direction: column; gap: 0.75rem; }
+.import-help-title { font-size: 0.9rem; font-weight: 600; color: var(--lm-text); margin: 0; }
+.import-help-text { font-size: 0.875rem; color: var(--lm-text-muted); margin: 0; line-height: 1.6; }
+
+.csv-headers {
+  background: var(--lm-bg-subtle);
+  border: 1px solid var(--lm-border);
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.8rem;
+
+  code { font-family: 'Fira Code', 'Cascadia Code', monospace; color: var(--lm-primary); }
+  span { margin-right: 0.15rem; }
+}
+
+.csv-example {
+  background: var(--lm-bg-subtle);
+  border: 1px solid var(--lm-border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.78rem;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  color: var(--lm-text);
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text);
+  border: 1px solid var(--lm-border);
+}
 
 .import-status {
   background: var(--lm-surface); border: 1px solid var(--lm-border); border-radius: 12px;
   padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem;
   text-align: center;
 }
-.import-status-text { font-size: 1.25rem; font-weight: 600; text-transform: capitalize; color: #374151; margin: 0; }
-.import-status-text--success { color: var(--lm-success); }
-.import-status-text--danger { color: var(--lm-danger); }
+.import-status-text { font-size: 1.25rem; font-weight: 600; text-transform: capitalize; color: var(--lm-text); margin: 0; }
+.import-status-text--success { color: #16a34a; }
+.import-status-text--danger { color: #dc2626; }
 .import-count { font-size: 0.875rem; color: var(--lm-text-muted); margin: 0; }
 .import-logs { width: 100%; }
 </style>
