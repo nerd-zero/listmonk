@@ -373,6 +373,9 @@ const contentTypeOptions = computed(() => Object.entries(contentTypes.value).map
 const campaignTemplates = computed(() => ((templates.value as any[]) || []).filter((tpl: any) => tpl.type === 'campaign'));
 
 function isUnsaved() {
+  if (isNew.value) {
+    return !!(form.name || form.subject || form.content.body);
+  }
   return data.value.body !== form.content.body || data.value.contentType !== form.content.contentType;
 }
 
