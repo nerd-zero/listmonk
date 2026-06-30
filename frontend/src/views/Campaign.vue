@@ -155,7 +155,7 @@
 
           <div class="grid">
             <div class="col-6">
-              <p v-if="!isAttachFieldVisible" class="is-size-6 has-text-grey">
+              <p v-if="!isAttachFieldVisible" style="font-size:0.9rem;color:var(--lm-text-muted)">
                 <a href="#" @click.prevent="onShowAttachField()" data-cy="btn-attach">
                   <i class="pi pi-upload" />
                   {{ $t('campaigns.addAttachments') }}
@@ -172,7 +172,7 @@
               <a href="https://listmonk.app/docs/templating/#template-expressions" target="_blank"
                 rel="noopener noreferer">
                 <i class="pi pi-code" /> {{ $t('campaigns.templatingRef') }}</a>
-              <span v-if="canEdit && form.content.contentType !== 'plain'" class="is-size-6 has-text-grey ml-6">
+              <span v-if="canEdit && form.content.contentType !== 'plain'" style="font-size:0.9rem;color:var(--lm-text-muted);margin-left:1.5rem">
                 <a v-if="form.altbody === null" href="#" @click.prevent="onAddAltBody">
                   <i class="pi pi-file" /> {{ $t('campaigns.addAltText') }}
                 </a>
@@ -216,7 +216,7 @@
                     </div>
                     <div class="col-12">
                       <a :href="`${serverConfig.root_url}/archive/${data.uuid}`" target="_blank" rel="noopener noreferer"
-                        :class="{ 'has-text-grey-light': !form.archive }" aria-label="$t('campaigns.archive')">
+                        :style="{ color: !form.archive ? 'var(--lm-text-subtle)' : 'inherit' }" aria-label="$t('campaigns.archive')">
                         <i class="pi pi-external-link" />
                       </a>
                     </div>
@@ -224,11 +224,9 @@
                 </div>
               </div>
               <div class="col-8">
-                <div class="field is-grouped" style="justify-content: flex-end;">
-                  <div class="field" v-if="!canEdit && canArchive">
-                    <PvButton @click="onUpdateCampaignArchive" :loading="loading.campaigns" severity="primary"
-                      icon="pi pi-save" data-cy="btn-save" :label="$t('globals.buttons.saveChanges')" />
-                  </div>
+                <div style="display:flex; justify-content: flex-end;">
+                  <PvButton v-if="!canEdit && canArchive" @click="onUpdateCampaignArchive" :loading="loading.campaigns" severity="primary"
+                    icon="pi pi-save" data-cy="btn-save" :label="$t('globals.buttons.saveChanges')" />
                 </div>
               </div>
             </div>
@@ -245,14 +243,11 @@
               </div>
 
               <div class="col-6">
-                <div class="field is-grouped" style="justify-content: flex-end;">
-                  <div class="field" v-if="form.archive && (!form.archiveMetaStr || form.archiveMetaStr === '{}')">
-                    <a class="button is-primary" href="#" @click.prevent="onFillArchiveMeta" aria-label="{}"><i class="pi pi-code" /></a>
-                  </div>
-                  <div class="field" v-if="form.archive">
-                    <PvButton @click="onToggleArchivePreview" severity="primary" icon="pi pi-eye"
-                      data-cy="btn-preview" :label="$t('campaigns.preview')" />
-                  </div>
+                <div style="display:flex; justify-content: flex-end; gap: 0.5rem; align-items: center;">
+                  <PvButton v-if="form.archive && (!form.archiveMetaStr || form.archiveMetaStr === '{}')"
+                    severity="secondary" outlined @click.prevent="onFillArchiveMeta" aria-label="{}" icon="pi pi-code" />
+                  <PvButton v-if="form.archive" @click="onToggleArchivePreview" severity="primary" icon="pi pi-eye"
+                    data-cy="btn-preview" :label="$t('campaigns.preview')" />
                 </div>
               </div>
             </div>

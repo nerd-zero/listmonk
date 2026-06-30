@@ -1,11 +1,7 @@
 <template>
-  <section class="section">
-    <div class="content has-text-grey has-text-centered">
-      <p>
-        <i :class="'pi ' + (!icon ? 'pi-plus' : icon)" style="font-size:2rem" />
-      </p>
-      <p>{{ !label ? $t('globals.messages.emptyState') : label }}</p>
-    </div>
+  <section class="empty-placeholder">
+    <i :class="'pi ' + (!icon ? 'pi-plus' : icon)" class="empty-icon" />
+    <p class="empty-label">{{ !label ? $t('globals.messages.emptyState') : label }}</p>
   </section>
 </template>
 
@@ -18,3 +14,17 @@ withDefaults(defineProps<{
   label: '',
 });
 </script>
+
+<style scoped lang="scss">
+.empty-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  color: var(--lm-text-subtle);
+}
+.empty-icon { font-size: 2rem; opacity: 0.5; }
+.empty-label { font-size: 0.875rem; }
+</style>
