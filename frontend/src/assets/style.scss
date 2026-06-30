@@ -1813,6 +1813,13 @@ th.role-toggle-select a { font-weight: normal; }
     &--danger  { background: var(--lm-danger-bg); border-color: var(--lm-danger-border); color: var(--lm-danger); }
   }
 
+  // Box (shared card primitive)
+  .box {
+    background: var(--lm-surface);
+    border-color: var(--lm-border);
+    box-shadow: none;
+  }
+
   // Table card
   .table-card { background: var(--lm-surface); border-color: var(--lm-border); }
 
