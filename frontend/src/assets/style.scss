@@ -1060,7 +1060,7 @@ section {
     padding: 15px 10px;
     border-color: $grey-lightest;
   }
-  .p-datatable-tbody > tr:hover { background: $white-bis; }
+  .p-datatable-tbody > tr:hover { background: #eef2f8; }
 }
 
 // DataTable actions
@@ -1861,7 +1861,7 @@ th.role-toggle-select a { font-weight: normal; }
 
     // Rows and cells
     .p-datatable-tbody > tr { background: var(--lm-surface); }
-    .p-datatable-tbody > tr:hover { background: var(--lm-bg-subtle); }
+    .p-datatable-tbody > tr:hover { background: rgba(255, 255, 255, 0.05); }
     .p-datatable-tbody > tr > td {
       border-color: var(--lm-border);
       color: var(--lm-text);
@@ -1886,7 +1886,7 @@ th.role-toggle-select a { font-weight: normal; }
       .p-paginator-last {
         color: var(--lm-text-muted);
         background: transparent;
-        &:hover { background: var(--lm-bg-subtle); color: var(--lm-text); }
+        &:hover { background: rgba(255, 255, 255, 0.07); color: var(--lm-text); }
         &.p-highlight { background: var(--lm-primary-light); color: var(--lm-primary); }
       }
     }
