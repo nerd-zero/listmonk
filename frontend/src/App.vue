@@ -142,7 +142,8 @@ const router = useRouter();
 const { serverConfig, profile } = storeToRefs(useMainStore());
 
 const isLoaded = ref(false);
-const isDark = ref(false);
+const isDark = ref(localStorage.getItem('lm-dark') === '1');
+if (isDark.value) document.documentElement.classList.add('app-dark');
 const sidebarCollapsed = ref(window.innerWidth < 992);
 const activeItem = ref<Record<string, boolean>>({});
 const userMenuRef = ref<any>(null);
@@ -156,6 +157,7 @@ const userMenuItems = computed(() => [
 function toggleDark() {
   isDark.value = !isDark.value;
   document.documentElement.classList.toggle('app-dark', isDark.value);
+  localStorage.setItem('lm-dark', isDark.value ? '1' : '');
 }
 
 function triggerRefresh() { useMainStore().refresh(); }
