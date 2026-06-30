@@ -33,12 +33,13 @@
         </div>
       </div>
 
-      <PvTabs v-model:value="activeTab">
+      <PvTabs class="lm-tabs" v-model:value="activeTab">
         <PvTabList>
           <PvTab value="0">{{ $t('globals.terms.lists') }}</PvTab>
           <PvTab value="1">{{ `${$t('globals.terms.subscriptions', 2)} (${data.lists ? data.lists.length : 0})` }}</PvTab>
           <PvTab value="2" :disabled="bounces.length === 0">{{ `${$t('globals.terms.bounces')} (${bounces.length})` }}</PvTab>
-          <PvTab value="3" :disabled="!isEditing">{{ $t('subscribers.activity') }}</PvTab>
+          <PvTab value="3">{{ $t('globals.terms.attribs') }}</PvTab>
+          <PvTab value="4" :disabled="!isEditing">{{ $t('subscribers.activity') }}</PvTab>
         </PvTabList>
         <PvTabPanels>
           <!-- lists -->
@@ -139,21 +140,21 @@
             </PvDataTable>
           </PvTabPanel><!-- bounces -->
 
+          <!-- attributes -->
+          <PvTabPanel value="3" class="attribs-panel">
+            <small class="lm-help">{{ $t('subscribers.attribsHelp') + ' ' + egAttribs }}</small>
+            <PvTextarea v-model="form.strAttribs" name="attribs" rows="6" class="w-full attribs-textarea" />
+            <a href="https://listmonk.app/docs/concepts" target="_blank" rel="noopener noreferrer" class="learn-more-link">
+              {{ $t('globals.buttons.learnMore') }} <i class="pi pi-external-link" />
+            </a>
+          </PvTabPanel><!-- attributes -->
+
           <!-- activity -->
-          <PvTabPanel value="3" class="activity">
+          <PvTabPanel value="4" class="activity">
             <subscriber-activity v-if="isEditing && data.id" :subscriber-id="data.id" />
           </PvTabPanel><!-- activity -->
         </PvTabPanels>
       </PvTabs>
-
-      <div class="attribs-field">
-        <h5 class="attribs-title">{{ $t('globals.terms.attribs') }}</h5>
-        <small class="lm-help">{{ $t('subscribers.attribsHelp') + ' ' + egAttribs }}</small>
-        <PvTextarea v-model="form.strAttribs" name="attribs" rows="4" class="w-full" />
-        <a href="https://listmonk.app/docs/concepts" target="_blank" rel="noopener noreferrer" class="learn-more-link">
-          {{ $t('globals.buttons.learnMore') }} <i class="pi pi-external-link" />
-        </a>
-      </div>
     </div>
 
     <div class="lm-form-footer">
@@ -347,7 +348,7 @@ onMounted(() => {
 .bounce-source { font-size: 0.85rem; color: var(--lm-text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; &:hover { color: var(--lm-text); } }
 .bounce-meta-pre { font-size: 0.75rem; margin-top: 0.4rem; background: var(--lm-bg); border-radius: 4px; padding: 0.5rem; overflow-x: auto; }
 
-.attribs-field { display: flex; flex-direction: column; gap: 0.35rem; }
-.attribs-title { font-size: 0.9rem; font-weight: 600; color: var(--lm-text); margin: 0; }
+.attribs-panel { display: flex; flex-direction: column; gap: 0.5rem; }
+.attribs-textarea { font-family: monospace; font-size: 0.82rem; }
 .learn-more-link { font-size: 0.78rem; color: var(--lm-primary); text-decoration: none; &:hover { text-decoration: underline; } }
 </style>

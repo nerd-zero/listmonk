@@ -34,7 +34,7 @@
       <PvProgressSpinner />
     </div>
 
-    <PvTabs v-model:value="activeTab" @update:value="onTab">
+    <PvTabs class="lm-tabs" v-model:value="activeTab" @update:value="onTab">
       <PvTabList>
         <PvTab value="campaign">
           <i class="pi pi-send mr-1" />{{ $t('globals.terms.campaign') }}
@@ -53,109 +53,99 @@
       <PvTabPanels>
         <!-- campaign tab -->
         <PvTabPanel value="campaign">
-          <section class="wrap">
-            <div class="grid">
-              <div class="col-7">
-                <form class="campaign-form" @submit.prevent="() => onSubmit(isNew ? 'create' : 'update')">
-                  <div class="field">
-                    <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
-                    <PvInputText :maxlength="200" ref="focusEl" v-model="form.name" name="name" :disabled="!canEdit"
-                      :placeholder="$t('globals.fields.name')" required autofocus class="w-full" />
-                  </div>
-
-                  <div class="field">
-                    <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.subject') }}</label>
-                    <PvInputText :maxlength="5000" v-model="form.subject" name="subject" :disabled="!canEdit"
-                      :placeholder="$t('campaigns.subject')" required class="w-full" />
-                  </div>
-
-                  <div class="field">
-                    <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.fromAddress') }}</label>
-                    <PvInputText :maxlength="200" v-model="form.fromEmail" name="from_email" :disabled="!canEdit"
-                      :placeholder="$t('campaigns.fromAddressPlaceholder')" required class="w-full" />
-                  </div>
-
-                  <list-selector v-model="form.lists" :selected="form.lists" :all="lists.results" :disabled="!canEdit"
-                    :label="$t('globals.terms.lists')" :placeholder="$t('campaigns.sendToLists')" />
-
-                  <div class="grid">
-                    <div class="col-6">
-                      <div class="field">
-                        <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.messenger') }}</label>
-                        <PvSelect v-model="form.messenger" :options="allMessengers" :disabled="!canEdit"
-                          required class="w-full" />
-                      </div>
-                    </div>
-                    <div class="col-6">
-                      <div class="field">
-                        <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.format') }}</label>
-                        <PvSelect v-model="form.content.contentType" :options="contentTypeOptions"
-                          option-label="label" option-value="value"
-                          :disabled="!canEdit || isEditing" class="w-full" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="field">
-                    <label class="block mb-1 text-sm font-medium">{{ $t('globals.terms.tags') }}</label>
-                    <PvAutoComplete v-model="form.tags" name="tags" :disabled="!canEdit"
-                      :placeholder="$t('globals.terms.tags')" multiple class="w-full" />
-                  </div>
-
-                  <div class="form-divider" />
-
-                  <div class="field" data-cy="btn-send-later">
-                    <div class="flex items-center gap-2 mb-1">
-                      <PvToggleSwitch v-model="form.sendLater" :disabled="!canEdit" />
-                      <span class="text-sm font-medium">{{ $t('campaigns.sendLater') }}</span>
-                    </div>
-                    <div v-if="form.sendLater" data-cy="send_at" class="mt-2">
-                      <PvDatePicker v-model="form.sendAtDate" :disabled="!canEdit" show-time hour-format="24"
-                        :placeholder="$t('campaigns.dateAndTime')" required />
-                      <small v-if="form.sendAtDate" class="block mt-1 text-color-secondary">
-                        {{ $utils.duration(Date(), form.sendAtDate) }}
-                      </small>
-                    </div>
-                  </div>
-
-                  <div class="field">
-                    <a href="#" class="form-link" @click.prevent="onShowHeaders" data-cy="btn-headers">
-                      <i class="pi pi-plus" />{{ $t('settings.smtp.setCustomHeaders') }}
-                    </a>
-                    <div v-if="form.headersStr !== '[]' || isHeadersVisible" class="mt-2">
-                      <PvTextarea v-model="form.headersStr" name="headers"
-                        placeholder="[{&quot;X-Custom&quot;: &quot;value&quot;}, {&quot;X-Custom2&quot;: &quot;value&quot;}]"
-                        :disabled="!canEdit" class="w-full" />
-                      <small class="block mt-1 text-color-secondary">{{ $t('campaigns.customHeadersHelp') }}</small>
-                    </div>
-                  </div>
-
-                  <div class="form-divider" />
-
-                  <div class="field" v-if="isNew">
-                    <PvButton type="submit" severity="primary" :loading="loading.campaigns" data-cy="btn-continue"
-                      :label="$t('campaigns.continue')" />
-                  </div>
-                </form>
+          <div class="campaign-layout">
+            <form class="box campaign-form" @submit.prevent="() => onSubmit(isNew ? 'create' : 'update')">
+              <div class="field">
+                <label class="field-label">{{ $t('globals.fields.name') }}</label>
+                <PvInputText :maxlength="200" ref="focusEl" v-model="form.name" name="name" :disabled="!canEdit"
+                  :placeholder="$t('globals.fields.name')" required autofocus class="w-full" />
               </div>
-              <div v-if="canManage" class="col-4 col-offset-1">
-                <div class="test-message-card">
-                  <div class="test-message-card__header">
-                    <i class="pi pi-envelope" />
-                    <span>{{ $t('campaigns.sendTest') }}</span>
-                  </div>
-                  <div class="test-message-card__body">
-                    <small class="block mb-2 text-color-secondary">{{ $t('campaigns.sendTestHelp') }}</small>
-                    <PvAutoComplete v-model="form.testEmails" :disabled="isNew"
-                      :placeholder="$t('campaigns.testEmails')" multiple class="w-full mb-3" />
-                    <PvButton @click="() => onSubmit('test')" :loading="loading.campaigns" :disabled="isNew"
-                      severity="primary" icon="pi pi-send" :label="$t('campaigns.send')" class="w-full"
-                      justify="center" />
-                  </div>
+
+              <div class="field">
+                <label class="field-label">{{ $t('campaigns.subject') }}</label>
+                <PvInputText :maxlength="5000" v-model="form.subject" name="subject" :disabled="!canEdit"
+                  :placeholder="$t('campaigns.subject')" required class="w-full" />
+              </div>
+
+              <div class="field">
+                <label class="field-label">{{ $t('campaigns.fromAddress') }}</label>
+                <PvInputText :maxlength="200" v-model="form.fromEmail" name="from_email" :disabled="!canEdit"
+                  :placeholder="$t('campaigns.fromAddressPlaceholder')" required class="w-full" />
+              </div>
+
+              <div class="field">
+                <list-selector v-model="form.lists" :selected="form.lists" :all="lists.results" :disabled="!canEdit"
+                  :label="$t('globals.terms.lists')" :placeholder="$t('campaigns.sendToLists')" />
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label class="field-label">{{ $t('globals.terms.messenger') }}</label>
+                  <PvSelect v-model="form.messenger" :options="allMessengers" :disabled="!canEdit"
+                    required class="w-full" />
+                </div>
+                <div class="field">
+                  <label class="field-label">{{ $t('campaigns.format') }}</label>
+                  <PvSelect v-model="form.content.contentType" :options="contentTypeOptions"
+                    option-label="label" option-value="value"
+                    :disabled="!canEdit || isEditing" class="w-full" />
                 </div>
               </div>
+
+              <div class="field">
+                <label class="field-label">{{ $t('globals.terms.tags') }}</label>
+                <PvAutoComplete v-model="form.tags" name="tags" :disabled="!canEdit"
+                  :placeholder="$t('globals.terms.tags')" multiple class="w-full" />
+              </div>
+
+              <PvDivider />
+
+              <div class="field" data-cy="btn-send-later">
+                <div class="toggle-row">
+                  <PvToggleSwitch v-model="form.sendLater" :disabled="!canEdit" />
+                  <span class="toggle-label">{{ $t('campaigns.sendLater') }}</span>
+                </div>
+                <div v-if="form.sendLater" data-cy="send_at" class="mt-2">
+                  <PvDatePicker v-model="form.sendAtDate" :disabled="!canEdit" show-time hour-format="24"
+                    :placeholder="$t('campaigns.dateAndTime')" required />
+                  <small v-if="form.sendAtDate" class="block mt-1 text-color-secondary">
+                    {{ $utils.duration(Date(), form.sendAtDate) }}
+                  </small>
+                </div>
+              </div>
+
+              <div class="field">
+                <a href="#" class="form-link" @click.prevent="onShowHeaders" data-cy="btn-headers">
+                  <i class="pi pi-plus" />{{ $t('settings.smtp.setCustomHeaders') }}
+                </a>
+                <div v-if="form.headersStr !== '[]' || isHeadersVisible" class="mt-2">
+                  <PvTextarea v-model="form.headersStr" name="headers"
+                    placeholder="[{&quot;X-Custom&quot;: &quot;value&quot;}, {&quot;X-Custom2&quot;: &quot;value&quot;}]"
+                    :disabled="!canEdit" class="w-full" />
+                  <small class="block mt-1 text-color-secondary">{{ $t('campaigns.customHeadersHelp') }}</small>
+                </div>
+              </div>
+
+              <div v-if="isNew" class="form-footer">
+                <PvButton type="submit" severity="primary" :loading="loading.campaigns" data-cy="btn-continue"
+                  icon="pi pi-arrow-right" icon-pos="right" :label="$t('campaigns.continue')" />
+              </div>
+            </form>
+
+            <div v-if="canManage" class="campaign-sidebar">
+              <div class="box test-message-card">
+                <div class="test-message-card__title">
+                  <i class="pi pi-send" />
+                  <span>{{ $t('campaigns.sendTest') }}</span>
+                </div>
+                <small class="test-message-card__help">{{ $t('campaigns.sendTestHelp') }}</small>
+                <PvAutoComplete v-model="form.testEmails" :disabled="isNew"
+                  :placeholder="$t('campaigns.testEmails')" multiple class="w-full" />
+                <PvButton @click="() => onSubmit('test')" :loading="loading.campaigns" :disabled="isNew"
+                  severity="secondary" outlined icon="pi pi-send" :label="$t('campaigns.send')" class="w-full" />
+              </div>
             </div>
-          </section>
+          </div>
         </PvTabPanel><!-- campaign -->
 
         <!-- content tab -->
@@ -165,7 +155,7 @@
 
           <div class="grid">
             <div class="col-6">
-              <p v-if="!isAttachFieldVisible" class="is-size-6 has-text-grey">
+              <p v-if="!isAttachFieldVisible" style="font-size:0.9rem;color:var(--lm-text-muted)">
                 <a href="#" @click.prevent="onShowAttachField()" data-cy="btn-attach">
                   <i class="pi pi-upload" />
                   {{ $t('campaigns.addAttachments') }}
@@ -182,7 +172,7 @@
               <a href="https://listmonk.app/docs/templating/#template-expressions" target="_blank"
                 rel="noopener noreferer">
                 <i class="pi pi-code" /> {{ $t('campaigns.templatingRef') }}</a>
-              <span v-if="canEdit && form.content.contentType !== 'plain'" class="is-size-6 has-text-grey ml-6">
+              <span v-if="canEdit && form.content.contentType !== 'plain'" style="font-size:0.9rem;color:var(--lm-text-muted);margin-left:1.5rem">
                 <a v-if="form.altbody === null" href="#" @click.prevent="onAddAltBody">
                   <i class="pi pi-file" /> {{ $t('campaigns.addAltText') }}
                 </a>
@@ -226,7 +216,7 @@
                     </div>
                     <div class="col-12">
                       <a :href="`${serverConfig.root_url}/archive/${data.uuid}`" target="_blank" rel="noopener noreferer"
-                        :class="{ 'has-text-grey-light': !form.archive }" aria-label="$t('campaigns.archive')">
+                        :style="{ color: !form.archive ? 'var(--lm-text-subtle)' : 'inherit' }" aria-label="$t('campaigns.archive')">
                         <i class="pi pi-external-link" />
                       </a>
                     </div>
@@ -234,11 +224,9 @@
                 </div>
               </div>
               <div class="col-8">
-                <div class="field is-grouped" style="justify-content: flex-end;">
-                  <div class="field" v-if="!canEdit && canArchive">
-                    <PvButton @click="onUpdateCampaignArchive" :loading="loading.campaigns" severity="primary"
-                      icon="pi pi-save" data-cy="btn-save" :label="$t('globals.buttons.saveChanges')" />
-                  </div>
+                <div style="display:flex; justify-content: flex-end;">
+                  <PvButton v-if="!canEdit && canArchive" @click="onUpdateCampaignArchive" :loading="loading.campaigns" severity="primary"
+                    icon="pi pi-save" data-cy="btn-save" :label="$t('globals.buttons.saveChanges')" />
                 </div>
               </div>
             </div>
@@ -255,14 +243,11 @@
               </div>
 
               <div class="col-6">
-                <div class="field is-grouped" style="justify-content: flex-end;">
-                  <div class="field" v-if="form.archive && (!form.archiveMetaStr || form.archiveMetaStr === '{}')">
-                    <a class="button is-primary" href="#" @click.prevent="onFillArchiveMeta" aria-label="{}"><i class="pi pi-code" /></a>
-                  </div>
-                  <div class="field" v-if="form.archive">
-                    <PvButton @click="onToggleArchivePreview" severity="primary" icon="pi pi-eye"
-                      data-cy="btn-preview" :label="$t('campaigns.preview')" />
-                  </div>
+                <div style="display:flex; justify-content: flex-end; gap: 0.5rem; align-items: center;">
+                  <PvButton v-if="form.archive && (!form.archiveMetaStr || form.archiveMetaStr === '{}')"
+                    severity="secondary" outlined @click.prevent="onFillArchiveMeta" aria-label="{}" icon="pi pi-code" />
+                  <PvButton v-if="form.archive" @click="onToggleArchivePreview" severity="primary" icon="pi pi-eye"
+                    data-cy="btn-preview" :label="$t('campaigns.preview')" />
                 </div>
               </div>
             </div>
@@ -388,6 +373,9 @@ const contentTypeOptions = computed(() => Object.entries(contentTypes.value).map
 const campaignTemplates = computed(() => ((templates.value as any[]) || []).filter((tpl: any) => tpl.type === 'campaign'));
 
 function isUnsaved() {
+  if (isNew.value) {
+    return !!(form.name || form.subject || form.content.body);
+  }
   return data.value.body !== form.content.body || data.value.contentType !== form.content.contentType;
 }
 
@@ -689,58 +677,91 @@ onBeforeUnmount(() => { $events.$off('campaign.update'); });
   }
 }
 
+// Two-column layout
+.campaign-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.campaign-sidebar {
+  position: sticky;
+  top: 1rem;
+}
+
 // Campaign form
 .campaign-form {
   display: flex;
   flex-direction: column;
+  gap: 1.1rem;
+
+  .field { margin-bottom: 0; }
+}
+
+.field-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.4rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
 
   .field { margin-bottom: 0; }
 }
 
-.form-divider {
-  border-top: 1px solid var(--lm-border);
-  margin: 0.25rem 0;
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
+.toggle-label { font-size: 0.9rem; font-weight: 500; color: var(--lm-text); }
 
 .form-link {
   font-size: 0.85rem;
-  color: var(--lm-primary);
+  color: var(--lm-text-muted);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
 
-  &:hover { text-decoration: underline; }
+  &:hover { color: var(--lm-primary); }
+}
+
+.form-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
 }
 
 // Send test message card
 .test-message-card {
-  border: 1px solid var(--lm-border);
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--lm-surface);
-  margin-top: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 
-  &__header {
+  &__title {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: var(--lm-bg-subtle);
-    border-bottom: 1px solid var(--lm-border);
     font-weight: 600;
     font-size: 0.875rem;
-    color: var(--lm-text-secondary);
+    color: var(--lm-text);
 
-    .pi { color: var(--lm-primary); font-size: 0.9rem; }
+    .pi { color: var(--lm-text-muted); font-size: 0.9rem; }
   }
 
-  &__body {
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  &__help {
+    font-size: 0.8rem;
+    color: var(--lm-text-muted);
+    line-height: 1.5;
   }
 }
 </style>

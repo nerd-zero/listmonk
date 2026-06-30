@@ -196,7 +196,7 @@
     </PvDialog>
 
     <!-- Add / edit form modal -->
-    <PvDialog v-model:visible="isFormVisible" :style="{ width: '850px' }" show-header="false" :closable="false" modal @hide="onFormClose">
+    <PvDialog v-model:visible="isFormVisible" :style="{ width: '850px' }" class="subscriber-modal" show-header="false" :closable="false" modal @hide="onFormClose">
       <subscriber-form :data="curItem" :is-editing="isEditing" @finished="querySubscribers" @close="isFormVisible = false" />
     </PvDialog>
   </div>
@@ -227,9 +227,10 @@ const {
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
+const store = useMainStore();
 const {
   refreshTick, subscribers, lists, loading,
-} = storeToRefs(useMainStore());
+} = storeToRefs(store);
 
 const curItem = ref<any>(null);
 const isSearchAdvanced = ref(false);
@@ -338,7 +339,13 @@ function querySubscribers(params?: any) {
     delete qp.query;
   }
   nextTick(() => {
-    listSubscribers(qp).then(() => { bulk.checked = []; });
+    store.setLoading({ model: 'subscribers', status: true });
+    listSubscribers(qp).then((data: any) => {
+      store.setModelResponse({ model: 'subscribers', data });
+      bulk.checked = [];
+    }).finally(() => {
+      store.setLoading({ model: 'subscribers', status: false });
+    });
   });
 }
 

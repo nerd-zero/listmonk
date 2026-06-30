@@ -1,36 +1,28 @@
 <template>
   <div class="subscriber-activity">
-    <div v-if="isLoading" class="has-text-centered">
+    <div v-if="isLoading" class="activity-loading">
       <PvProgressSpinner style="width:2rem;height:2rem" />
     </div>
 
     <div v-else>
       <!-- Summary Stats -->
-      <div class="grid">
-        <div class="col-4">
-          <div class="box has-text-centered">
-            <p class="heading">{{ $t('globals.terms.campaigns') }}</p>
-            <p class="title">{{ activity.campaignViews ? activity.campaignViews.length : 0 }}</p>
-          </div>
+      <div class="activity-stats">
+        <div class="stat-box">
+          <span class="stat-heading">{{ $t('globals.terms.campaigns') }}</span>
+          <span class="stat-value">{{ activity.campaignViews ? activity.campaignViews.length : 0 }}</span>
         </div>
-        <div class="col-4">
-          <div class="box has-text-centered">
-            <p class="heading">{{ $t('campaigns.views') }}</p>
-            <p class="title">{{ totalViews }}</p>
-          </div>
+        <div class="stat-box">
+          <span class="stat-heading">{{ $t('campaigns.views') }}</span>
+          <span class="stat-value">{{ totalViews }}</span>
         </div>
-        <div class="col-4">
-          <div class="box has-text-centered">
-            <p class="heading">{{ $t('campaigns.clicks') }}</p>
-            <p class="title">{{ totalClicks }}</p>
-          </div>
+        <div class="stat-box">
+          <span class="stat-heading">{{ $t('campaigns.clicks') }}</span>
+          <span class="stat-value">{{ totalClicks }}</span>
         </div>
       </div>
 
       <!-- Campaign Views Section -->
-      <div class="section-header mb-4">
-        <h5 class="title is-5">{{ $t('campaigns.views') }}</h5>
-      </div>
+      <h5 class="activity-section-title">{{ $t('campaigns.views') }}</h5>
 
       <div v-if="activity.campaignViews && activity.campaignViews.length > 0">
         <PvDataTable :value="activity.campaignViews" :hoverable="true" sort-field="lastViewedAt" :sort-order="-1"
@@ -39,16 +31,16 @@
             <template #body="{ data }">
               <div v-if="data.uuid">
                 <router-link :to="{ name: 'campaign', params: { id: data.id } }">{{ data.name }}</router-link>
-                <p class="is-size-7 has-text-grey">{{ data.subject }}</p>
+                <p class="cell-sub">{{ data.subject }}</p>
               </div>
               <div v-else>
-                <em class="has-text-grey">{{ $t('subscribers.activity.campaignDeleted') }}</em>
+                <em class="text-muted">{{ $t('subscribers.activity.campaignDeleted') }}</em>
               </div>
             </template>
           </PvColumn>
           <PvColumn field="viewCount" :header="$t('campaigns.views')" sortable>
             <template #body="{ data }">
-              <span class="tag is-light">{{ data.viewCount }}</span>
+              <PvTag severity="secondary" :value="String(data.viewCount)" />
             </template>
           </PvColumn>
           <PvColumn field="lastViewedAt" :header="$t('globals.fields.createdAt')" sortable>
@@ -58,14 +50,12 @@
           </PvColumn>
         </PvDataTable>
       </div>
-      <div v-else class="has-text-centered has-text-grey p-6">
-        <p class="mt-2">{{ $t('globals.messages.emptyState') }}</p>
+      <div v-else class="activity-empty">
+        <p>{{ $t('globals.messages.emptyState') }}</p>
       </div>
 
       <!-- Link Clicks Section -->
-      <div class="section-header mb-4 mt-6">
-        <h5 class="title is-5">{{ $t('campaigns.clicks') }}</h5>
-      </div>
+      <h5 class="activity-section-title">{{ $t('campaigns.clicks') }}</h5>
 
       <div v-if="activity.linkClicks && activity.linkClicks.length > 0">
         <PvDataTable :value="activity.linkClicks" :hoverable="true" sort-field="lastClickedAt" :sort-order="-1"
@@ -87,7 +77,7 @@
           </PvColumn>
           <PvColumn field="clickCount" :header="$t('campaigns.clicks')" sortable>
             <template #body="{ data }">
-              <span class="tag is-light">{{ data.clickCount }}</span>
+              <PvTag severity="secondary" :value="String(data.clickCount)" />
             </template>
           </PvColumn>
           <PvColumn field="lastClickedAt" :header="$t('globals.fields.createdAt')" sortable>
@@ -97,8 +87,8 @@
           </PvColumn>
         </PvDataTable>
       </div>
-      <div v-else class="has-text-centered has-text-grey p-6">
-        <p class="mt-2">{{ $t('globals.messages.emptyState') }}</p>
+      <div v-else class="activity-empty">
+        <p>{{ $t('globals.messages.emptyState') }}</p>
       </div>
     </div>
   </div>
@@ -144,3 +134,68 @@ onMounted(() => {
   getActivity();
 });
 </script>
+
+<style scoped lang="scss">
+.activity-loading { display: flex; justify-content: center; padding: 2rem; }
+
+.activity-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--lm-bg);
+  border: 1px solid var(--lm-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.stat-heading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--lm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--lm-text);
+  line-height: 1;
+}
+
+.activity-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--lm-text);
+  margin: 1.25rem 0 0.75rem;
+}
+
+.cell-sub {
+  font-size: 0.75rem;
+  color: var(--lm-text-subtle);
+  margin: 0.15rem 0 0;
+}
+
+.text-muted { color: var(--lm-text-subtle); font-style: italic; }
+
+.activity-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--lm-text-subtle);
+  font-size: 0.875rem;
+}
+
+:deep(.p-tag-secondary) {
+  background: var(--lm-bg-subtle);
+  color: var(--lm-text-secondary);
+  border: 1px solid var(--lm-border);
+}
+</style>

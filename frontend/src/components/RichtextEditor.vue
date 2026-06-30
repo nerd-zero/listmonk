@@ -2,39 +2,35 @@
   <div class="richtext-editor" v-if="isRichtextReady">
     <tiny-mce v-model="computedValue" :disabled="disabled" :init="richtextConf" />
 
-    <PvDialog v-model:visible="isRichtextSourceVisible" :style="{ width: '1200px' }" :closable="true" modal scroll="keep" :aria-modal="true">
-      <div>
-        <section expanded class="modal-card-body preview">
+    <PvDialog v-model:visible="isRichtextSourceVisible" :style="{ width: '1200px' }" :closable="true" modal :aria-modal="true">
+      <div class="richtext-dialog">
+        <div class="richtext-dialog-body">
           <code-editor lang="html" v-model="richTextSourceBody" key="richtext-source" />
-        </section>
-        <footer class="modal-card-foot has-text-right">
-          <PvButton @click="onFormatRichtextHTML" :label="$t('campaigns.formatHTML')" />
-          <PvButton @click="isRichtextSourceVisible = false" :label="$t('globals.buttons.close')" />
+        </div>
+        <div class="richtext-dialog-footer">
+          <PvButton severity="secondary" @click="onFormatRichtextHTML" :label="$t('campaigns.formatHTML')" />
+          <PvButton severity="secondary" @click="isRichtextSourceVisible = false" :label="$t('globals.buttons.close')" />
           <PvButton @click="onSaveRichTextSource" severity="primary" :label="$t('globals.buttons.save')" />
-        </footer>
+        </div>
       </div>
     </PvDialog>
 
-    <PvDialog v-model:visible="isInsertHTMLVisible" :style="{ width: '750px' }" :closable="true" modal scroll="keep" :aria-modal="true">
-      <div>
-        <section expanded class="modal-card-body preview">
+    <PvDialog v-model:visible="isInsertHTMLVisible" :style="{ width: '750px' }" :closable="true" modal :aria-modal="true">
+      <div class="richtext-dialog">
+        <div class="richtext-dialog-body">
           <code-editor lang="html" v-model="insertHTMLSnippet" key="richtext-snippet" />
-        </section>
-        <footer class="modal-card-foot has-text-right">
-          <PvButton @click="onFormatRichtextHTMLSnippet" :label="$t('campaigns.formatHTML')" />
-          <PvButton @click="isInsertHTMLVisible = false" :label="$t('globals.buttons.close')" />
+        </div>
+        <div class="richtext-dialog-footer">
+          <PvButton severity="secondary" @click="onFormatRichtextHTMLSnippet" :label="$t('campaigns.formatHTML')" />
+          <PvButton severity="secondary" @click="isInsertHTMLVisible = false" :label="$t('globals.buttons.close')" />
           <PvButton @click="onInsertHTML" severity="primary" :label="$t('globals.buttons.insert')" />
-        </footer>
+        </div>
       </div>
     </PvDialog>
 
     <!-- image picker -->
-    <PvDialog v-model:visible="isMediaVisible" :style="{ width: '900px' }" :closable="true" modal scroll="keep" :aria-modal="true">
-      <div class="modal-card content" style="width: auto">
-        <section expanded class="modal-card-body">
-          <media is-modal @selected="onMediaSelect" />
-        </section>
-      </div>
+    <PvDialog v-model:visible="isMediaVisible" :style="{ width: '900px' }" :closable="true" modal :aria-modal="true">
+      <media is-modal @selected="onMediaSelect" />
     </PvDialog>
   </div>
 </template>
@@ -267,7 +263,7 @@ function initRichtextEditor() {
     skin: false,
     content_css: false,
     content_style: `
-      body { font-family: 'Inter', sans-serif; font-size: 15px; }
+      body { font-family: 'DM Sans', 'Inter', sans-serif; font-size: 15px; }
       img { max-width: 100%; }
       img.img-float-left { float: left; margin: 0 1em 1em 0; }
       img.img-float-right { float: right; margin: 0 0 1em 1em; }
@@ -293,3 +289,16 @@ function initRichtextEditor() {
 
 onMounted(() => { initRichtextEditor(); });
 </script>
+
+<style scoped lang="scss">
+.richtext-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.richtext-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+</style>

@@ -61,17 +61,17 @@ import eventBus from './eventBus';
 const BluePreset = definePreset(Aura, {
   semantic: {
     primary: {
-      50: '{indigo.50}',
-      100: '{indigo.100}',
-      200: '{indigo.200}',
-      300: '{indigo.300}',
-      400: '{indigo.400}',
-      500: '{indigo.500}',
-      600: '{indigo.600}',
-      700: '{indigo.700}',
-      800: '{indigo.800}',
-      900: '{indigo.900}',
-      950: '{indigo.950}',
+      50: '#e0f7fc',
+      100: '#caf0f8',
+      200: '#90e0ef',
+      300: '#48cae4',
+      400: '#00b4d8',
+      500: '#0096c7',
+      600: '#0077b6',
+      700: '#005f91',
+      800: '#004466',
+      900: '#022d4a',
+      950: '#03045e',
     },
   },
 });

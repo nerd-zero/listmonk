@@ -94,3 +94,19 @@ Static assets (frontend dist, schema, i18n files) are embedded into the binary a
 ### Email Builder
 
 Separate Vite/TypeScript project in `frontend/email-builder/`. Built independently with `make build-email-builder` and output to `frontend/public/static/email-builder/`. Embedded in the template editor as a widget.
+
+## Database Migrations
+
+**Always create a migration for any schema or settings struct change.** This includes adding fields to Go structs that are backed by JSON in the `settings` table.
+
+- Migration files: `internal/migrations/vX.Y.Z.go` — one exported function per version (e.g. `V6_3_0`)
+- Register in: `cmd/upgrade.go` in the `migList` array
+- Update: `schema.sql` default values so fresh installs include the new field
+- Migrations must be **idempotent** — safe to run multiple times
+- Pattern for `settings` JSON fields:
+  ```sql
+  INSERT INTO settings (key, value) VALUES ('key', '{"field": default}')
+  ON CONFLICT (key) DO UPDATE
+  SET value = JSONB_SET(settings.value, '{field}', COALESCE(settings.value->'field', 'default'::JSONB))
+  WHERE NOT (settings.value ? 'field');
+  ```

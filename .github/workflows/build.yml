@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - name: Checkout Code
@@ -111,3 +111,8 @@ jobs:
 
           docker push ${{ needs.prepare_build.outputs.APP_IMAGE_REPOSITORY }}
           docker push ghcr.io/nerd-zero/listmonk:latest
+
+      - name: Tag release
+        run: |
+          git tag "${{ needs.prepare_build.outputs.APP_VERSION }}"
+          git push origin "${{ needs.prepare_build.outputs.APP_VERSION }}"

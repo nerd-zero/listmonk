@@ -165,7 +165,7 @@ function makeChart(data: any) {
       pointHoverBorderWidth: 5,
       pointBorderWidth: 0.5,
       fill: true,
-      backgroundColor: 'rgba(99,102,241,0.07)',
+      backgroundColor: 'rgba(0,180,216,0.07)',
     }],
   };
 }
@@ -256,7 +256,7 @@ onMounted(() => {
   flex-shrink: 0;
 
   i { font-size: 1.15rem; }
-  &--blue   { background: #eff6ff; color: #2563eb; }
+  &--blue   { background: #e0f7fc; color: #0077b6; }
   &--green  { background: var(--lm-success-bg); color: #16a34a; }
   &--purple { background: #f5f3ff; color: #7c3aed; }
   &--orange { background: #fff7ed; color: #ea580c; }

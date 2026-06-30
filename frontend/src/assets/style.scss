@@ -5,11 +5,17 @@
 // CSS Custom Properties (design tokens)
 // ============================================================
 :root {
-  --lm-primary:         #6366f1;
-  --lm-primary-hover:   #4f46e5;
-  --lm-primary-light:   #eef2ff;
-  --lm-primary-border:  #c7d2fe;
-  --lm-primary-text:    #4338ca;
+  --deep-twilight:      #03045e;
+  --bright-teal-blue:   #0077b6;
+  --turquoise-surf:     #00b4d8;
+  --frosted-blue:       #90e0ef;
+  --light-cyan:         #caf0f8;
+
+  --lm-primary:         #0077b6;
+  --lm-primary-hover:   #005f91;
+  --lm-primary-light:   #e0f7fc;
+  --lm-primary-border:  #90e0ef;
+  --lm-primary-text:    #03045e;
 
   --lm-text:            #0f172a;
   --lm-text-secondary:  #334155;
@@ -45,10 +51,10 @@ $grey-light:   #b5b5b5;
 $grey:         #7a7a7a;
 $grey-dark:    #4a4a4a;
 $black:        #363636;
-$primary:      #6366f1;
+$primary:      #0077b6;
 $green:        #36995b;
 $red:          #FF5722;
-$body-family:  "Inter", "Helvetica Neue", sans-serif;
+$body-family:  "DM Sans", "Inter", "Helvetica Neue", sans-serif;
 $body-size:    15px;
 
 // Box placeholder — used with @extend %box throughout
@@ -565,15 +571,15 @@ select { height: auto; padding: 0.5rem 0.75rem; }
 
 $sidebar-w:      260px;
 $topbar-h:       56px;
-$sidebar-bg:     #ffffff;           // white
-$sidebar-border: #e5e7eb;           // gray-200
-$sidebar-hover:  #f3f4f6;           // gray-100
-$sidebar-active: #eef2ff;           // indigo-50
-$nav-text:       #6b7280;               // gray-500
-$nav-text-hover: #111827;               // gray-900
-$nav-text-active:#4338ca;               // indigo-700
-$nav-active-bar: #6366f1;               // indigo-500
-$nav-label:      #9ca3af;               // gray-400
+$sidebar-bg:     #ffffff;
+$sidebar-border: #e2e8f0;
+$sidebar-hover:  #e0f7fc;           // light-cyan tint
+$sidebar-active: #caf0f8;           // light-cyan
+$nav-text:       #64748b;
+$nav-text-hover: #03045e;           // deep-twilight
+$nav-text-active:#0077b6;           // bright-teal-blue
+$nav-active-bar: #00b4d8;           // turquoise-surf
+$nav-label:      #94a3b8;
 $ease:           cubic-bezier(0.4, 0, 0.2, 1);
 
 .app-shell {
@@ -930,6 +936,63 @@ section {
   &.is-primary { font-weight: bold; }
 }
 .modal .modal-close.is-large { display: none; }
+
+// ============================================================
+// Shared pill-style tabs (.lm-tabs)
+// ============================================================
+.lm-tabs {
+  .p-tablist {
+    border-bottom: none;
+
+    .p-tablist-content {
+      background: #e2e8f0;
+      border-radius: 10px;
+      padding: 0.25rem;
+    }
+
+    .p-tablist-tab-list {
+      background: transparent;
+      border: none;
+      gap: 0.15rem;
+      flex-wrap: wrap;
+    }
+
+    .p-tablist-active-bar { display: none; }
+    .p-tablist-prev-button,
+    .p-tablist-next-button { display: none; }
+  }
+
+  .p-tab {
+    border: none;
+    border-radius: 7px;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--lm-text-muted);
+    background: transparent;
+    margin: 0;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover:not([aria-selected="true"]) {
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--lm-text);
+    }
+
+    &[aria-selected="true"] {
+      background: var(--lm-surface);
+      color: var(--lm-primary);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  .p-tabpanels {
+    background: transparent;
+    padding: 1.25rem 0 0;
+  }
+
+  .p-tabpanel { padding: 0; }
+}
 
 // ============================================================
 // PrimeVue Dialog overrides
@@ -1395,8 +1458,8 @@ section.import {
 section.campaigns {
   table tbody {
     tr.running {
-      background: color.adjust(#6366f1, $lightness: 38%);
-      td { border-bottom: 1px solid color.adjust(#6366f1, $lightness: 25%); }
+      background: color.adjust(#0077b6, $lightness: 44%);
+      td { border-bottom: 1px solid color.adjust(#0077b6, $lightness: 35%); }
     }
     td {
       .tags { margin-top: 5px; }
@@ -1525,6 +1588,11 @@ section.analytics {
 .template-modal {
   .p-dialog-content { padding: 0; overflow: hidden; }
   // lm-form-header ~90px + lm-form-footer ~60px = ~150px overhead
+  .lm-form-body { max-height: calc(88vh - 150px); }
+}
+
+.subscriber-modal {
+  .p-dialog-content { padding: 0; overflow: hidden; }
   .lm-form-body { max-height: calc(88vh - 150px); }
 }
 

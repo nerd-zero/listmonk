@@ -1,6 +1,6 @@
 <template>
   <div class="items">
-    <PvTabs :animated="false" v-model:value="tab">
+    <PvTabs class="lm-tabs" :animated="false" v-model:value="tab">
       <PvTabList>
         <PvTab value="0">{{ $t('settings.appearance.adminName') }}</PvTab>
         <PvTab value="1">{{ $t('settings.appearance.publicName') }}</PvTab>
