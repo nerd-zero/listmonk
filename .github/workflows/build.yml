@@ -27,10 +27,12 @@ jobs:
         env:
           APP_IMAGE_REPOSITORY: ghcr.io/nerd-zero/listmonk
         run: |
-          VER=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          BUILD_VER="${VER}-dev"
-          echo "APP_VERSION=${BUILD_VER}" >> $GITHUB_OUTPUT
-          echo "APP_IMAGE_REPOSITORY=${APP_IMAGE_REPOSITORY}:${BUILD_VER}" >> $GITHUB_OUTPUT
+          YEAR_MONTH=$(date -u +"%Y.%m")
+          COUNT=$(git tag -l "${YEAR_MONTH}.*" | wc -l)
+          BUILD_NUM=$(printf "%03d" $((COUNT + 1)))
+          VER="${YEAR_MONTH}.${BUILD_NUM}"
+          echo "APP_VERSION=${VER}" >> $GITHUB_OUTPUT
+          echo "APP_IMAGE_REPOSITORY=${APP_IMAGE_REPOSITORY}:${VER}" >> $GITHUB_OUTPUT
           echo "APP_BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
 
   verify_build:
