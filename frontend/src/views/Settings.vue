@@ -210,4 +210,3 @@ onMounted(() => {
   fetchSettings();
 });
 </script>
-
