@@ -361,7 +361,7 @@ onMounted(() => {
 
   &:hover {
     border-color: var(--lm-primary);
-    background: #eef2ff;
+    background: var(--lm-primary-light);
   }
 }
 .upload-icon { font-size: 2rem; color: var(--lm-text-muted); }

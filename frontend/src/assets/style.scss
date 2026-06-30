@@ -942,53 +942,67 @@ section {
 // ============================================================
 .lm-tabs {
   .p-tablist {
-    border-bottom: none;
+    background: var(--lm-bg-subtle);
+    border: 1px solid var(--lm-border);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 2px;
+    width: fit-content;
+    overflow: visible;
 
-    .p-tablist-content {
-      background: #e2e8f0;
-      border-radius: 10px;
-      padding: 0.25rem;
-    }
-
-    .p-tablist-tab-list {
-      background: transparent;
-      border: none;
-      gap: 0.15rem;
-      flex-wrap: wrap;
-    }
-
-    .p-tablist-active-bar { display: none; }
+    .p-tablist-active-bar { display: none !important; }
+    .p-tablist-nav-button,
     .p-tablist-prev-button,
-    .p-tablist-next-button { display: none; }
+    .p-tablist-next-button { display: none !important; }
+  }
+
+  .p-tablist-content { background: transparent; }
+
+  .p-tablist-tab-list {
+    background: transparent;
+    border: none;
+    gap: 0;
+    flex-wrap: wrap;
   }
 
   .p-tab {
     border: none;
     border-radius: 7px;
-    padding: 0.45rem 0.9rem;
-    font-size: 0.85rem;
+    background: transparent;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--lm-text-muted);
-    background: transparent;
-    margin: 0;
-    transition: background 0.15s, color 0.15s;
+    margin-bottom: 0;
+    gap: 0.4rem;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 
-    &:hover:not([aria-selected="true"]) {
-      background: rgba(255, 255, 255, 0.6);
-      color: var(--lm-text);
+    &:hover:not([aria-selected="true"]):not([data-p-disabled="true"]) {
+      background: rgba(255, 255, 255, 0.65);
+      color: var(--lm-text-secondary);
     }
 
     &[aria-selected="true"] {
       background: var(--lm-surface);
       color: var(--lm-primary);
       font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+      border-bottom: none;
+    }
+
+    &[data-p-disabled="true"] {
+      opacity: 0.4;
+      pointer-events: none;
+      cursor: not-allowed;
     }
   }
 
   .p-tabpanels {
+    border: none;
+    box-shadow: none;
+    padding: 1.5rem 0 0;
     background: transparent;
-    padding: 1.25rem 0 0;
   }
 
   .p-tabpanel { padding: 0; }
@@ -1732,4 +1746,125 @@ th.role-toggle-select a { font-weight: normal; }
 @media screen and (min-width: 769px) {
   .page-header .button { display: inline-block; width: auto; }
   .is-hidden-tablet { display: none !important; }
+}
+
+// ============================================================
+// Dark mode token overrides
+// ============================================================
+.app-dark {
+  color: var(--lm-text);
+  body { color: var(--lm-text); background: var(--lm-bg); }
+
+  --lm-primary:         #00b4d8;
+  --lm-primary-hover:   #00c8f0;
+  --lm-primary-light:   #092030;
+  --lm-primary-border:  #005f91;
+  --lm-primary-text:    #caf0f8;
+
+  --lm-text:            #e2e8f0;
+  --lm-text-secondary:  #cbd5e1;
+  --lm-text-muted:      #94a3b8;
+  --lm-text-subtle:     #475569;
+
+  --lm-border:          #1e2d42;
+  --lm-border-light:    #172032;
+  --lm-bg:              #080e18;
+  --lm-bg-subtle:       #0d1424;
+  --lm-surface:         #111827;
+
+  --lm-danger:          #f87171;
+  --lm-danger-bg:       #2a0a0a;
+  --lm-danger-border:   #7f1d1d;
+  --lm-warn:            #fbbf24;
+  --lm-warn-bg:         #1a1200;
+  --lm-warn-border:     #92400e;
+  --lm-success:         #4ade80;
+  --lm-success-bg:      #0a1a0d;
+  --lm-success-border:  #14532d;
+
+  // Layout
+  .app-shell { background: var(--lm-bg); }
+
+  // Sidebar
+  .app-sidebar {
+    background: #0d1424;
+    border-right-color: var(--lm-border);
+
+    .sidebar-header { border-bottom-color: var(--lm-border); }
+
+    .nav-section-label { color: #475569; }
+
+    .nav-item a {
+      color: #94a3b8;
+      &:hover { background: #172032; color: #cbd5e1; }
+    }
+    .nav-item a.router-link-active {
+      background: #092030;
+      color: var(--lm-primary);
+      &::before { background: var(--lm-primary); }
+    }
+  }
+
+  // Topbar
+  .app-topbar {
+    background: #0d1424;
+    border-bottom-color: var(--lm-border);
+  }
+  .topbar-btn {
+    background: transparent;
+    color: var(--lm-text-muted);
+    border-color: var(--lm-border);
+    &:hover { background: var(--lm-bg-subtle); color: var(--lm-text); }
+  }
+  .topbar-user-btn {
+    border-color: var(--lm-border);
+    color: var(--lm-text);
+    &:hover { background: var(--lm-bg-subtle); border-color: var(--lm-text-muted); }
+    .topbar-chevron { color: var(--lm-text-subtle); }
+  }
+
+  // Notices
+  .app-notice {
+    &--success { background: #0a1a0d; border-color: var(--lm-success-border); color: #4ade80; }
+    &--info    { background: #0a1220; border-color: var(--lm-border); color: var(--lm-text-muted); }
+    &--danger  { background: var(--lm-danger-bg); border-color: var(--lm-danger-border); color: var(--lm-danger); }
+  }
+
+  // Box (shared card primitive)
+  .box {
+    background: var(--lm-surface);
+    border-color: var(--lm-border);
+    box-shadow: none;
+  }
+
+  // Table card
+  .table-card { background: var(--lm-surface); border-color: var(--lm-border); }
+
+  // DataTable
+  .p-datatable {
+    .p-datatable-thead > tr > th {
+      background: var(--lm-bg-subtle);
+      border-bottom-color: var(--lm-border);
+      color: var(--lm-text-muted);
+    }
+    .p-datatable-tbody > tr > td {
+      border-color: var(--lm-border);
+      color: var(--lm-text);
+    }
+    .p-datatable-tbody > tr { background: var(--lm-surface); }
+    .p-datatable-tbody > tr:hover { background: var(--lm-bg-subtle); }
+  }
+
+  // Pill tabs
+  .lm-tabs {
+    .p-tablist { background: var(--lm-bg-subtle); border-color: var(--lm-border); }
+    .p-tab:hover:not([aria-selected="true"]):not([data-p-disabled="true"]) { background: rgba(255, 255, 255, 0.05); color: var(--lm-text); }
+    .p-tab[aria-selected="true"] { background: var(--lm-surface); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  }
+
+  // Dialog shadow
+  .p-dialog { box-shadow: 0 0 24px rgba(0,0,0,0.6); }
+
+  // Code editor
+  .code-editor, .plain-editor textarea { background: #0d1424; color: var(--lm-text); border-color: var(--lm-border); }
 }
