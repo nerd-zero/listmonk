@@ -154,7 +154,8 @@ const {
 } = getImport();
 const { t } = useI18n();
 const route = useRoute();
-const { lists } = storeToRefs(useMainStore());
+const store = useMainStore();
+const { lists } = storeToRefs(store);
 
 const form = reactive({
   mode: 'subscribe',
@@ -226,9 +227,15 @@ function pollStatus() {
     getImportStatus().then((data: any) => {
       isProcessing.value = false;
       isLoading.value = false;
+      const wasRunning = isRunning();
       status.value = data;
       getLogs();
-      if (!isRunning()) clearInterval(pollID.value);
+      if (wasRunning && !isRunning()) {
+        clearInterval(pollID.value);
+        store.refresh();
+      } else if (!isRunning()) {
+        clearInterval(pollID.value);
+      }
     }, () => {
       isProcessing.value = false;
       isLoading.value = false;
