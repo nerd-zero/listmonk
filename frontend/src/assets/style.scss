@@ -1738,6 +1738,9 @@ th.role-toggle-select a { font-weight: normal; }
 // Dark mode token overrides
 // ============================================================
 .app-dark {
+  color: var(--lm-text);
+  body { color: var(--lm-text); background: var(--lm-bg); }
+
   --lm-primary:         #00b4d8;
   --lm-primary-hover:   #00c8f0;
   --lm-primary-light:   #092030;
