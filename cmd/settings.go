@@ -546,58 +546,6 @@ func (a *App) TestScrubSettings(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{true})
 }
 
-// GetScrubStats fetches daily usage stats from the configured Scrub service.
-//
-//	@ID				getScrubStats
-//	@Summary		Get Scrub usage statistics
-//	@Tags			settings
-//	@Produce		json
-//	@Success		200	{object}	interface{}
-//	@Failure		400	{object}	echo.HTTPError
-//	@Router			/api/settings/scrub/stats [get]
-func (a *App) GetScrubStats(c echo.Context) error {
-	s, err := a.core.GetSettings()
-	if err != nil {
-		return err
-	}
-	if !s.Scrub.Enabled || s.Scrub.URL == "" || s.Scrub.APIKey == "" {
-		return echo.NewHTTPError(http.StatusBadRequest,
-			a.i18n.T("settings.scrub.notConfigured"))
-	}
-
-	scrubURL := strings.TrimRight(strings.TrimSpace(s.Scrub.URL), "/")
-	httpReq, err := http.NewRequestWithContext(c.Request().Context(),
-		http.MethodGet, scrubURL+"/usage/daily", nil)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest,
-			a.i18n.Ts("globals.messages.errorCreating", "name", "request", "error", err.Error()))
-	}
-	httpReq.Header.Set("X-API-Key", s.Scrub.APIKey)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest,
-			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", err.Error()))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("settings.scrub.invalidKey"))
-	}
-	if resp.StatusCode >= 400 {
-		return echo.NewHTTPError(http.StatusBadRequest,
-			a.i18n.Ts("globals.messages.errorFetching", "name", "Scrub", "error", resp.Status))
-	}
-
-	var stats interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, okResp{stats})
-}
-
 // GetScrubListStatus proxies the Scrub integration lists endpoint, which returns
 // each list along with its active job request_id and last validation result.
 //

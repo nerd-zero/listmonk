@@ -820,60 +820,6 @@
             }
           }
         }
-      },
-      "get": {
-        "consumes": [
-          "multipart/form-data"
-        ],
-        "operationId": "getCampaignPreview",
-        "parameters": [
-          {
-            "description": "Campaign ID",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "Content type override",
-            "in": "formData",
-            "name": "content_type",
-            "type": "string"
-          },
-          {
-            "description": "Template ID to use for preview",
-            "in": "formData",
-            "name": "template_id",
-            "type": "integer"
-          }
-        ],
-        "produces": [
-          "text/html"
-        ],
-        "responses": {
-          "200": {
-            "description": "Rendered HTML or plain text",
-            "schema": {
-              "type": "string"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/echo.HTTPError"
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "schema": {
-              "$ref": "#/definitions/echo.HTTPError"
-            }
-          }
-        },
-        "summary": "Preview a campaign",
-        "tags": [
-          "campaigns"
-        ]
       }
     },
     "/api/campaigns/{id}/preview/archive": {
@@ -2357,30 +2303,6 @@
           },
           "500": {
             "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/echo.HTTPError"
-            }
-          }
-        }
-      }
-    },
-    "/api/settings/scrub/stats": {
-      "get": {
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "settings"
-        ],
-        "summary": "Get Scrub usage statistics",
-        "operationId": "getScrubStats",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {}
-          },
-          "400": {
-            "description": "Bad Request",
             "schema": {
               "$ref": "#/definitions/echo.HTTPError"
             }

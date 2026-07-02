@@ -134,12 +134,6 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'maintenance.title', group: 'settings' },
     component: () => import('../views/Maintenance.vue'),
   },
-  {
-    path: '/settings/scrub',
-    name: 'scrub',
-    meta: { title: 'settings.scrub.dashboard', group: 'settings' },
-    component: () => import('../views/Scrub.vue'),
-  },
 ];
 
 const router = createRouter({

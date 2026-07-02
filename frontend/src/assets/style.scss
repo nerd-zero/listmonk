@@ -1060,7 +1060,7 @@ section {
     padding: 15px 10px;
     border-color: $grey-lightest;
   }
-  .p-datatable-tbody > tr:hover { background: $white-bis; }
+  .p-datatable-tbody > tr:hover { background: #eef2f8; }
 }
 
 // DataTable actions
@@ -1840,19 +1840,67 @@ th.role-toggle-select a { font-weight: normal; }
   // Table card
   .table-card { background: var(--lm-surface); border-color: var(--lm-border); }
 
-  // DataTable
+  // DataTable — all sections use our surface/border tokens
   .p-datatable {
+    background: var(--lm-surface);
+
+    // Header slot (toolbar above columns)
+    .p-datatable-header {
+      background: var(--lm-surface);
+      border-color: var(--lm-border);
+      color: var(--lm-text);
+    }
+
+    // Column headers
     .p-datatable-thead > tr > th {
       background: var(--lm-bg-subtle);
       border-bottom-color: var(--lm-border);
+      border-top-color: var(--lm-border);
       color: var(--lm-text-muted);
     }
+
+    // Rows and cells
+    .p-datatable-tbody > tr { background: var(--lm-surface); }
+    .p-datatable-tbody > tr:hover { background: rgba(255, 255, 255, 0.05); }
     .p-datatable-tbody > tr > td {
       border-color: var(--lm-border);
       color: var(--lm-text);
     }
-    .p-datatable-tbody > tr { background: var(--lm-surface); }
-    .p-datatable-tbody > tr:hover { background: var(--lm-bg-subtle); }
+
+    // Empty state
+    .p-datatable-empty-message td {
+      background: var(--lm-surface);
+      color: var(--lm-text-muted);
+    }
+
+    // Paginator
+    .p-paginator {
+      background: var(--lm-surface);
+      border-color: var(--lm-border);
+      color: var(--lm-text-muted);
+
+      .p-paginator-page,
+      .p-paginator-first,
+      .p-paginator-prev,
+      .p-paginator-next,
+      .p-paginator-last {
+        color: var(--lm-text-muted);
+        background: transparent;
+        &:hover { background: rgba(255, 255, 255, 0.07); color: var(--lm-text); }
+        &.p-highlight { background: var(--lm-primary-light); color: var(--lm-primary); }
+      }
+    }
+
+    // Sort icons
+    .p-datatable-sort-icon { color: var(--lm-text-muted); }
+    th.p-datatable-column-sorted .p-datatable-sort-icon { color: var(--lm-primary); }
+
+    // Checkboxes
+    .p-checkbox .p-checkbox-box {
+      background: var(--lm-bg-subtle);
+      border-color: var(--lm-border);
+      &.p-highlight { background: var(--lm-primary); border-color: var(--lm-primary); }
+    }
   }
 
   // Pill tabs

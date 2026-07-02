@@ -1062,10 +1062,14 @@ func (a *App) checkScrubJobOnCampaign(ctx context.Context, campaignID int) (bool
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(httpReq)
-	if err != nil || resp.StatusCode >= 400 {
+	if err != nil {
 		return false, "", nil // silently pass if Scrub is unreachable
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return false, "", nil // silently pass if Scrub is unreachable
+	}
 
 	var lists []struct {
 		ID                 int     `json:"id"`

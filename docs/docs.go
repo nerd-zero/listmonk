@@ -2316,30 +2316,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/settings/scrub/stats": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "settings"
-                ],
-                "summary": "Get Scrub usage statistics",
-                "operationId": "getScrubStats",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {}
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/echo.HTTPError"
-                        }
-                    }
-                }
-            }
-        },
         "/api/settings/scrub/test": {
             "post": {
                 "consumes": [
