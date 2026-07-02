@@ -434,11 +434,6 @@ export const testScrub = async (data) => http.post(
   { loading: models.settings, disableToast: true },
 );
 
-export const getScrubStats = async () => http.get(
-  '/api/settings/scrub/stats',
-  { loading: models.settings, disableToast: true },
-);
-
 export const getScrubListStatus = async () => http.get('/api/lists/scrub', { disableToast: true });
 
 export const scrubList = async (id) => http.post(`/api/lists/${id}/scrub`);

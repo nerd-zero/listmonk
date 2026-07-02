@@ -1522,42 +1522,6 @@ paths:
       tags:
       - campaigns
   /api/campaigns/{id}/preview:
-    get:
-      consumes:
-      - multipart/form-data
-      operationId: getCampaignPreview
-      parameters:
-      - description: Campaign ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Content type override
-        in: formData
-        name: content_type
-        type: string
-      - description: Template ID to use for preview
-        in: formData
-        name: template_id
-        type: integer
-      produces:
-      - text/html
-      responses:
-        "200":
-          description: Rendered HTML or plain text
-          schema:
-            type: string
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/echo.HTTPError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/echo.HTTPError'
-      summary: Preview a campaign
-      tags:
-      - campaigns
     post:
       consumes:
       - multipart/form-data
@@ -2667,22 +2631,6 @@ paths:
           schema:
             $ref: '#/definitions/echo.HTTPError'
       summary: Update a single setting by key
-      tags:
-      - settings
-  /api/settings/scrub/stats:
-    get:
-      operationId: getScrubStats
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema: {}
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/echo.HTTPError'
-      summary: Get Scrub usage statistics
       tags:
       - settings
   /api/settings/scrub/test:
