@@ -276,7 +276,7 @@ function fetchCampaigns() {
     order_by: queryParams.orderBy,
     order: queryParams.order,
     no_body: true,
-  });
+  }).then((resp: any) => { campaigns.value = resp; });
 }
 
 function onPageChange(p: number) { queryParams.page = p; fetchCampaigns(); }
