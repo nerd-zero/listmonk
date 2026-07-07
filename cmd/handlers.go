@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/knadh/listmonk/docs" // swaggo generated docs
 	"github.com/knadh/listmonk/internal/auth"
+	"github.com/knadh/listmonk/models"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
@@ -412,7 +413,7 @@ func (a *App) hasSub(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		subUUID := c.Param("subUUID")
 
-		if _, err := a.core.GetSubscriber(0, subUUID, ""); err != nil {
+		if _, err := a.core.GetSubscriber(c.Request().Context(), tenantID(c), 0, subUUID, ""); err != nil {
 			if er, ok := err.(*echo.HTTPError); ok && er.Code == http.StatusBadRequest {
 				return c.Render(http.StatusNotFound, tplMessage,
 					makeMsgTpl(a.i18n.T("public.notFoundTitle"), "", er.Message.(string)))
@@ -438,6 +439,21 @@ func noIndex(next echo.HandlerFunc) echo.HandlerFunc {
 // getID returns the :id param from the URL parsed and stored as an int by the hasID middleware.
 func getID(c echo.Context) int {
 	return c.Get("id").(int)
+}
+
+// tenantID returns the tenant resolved for this request by
+// internal/tenant.Middleware. Used uniformly at every Core call site
+// (both authenticated and public routes) rather than switching between
+// auth.GetUser(c).TenantID and the resolved tenant depending on route
+// type - phase 4's auth cross-check already guarantees the two agree
+// wherever a user is authenticated, and public routes have no user at
+// all. Falls back to 1 (the default tenant) if the middleware wasn't run,
+// e.g. in a test that constructs a handler directly.
+func tenantID(c echo.Context) int {
+	if t, ok := c.Get(models.TenantCtxKey).(*models.Tenant); ok {
+		return t.ID
+	}
+	return 1
 }
 
 // trustedURLsToCORSOrigins takes a list of trusted URLs and returns a list of

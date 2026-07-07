@@ -1,8 +1,6 @@
 package models
 
 import (
-	"context"
-	"database/sql"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -145,15 +143,14 @@ type Queries struct {
 // compileSubscriberQueryTpl takes an arbitrary WHERE expressions
 // to filter subscribers from the subscribers table and prepares a query
 // out of it using the raw `query-subscribers-template` query template.
-// While doing this, a readonly transaction is created and the query is
-// dry run on it to ensure that it is indeed readonly.
-func (q *Queries) compileSubscriberQueryTpl(searchStr, queryExp string, db *sqlx.DB, subStatus string) (string, error) {
-	tx, err := db.BeginTxx(context.Background(), &sql.TxOptions{ReadOnly: true})
-	if err != nil {
-		return "", err
-	}
-	defer tx.Rollback()
-
+// The dry run ($1=true) makes query-subscribers-template's body resolve
+// to `LIMIT (CASE WHEN $1 THEN 1 END)` - a plain SELECT, incapable of
+// mutating anything regardless of $1 - so this is safe to run directly on
+// whatever Execer the caller passes (a *sqlx.Tx opened by Core.WithTenant,
+// or a *sqlx.DB for callers not yet tenant-scoped) without needing its own
+// nested transaction (which wouldn't be valid inside an already-open one
+// anyway - *sqlx.Tx has no BeginTxx of its own).
+func (q *Queries) compileSubscriberQueryTpl(searchStr, queryExp string, db sqlx.Execer, subStatus string) (string, error) {
 	// There's an arbitrary query condition.
 	cond := "TRUE"
 	if queryExp != "" {
@@ -162,7 +159,7 @@ func (q *Queries) compileSubscriberQueryTpl(searchStr, queryExp string, db *sqlx
 
 	// Perform the dry run.
 	stmt := strings.ReplaceAll(q.QuerySubscribersTpl, "%query%", cond)
-	if _, err := tx.Exec(stmt, true, pq.Int64Array{}, subStatus, searchStr); err != nil {
+	if _, err := db.Exec(stmt, true, pq.Int64Array{}, subStatus, searchStr); err != nil {
 		return "", err
 	}
 
@@ -171,8 +168,11 @@ func (q *Queries) compileSubscriberQueryTpl(searchStr, queryExp string, db *sqlx
 
 // compileSubscriberQueryTpl takes an arbitrary WHERE expressions and a subscriber
 // query template that depends on the filter (eg: delete by query, blocklist by query etc.)
-// combines and executes them.
-func (q *Queries) ExecSubQueryTpl(searchStr, queryExp, baseQueryTpl string, listIDs []int, db *sqlx.DB, subStatus string, args ...any) error {
+// combines and executes them. db is typically a *sqlx.Tx opened by the
+// caller via Core.WithTenant so the mutation runs under the right tenant
+// context; existing callers not yet tenant-scoped keep passing a plain
+// *sqlx.DB unchanged.
+func (q *Queries) ExecSubQueryTpl(searchStr, queryExp, baseQueryTpl string, listIDs []int, db sqlx.Execer, subStatus string, args ...any) error {
 	// Perform a dry run.
 	filterExp, err := q.compileSubscriberQueryTpl(searchStr, queryExp, db, subStatus)
 	if err != nil {

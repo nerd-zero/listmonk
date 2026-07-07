@@ -2,8 +2,9 @@
 
 Status: **phases 1-3 implemented; phase 4 partially implemented (auth/
 subdomain resolution shipped, `internal/core` tenantID-threading split
-into its own follow-up issue — see decisions log); phases 5-9 not
-started**. This document captures research and a phased
+into its own follow-up issue #40, in progress file-by-file — slice 1
+(`subscribers.go`) done); phases 5-9 not started**. This document
+captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -337,6 +338,18 @@ UI-level "operator" role.
   when replayed against a different tenant's subdomain) via a temporary
   second backend instance, not the live dev one. See
   `multi-tenancy-code-plan.md`'s Phase 4 section for full detail.
+- **Issue #40 slice 1 (`subscribers.go`) implementation (2026-07-07):**
+  first slice of the deferred `internal/core` tenantID-threading work.
+  Found and fixed a critical, repo-wide sqlx footgun that will matter for
+  every future slice: `sqlx.Tx.Stmtx()` silently drops the `.Unsafe()`
+  flag the pool `*sqlx.DB` is opened with (needed since every table has an
+  unmapped `tenant_id` column post-phase-1) — fixed via a `stmtx()` helper
+  in `internal/core/tenant.go` that all future slices must use instead of
+  calling `tx.Stmtx()` directly. Verified real cross-tenant isolation at
+  the RLS/SQL level (via a non-superuser role, same technique as phase
+  2/3) since this dev DB's superuser role can't demonstrate it end-to-end
+  over HTTP — a pre-existing limitation, not a defect in this slice. See
+  `multi-tenancy-code-plan.md`'s new "Issue #40" section for full detail.
 
 ## Open questions
 

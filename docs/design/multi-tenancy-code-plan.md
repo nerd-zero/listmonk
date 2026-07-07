@@ -438,6 +438,85 @@ and confirm the response 404s rather than mixing data.
 
 ---
 
+## Issue #40 — threading tenantID through internal/core
+
+Split out from phase 4 (see that phase's status note) once investigation
+found it touches 107 exported `Core` methods / 150 call sites, none of
+which take a `context.Context` or run through a transaction today. Being
+done file-by-file; each slice's findings are recorded here so the next
+slice starts informed rather than re-discovering the same issues.
+
+### Slice 1 — `subscribers.go` (issue #40, first slice): implemented
+
+Confirmed the 3 execution shapes anticipated when scoping this work (see
+this file's earlier "Tenant ID source at call sites" note under phase 4):
+simple prepared-statement calls (rebind via a `stmtx` helper, below),
+self-managed raw-SQL transactions (replace the method's own `BeginTxx`
+with `WithTenant`), and one long-lived iterator (`ExportSubscribers`, left
+with a `TODO(#40)` per the deferred-scoping decision).
+
+**Critical finding, applies to every future slice:** `sqlx.Tx.Stmtx()`
+does **not** propagate the `.Unsafe()` flag. `cmd/init.go` opens the pool
+`*sqlx.DB` with `.Unsafe()` (several models don't map every returned
+column — `internal/core/campaigns.go` already has a comment about this for
+`models.Campaigns`, and now *every* table has an unmapped `tenant_id`
+column since phase 1 unless its model struct happens to declare one).
+`BeginTxx` correctly copies `.Unsafe()` onto the resulting `*sqlx.Tx`
+(confirmed in sqlx v1.4.0 source: `&Tx{..., unsafe: db.unsafe, ...}`), but
+`Tx.Stmtx()` does not carry it onto the `*sqlx.Stmt` it derives
+(`&Stmt{Stmt: tx.Stmt(s), Mapper: tx.Mapper}` — no `unsafe` field set).
+Symptom: `missing destination name tenant_id in *models.X` errors that
+only appear on the tx-rebound path — `tx.Select(...)`/`tx.Get(...)` called
+*directly* (shape 2) work fine since they inherit `.Unsafe()` correctly;
+only statements rebound via `Stmtx` (shape 1) hit this.
+
+**Fix, already in place for all future slices to reuse:** `internal/core/tenant.go`
+now has a package-level `stmtx(tx *sqlx.Tx, stmt *sqlx.Stmt) *sqlx.Stmt`
+helper that wraps `tx.Stmtx(stmt).Unsafe()`. **Use `stmtx(tx, c.q.X)`, never
+`tx.Stmtx(c.q.X)` directly**, for every future slice's shape-1 methods.
+
+**Other changes needed for shape 2 and the shared query-template helpers:**
+- `Core.WithTenant`'s signature gained a `*sql.TxOptions` parameter (`nil`
+  = `BeginTxx`'s own default) so shape-2 methods that need
+  `&sql.TxOptions{ReadOnly: true}` as a security control (subscribers.go's
+  arbitrary-query features — see the code comment there) don't lose that
+  guarantee to the helper.
+- `models/queries.go`'s `compileSubscriberQueryTpl`/`ExecSubQueryTpl`
+  (shared by `subscribers.go` and `subscriptions.go`) had their `db
+  *sqlx.DB` parameter widened to `db sqlx.Execer` (satisfied by both
+  `*sqlx.DB` and `*sqlx.Tx`), and `compileSubscriberQueryTpl`'s own nested
+  `BeginTxx`/`Rollback` was removed (confirmed safe: its "dry run" flag
+  just changes a `LIMIT` clause on a pure `SELECT`, no mutation possible
+  either way) — a transaction can't `BeginTxx` a second time inside itself.
+  Migrated callers (`subscribers.go`) now pass the open `tx`; unmigrated
+  callers (`subscriptions.go`, not yet in scope) keep passing `c.db`
+  unchanged and are unaffected.
+- **Tenant ID at call sites**: settled on always reading the
+  subdomain-resolved tenant (`c.Get(models.TenantCtxKey)`, via a new
+  `tenantID(c echo.Context) int` helper in `cmd/handlers.go`) rather than
+  `auth.GetUser(c).TenantID` — simpler (one source, not two depending on
+  route type) and already proven consistent by phase 4's auth cross-check.
+
+**Verified:** full CRUD (create/view/edit/blocklist/delete, both
+individual and bulk), the advanced arbitrary-query search path, and CSV
+export all work identically under the default (multi-tenancy disabled)
+config — tested live via the browser and `curl`. Real cross-tenant
+isolation was verified in two layers: (1) confirmed **RLS itself** blocks
+cross-tenant rows when queried via a non-superuser role with
+`app.current_tenant` set (same throwaway-role technique as phase 2/3);
+(2) confirmed the full HTTP path (two tenants, two logged-in users, real
+subdomains) does **not** show isolation in this specific dev environment,
+but only because — as already flagged in phase 2 — the dev DB role
+(`listmonk-dev`) is a superuser and superusers always bypass RLS
+regardless of policy. This is a pre-existing, already-documented
+dev-environment limitation, not a defect in this slice's code; the
+per-layer test above is what actually confirms the code is correct.
+**Any real deployment of this feature must use a non-superuser,
+non-table-owner application role**, per the RLS "verify before merging"
+checklist in phase 2.
+
+---
+
 ## Phase 9 — operator API
 
 New route group, entirely separate from the tenant-facing app: no session/JWT

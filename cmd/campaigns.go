@@ -722,7 +722,7 @@ func (a *App) TestCampaign(c echo.Context) error {
 	}
 
 	// Get the subscribers from the DB by their e-mails.
-	subs, err := a.core.GetSubscribersByEmail(req.SubscriberEmails)
+	subs, err := a.core.GetSubscribersByEmail(c.Request().Context(), tenantID(c), req.SubscriberEmails)
 	if err != nil {
 		return err
 	}
@@ -733,7 +733,7 @@ func (a *App) TestCampaign(c echo.Context) error {
 	for i, s := range subs {
 		subIDs[i] = s.ID
 	}
-	if err := a.hasSubPerm(user, subIDs); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, subIDs); err != nil {
 		return err
 	}
 

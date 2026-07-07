@@ -109,7 +109,7 @@ func (a *App) SendTxMessage(c echo.Context) error {
 			}
 
 			var err error
-			sub, err = a.core.GetSubscriber(subID, "", subEmail)
+			sub, err = a.core.GetSubscriber(c.Request().Context(), tenantID(c), subID, "", subEmail)
 			if err != nil {
 				if er, ok := err.(*echo.HTTPError); ok && er.Code == http.StatusBadRequest {
 					// `fallback`: Create an ephemeral "subscriber" if the subscriber wasn't found.

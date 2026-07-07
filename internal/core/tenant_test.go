@@ -120,7 +120,7 @@ func TestWithTenant_ConcurrentIsolation(t *testing.T) {
 
 	run := func(tenantID int, wantEmail string) {
 		defer wg.Done()
-		err := tc.WithTenant(context.Background(), tenantID, func(tx *sqlx.Tx) error {
+		err := tc.WithTenant(context.Background(), tenantID, nil, func(tx *sqlx.Tx) error {
 			var emails []string
 			if err := tx.Select(&emails, `SELECT email FROM subscribers ORDER BY email`); err != nil {
 				return err
