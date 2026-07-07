@@ -48,6 +48,7 @@ import (
 	"github.com/knadh/listmonk/internal/messenger/postback"
 	"github.com/knadh/listmonk/internal/notifs"
 	"github.com/knadh/listmonk/internal/subimporter"
+	"github.com/knadh/listmonk/internal/tenant"
 	"github.com/knadh/listmonk/models"
 	"github.com/knadh/stuffbin"
 	"github.com/labstack/echo/v4"
@@ -88,6 +89,8 @@ type Config struct {
 	ShowOptinPage                 bool     `koanf:"show_optin_page"`
 	Lang                          string   `koanf:"lang"`
 	DBBatchSize                   int      `koanf:"batch_size"`
+	MultiTenancyEnabled           bool     `koanf:"multi_tenancy_enabled"`
+	RootDomain                    string   `koanf:"root_domain"`
 	Privacy                       struct {
 		IndividualTracking bool            `koanf:"individual_tracking"`
 		DisableTracking    bool            `koanf:"disable_tracking"`
@@ -930,6 +933,10 @@ func initHTTPServer(cfg *Config, urlCfg *UrlConfig, i *i18n.I18n, fs stuffbin.Fi
 			return next(c)
 		}
 	})
+
+	// Resolve the tenant for every request (authenticated and public alike)
+	// ahead of auth. A no-op unless app.multi_tenancy_enabled is set.
+	srv.Use(tenant.Middleware(app.core, cfg.RootDomain, cfg.MultiTenancyEnabled))
 
 	tpl, err := stuffbin.ParseTemplatesGlob(initTplFuncs(i, urlCfg), fs, "/public/templates/*.html")
 	if err != nil {

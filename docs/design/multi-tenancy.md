@@ -1,8 +1,9 @@
 # Multi-tenancy: research and implementation plan
 
-Status: **phases 1-3 (schema foundation, RLS policies, connection/session
-plumbing) implemented; phases 4-9 not started**. This document captures
-research and a phased
+Status: **phases 1-3 implemented; phase 4 partially implemented (auth/
+subdomain resolution shipped, `internal/core` tenantID-threading split
+into its own follow-up issue — see decisions log); phases 5-9 not
+started**. This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -320,6 +321,22 @@ UI-level "operator" role.
   which bypass RLS regardless of policy. See `multi-tenancy-code-plan.md`'s
   Phase 3 section for detail, including a `t.Cleanup`-ordering bug caught
   and fixed along the way.
+- **Phase 4 implementation (2026-07-07) — scope split:** investigation
+  found threading `tenantID` through `internal/core` (the other half of
+  the originally-drafted phase 4) touches 107 exported methods and 150
+  call sites, none of which take `context.Context` today or run through a
+  transaction — too large to do safely alongside the auth/resolution work.
+  Split into its own follow-up issue; this session shipped only subdomain
+  tenant resolution, `TenantID` on `auth.User`, and the auth cross-check,
+  gated behind a new `app.multi_tenancy_enabled` config flag (default
+  `false`) so it's additive like phases 1-3. Also discovered and reused:
+  the `Tenant` struct and shared context-key constant had to live in
+  `models` rather than a new `internal/tenant`-only type, to avoid an
+  import cycle (`internal/core` already imports `internal/auth`). Verified
+  end-to-end (login on one tenant's subdomain, confirmed session rejected
+  when replayed against a different tenant's subdomain) via a temporary
+  second backend instance, not the live dev one. See
+  `multi-tenancy-code-plan.md`'s Phase 4 section for full detail.
 
 ## Open questions
 

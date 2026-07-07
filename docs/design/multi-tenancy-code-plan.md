@@ -200,146 +200,139 @@ behavior change to the running app, exactly like phases 1 and 2.
 
 ## Phase 4 — auth and request-flow tenant resolution
 
-### New file: `internal/tenant/resolve.go`
+**Status: subdomain resolution implemented (issue #31); `internal/core`
+tenantID-threading split out to a new follow-up issue.** Investigation
+while grounding this phase found the `internal/core` part alone touches
+**107** exported `Core` methods and **150** call sites in `cmd/*.go`, none
+of which take a `context.Context` today and none run through a
+transaction — they call directly on pool-level prepared statements
+(`c.q.X.Select(...)`). Making phase 3's `WithTenant` actually apply to
+real queries means rebinding each one via `tx.Stmtx(c.q.X)`, a mechanical
+but invasive change across all 107 methods (plus adding `ctx` to all of
+them as a prerequisite, since none have it). Too large to do safely in
+one pass alongside the resolution work — deliberately deferred, tracked as
+a separate follow-up rather than attempted piecemeal.
 
-Subdomain-based resolution, inserted in `cmd/init.go:initHTTPServer`'s global
-`srv.Use` (currently just `c.Set("app", app)`), running **before** `Auth.Middleware`:
+**What shipped** is the resolution/auth half only, gated behind a new
+`app.multi_tenancy_enabled` config flag (default `false`) — purely
+additive, like phases 1-3.
+
+### `models/tenant.go` (new)
+
+Holds `type Tenant struct { Base; Slug, Name, Status string }` *and* the
+shared context-key constant `TenantCtxKey`. Both live in `models`, not in
+`internal/tenant`, because of an import-cycle constraint discovered here:
+`internal/core` already imports `internal/auth` (for permission types used
+in `subscribers.go`/`users.go`/`roles.go`). A tenant-resolution middleware
+needs `*core.Core`, so it can't live in — or be imported by —
+`internal/auth`, or you get `auth → tenant → core → auth`. Putting the
+struct and context key in `models` (which has zero internal dependencies)
+lets both `internal/tenant` (imports `core` + `models`) and
+`internal/auth` (imports only `models`) use them without cycling.
+
+### `internal/tenant/resolve.go` (new)
 
 ```go
-package tenant
-
-import (
-    "net"
-    "net/http"
-    "strings"
-    "time"
-
-    "github.com/labstack/echo/v4"
-)
-
-const CtxKey = "tenant"
-
-// cache is a short-TTL slug->tenant lookup to avoid a DB round-trip per request.
-var cache = newTTLCache(30 * time.Second)
-
-func Middleware(core *core.Core, rootDomain string) echo.MiddlewareFunc {
+func Middleware(core *core.Core, rootDomain string, enabled bool) echo.MiddlewareFunc {
     return func(next echo.HandlerFunc) echo.HandlerFunc {
         return func(c echo.Context) error {
-            host, _, _ := net.SplitHostPort(c.Request().Host)
-            if host == "" {
-                host = c.Request().Host
+            if !enabled {
+                c.Set(models.TenantCtxKey, defaultTenant) // stub, ID: 1, no DB hit
+                return next(c)
+            }
+
+            host := c.Request().Host
+            if h, _, err := net.SplitHostPort(host); err == nil {
+                host = h
             }
             slug := strings.TrimSuffix(host, "."+rootDomain)
-            if slug == host { // no subdomain present
+            if slug == host || slug == "" {
                 return echo.NewHTTPError(http.StatusNotFound)
             }
 
-            t, ok := cache.Get(slug)
-            if !ok {
-                var err error
-                t, err = core.GetTenantBySlug(slug)
-                if err != nil {
-                    return echo.NewHTTPError(http.StatusNotFound)
-                }
-                cache.Set(slug, t)
+            t, err := core.GetTenantBySlug(slug)
+            if err != nil {
+                return echo.NewHTTPError(http.StatusNotFound)
             }
             if t.Status != "active" {
-                return c.Render(http.StatusOK, "tenant-unavailable.html", nil)
+                return echo.NewHTTPError(http.StatusServiceUnavailable, "workspace unavailable")
             }
 
-            c.Set(CtxKey, t)
+            c.Set(models.TenantCtxKey, &t)
             return next(c)
         }
     }
 }
 ```
 
+No slug→tenant cache yet (the original draft's TTL cache) — deferred the
+same way phase 2 deferred composite-index rework: there's only ever one
+tenant to look up right now, revisit if profiling shows a need once
+there's more than one.
+
+Registered in `cmd/init.go:initHTTPServer`'s global `srv.Use`, immediately
+after the existing `c.Set("app", app)` middleware and before
+`initHTTPHandlers(srv, app)` sets up the app's 3 separate route groups
+(authenticated pages, authenticated `/api`, public) — confirmed this is
+the *only* middleware that spans all 3 today, which is exactly why it's
+the right insertion point for something that must also cover public
+routes (unsubscribe, archive, tracking pixel).
+
 ### `internal/auth/models.go`
 
 ```go
 type User struct {
     Base
-    TenantID int `db:"tenant_id" json:"tenant_id"`
+    TenantID int `db:"tenant_id" json:"tenant_id,omitempty"`
     // ... existing fields unchanged ...
 }
 ```
 
-`queries/users.sql`'s user-fetch queries need `tenant_id` added to their
-`SELECT` lists (mirrors how `user_role_permissions` etc. are already
-selected as joined columns).
+No query changes needed: `queries/users.sql`'s `get-user`/`get-users` both
+already `SELECT *`/`users.*`, so `tenant_id` (a real column since phase 1)
+was already coming back in every result row.
 
 ### `internal/auth/auth.go`
 
-`Auth.Middleware` (currently ~line 286-330) resolves a user from session/API
-token and does `c.Set(UserHTTPCtxKey, user)`. Since the tenant middleware
-above has already run and set `c.Get(tenant.CtxKey)`, add a cross-check
-immediately after the existing `c.Set(UserHTTPCtxKey, user)` calls (lines 317
-and 329):
+`Auth.Middleware` never aborts on failure itself — on any failure it does
+`c.Set(UserHTTPCtxKey, echo.NewHTTPError(...))` and calls `next(c)` anyway;
+rejection is deferred to per-route-group wrapper middleware
+(`redirectIfUnauth`/`jsonErrorIfUnauth` in `cmd/handlers.go`) that inspects
+`c.Get(UserHTTPCtxKey)`. The tenant cross-check follows this exact
+convention rather than returning an error directly:
 
 ```go
-t := c.Get(tenant.CtxKey).(*models.Tenant)
-if user.TenantID != t.ID {
-    return echo.NewHTTPError(http.StatusForbidden)
+func tenantMismatch(c echo.Context, user User) bool {
+    t, ok := c.Get(models.TenantCtxKey).(*models.Tenant)
+    return ok && user.TenantID != t.ID
 }
-c.Set(TenantIDHTTPCtxKey, user.TenantID)
 ```
+called after both places a user is successfully resolved (API-token path
+and session path), setting the *same* `"invalid session"` error the
+existing invalid-session case uses — so a cross-tenant replay is
+indistinguishable from an expired session to the client, no extra
+information disclosed.
 
-This is defense-in-depth against a session/token issued on one tenant being
-replayed against a different tenant's subdomain — see the host-only cookie
-note below for the first layer.
+Verified end-to-end against a temporary second backend instance
+(`LISTMONK_app__multi_tenancy_enabled=true LISTMONK_app__root_domain=localhost`,
+different port, same dev DB): logged in on tenant 1's own subdomain
+(`default.localhost`), confirmed the resulting session cookie works there,
+then confirmed reusing that exact cookie against a second throwaway
+tenant's subdomain gets rejected with `403 invalid session` — the concrete
+"session issued for tenant A replayed against tenant B" scenario this
+check exists for.
 
-**Session cookie:** set with no explicit `Domain` attribute (host-only,
-scoped to `<slug>.listmonk.example.com` exactly) rather than a
-`.listmonk.example.com`-wide cookie — a stolen cookie then can't even be
-replayed against a different subdomain. Check wherever the session cookie is
-currently written (`internal/auth` session store config) for an explicit
-`Domain` and remove it if present.
+**Session cookie:** already host-only (no `Domain` attribute set anywhere
+in `internal/auth`'s `simplesessions.Options` or `cmd/init.go`'s
+`initAuth()`) — this requirement was already satisfied before this phase,
+nothing to change.
 
-For **public** unauthenticated routes (unsubscribe, archive, tracking pixel —
-see phase 8), the tenant middleware above has *already* resolved tenant from
-the subdomain — handlers filter their entity lookups by that resolved
-`tenant_id` rather than deriving tenant from the entity's own row.
+### OIDC callback, `internal/core/*` tenantID-threading, super-admin scope
 
-### OIDC callback (knock-on effect of per-tenant settings, phase 5)
-
-The OIDC callback route must run after tenant-resolution middleware (already
-true, since it's global) so it can load `GetSettings(tenantID).OIDC` for
-*this* tenant before validating the auth-code exchange — each tenant has its
-own IdP client ID/secret/issuer.
-
-### `internal/core/*` — threading `tenantID`
-
-Every entry point gets a leading `tenantID int` parameter, mirroring the
-existing `getAll bool, permittedIDs []int` list-permission pattern. Example
-diff for `internal/core/subscribers.go`:
-
-```go
-// before
-func (c *Core) QuerySubscribers(searchStr, queryExp string, listIDs []int, subStatus string, order, orderBy string, offset, limit int) (models.Subscribers, int, error) {
-
-// after
-func (c *Core) QuerySubscribers(tenantID int, searchStr, queryExp string, listIDs []int, subStatus string, order, orderBy string, offset, limit int) (models.Subscribers, int, error) {
-```
-
-Internally, wrap the existing query execution in `core.WithTenant(ctx, c.db, tenantID, func(tx *sqlx.Tx) error { ... })`
-from phase 3, so RLS enforces the boundary — the `tenantID` parameter here is
-belt-and-suspenders (makes intent explicit in the Go call site, catches bugs
-in tests without a real Postgres RLS setup), not the sole enforcement layer.
-
-This same signature change applies to every exported `Core` method in:
-`subscribers.go`, `lists.go`, `campaigns.go`, `templates.go`, `media.go`,
-`bounces.go`, `subscriptions.go`, `users.go`, `roles.go`, `settings.go`,
-`dashboard.go` — all callers in `cmd/*.go` handlers need the extra argument
-threaded from `auth.GetUser(c).TenantID`.
-
-### `internal/auth/models.go` — super-admin scope
-
-`SuperAdminRoleID = 1` currently short-circuits every permission check
-cross-request. Needs to become tenant-scoped: a super admin is admin *within
-their tenant*, not across tenants. If a cross-tenant instance-operator role
-is wanted (open question in `multi-tenancy.md`), it should be a distinct new
-concept (e.g. `user.Type == "operator"`) checked separately, not reuse
-`SuperAdminRoleID`.
+Deferred — see status note above. OIDC callback tenant-awareness depends
+on phase 5 (per-tenant settings) landing first; `internal/core` threading
+is its own follow-up issue given the 107-method scope; `SuperAdminRoleID`
+becoming tenant-scoped depends on that threading landing.
 
 ---
 

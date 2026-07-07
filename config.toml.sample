@@ -5,6 +5,13 @@
 # port, use port 80 (this will require running with elevated permissions).
 address = "localhost:9000"
 
+# Multi-tenancy (fork-only feature, not upstream). When enabled, every
+# request must arrive on a subdomain of root_domain (<slug>.root_domain)
+# identifying an active tenant, or it's rejected. Leave disabled (default)
+# for a normal single-tenant install - nothing else changes.
+multi_tenancy_enabled = false
+root_domain = ""
+
 # Database.
 [db]
 host = "localhost"

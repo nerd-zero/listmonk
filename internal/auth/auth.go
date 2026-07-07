@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/knadh/listmonk/models"
 	"github.com/labstack/echo/v4"
 	"github.com/zerodha/simplesessions/stores/postgres/v3"
 	"github.com/zerodha/simplesessions/v3"
@@ -312,6 +313,10 @@ func (o *Auth) Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 				c.Set(UserHTTPCtxKey, echo.NewHTTPError(http.StatusForbidden, "invalid API credentials"))
 				return next(c)
 			}
+			if tenantMismatch(c, user) {
+				c.Set(UserHTTPCtxKey, echo.NewHTTPError(http.StatusForbidden, "invalid session"))
+				return next(c)
+			}
 
 			// Set the user details on the handler context.
 			c.Set(UserHTTPCtxKey, user)
@@ -324,12 +329,28 @@ func (o *Auth) Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 			c.Set(UserHTTPCtxKey, echo.NewHTTPError(http.StatusForbidden, "invalid session"))
 			return next(c)
 		}
+		if tenantMismatch(c, user) {
+			c.Set(UserHTTPCtxKey, echo.NewHTTPError(http.StatusForbidden, "invalid session"))
+			return next(c)
+		}
 
 		// Set the user details on the handler context.
 		c.Set(UserHTTPCtxKey, user)
 		c.Set(SessionKey, sess)
 		return next(c)
 	}
+}
+
+// tenantMismatch reports whether the resolved tenant (set by
+// internal/tenant's middleware, which runs before this one) doesn't match
+// the given user's own tenant - defense in depth against a session/token
+// issued for one tenant being replayed against a different tenant's
+// subdomain. Returns false (no mismatch) if no tenant was resolved onto
+// the context at all, so this is a no-op wherever the tenant middleware
+// isn't wired in (e.g. in tests that construct Auth directly).
+func tenantMismatch(c echo.Context, user User) bool {
+	t, ok := c.Get(models.TenantCtxKey).(*models.Tenant)
+	return ok && user.TenantID != t.ID
 }
 
 // Perm is an HTTP handler middleware that checks if the authenticated user has the required permissions.
