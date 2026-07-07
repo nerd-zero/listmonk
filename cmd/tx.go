@@ -136,6 +136,7 @@ func (a *App) SendTxMessage(c echo.Context) error {
 
 		// Prepare the final message.
 		msg := models.Message{}
+		msg.TenantID = tenantID(c)
 		msg.Subscriber = sub
 		msg.To = []string{sub.Email}
 		msg.From = m.FromEmail

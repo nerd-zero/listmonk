@@ -5,8 +5,10 @@ subdomain resolution shipped, `internal/core` tenantID-threading split
 into its own follow-up issue #40, in progress file-by-file — slice 1
 (`subscribers.go`) done); phase 5 partially implemented (settings DB/Core
 layer shipped, subsystem redesign — SMTP/media/OIDC/manager — split into
-its own follow-up issue #41); phases 6-9 not started**. This document
-captures research and a phased
+its own follow-up issue #41, in progress — SMTP messenger resolution
+slice done); phase 6 blocked on #41's remaining slices (scan-side tenant
+awareness not yet meaningful without per-tenant dispatch, which now
+partially exists); phases 7-9 not started**. This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -370,6 +372,23 @@ UI-level "operator" role.
   slipping through here because it lives in the migration framework
   itself, not `queries/*.sql`. See `multi-tenancy-code-plan.md`'s Phase 5
   section for full detail.
+- **Phase 6 / issue #41 slice 1 (2026-07-07):** confirmed Phase 6
+  (tenant-aware campaign scanning) is only meaningful once real per-tenant
+  dispatch exists — chose to tackle #41 (the actual blocker) directly
+  rather than do Phase 6's scan-side work in isolation. Shipped #41's
+  first slice: per-tenant SMTP messenger resolution. `internal/manager`
+  gained a `MessengerResolver` interface (falls back to the existing
+  global messenger map for non-SMTP messengers like postback, so nothing
+  else changes); the concrete implementation lives in `cmd/` and lazily
+  builds + caches each tenant's SMTP messengers from their own settings,
+  reusing (not reimplementing) the existing SMTP-config-parsing logic.
+  Verified live by starting a real campaign and confirming the resolution
+  path executes (visible as a second `initSMTPMessengers` log line at
+  campaign-start, not just boot) before failing at the expected point — an
+  actual SMTP connection attempt to this dev environment's fake mail host.
+  Media/OIDC per-tenant resolution and Phase 6's scan-side changes remain
+  as further #41/Phase 6 work. See `multi-tenancy-code-plan.md`'s
+  "Issue #41" section for full detail.
 
 ## Open questions
 

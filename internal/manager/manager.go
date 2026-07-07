@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -68,6 +69,22 @@ type Messenger interface {
 	Close() error
 }
 
+// ErrMessengerNotFound is returned by MessengerResolver when the given
+// tenant has no messenger by that name - callers fall back to the
+// process-global messenger map (e.g. for postback messengers, which
+// aren't tenant-scoped by this resolver).
+var ErrMessengerNotFound = errors.New("messenger not found")
+
+// MessengerResolver resolves a tenant-scoped messenger by name,
+// constructing and caching it lazily. Introduced so per-tenant SMTP
+// config (settings are per-tenant since phase 5) can back real sends
+// without internal/manager needing to import internal/core directly -
+// the concrete implementation lives in cmd/, mirroring how Store already
+// bridges DB access without a direct import.
+type MessengerResolver interface {
+	GetMessenger(ctx context.Context, tenantID int, name string) (Messenger, error)
+}
+
 // CampStats contains campaign stats like per minute send rate.
 type CampStats struct {
 	SendRate int
@@ -78,6 +95,7 @@ type CampStats struct {
 type Manager struct {
 	cfg        Config
 	store      Store
+	resolver   MessengerResolver
 	i18n       *i18n.I18n
 	messengers map[string]Messenger
 	fnNotify   func(subject string, data any) error
@@ -163,7 +181,7 @@ type Config struct {
 var pushTimeout = time.Second * 3
 
 // New returns a new instance of Mailer.
-func New(cfg Config, store Store, i *i18n.I18n, l *log.Logger) *Manager {
+func New(cfg Config, store Store, resolver MessengerResolver, i *i18n.I18n, l *log.Logger) *Manager {
 	if cfg.BatchSize < 1 {
 		cfg.BatchSize = 1000
 	}
@@ -175,9 +193,10 @@ func New(cfg Config, store Store, i *i18n.I18n, l *log.Logger) *Manager {
 	}
 
 	m := &Manager{
-		cfg:   cfg,
-		store: store,
-		i18n:  i,
+		cfg:      cfg,
+		store:    store,
+		resolver: resolver,
+		i18n:     i,
 		fnNotify: func(subject string, data any) error {
 			return notifs.NotifySystem(subject, notifs.TplCampaignStatus, data, nil)
 		},
@@ -249,6 +268,29 @@ func (m *Manager) HasMessenger(id string) bool {
 	_, ok := m.messengers[id]
 
 	return ok
+}
+
+// getMessenger resolves a tenant-scoped messenger by name, falling back to
+// the process-global messenger map (postback messengers, and the pre-#41
+// path if no resolver is set) when the resolver doesn't have one for that
+// tenant. ctx is context.Background() at all current call sites - these
+// are background worker/job paths, not HTTP-request-scoped.
+func (m *Manager) getMessenger(ctx context.Context, tenantID int, name string) (Messenger, error) {
+	if m.resolver != nil {
+		msgr, err := m.resolver.GetMessenger(ctx, tenantID, name)
+		if err == nil {
+			return msgr, nil
+		}
+		if !errors.Is(err, ErrMessengerNotFound) {
+			return nil, err
+		}
+	}
+
+	msgr, ok := m.messengers[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown messenger: %s", name)
+	}
+	return msgr, nil
 }
 
 // HasRunningCampaigns checks if there are any active campaigns.
@@ -511,6 +553,7 @@ func (m *Manager) worker() {
 
 			// Outgoing message.
 			out := models.Message{
+				TenantID:    msg.Campaign.TenantID,
 				From:        msg.from,
 				To:          []string{msg.to},
 				Subject:     msg.subject,
@@ -543,7 +586,10 @@ func (m *Manager) worker() {
 			out.Headers = h
 
 			// Push the message to the messenger.
-			err := m.messengers[msg.Campaign.Messenger].Push(out)
+			msgr, err := m.getMessenger(context.Background(), msg.Campaign.TenantID, msg.Campaign.Messenger)
+			if err == nil {
+				err = msgr.Push(out)
+			}
 			if err != nil {
 				m.log.Printf("error sending message in campaign %s: subscriber %d: %v", msg.Campaign.Name, msg.Subscriber.ID, err)
 			}
@@ -574,7 +620,11 @@ func (m *Manager) worker() {
 			}
 
 			// Push the message to the messenger.
-			if err := m.messengers[msg.Messenger].Push(msg); err != nil {
+			msgr, err := m.getMessenger(context.Background(), msg.TenantID, msg.Messenger)
+			if err == nil {
+				err = msgr.Push(msg)
+			}
+			if err != nil {
 				m.log.Printf("error sending message '%s': %v", msg.Subject, err)
 			}
 		}

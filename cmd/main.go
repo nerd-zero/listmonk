@@ -197,6 +197,13 @@ func init() {
 }
 
 func main() {
+	// Initialize SMTP messengers. Declared ahead of the var () block below
+	// since it needs error handling, which can't live inside a var () list.
+	smtpMsgrs, err := initSMTPMessengers(ko)
+	if err != nil {
+		lo.Fatalf("error initializing SMTP messengers: %v", err)
+	}
+
 	var (
 		// Initialize static global config.
 		cfg = initConstConfig(ko)
@@ -216,7 +223,7 @@ func main() {
 		core = initCore(fbOptinNotify, queries, db, i18n, ko)
 
 		// Initialize all messengers, SMTP and postback.
-		msgrs = append(initSMTPMessengers(), initPostbackMessengers(ko)...)
+		msgrs = append(smtpMsgrs, initPostbackMessengers(ko)...)
 
 		// Campaign manager.
 		mgr = initCampaignManager(msgrs, queries, urlCfg, core, media, i18n, ko)

@@ -433,6 +433,21 @@ subsystem-redesign follow-up.
 
 ## Phase 6 — tenant-aware manager/dispatcher
 
+**Status: blocked on / partially superseded by #41.** Investigation
+before starting found the "SMTP pool construction... needs to become
+per-tenant too" line below (from the original draft) was actually the
+prerequisite for this whole phase to be *meaningful* — without it,
+threading tenant IDs through the scan loop would correctly select the
+right campaigns per tenant but still dispatch every one of them through a
+single global SMTP pool, which isn't real isolation. Confirmed with the
+user: tackle that dependency (#41) directly instead of doing Phase 6's
+scan-side scaffolding in isolation. **#41 slice 1 (SMTP messenger
+resolution) is now done** — see that section below. The scanning side
+described here (`Store.NextCampaigns` gaining tenant awareness,
+`scanCampaigns` iterating active tenants) is **still not implemented** and
+remains this phase's remaining work, now genuinely meaningful to build
+since real per-tenant dispatch exists to receive it.
+
 ### `internal/manager/manager.go`
 
 `Store` interface (`~line 50`) — `NextCampaigns` needs tenant awareness:
@@ -448,11 +463,7 @@ NextCampaignsForTenant(tenantID int, excludeIDs []int64, largestID int) (models.
 `scanCampaigns` (`~line 447`) changes from a single global scan to iterating
 active tenant IDs (a new cheap `SELECT id FROM tenants WHERE status='active'`
 call each tick, cached) and calling `NextCampaignsForTenant` per tenant,
-setting `app.current_tenant` for that batch via `core.WithTenant`. SMTP pool
-construction (currently built once globally from the global `smtp` setting)
-needs to become per-tenant too, sourced from `GetTenantSettings(tenantID).SMTP`
-— this is the part of this phase most coupled to phase 5's settings split
-landing first.
+setting `app.current_tenant` for that batch via `core.WithTenant`.
 
 Rate limiting (`app.message_rate`/`app.concurrency`) similarly needs a
 decision: keep one global worker-pool size shared across all tenants'
@@ -460,6 +471,75 @@ campaigns (simplest, no per-tenant starvation protection) vs. per-tenant
 worker pools (fairer, more moving parts). Recommend starting with global
 pool + per-tenant send-rate throttling only, revisit if a tenant experiences
 starvation in practice.
+
+---
+
+## Issue #41 — per-tenant SMTP/media/OIDC/manager (4 subsystems, same
+shape as #40)
+
+### Slice 1 — SMTP messenger resolution: implemented
+
+Investigation found `internal/manager` never imports `internal/core` (its
+`Store` interface, implemented by `cmd/manager_store.go`, already bridges
+DB access without one) and neither it nor `internal/messenger/email`
+imports the other — confirmed via grep before designing, not assumed, so
+wiring a new per-tenant resolver from `cmd/` carries zero cycle risk.
+
+**What shipped:**
+- `models.Campaign` and `models.Message` gained a `TenantID` field (the
+  former free via existing `campaigns.*` queries, same pattern as
+  `auth.User.TenantID`; the latter explicit, since the transactional send
+  path — `cmd/tx.go`'s `SendTxMessage` — has no `Campaign` to derive it
+  from).
+- New `internal/manager.MessengerResolver` interface (`GetMessenger(ctx,
+  tenantID, name) (Messenger, error)`, plus an `ErrMessengerNotFound`
+  sentinel) and a `Manager.getMessenger` helper that tries the resolver
+  first, falling back to the existing process-global `m.messengers` map
+  (unchanged) on `ErrMessengerNotFound` — this is what keeps postback
+  messengers (a different messenger type, out of scope for this slice)
+  working without needing to explicitly classify messenger types.
+- Concrete resolver: `cmd/tenant_messenger.go`'s `tenantMessengers`, holding
+  a `*core.Core` reference and a `map[int]map[string]manager.Messenger`
+  cache (mutex-protected, populated lazily, **never invalidated within a
+  process's lifetime** — deliberately matching the existing
+  process-global messenger set's staleness contract, since settings
+  updates already require a full `syscall.Exec` restart to take effect
+  today, confirmed live during phase 5. Live invalidation is out of scope,
+  tracked as part of this issue's remaining work).
+- `cmd/init.go`'s `initSMTPMessengers()` refactored to accept a
+  `*koanf.Koanf` parameter (instead of closing over the global `ko`) and
+  to **return an error instead of calling `lo.Fatalf`** — this was a
+  necessary change beyond the original plan, found while implementing:
+  the function is now called from two contexts (boot, which should still
+  fail fast on bad config, vs. the lazy per-tenant path, where crashing
+  the whole process over one tenant's malformed SMTP config would take
+  down every tenant). The boot-time caller (`cmd/main.go`) still calls
+  `lo.Fatalf` itself on the returned error, preserving today's behavior
+  exactly.
+- The per-tenant resolver reuses `initSMTPMessengers` rather than
+  reimplementing SMTP-config parsing: it round-trips a tenant's
+  `models.Settings` through `json.Marshal`/`json.Unmarshal` into a fresh
+  per-tenant `*koanf.Koanf` (the JSON tags on `Settings` already match the
+  dotted keys `initSettings` loads from the DB at boot), then calls the
+  same function. This avoids a naive JSON-only conversion into
+  `email.Server`, which embeds `smtppool.Opt` via a mapstructure-only
+  `,squash` tag that plain `encoding/json` doesn't understand.
+
+**Verified live, not just built/tested:** started the existing draft "Test
+campaign" via the API and watched the backend log show
+`initSMTPMessengers`'s init line fire a *second* time (the first is the
+boot-time global construction; the second, at campaign-start, is the lazy
+per-tenant resolver building tenant 1's messenger set for the first time),
+followed by `newPipe`'s validation passing (no "unknown messenger" error)
+and a real SMTP connection attempt that failed with a legitimate network
+timeout against this dev environment's fake mail host — the expected,
+correct failure mode, proving resolution succeeded and only delivery
+(irrelevant to this slice) failed. Campaign state reset to `draft`
+afterward to restore the dev DB baseline.
+
+**Remaining in #41, not this slice:** media/S3 per-tenant client cache,
+OIDC per-tenant config resolution, and Phase 6's scan-side tenant
+awareness (now unblocked, see above).
 
 ---
 

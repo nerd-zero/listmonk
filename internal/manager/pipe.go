@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -26,7 +27,7 @@ type pipe struct {
 // newPipe adds a campaign to the process queue.
 func (m *Manager) newPipe(c *models.Campaign) (*pipe, error) {
 	// Validate messenger.
-	if _, ok := m.messengers[c.Messenger]; !ok {
+	if _, err := m.getMessenger(context.Background(), c.TenantID, c.Messenger); err != nil {
 		m.store.UpdateCampaignStatus(c.ID, models.CampaignStatusCancelled)
 		return nil, fmt.Errorf("unknown messenger %s on campaign %s", c.Messenger, c.Name)
 	}

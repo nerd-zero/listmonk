@@ -622,7 +622,7 @@ func initCampaignManager(msgrs []manager.Messenger, q *models.Queries, u *UrlCon
 		SlidingWindowRate:     ko.Int("app.message_sliding_window_rate"),
 		ScanInterval:          time.Second * 5,
 		ScanCampaigns:         !ko.Bool("passive"),
-	}, newManagerStore(q, co, md), i, lo)
+	}, newManagerStore(q, co, md), newTenantMessengers(co), i, lo)
 
 	// Attach all messengers to the campaign manager.
 	for _, m := range msgrs {
@@ -673,7 +673,19 @@ func initImporter(q *models.Queries, db *sqlx.DB, core *core.Core, i *i18n.I18n,
 }
 
 // initSMTPMessenger initializes the combined and individual SMTP messengers.
-func initSMTPMessengers() []manager.Messenger {
+// initSMTPMessengers builds SMTP messengers from the given koanf instance's
+// "smtp" key. Takes ko explicitly (rather than closing over the global ko)
+// so it can be reused for the boot-time global messenger set (from tenant
+// 1's settings, via the global ko) and for per-tenant lazy construction
+// (internal/manager.MessengerResolver, see cmd/tenant_messenger.go) - the
+// same reflection-driven koanf/mapstructure unmarshaling into email.Server
+// (which needs its embedded smtppool.Opt's `,squash` handled correctly)
+// backs both paths rather than being duplicated or reimplemented via a
+// naive JSON round-trip. Returns an error instead of calling lo.Fatalf
+// directly: the boot-time caller still wants fail-fast-on-bad-config
+// behavior, but the lazy per-tenant path must not crash the whole process
+// over one tenant's malformed SMTP config.
+func initSMTPMessengers(ko *koanf.Koanf) ([]manager.Messenger, error) {
 	var (
 		servers = []email.Server{}
 		out     = []manager.Messenger{}
@@ -688,7 +700,7 @@ func initSMTPMessengers() []manager.Messenger {
 		// Read the SMTP config.
 		var s email.Server
 		if err := item.UnmarshalWithConf("", &s, koanf.UnmarshalConf{Tag: "json"}); err != nil {
-			lo.Fatalf("error reading SMTP config: %v", err)
+			return nil, fmt.Errorf("error reading SMTP config: %v", err)
 		}
 
 		servers = append(servers, s)
@@ -699,7 +711,7 @@ func initSMTPMessengers() []manager.Messenger {
 		if s.Name != "" {
 			msgr, err := email.New(s.Name, s)
 			if err != nil {
-				lo.Fatalf("error initializing e-mail messenger: %v", err)
+				return nil, fmt.Errorf("error initializing e-mail messenger: %v", err)
 			}
 			out = append(out, msgr)
 		}
@@ -708,18 +720,18 @@ func initSMTPMessengers() []manager.Messenger {
 	// Initialize the 'email' messenger with all SMTP servers.
 	msgr, err := email.New(email.MessengerName, servers...)
 	if err != nil {
-		lo.Fatalf("error initializing e-mail messenger: %v", err)
+		return nil, fmt.Errorf("error initializing e-mail messenger: %v", err)
 	}
 
 	// If it's just one server, return the default "email" messenger.
 	if len(servers) == 1 {
-		return []manager.Messenger{msgr}
+		return []manager.Messenger{msgr}, nil
 	}
 
 	// If there are multiple servers, prepend the group "email" to be the first one.
 	out = append([]manager.Messenger{msgr}, out...)
 
-	return out
+	return out, nil
 }
 
 // initPostbackMessengers initializes and returns all the enabled

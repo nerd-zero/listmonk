@@ -39,6 +39,7 @@ type Campaign struct {
 	Base
 	CampaignMeta
 
+	TenantID          int             `db:"tenant_id" json:"tenant_id,omitempty"`
 	UUID              string          `db:"uuid" json:"uuid"`
 	Type              string          `db:"type" json:"type"`
 	Name              string          `db:"name" json:"name"`
