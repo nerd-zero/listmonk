@@ -1,6 +1,7 @@
 # Multi-tenancy: research and implementation plan
 
-Status: **proposal / not started**. This document captures research and a phased
+Status: **phase 1 (schema foundation) implemented; phases 2-9 not started**.
+This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -287,6 +288,14 @@ UI-level "operator" role.
 - **Settings:** no global/per-tenant split — every key, including
   `smtp`/`security.oidc`/`upload.s3.*`, is per-tenant. See "`settings` —
   decided" above.
+- **Phase 1 implementation (2026-07-07):** shipped purely additive — every
+  scoped/join table + `settings` gets `tenant_id INTEGER NOT NULL DEFAULT 1
+  REFERENCES tenants(id)`, no existing constraint touched. The original
+  code-plan draft prematurely re-scoped uniqueness constraints
+  (`subscribers.email`, `users.username`/`email`, etc.) in the same
+  migration — that would have broken `ON CONFLICT` upserts in
+  `queries/*.sql` ahead of the query-layer changes. Corrected; see
+  `multi-tenancy-code-plan.md`'s Phase 1 section for the full explanation.
 
 ## Open questions
 

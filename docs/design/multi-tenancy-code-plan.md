@@ -14,155 +14,55 @@ Status: **not started**. Nothing below has been applied to the codebase yet.
 
 ## Phase 1 — schema foundation
 
-### New migration: `internal/migrations/v6.4.0.go`
+**Status: implemented** (`internal/migrations/v6.4.0.go`, `schema.sql`,
+issue #28). The original draft below this line in earlier versions of this
+doc had two bugs, caught while grounding it against the actual `schema.sql`
+and `queries/*.sql` before running anything — recorded here so a future
+session doesn't reintroduce them:
 
-Follows the existing idempotent migration pattern (see `internal/migrations/v5.0.0.go`).
-Register in `cmd/upgrade.go`'s `migList`:
+1. **It dropped constraints `ON CONFLICT` clauses depend on.** The draft
+   re-scoped `subscribers_email_key`, `links_url_key`, `users_username_key`/
+   `users_email_key`, `templates_is_default_idx`, `campaigns_archive_slug_key`,
+   and `roles`' `idx_roles`/`idx_roles_name` to composite `(tenant_id, ...)`
+   forms in the *same* migration as the `tenant_id` column addition. But
+   `queries/subscribers.sql` has `ON CONFLICT (email)`, `queries/links.sql`
+   has `ON CONFLICT (url)`, and `queries/roles.sql` has
+   `ON CONFLICT (parent_id, list_id)` — dropping the constraint these
+   target breaks those upserts immediately, before the query-layer changes
+   land (those are phase 4's job, per the "migrate users/roles uniqueness
+   constraints" step in `multi-tenancy.md`'s phased plan — the high-level
+   plan already had this right; only this file's detailed draft jumped
+   ahead).
+2. **The nullable → backfill → `SET NOT NULL` dance was unnecessary.**
+   Adding the column as `NOT NULL DEFAULT 1 REFERENCES tenants(id)` in one
+   statement covers existing rows *and* any row the (not-yet-tenant-aware)
+   app inserts, since no `INSERT` in `queries/*.sql` sets `tenant_id` until
+   a later phase threads it through. Postgres 11+ treats a constant
+   `DEFAULT` on `ADD COLUMN` as metadata-only (no table rewrite), so this
+   is simpler *and* removes a whole class of migration-ordering bugs.
 
-```go
-var migList = []migFunc{
-    // ... existing entries ...
-    {"v6.3.0", migrations.V6_3_0},
-    {"v6.4.0", migrations.V6_4_0}, // multi-tenancy: schema foundation
-}
-```
+**What actually shipped** is purely additive: a new `tenants` table, plus
+one `tenant_id INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE
+CASCADE ON UPDATE CASCADE` column + one `idx_<table>_tenant` index on every
+scoped table (the 9 originally listed) and every join/log table
+(`subscriber_lists`, `campaign_lists`, `campaign_views`, `campaign_media`,
+`link_clicks`) and `settings` — 15 tables total, all via `DEFAULT 1`, no
+parent-join backfill logic needed since every row today belongs to tenant
+1 regardless of table. **No existing constraint, index, or query was
+touched.** See `internal/migrations/v6.4.0.go` for the exact SQL and
+`schema.sql` for the fresh-install equivalent (the `tenants` table + seed
+row is added first, since every other table's FK needs it to exist).
 
-```go
-package migrations
+Explicitly deferred to the phase that also updates the corresponding
+`queries/*.sql` file: re-scoping `subscribers_email_key`, `links_url_key`,
+`users_username_key`/`users_email_key`, `templates_is_default_idx`,
+`campaigns_archive_slug_key`, `idx_roles`, `idx_roles_name`, and
+`settings_key_key`/the settings PK to composite `(tenant_id, ...)` forms —
+that's phase 4 (auth/query threading) and phase 5 (settings), not phase 1.
 
-import (
-    "log"
-
-    "github.com/jmoiron/sqlx"
-    "github.com/knadh/koanf/v2"
-    "github.com/knadh/stuffbin"
-)
-
-// V6_4_0 adds multi-tenancy scaffolding: a tenants table, a nullable
-// tenant_id on every org-scoped table, and a backfilled default tenant so
-// existing single-tenant installs keep working unmodified.
-func V6_4_0(db *sqlx.DB, fs stuffbin.FileSystem, ko *koanf.Koanf, lo *log.Logger) error {
-    if _, err := db.Exec(`
-        DROP TYPE IF EXISTS tenant_status CASCADE;
-        CREATE TYPE tenant_status AS ENUM ('active', 'suspended', 'disabled');
-
-        CREATE TABLE IF NOT EXISTS tenants (
-            id          SERIAL PRIMARY KEY,
-            slug        TEXT NOT NULL UNIQUE,
-            name        TEXT NOT NULL,
-            status      tenant_status NOT NULL DEFAULT 'active',
-            created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-
-        -- Backfill: every existing install becomes tenant id=1.
-        INSERT INTO tenants (id, slug, name, status)
-        VALUES (1, 'default', 'Default', 'active')
-        ON CONFLICT (id) DO NOTHING;
-        SELECT setval('tenants_id_seq', GREATEST((SELECT MAX(id) FROM tenants), 1));
-    `); err != nil {
-        return err
-    }
-
-    // tenant_id added nullable + backfilled to 1, then set NOT NULL once
-    // backfilled — this two-step avoids locking on ALTER ... NOT NULL
-    // against a populated table in one shot.
-    scopedTables := []string{
-        "subscribers", "lists", "templates", "campaigns", "media",
-        "links", "bounces", "roles", "users",
-    }
-    for _, t := range scopedTables {
-        if _, err := db.Exec(`ALTER TABLE ` + t + ` ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE;`); err != nil {
-            return err
-        }
-        if _, err := db.Exec(`UPDATE ` + t + ` SET tenant_id = 1 WHERE tenant_id IS NULL;`); err != nil {
-            return err
-        }
-        if _, err := db.Exec(`ALTER TABLE ` + t + ` ALTER COLUMN tenant_id SET NOT NULL;`); err != nil {
-            return err
-        }
-    }
-
-    // Join/log tables: denormalize tenant_id directly rather than requiring
-    // a join through the parent for RLS performance (leading-column index
-    // requirement — see multi-tenancy.md's RLS research notes).
-    joinTables := map[string]string{
-        "subscriber_lists": "subscriber_id", // backfill via subscribers
-        "campaign_lists":   "campaign_id",   // backfill via campaigns
-        "campaign_views":   "campaign_id",
-        "campaign_media":   "campaign_id",
-        "link_clicks":      "campaign_id",
-    }
-    parentTable := map[string]string{
-        "subscriber_id": "subscribers",
-        "campaign_id":   "campaigns",
-    }
-    for t, fkCol := range joinTables {
-        parent := parentTable[fkCol]
-        if _, err := db.Exec(`ALTER TABLE ` + t + ` ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE;`); err != nil {
-            return err
-        }
-        if _, err := db.Exec(`
-            UPDATE ` + t + ` SET tenant_id = p.tenant_id
-            FROM ` + parent + ` p WHERE p.id = ` + t + `.` + fkCol + ` AND ` + t + `.tenant_id IS NULL;
-        `); err != nil {
-            return err
-        }
-        // link_clicks/campaign_views/campaign_media allow NULL campaign_id
-        // (row survives campaign deletion) — those rows keep tenant_id
-        // NULL rather than forcing NOT NULL; RLS policy treats NULL as
-        // "no tenant can see this" (safe default), see phase 2.
-    }
-
-    // settings: composite (tenant_id, key) — see phase 5 for the full
-    // settings-split migration; this just adds the column here so schema
-    // foundation is complete in one migration.
-    if _, err := db.Exec(`
-        ALTER TABLE settings ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE;
-        UPDATE settings SET tenant_id = 1 WHERE tenant_id IS NULL;
-        ALTER TABLE settings DROP CONSTRAINT IF EXISTS settings_key_key;
-        ALTER TABLE settings ADD PRIMARY KEY (tenant_id, key);
-    `); err != nil {
-        return err
-    }
-
-    // Re-scope uniqueness constraints that were global.
-    if _, err := db.Exec(`
-        DROP INDEX IF EXISTS idx_subs_email;
-        CREATE UNIQUE INDEX idx_subs_email ON subscribers(tenant_id, LOWER(email));
-
-        ALTER TABLE campaigns DROP CONSTRAINT IF EXISTS campaigns_archive_slug_key;
-        CREATE UNIQUE INDEX idx_camps_archive_slug ON campaigns(tenant_id, archive_slug);
-
-        DROP INDEX IF EXISTS templates_is_default_idx;
-        CREATE UNIQUE INDEX idx_templates_default ON templates(tenant_id, is_default) WHERE is_default = true;
-
-        ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key;
-        ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
-        CREATE UNIQUE INDEX idx_users_username ON users(tenant_id, username);
-        CREATE UNIQUE INDEX idx_users_email ON users(tenant_id, email);
-    `); err != nil {
-        return err
-    }
-
-    // Leading tenant_id composite indexes (RLS performance requirement).
-    for _, t := range append(scopedTables, "subscriber_lists", "campaign_lists", "campaign_views", "campaign_media", "link_clicks") {
-        if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_` + t + `_tenant ON ` + t + `(tenant_id);`); err != nil {
-            return err
-        }
-    }
-
-    return nil
-}
-```
-
-### `schema.sql` updates
-
-For fresh installs, every `CREATE TABLE` block for the tables above needs
-`tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE` added,
-and the `tenants` table creation added before them (mirroring the migration).
-The composite-unique-index changes above also need to replace the
-single-column versions in `schema.sql` directly (don't keep both).
+Verified against the live dev DB: migration runs clean, is a no-op on
+re-run (version-tracked), all 15 tables backfilled to tenant 1, and the
+running app (Campaigns/Subscribers pages) was unaffected before and after.
 
 ---
 

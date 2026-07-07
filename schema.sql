@@ -12,13 +12,28 @@ DROP TYPE IF EXISTS user_type CASCADE; CREATE TYPE user_type AS ENUM ('user', 'a
 DROP TYPE IF EXISTS user_status CASCADE; CREATE TYPE user_status AS ENUM ('enabled', 'disabled');
 DROP TYPE IF EXISTS role_type CASCADE; CREATE TYPE role_type AS ENUM ('user', 'list');
 DROP TYPE IF EXISTS twofa_type CASCADE; CREATE TYPE twofa_type AS ENUM ('none', 'totp');
+DROP TYPE IF EXISTS tenant_status CASCADE; CREATE TYPE tenant_status AS ENUM ('active', 'suspended', 'disabled');
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- tenants
+DROP TABLE IF EXISTS tenants CASCADE;
+CREATE TABLE tenants (
+    id          SERIAL PRIMARY KEY,
+    slug        TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL,
+    status      tenant_status NOT NULL DEFAULT 'active',
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+INSERT INTO tenants (id, slug, name, status) VALUES (1, 'default', 'Default', 'active');
+SELECT setval('tenants_id_seq', 1);
 
 -- subscribers
 DROP TABLE IF EXISTS subscribers CASCADE;
 CREATE TABLE subscribers (
     id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid uuid       NOT NULL UNIQUE,
     email           TEXT NOT NULL UNIQUE,
     name            TEXT NOT NULL,
@@ -33,11 +48,13 @@ DROP INDEX IF EXISTS idx_subs_status; CREATE INDEX idx_subs_status ON subscriber
 DROP INDEX IF EXISTS idx_subs_id_status; CREATE INDEX idx_subs_id_status ON subscribers(id, status);
 DROP INDEX IF EXISTS idx_subs_created_at; CREATE INDEX idx_subs_created_at ON subscribers(created_at);
 DROP INDEX IF EXISTS idx_subs_updated_at; CREATE INDEX idx_subs_updated_at ON subscribers(updated_at);
+DROP INDEX IF EXISTS idx_subscribers_tenant; CREATE INDEX idx_subscribers_tenant ON subscribers(tenant_id);
 
 -- lists
 DROP TABLE IF EXISTS lists CASCADE;
 CREATE TABLE lists (
     id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid            uuid NOT NULL UNIQUE,
     name            TEXT NOT NULL,
     type            list_type NOT NULL,
@@ -55,12 +72,14 @@ DROP INDEX IF EXISTS idx_lists_status; CREATE INDEX idx_lists_status ON lists(st
 DROP INDEX IF EXISTS idx_lists_name; CREATE INDEX idx_lists_name ON lists(name);
 DROP INDEX IF EXISTS idx_lists_created_at; CREATE INDEX idx_lists_created_at ON lists(created_at);
 DROP INDEX IF EXISTS idx_lists_updated_at; CREATE INDEX idx_lists_updated_at ON lists(updated_at);
+DROP INDEX IF EXISTS idx_lists_tenant; CREATE INDEX idx_lists_tenant ON lists(tenant_id);
 
 
 DROP TABLE IF EXISTS subscriber_lists CASCADE;
 CREATE TABLE subscriber_lists (
     subscriber_id      INTEGER REFERENCES subscribers(id) ON DELETE CASCADE ON UPDATE CASCADE,
     list_id            INTEGER NULL REFERENCES lists(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id          INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     meta               JSONB NOT NULL DEFAULT '{}',
     status             subscription_status NOT NULL DEFAULT 'unconfirmed',
 
@@ -72,11 +91,13 @@ CREATE TABLE subscriber_lists (
 DROP INDEX IF EXISTS idx_sub_lists_sub_id; CREATE INDEX idx_sub_lists_sub_id ON subscriber_lists(subscriber_id);
 DROP INDEX IF EXISTS idx_sub_lists_list_id; CREATE INDEX idx_sub_lists_list_id ON subscriber_lists(list_id);
 DROP INDEX IF EXISTS idx_sub_lists_status; CREATE INDEX idx_sub_lists_status ON subscriber_lists(status);
+DROP INDEX IF EXISTS idx_subscriber_lists_tenant; CREATE INDEX idx_subscriber_lists_tenant ON subscriber_lists(tenant_id);
 
 -- templates
 DROP TABLE IF EXISTS templates CASCADE;
 CREATE TABLE templates (
     id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     name            TEXT NOT NULL,
     type            template_type NOT NULL DEFAULT 'campaign',
     subject         TEXT NOT NULL,
@@ -88,12 +109,14 @@ CREATE TABLE templates (
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 CREATE UNIQUE INDEX ON templates (is_default) WHERE is_default = true;
+DROP INDEX IF EXISTS idx_templates_tenant; CREATE INDEX idx_templates_tenant ON templates(tenant_id);
 
 
 -- campaigns
 DROP TABLE IF EXISTS campaigns CASCADE;
 CREATE TABLE campaigns (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid uuid        NOT NULL UNIQUE,
     name             TEXT NOT NULL,
     subject          TEXT NOT NULL,
@@ -136,12 +159,14 @@ DROP INDEX IF EXISTS idx_camps_status; CREATE INDEX idx_camps_status ON campaign
 DROP INDEX IF EXISTS idx_camps_name; CREATE INDEX idx_camps_name ON campaigns(name);
 DROP INDEX IF EXISTS idx_camps_created_at; CREATE INDEX idx_camps_created_at ON campaigns(created_at);
 DROP INDEX IF EXISTS idx_camps_updated_at; CREATE INDEX idx_camps_updated_at ON campaigns(updated_at);
+DROP INDEX IF EXISTS idx_campaigns_tenant; CREATE INDEX idx_campaigns_tenant ON campaigns(tenant_id);
 
 
 DROP TABLE IF EXISTS campaign_lists CASCADE;
 CREATE TABLE campaign_lists (
     id           BIGSERIAL PRIMARY KEY,
     campaign_id  INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id    INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     -- Lists may be deleted, so list_id is nullable
     -- and a copy of the original list name is maintained here.
@@ -151,11 +176,13 @@ CREATE TABLE campaign_lists (
 CREATE UNIQUE INDEX ON campaign_lists (campaign_id, list_id);
 DROP INDEX IF EXISTS idx_camp_lists_camp_id; CREATE INDEX idx_camp_lists_camp_id ON campaign_lists(campaign_id);
 DROP INDEX IF EXISTS idx_camp_lists_list_id; CREATE INDEX idx_camp_lists_list_id ON campaign_lists(list_id);
+DROP INDEX IF EXISTS idx_campaign_lists_tenant; CREATE INDEX idx_campaign_lists_tenant ON campaign_lists(tenant_id);
 
 DROP TABLE IF EXISTS campaign_views CASCADE;
 CREATE TABLE campaign_views (
     id               BIGSERIAL PRIMARY KEY,
     campaign_id      INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     -- Subscribers may be deleted, but the view counts should remain.
     subscriber_id    INTEGER NULL REFERENCES subscribers(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -164,11 +191,13 @@ CREATE TABLE campaign_views (
 DROP INDEX IF EXISTS idx_views_camp_id; CREATE INDEX idx_views_camp_id ON campaign_views(campaign_id);
 DROP INDEX IF EXISTS idx_views_subscriber_id; CREATE INDEX idx_views_subscriber_id ON campaign_views(subscriber_id);
 DROP INDEX IF EXISTS idx_views_date; CREATE INDEX idx_views_date ON campaign_views(created_at);
+DROP INDEX IF EXISTS idx_campaign_views_tenant; CREATE INDEX idx_campaign_views_tenant ON campaign_views(tenant_id);
 
 -- media
 DROP TABLE IF EXISTS media CASCADE;
 CREATE TABLE media (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid uuid        NOT NULL UNIQUE,
     provider         TEXT NOT NULL DEFAULT '',
     filename         TEXT NOT NULL,
@@ -178,11 +207,13 @@ CREATE TABLE media (
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 DROP INDEX IF EXISTS idx_media_filename; CREATE INDEX idx_media_filename ON media(provider, filename);
+DROP INDEX IF EXISTS idx_media_tenant; CREATE INDEX idx_media_tenant ON media(tenant_id);
 
 -- campaign_media
 DROP TABLE IF EXISTS campaign_media CASCADE;
 CREATE TABLE campaign_media (
     campaign_id  INTEGER REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id    INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     -- Media items may be deleted, so media_id is nullable
     -- and a copy of the original name is maintained here.
@@ -192,21 +223,25 @@ CREATE TABLE campaign_media (
 );
 DROP INDEX IF EXISTS idx_camp_media_id; CREATE UNIQUE INDEX idx_camp_media_id ON campaign_media (campaign_id, media_id);
 DROP INDEX IF EXISTS idx_camp_media_camp_id; CREATE INDEX idx_camp_media_camp_id ON campaign_media(campaign_id);
+DROP INDEX IF EXISTS idx_campaign_media_tenant; CREATE INDEX idx_campaign_media_tenant ON campaign_media(tenant_id);
 
 
 -- links
 DROP TABLE IF EXISTS links CASCADE;
 CREATE TABLE links (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid uuid        NOT NULL UNIQUE,
     url              TEXT NOT NULL UNIQUE,
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+DROP INDEX IF EXISTS idx_links_tenant; CREATE INDEX idx_links_tenant ON links(tenant_id);
 
 DROP TABLE IF EXISTS link_clicks CASCADE;
 CREATE TABLE link_clicks (
     id               BIGSERIAL PRIMARY KEY,
     campaign_id      INTEGER NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     link_id          INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     -- Subscribers may be deleted, but the link counts should remain.
@@ -217,15 +252,18 @@ DROP INDEX IF EXISTS idx_clicks_camp_id; CREATE INDEX idx_clicks_camp_id ON link
 DROP INDEX IF EXISTS idx_clicks_link_id; CREATE INDEX idx_clicks_link_id ON link_clicks(link_id);
 DROP INDEX IF EXISTS idx_clicks_sub_id; CREATE INDEX idx_clicks_sub_id ON link_clicks(subscriber_id);
 DROP INDEX IF EXISTS idx_clicks_date; CREATE INDEX idx_clicks_date ON link_clicks(created_at);
+DROP INDEX IF EXISTS idx_link_clicks_tenant; CREATE INDEX idx_link_clicks_tenant ON link_clicks(tenant_id);
 
 -- settings
 DROP TABLE IF EXISTS settings CASCADE;
 CREATE TABLE settings (
     key             TEXT NOT NULL UNIQUE,
+    tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     value           JSONB NOT NULL DEFAULT '{}',
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 DROP INDEX IF EXISTS idx_settings_key; CREATE INDEX idx_settings_key ON settings(key);
+DROP INDEX IF EXISTS idx_settings_tenant; CREATE INDEX idx_settings_tenant ON settings(tenant_id);
 INSERT INTO settings (key, value) VALUES
     ('app.site_name', '"Mailing list"'),
     ('app.root_url', '"http://localhost:9000"'),
@@ -305,6 +343,7 @@ INSERT INTO settings (key, value) VALUES
 DROP TABLE IF EXISTS bounces CASCADE;
 CREATE TABLE bounces (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     subscriber_id    INTEGER NOT NULL REFERENCES subscribers(id) ON DELETE CASCADE ON UPDATE CASCADE,
     campaign_id      INTEGER NULL REFERENCES campaigns(id) ON DELETE SET NULL ON UPDATE CASCADE,
     type             bounce_type NOT NULL DEFAULT 'hard',
@@ -316,11 +355,13 @@ DROP INDEX IF EXISTS idx_bounces_sub_id; CREATE INDEX idx_bounces_sub_id ON boun
 DROP INDEX IF EXISTS idx_bounces_camp_id; CREATE INDEX idx_bounces_camp_id ON bounces(campaign_id);
 DROP INDEX IF EXISTS idx_bounces_source; CREATE INDEX idx_bounces_source ON bounces(source);
 DROP INDEX IF EXISTS idx_bounces_date; CREATE INDEX idx_bounces_date ON bounces(created_at);
+DROP INDEX IF EXISTS idx_bounces_tenant; CREATE INDEX idx_bounces_tenant ON bounces(tenant_id);
 
 -- roles
 DROP TABLE IF EXISTS roles CASCADE;
 CREATE TABLE roles (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     type             role_type NOT NULL DEFAULT 'user',
     parent_id        INTEGER NULL REFERENCES roles(id) ON DELETE CASCADE ON UPDATE CASCADE,
     list_id          INTEGER NULL REFERENCES lists(id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -331,11 +372,13 @@ CREATE TABLE roles (
 );
 CREATE UNIQUE INDEX idx_roles ON roles (parent_id, list_id);
 CREATE UNIQUE INDEX idx_roles_name ON roles (type, name) WHERE name IS NOT NULL;
+DROP INDEX IF EXISTS idx_roles_tenant; CREATE INDEX idx_roles_tenant ON roles(tenant_id);
 
 -- users
 DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     username         TEXT NOT NULL UNIQUE,
     password_login   BOOLEAN NOT NULL DEFAULT false,
     password         TEXT NULL,
@@ -352,6 +395,7 @@ CREATE TABLE users (
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+DROP INDEX IF EXISTS idx_users_tenant; CREATE INDEX idx_users_tenant ON users(tenant_id);
 
 -- user sessions
 DROP TABLE IF EXISTS sessions CASCADE;
