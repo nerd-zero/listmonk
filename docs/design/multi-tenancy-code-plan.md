@@ -141,24 +141,40 @@ with data today, so there's nothing to profile against yet.
 
 ## Phase 3 — connection/session plumbing
 
-New file: `internal/core/tenant.go`
+**Status: implemented** (`internal/core/tenant.go`, `internal/core/tenant_test.go`,
+issue #30). Two changes from the original draft:
+
+1. **`WithTenant` is a `*Core` method, not a package-level function taking
+   `*sqlx.DB`.** Phase 4 will call it from inside existing `Core` methods
+   where `c` is already the receiver, so `c.WithTenant(ctx, tenantID, fn)`
+   is more idiomatic than threading `c.db` through a free function — matches
+   the existing style of other `Core` methods (`c.RefreshMatView`, etc.) in
+   `internal/core/core.go`.
+2. **The concurrency spike is a real, permanent test**
+   (`TestWithTenant_ConcurrentIsolation`), not just a described plan — this
+   was the repo's *first* Go test (`go test ./...` previously had zero test
+   files anywhere outside `frontend/`), so it also had to establish how a
+   Postgres-backed Go test connects to a database at all. It reads the same
+   `LISTMONK_db__*` env vars `.github/workflows/tests.yml` already sets for
+   CI, falling back to this repo's local dev `config.toml` values so it also
+   runs against `make run`'s dev database with no extra setup, and skips
+   (rather than fails) if no database is reachable.
+
+Critically, the test does **not** run as the app's configured DB role.
+Both this dev database's role and CI's default `postgres:16-alpine` image
+role are superusers, and superusers (like table owners, see phase 2) bypass
+RLS entirely regardless of policy — testing against either would make the
+test pass for the wrong reason (or, if isolation were actually broken,
+mask it). The test creates a throwaway, uniquely-named, least-privileged
+role (`NOSUPERUSER NOBYPASSRLS`, granted only `SELECT`) for its own
+duration, runs concurrent goroutines through `WithTenant` against **that**
+role's connection pool, and tears the role + its temporary tenant/subscriber
+test rows down in `t.Cleanup` afterward — mirroring the manual verification
+process from phase 2.
 
 ```go
-package core
-
-import (
-    "context"
-    "database/sql"
-
-    "github.com/jmoiron/sqlx"
-)
-
-// WithTenant runs fn inside a transaction with app.current_tenant set via
-// SET LOCAL, so the setting is automatically cleared when the transaction
-// ends — safe under a shared/pooled connection since SET LOCAL is
-// transaction-scoped, not session-scoped.
-func WithTenant(ctx context.Context, db *sqlx.DB, tenantID int, fn func(tx *sqlx.Tx) error) error {
-    tx, err := db.BeginTxx(ctx, &sql.TxOptions{})
+func (c *Core) WithTenant(ctx context.Context, tenantID int, fn func(tx *sqlx.Tx) error) error {
+    tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{})
     if err != nil {
         return err
     }
@@ -174,14 +190,11 @@ func WithTenant(ctx context.Context, db *sqlx.DB, tenantID int, fn func(tx *sqlx
 }
 ```
 
-Before writing any handler code against this: spike a standalone test that
-opens N goroutines against a shared `*sqlx.DB` pool, each calling
-`WithTenant` with a different tenant ID and asserting the row set returned
-never contains another tenant's rows, run under `-race`. `lib/pq`/`pgx`
-connection-pool behavior with `SET LOCAL` inside explicit transactions
-(rather than session-level `SET`) is the safe pattern per the RLS research
-in `multi-tenancy.md` — this spike exists to prove it holds for this
-specific driver/pool combination, not to re-derive the general advice.
+Verified: `go test ./internal/core/... -run TestWithTenant_ConcurrentIsolation -race -count=1` passes reliably (run repeatedly to confirm — an early version had a `t.Cleanup`-ordering bug where an in-function `defer db.Close()` ran *before* the cleanup callback that still needed that connection, silently leaving orphaned test tenants/roles behind despite the test itself reporting `PASS`; fixed by closing the admin connection at the end of the same cleanup callback instead of via a separate `defer`). `go vet ./...` and the full `go test ./... -race` suite pass with the dev database up.
+
+**Not in scope for this phase** (that's phase 4): no existing `Core` method
+calls `WithTenant` yet. This is additive — a new file plus a new test, zero
+behavior change to the running app, exactly like phases 1 and 2.
 
 ---
 

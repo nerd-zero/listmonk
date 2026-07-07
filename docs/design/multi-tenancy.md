@@ -1,7 +1,8 @@
 # Multi-tenancy: research and implementation plan
 
-Status: **phases 1-2 (schema foundation, RLS policies) implemented; phases
-3-9 not started**. This document captures research and a phased
+Status: **phases 1-3 (schema foundation, RLS policies, connection/session
+plumbing) implemented; phases 4-9 not started**. This document captures
+research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -309,6 +310,16 @@ UI-level "operator" role.
   the permissive fallback once phase 4 lands** — tracked as a follow-up on
   issue #29, not a new phase. See `multi-tenancy-code-plan.md`'s Phase 2
   section for detail.
+- **Phase 3 implementation (2026-07-07):** `Core.WithTenant` (a method, not
+  the originally-drafted package-level function) plus a permanent
+  concurrency test — this repo's first Go test, since `go test ./...` had
+  zero test files before this. The test creates its own throwaway
+  least-privileged Postgres role rather than using the app's configured
+  role, for the same reason phase 2's manual verification needed one: both
+  this dev DB's role and CI's default Postgres image role are superusers,
+  which bypass RLS regardless of policy. See `multi-tenancy-code-plan.md`'s
+  Phase 3 section for detail, including a `t.Cleanup`-ordering bug caught
+  and fixed along the way.
 
 ## Open questions
 
