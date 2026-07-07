@@ -96,7 +96,7 @@ func (a *App) GetServerConfig(c echo.Context) error {
 		out.Messengers = append(out.Messengers, m.Name())
 	}
 
-	if s, err := a.core.GetSettings(); err == nil {
+	if s, err := a.core.GetSettings(c.Request().Context(), tenantID(c)); err == nil {
 		out.ScrubEnabled = s.Scrub.Enabled && s.Scrub.URL != "" && s.Scrub.APIKey != ""
 	}
 

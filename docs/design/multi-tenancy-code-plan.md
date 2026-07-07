@@ -342,31 +342,92 @@ becoming tenant-scoped depends on that threading landing.
 `security.oidc`, and `upload.s3.*` — is per-tenant. `models.Settings` stays a
 single flat struct; only the load/save path gains a `tenantID` parameter.
 
+**Status: DB layer implemented (issue #32); subsystem redesign split into
+its own follow-up.** Investigation before starting found this phase bundles
+two very different sizes of work, the same pattern as phase 4/issue #40:
+settings aren't read per-request — they're loaded **once at process boot**
+into a global `koanf` config, and the SMTP messenger pools, the media/S3
+store, the OIDC config, and the campaign manager are all built **once as
+process-lifetime singletons** from that global state (`cmd/main.go`'s
+`initSMTPMessengers`/`initMediaStore`/`initAuth`/`initCampaignManager`).
+There's no live-reload mechanism today at all — even the *existing*
+single-tenant "update settings" flow requires a full process re-exec
+(`cmd/settings.go`'s `handleSettingsRestart` → `syscall.Exec`) to take
+effect. Making those four subsystems genuinely per-tenant is a redesign,
+not a parameter addition — split into its own follow-up issue, same as
+`internal/core` threading was split into #40. **What shipped this session
+is the DB/`Core` layer only**, with those subsystems deliberately left as
+global singletons pinned to tenant 1 (documented in code, zero behavior
+change from today).
+
+### Migration `v6.6.0`: composite `(tenant_id, key)` primary key
+
+Re-scopes `settings` from the phase-1-deferred `UNIQUE(key)` to a real
+composite key — this was explicitly left for "the phase that also updates
+the corresponding `queries/*.sql` file," and this is that phase:
+
+```sql
+ALTER TABLE settings DROP CONSTRAINT IF EXISTS settings_key_key;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'settings'::regclass AND contype = 'p') THEN
+        ALTER TABLE settings ADD PRIMARY KEY (tenant_id, key);
+    END IF;
+END $$;
+```
+
+**Found and fixed while running this migration, not before:** `cmd/install.go`'s
+`recordMigrationVersion` — the upgrade runner's *own* bookkeeping, used by
+every migration including this one — does `INSERT INTO settings (key,
+value) VALUES ('migrations', ...) ON CONFLICT (key) DO UPDATE ...`. Dropping
+`settings_key_key` broke it immediately (confirmed by actually running the
+migration, not just reading the code): `pq: there is no unique or exclusion
+constraint matching the ON CONFLICT specification`. Fixed by adding
+`tenant_id` to the insert and changing to `ON CONFLICT (tenant_id, key)`.
+Also fixed `cmd/upgrade.go`'s `getLastMigrationVersion` (`SELECT value->>-1
+FROM settings WHERE key='migrations'`) to add `AND tenant_id=1` for the same
+reason — both pinned to tenant 1, matching `initSettings` below. This is
+the exact class of bug phase 1 was originally trying to avoid by deferring
+constraint changes; it still slipped through because this specific query
+lives in the *migration framework itself*, not `queries/*.sql`, so it
+wasn't caught by grepping for `ON CONFLICT` across the query files during
+planning.
+
 ### `internal/core/settings.go`
 
 ```go
-// before
-func (c *Core) GetSettings() (models.Settings, error) {
-func (c *Core) UpdateSettings(s models.Settings) error {
-
-// after
-func (c *Core) GetSettings(tenantID int) (models.Settings, error) {
-func (c *Core) UpdateSettings(tenantID int, s models.Settings) error {
+func (c *Core) GetSettings(ctx context.Context, tenantID int) (models.Settings, error)
+func (c *Core) UpdateSettings(ctx context.Context, tenantID int, s models.Settings) error
+func (c *Core) UpdateSettingsByKey(ctx context.Context, tenantID int, key string, value json.RawMessage) error
 ```
+All three now run through `WithTenant`, using the `stmtx()` helper from
+issue #40's slice 1 (same `.Unsafe()`-preservation requirement applies
+here). `queries/misc.sql`'s `get-settings`/`update-settings`/
+`update-settings-by-key` all gained a `tenant_id` parameter. For
+`update-settings` specifically, the `tenant_id` filter is **required for
+correctness, not just defense-in-depth**: it does `WHERE s.key = c.key` for
+each key in an incoming JSON map, and since key names now repeat across
+tenants by design, an unfiltered version would silently update every
+tenant's row sharing a key name in that map.
 
-`queries/settings.sql`'s `get-settings`/`update-settings` need a `tenant_id`
-parameter added to their `WHERE`/`INSERT ... ON CONFLICT` clauses — one query
-pair, not two, since there's no global/tenant split to maintain.
+### `cmd/init.go`'s `initSettings` — pinned to tenant 1
 
-### Knock-on effects to implement alongside this phase
+The boot-time global-config load now explicitly passes tenant 1 to
+`get-settings`'s new `$1` parameter, with a code comment explaining this is
+intentional and matches the "subsystems stay global singletons" scoping
+decision above — not an oversight to fix later independently of the
+subsystem-redesign follow-up.
 
-- **`internal/media`'s S3 client**: currently constructed once at startup
-  from global settings. Change to a per-tenant client cache (map keyed by
-  `tenant_id`, lazily constructed on first use, same TTL-cache shape as the
-  tenant-slug cache in phase 4) since each tenant now supplies its own
-  bucket/credentials.
-- **OIDC callback**: see phase 4 — needs tenant resolved (from subdomain)
-  before it can load the right IdP config to validate against.
+### Knock-on effects — now explicitly deferred to the subsystem-redesign follow-up
+
+- **`internal/media`'s S3 client**: per-tenant client cache (map keyed by
+  `tenant_id`, lazily constructed).
+- **OIDC callback**: needs tenant resolved before loading IdP config (phase 4
+  already flagged this).
+- **SMTP messenger pools**: per-tenant construction instead of one global
+  pool built at boot.
+- **Live settings reload**: replacing `syscall.Exec` full-process-restart
+  with something that can refresh one tenant's config without affecting
+  every other tenant's running state.
 
 ---
 

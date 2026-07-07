@@ -433,10 +433,15 @@ func prepareQueries(qMap goyesql.Queries, db *sqlx.DB, ko *koanf.Koanf) *models.
 	return &q
 }
 
-// initSettings loads settings from the DB into the given Koanf map.
+// initSettings loads settings from the DB into the given Koanf map. Always
+// loads tenant 1's settings - phase 5 (issue #32) made the settings table
+// per-tenant, but this boot-time global config load, and everything built
+// from it (SMTP pools, media store, OIDC config, the campaign manager),
+// stays a single process-wide instance pinned to the default tenant until
+// that's redesigned (tracked as a follow-up, same pattern as issue #40).
 func initSettings(query string, db *sqlx.DB, ko *koanf.Koanf) {
 	var s types.JSONText
-	if err := db.Get(&s, query); err != nil {
+	if err := db.Get(&s, query, 1); err != nil {
 		msg := err.Error()
 		if err, ok := err.(*pq.Error); ok {
 			if err.Detail != "" {

@@ -480,7 +480,7 @@ func (a *App) UpdateCampaignStatus(c echo.Context) error {
 
 	// Block start/schedule when a Scrub validation job is active on any of the campaign's lists.
 	if req.Status == models.CampaignStatusRunning || req.Status == models.CampaignStatusScheduled {
-		if blocked, listName, err := a.checkScrubJobOnCampaign(c.Request().Context(), id); err == nil && blocked {
+		if blocked, listName, err := a.checkScrubJobOnCampaign(c.Request().Context(), tenantID(c), id); err == nil && blocked {
 			return echo.NewHTTPError(http.StatusBadRequest,
 				a.i18n.Ts("campaigns.scrubJobRunning", "list", listName))
 		}
@@ -1027,8 +1027,8 @@ func canEditCampaign(status string) bool {
 // checkScrubJobOnCampaign returns (true, listName) if any of the campaign's
 // target lists has an active Scrub validation job. Returns (false, "") silently
 // when Scrub is not configured or unreachable.
-func (a *App) checkScrubJobOnCampaign(ctx context.Context, campaignID int) (bool, string, error) {
-	s, err := a.core.GetSettings()
+func (a *App) checkScrubJobOnCampaign(ctx context.Context, tenantID int, campaignID int) (bool, string, error) {
+	s, err := a.core.GetSettings(ctx, tenantID)
 	if err != nil || !s.Scrub.Enabled || s.Scrub.URL == "" || s.Scrub.APIKey == "" || s.Scrub.IntegrationID == 0 {
 		return false, "", nil
 	}

@@ -3,7 +3,9 @@
 Status: **phases 1-3 implemented; phase 4 partially implemented (auth/
 subdomain resolution shipped, `internal/core` tenantID-threading split
 into its own follow-up issue #40, in progress file-by-file — slice 1
-(`subscribers.go`) done); phases 5-9 not started**. This document
+(`subscribers.go`) done); phase 5 partially implemented (settings DB/Core
+layer shipped, subsystem redesign — SMTP/media/OIDC/manager — split into
+its own follow-up issue #41); phases 6-9 not started**. This document
 captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
@@ -350,6 +352,24 @@ UI-level "operator" role.
   2/3) since this dev DB's superuser role can't demonstrate it end-to-end
   over HTTP — a pre-existing limitation, not a defect in this slice. See
   `multi-tenancy-code-plan.md`'s new "Issue #40" section for full detail.
+- **Phase 5 implementation (2026-07-07) — scope split:** settings aren't
+  read per-request — they're loaded once at process boot into a global
+  config, and SMTP pools/media store/OIDC config/campaign manager are all
+  built once as process-lifetime singletons from it (no live-reload
+  mechanism exists today even for the current single-tenant flow — it's a
+  full `syscall.Exec` process restart). Making those subsystems genuinely
+  per-tenant is a redesign, not a parameter addition — split into issue
+  #41. Shipped: the DB/`Core` layer (migration `v6.6.0`'s composite
+  `(tenant_id, key)` key, `Core.GetSettings`/`UpdateSettings`/
+  `UpdateSettingsByKey` now tenant-scoped), with those four subsystems
+  left as global singletons pinned to tenant 1 (documented in code).
+  Found and fixed a real bug while *running* the migration (not caught by
+  reading code alone): the upgrade runner's own version-bookkeeping query
+  in `cmd/install.go` depended on the constraint this migration removed —
+  the same class of issue phase 1 deferred constraint changes to avoid,
+  slipping through here because it lives in the migration framework
+  itself, not `queries/*.sql`. See `multi-tenancy-code-plan.md`'s Phase 5
+  section for full detail.
 
 ## Open questions
 

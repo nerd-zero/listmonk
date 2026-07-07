@@ -257,10 +257,12 @@ DROP INDEX IF EXISTS idx_link_clicks_tenant; CREATE INDEX idx_link_clicks_tenant
 -- settings
 DROP TABLE IF EXISTS settings CASCADE;
 CREATE TABLE settings (
-    key             TEXT NOT NULL UNIQUE,
+    key             TEXT NOT NULL,
     tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     value           JSONB NOT NULL DEFAULT '{}',
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    PRIMARY KEY (tenant_id, key)
 );
 DROP INDEX IF EXISTS idx_settings_key; CREATE INDEX idx_settings_key ON settings(key);
 DROP INDEX IF EXISTS idx_settings_tenant; CREATE INDEX idx_settings_tenant ON settings(tenant_id);

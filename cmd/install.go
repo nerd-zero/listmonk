@@ -277,11 +277,14 @@ func installCampaign(campTplID, archiveTplID int, q *models.Queries) {
 }
 
 // recordMigrationVersion inserts the given version (of DB migration) into the
-// `migrations` array in the settings table.
+// `migrations` array in the settings table, against tenant 1 - this
+// bookkeeping happens before any tenant concept is meaningful to the
+// upgrade runner itself, and matches initSettings' boot-time pin to
+// tenant 1 (see its comment for why).
 func recordMigrationVersion(ver string, db *sqlx.DB) error {
-	_, err := db.Exec(fmt.Sprintf(`INSERT INTO settings (key, value)
-	VALUES('migrations', '["%s"]'::JSONB)
-	ON CONFLICT (key) DO UPDATE SET value = settings.value || EXCLUDED.value`, ver))
+	_, err := db.Exec(fmt.Sprintf(`INSERT INTO settings (key, value, tenant_id)
+	VALUES('migrations', '["%s"]'::JSONB, 1)
+	ON CONFLICT (tenant_id, key) DO UPDATE SET value = settings.value || EXCLUDED.value`, ver))
 	return err
 }
 
