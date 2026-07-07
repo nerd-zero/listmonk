@@ -1,7 +1,7 @@
 # Multi-tenancy: research and implementation plan
 
-Status: **phase 1 (schema foundation) implemented; phases 2-9 not started**.
-This document captures research and a phased
+Status: **phases 1-2 (schema foundation, RLS policies) implemented; phases
+3-9 not started**. This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -296,6 +296,19 @@ UI-level "operator" role.
   migration — that would have broken `ON CONFLICT` upserts in
   `queries/*.sql` ahead of the query-layer changes. Corrected; see
   `multi-tenancy-code-plan.md`'s Phase 1 section for the full explanation.
+- **Phase 2 implementation (2026-07-07):** RLS enabled + forced on all 15
+  tables, with a deliberately permissive policy (`... OR
+  current_setting(...) IS NULL`) rather than the original draft's strict
+  "unset context sees nothing" — the strict version would break every
+  query the moment the migration runs on a correctly-permissioned
+  deployment, since the app doesn't set `app.current_tenant` until phase 4.
+  Also added `FORCE ROW LEVEL SECURITY` (owners are RLS-exempt by default,
+  and most self-hosted installs use one Postgres role for everything).
+  Verified with a throwaway non-superuser role since this dev DB's own role
+  is a superuser and would bypass RLS regardless of the policy. **Tighten
+  the permissive fallback once phase 4 lands** — tracked as a follow-up on
+  issue #29, not a new phase. See `multi-tenancy-code-plan.md`'s Phase 2
+  section for detail.
 
 ## Open questions
 

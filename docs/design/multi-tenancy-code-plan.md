@@ -68,24 +68,49 @@ running app (Campaigns/Subscribers pages) was unaffected before and after.
 
 ## Phase 2 — RLS policies and indexing
 
-For every table in `scopedTables` + the five join tables + `settings`, a new
-migration (`v6.5.0`) adds:
+**Status: implemented** (`internal/migrations/v6.5.0.go`, issue #29).
+
+The original draft here (`USING (tenant_id = current_setting('app.current_tenant', true)::INTEGER)`,
+"unset context sees nothing") had the same class of ordering bug as the
+original Phase 1 draft: since the app doesn't set `app.current_tenant`
+until the auth/request-flow phase, a strict policy would make **every**
+query return zero rows the moment this migration runs against any
+correctly-permissioned deployment (non-superuser, non-owner app role) —
+a total outage, well before this dev sandbox (where the connecting role
+happens to be a superuser) would ever show a symptom.
+
+**What shipped instead** is deliberately permissive while tenant context is
+unset:
 
 ```sql
 ALTER TABLE subscribers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscribers FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON subscribers
-    USING (tenant_id = current_setting('app.current_tenant', true)::INTEGER);
--- repeat per table
+    USING (
+        tenant_id = current_setting('app.current_tenant', true)::INTEGER
+        OR current_setting('app.current_tenant', true) IS NULL
+    );
+-- repeat per table (all 15 from phase 1: the 9 scoped tables, 5 join/log
+-- tables, and settings)
 ```
 
-The `true` second argument to `current_setting` makes it return `NULL`
-instead of erroring when unset — important because migrations, the
-`goyesql`-prepared statement setup in `cmd/init.go`, and any maintenance
-script run outside a request context won't have `app.current_tenant` set.
-Decide explicitly whether an unset tenant context means "see nothing" (NULL
-never equals a tenant_id, so this is the default with the policy above — the
-safe choice) vs. a superuser maintenance bypass path (a separate `BYPASSRLS`
-maintenance role used only by migration/backup jobs, never by the app pool).
+Two deliberate additions beyond the original draft:
+
+- **The `OR ... IS NULL` fallback** keeps the app fully functional today
+  (single tenant, no session plumbing yet) while still exercising the real
+  RLS machinery — the policy correctly restricts once a session sets
+  `app.current_tenant` (verified below), it just doesn't punish the app for
+  not setting it yet. **Tighten this** (drop the `OR` branch) once Phase 4
+  lands and the app reliably sets tenant context on every request — tracked
+  as a follow-up, not a new phase.
+- **`FORCE ROW LEVEL SECURITY`** in addition to `ENABLE`: table owners are
+  exempt from RLS by default, and most self-hosted listmonk installs
+  (including this dev database) use a single Postgres role for both schema
+  ownership and the app connection — so plain `ENABLE` alone would have
+  silently been a no-op for that common deployment shape. `FORCE` closes
+  that gap. Superusers remain exempt regardless of `FORCE` (no way around
+  that in Postgres), which is why this is still inert in the current dev
+  sandbox specifically — but it matters for any non-superuser owner role.
 
 **Verify before merging this phase:**
 ```sql
@@ -93,6 +118,24 @@ maintenance role used only by migration/backup jobs, never by the app pool).
 SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user;
 -- must show rolsuper=f, rolbypassrls=f
 ```
+This dev database's role fails that check (superuser), which is why direct
+verification required a throwaway non-owner, non-superuser role
+(`rls_test_role`, `NOSUPERUSER NOBYPASSRLS`, granted table access, no RLS
+bypass) — created, used to confirm all three cases (no context set → sees
+all rows; `app.current_tenant='1'` → sees only tenant 1; `='2'` → sees only
+tenant 2), then fully dropped afterward (role, grants, and the temporary
+tenant-2 test data). Nothing from this test role persists in the repo or
+the dev DB.
+
+**Indexing:** the "tenant_id must be the leading column in composite
+indexes" requirement from the RLS research notes above is satisfied by
+Phase 1's per-table `idx_<table>_tenant` index (tenant_id alone, trivially
+leading) — sufficient for the RLS predicate itself to use an index.
+Rewriting *other* existing indexes (e.g. `idx_subs_status`,
+`idx_camps_created_at`) to prepend `tenant_id` is a separate performance
+optimization, not required for correctness, and is deferred until query-plan
+profiling in a later phase shows an actual need — there's only one tenant
+with data today, so there's nothing to profile against yet.
 
 ---
 
