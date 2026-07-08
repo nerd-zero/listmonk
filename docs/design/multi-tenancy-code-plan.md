@@ -727,6 +727,44 @@ tenant). Changes are audit-only:
 - `frontend/src/api/generated/`: no changes needed — tenant scoping happens
   server-side; the client never sends or needs a tenant ID explicitly.
 
+### Audit performed (2026-07-08): both concerns confirmed already satisfied, no code changes needed
+
+Both checklist items verified true by inspection rather than assumed:
+
+- **Stale Pinia state across a login/logout boundary**: `frontend/src/App.vue`'s
+  `doLogout()` calls the logout API then does `document.location.href =
+  uris.root` — a **hard browser navigation**, not a client-side router
+  transition. This unconditionally destroys the entire JS execution
+  context (all in-memory Pinia state included), regardless of tenant.
+  Confirmed no Pinia persistence plugin or direct `localStorage`/
+  `sessionStorage` usage anywhere in `frontend/src/store/index.js` or
+  `frontend/src/main.ts` (grepped, none found) that could survive the
+  reload. Symmetrically, login itself is server-rendered
+  (`cmd/auth.go`'s `LoginPage`, a Go template, not a Vue route) and
+  completes via an HTTP redirect into the SPA - so the SPA's Pinia store
+  only ever initializes fresh after a full page load following a
+  successful login. There is no code path where one session's in-memory
+  state could survive into a different session, tenant or not.
+- **Tenant ID never needed client-side**: grepped
+  `frontend/src/api/generated/`, `frontend/src/store/index.js`, and
+  `frontend/src/main.ts` for "tenant" - zero matches anywhere. Confirms
+  tenant scoping is entirely transparent to the frontend, exactly as the
+  design intended (resolved server-side from the subdomain, never sent
+  or read by client code).
+
+Additionally, under the subdomain-per-tenant model, two different
+tenants' admin UIs are two different browser origins by construction
+(`tenant-a.example.com` vs `tenant-b.example.com`) - browser storage
+(including any hypothetical future Pinia persistence) is
+origin-partitioned, so cross-*tenant* state leakage isn't reachable even
+in principle without an explicit, deliberate change to how the frontend
+stores data. The scenario the original checklist item was written to
+guard against (stale state surviving a user switch) turns out to already
+be prevented by the existing hard-navigation logout, independent of
+multi-tenancy.
+
+No code changes required. Phase 7 is complete.
+
 ---
 
 ## Phase 8 — public-facing route audit

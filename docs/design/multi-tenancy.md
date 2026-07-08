@@ -21,8 +21,10 @@ audit surfaced and fixed 3 severe bugs that completely blocked
 onboarding any tenant past the first (a hardcoded role-ID bug, a
 global-instead-of-per-tenant first-time-setup gate, and two pre-existing
 single-tenant `UNIQUE` indexes on `roles`/`templates` — migration
-`v6.8.0`; see Decisions log); phases 7 and 9 not started**. This document
-captures research and a phased
+`v6.8.0`; see Decisions log); phase 7 (frontend audit) done — both
+checklist items confirmed already satisfied by the existing
+hard-navigation login/logout flow, no code changes needed; phase 9 not
+started**. This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -664,6 +666,26 @@ UI-level "operator" role.
   were confirmed still working normally afterward. All test artifacts
   (throwaway DB roles, temp tenant row, temporary `config.toml`
   overrides) cleaned up and reverted to baseline.
+
+- **Phase 7 — frontend audit implemented (2026-07-08): both checklist
+  items confirmed already satisfied, no code changes needed.** Verified
+  by inspection rather than assumed: `frontend/src/App.vue`'s
+  `doLogout()` does a hard `document.location.href` navigation (not a
+  client-side route change), unconditionally destroying all in-memory
+  Pinia state; confirmed no persistence plugin or `localStorage`/
+  `sessionStorage` usage anywhere in the store that could survive it.
+  Login is symmetric — server-rendered (`cmd/auth.go`'s `LoginPage`, a Go
+  template) and completes via an HTTP redirect into a freshly-initialized
+  SPA, so no prior session's state can carry over. Grepped the entire
+  frontend for "tenant" — zero matches — confirming tenant scoping is
+  fully server-side and transparent to the client, as designed.
+  Additionally, under the subdomain-per-tenant model, two tenants' UIs
+  are different browser origins by construction, so browser storage is
+  origin-partitioned regardless — cross-*tenant* leakage isn't reachable
+  even in principle without a deliberate architecture change. The
+  original checklist concern (stale state surviving a user switch) was
+  actually about same-tenant user hygiene, and that's already handled by
+  the existing hard-navigation logout.
 
 ## Open questions
 
