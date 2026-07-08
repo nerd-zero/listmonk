@@ -118,7 +118,7 @@ SELECT id from sub;
 WITH sub AS (
     INSERT INTO subscribers as s (uuid, email, name, attribs, status, tenant_id)
     VALUES($1, $2, $3, $4, 'enabled', $9)
-    ON CONFLICT (email)
+    ON CONFLICT (tenant_id, email)
     DO UPDATE SET
         name=(CASE WHEN $7 THEN $3 ELSE s.name END),
         attribs=(CASE WHEN $7 THEN $4 ELSE s.attribs END),
@@ -143,7 +143,7 @@ SELECT uuid, id from sub;
 WITH sub AS (
     INSERT INTO subscribers (uuid, email, name, attribs, status, tenant_id)
     VALUES($1, $2, $3, $4, 'blocklisted', $5)
-    ON CONFLICT (email) DO UPDATE SET status='blocklisted', updated_at=NOW()
+    ON CONFLICT (tenant_id, email) DO UPDATE SET status='blocklisted', updated_at=NOW()
     RETURNING id
 )
 UPDATE subscriber_lists SET status='unsubscribed', updated_at=NOW()
