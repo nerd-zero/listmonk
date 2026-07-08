@@ -19,9 +19,17 @@ INSERT INTO tenants (slug, name, status) VALUES ($1, $2, 'active') RETURNING *;
 -- SQL NULL) until this ran. Copies tenant 1's current settings as the
 -- new tenant's starting defaults - requires the BYPASSRLS operator
 -- connection since it reads across tenants.
+--
+-- app.root_url is deliberately excluded: it's tenant-1-specific, not a
+-- sensible default for anyone else, and operator-set-tenant-root-url
+-- sets the new tenant's own correct value right after this runs.
 INSERT INTO settings (tenant_id, key, value)
-SELECT $1, key, value FROM settings WHERE tenant_id = 1
+SELECT $1, key, value FROM settings WHERE tenant_id = 1 AND key != 'app.root_url'
 ON CONFLICT (tenant_id, key) DO NOTHING;
+
+-- name: operator-set-tenant-root-url
+INSERT INTO settings (tenant_id, key, value) VALUES ($1, 'app.root_url', to_jsonb($2::TEXT))
+ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 -- name: operator-get-tenant
 SELECT t.*,

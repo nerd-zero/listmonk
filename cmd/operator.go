@@ -34,6 +34,7 @@ var reTenantSlug = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 type operatorQueries struct {
 	CreateTenant       *sqlx.Stmt `query:"operator-create-tenant"`
 	SeedTenantSettings *sqlx.Stmt `query:"operator-seed-tenant-settings"`
+	SetTenantRootURL   *sqlx.Stmt `query:"operator-set-tenant-root-url"`
 	GetTenant          *sqlx.Stmt `query:"operator-get-tenant"`
 	GetTenants         *sqlx.Stmt `query:"operator-get-tenants"`
 	UpdateTenantStatus *sqlx.Stmt `query:"operator-update-tenant-status"`
@@ -175,7 +176,7 @@ func (s *operatorStore) UpdateTenantStatus(id int, status string) (models.Tenant
 // placeholder: returned directly in the API response - see the design
 // doc's Operator API section for why e-mailing it isn't possible yet,
 // a brand new tenant has no SMTP config of its own).
-func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsername, adminEmail string) (models.Tenant, string, error) {
+func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsername, adminEmail, rootURL string) (models.Tenant, string, error) {
 	var t models.Tenant
 	if err := s.q.CreateTenant.Get(&t, slug, name); err != nil {
 		return t, "", err
@@ -183,6 +184,12 @@ func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsern
 
 	if _, err := s.q.SeedTenantSettings.Exec(t.ID); err != nil {
 		return t, "", err
+	}
+
+	if rootURL != "" {
+		if _, err := s.q.SetTenantRootURL.Exec(t.ID, rootURL); err != nil {
+			return t, "", err
+		}
 	}
 
 	r := auth.Role{
@@ -353,7 +360,7 @@ func (a *App) CreateOperatorTenant(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid admin_email")
 	}
 
-	tenant, token, err := a.operator.CreateTenant(c.Request().Context(), req.Slug, req.Name, req.AdminUsername, req.AdminEmail)
+	tenant, token, err := a.operator.CreateTenant(c.Request().Context(), req.Slug, req.Name, req.AdminUsername, req.AdminEmail, a.tenantRootURL(req.Slug))
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Constraint == "tenants_slug_key" {
 			return echo.NewHTTPError(http.StatusConflict, "a tenant with this slug already exists")
@@ -369,6 +376,24 @@ func (a *App) CreateOperatorTenant(c echo.Context) error {
 // shared by CreateOperatorTenant and CreateOperatorSetupLink. Empty if
 // app.root_domain isn't configured or app.root_url has no scheme.
 func (a *App) operatorSetupURL(tenantSlug, token string) string {
+	root := a.tenantRootURL(tenantSlug)
+	if root == "" {
+		return ""
+	}
+	return root + "/admin/operator-setup?token=" + token
+}
+
+// tenantRootURL computes a new tenant's own root URL from its slug and
+// app.root_domain - used both for the operator setup link and to seed
+// the new tenant's own app.root_url setting (CreateTenant must NOT
+// blindly copy tenant 1's app.root_url the way it does every other
+// setting: found live when a copied-verbatim tenant-1 URL showed up in
+// another tenant's Settings page, and would have silently broken that
+// tenant's OIDC redirect_uri too, since internal/auth reads
+// settings.AppRootURL directly rather than deriving it from the
+// request like cmd/public.go's tplRenderer does). Returns "" if
+// app.root_domain isn't configured or app.root_url has no scheme.
+func (a *App) tenantRootURL(tenantSlug string) string {
 	if a.cfg.RootDomain == "" {
 		return ""
 	}
@@ -376,7 +401,7 @@ func (a *App) operatorSetupURL(tenantSlug, token string) string {
 	if err != nil || u.Scheme == "" {
 		return ""
 	}
-	return u.Scheme + "://" + tenantSlug + "." + a.cfg.RootDomain + "/admin/operator-setup?token=" + token
+	return u.Scheme + "://" + tenantSlug + "." + a.cfg.RootDomain
 }
 
 // CreateOperatorSetupLink issues a fresh one-time setup link for an
