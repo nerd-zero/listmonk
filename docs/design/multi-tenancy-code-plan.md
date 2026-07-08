@@ -569,6 +569,71 @@ afterward to restore the dev DB baseline.
 OIDC per-tenant config resolution, and Phase 6's scan-side tenant
 awareness (now unblocked, see above).
 
+### Slice 2 — media/S3 per-tenant store resolution: implemented
+
+Same shape as slice 1, one subsystem later. `upload.*` settings
+(provider, filesystem paths, S3 credentials/bucket/etc.) are already
+per-tenant (phase 5), so this is another "settings are per-tenant, the
+*consumer* isn't yet" gap.
+
+**What shipped:**
+- `cmd/init.go`'s `initMediaStore(ko *koanf.Koanf) media.Store` refactored
+  to **return `(media.Store, error)` instead of calling `lo.Fatalf`** —
+  identical reasoning to `initSMTPMessengers`'s slice-1 change: boot still
+  fails fast (`cmd/main.go` calls `lo.Fatalf` on the returned error
+  itself), but the lazy per-tenant path must not crash the whole process
+  over one tenant's malformed upload config.
+- New `cmd/tenant_media.go`: `tenantMedia`, a `*core.Core`-backed,
+  mutex-protected, lazily-populated `map[int]tenantMediaStore` cache
+  (never invalidated within a process lifetime — same staleness contract
+  as `tenantMessengers` and the same underlying reason: settings updates
+  require a full restart today). `Get(ctx, tenantID) (media.Store,
+  models.Settings, error)` returns **both** the resolved store and the
+  settings it was built from (not just the store) — `cmd/media.go`'s
+  handlers need `UploadProvider` (the `media.provider` DB column) and
+  `UploadExtensions` (upload validation) alongside the store itself, and
+  returning the already-fetched `models.Settings` avoids a second
+  `Core.GetSettings` round-trip for those two fields. Reuses the same
+  `json.Marshal`/`Unmarshal`-into-fresh-`koanf` technique as
+  `tenantMessengers`, then calls `initMediaStore(tenantKo)` — no
+  S3/filesystem-specific parsing logic duplicated.
+- Unlike SMTP's messenger resolver, **no fallback map is needed**: every
+  media consumer (`cmd/media.go`'s HTTP handlers, `cmd/manager_store.go`'s
+  campaign-attachment methods) already has a `tenantID` in scope, so
+  there's no "postback"-shaped exemption to preserve. `App.media`'s type
+  changed from `media.Store` to `*tenantMedia` outright; every call site
+  in `cmd/media.go` now resolves via `a.media.Get(ctx, tenantID(c))`
+  first, then uses the returned store/settings.
+- `cmd/manager_store.go`'s `store.media` field changed from `media.Store`
+  to `*tenantMedia`; `GetAttachment`/`GetInlineAttachmentByFilename`
+  (already `ctx`/`tenantID`-scoped from the issue #40 sweep) now resolve
+  the tenant's store via `s.media.Get(ctx, tenantID)` before using it —
+  these are on the real campaign-send path (`internal/manager`'s
+  `attachMedia`/`applyInlineImages`), not just the upload API.
+- `initCampaignManager`'s `md media.Store` param became `md *tenantMedia`;
+  `newManagerStore` likewise. `cmd/main.go`'s boot sequence now builds
+  `mediaResolver := newTenantMedia(core)` (after `core`, since the
+  resolver holds a reference to it) and threads it into both
+  `initCampaignManager` and `App{media: mediaResolver}`.
+- `cmd/admin.go`'s `GetServerConfig` (the frontend's config-bootstrap
+  endpoint) had the same latent bug as `a.cfg.MediaUpload.Provider`
+  everywhere else — it reported the *global* boot-time provider, not the
+  requesting tenant's actual one. Fixed to resolve via `a.media.Get(ctx,
+  tenantID(c))` with the global config as a fallback only if resolution
+  errors.
+
+**Verified live, not just built/tested**: uploaded a real file through
+`POST /api/media` and confirmed `GET /api/config` reports the correct
+per-tenant `media_provider`; then created a campaign with that media
+attached and ran it to completion, confirming `attachMedia`'s
+`GetAttachment` call resolved through `cmd/manager_store.go`'s new
+`*tenantMedia`-based path with no "unknown"/resolution errors before the
+expected fake-SMTP-host send failure. All test data cleaned up
+afterward. `go build`, `go vet`, `go test ./... -race` all clean.
+
+**Remaining in #41:** OIDC per-tenant config resolution. Phase 6's
+scan-side tenant awareness already shipped separately (see Phase 6 below).
+
 ---
 
 ## Phase 7 — frontend

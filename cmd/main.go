@@ -29,7 +29,6 @@ import (
 	"github.com/knadh/listmonk/internal/events"
 	"github.com/knadh/listmonk/internal/i18n"
 	"github.com/knadh/listmonk/internal/manager"
-	"github.com/knadh/listmonk/internal/media"
 	"github.com/knadh/listmonk/internal/messenger/email"
 	"github.com/knadh/listmonk/internal/subimporter"
 	"github.com/knadh/listmonk/models"
@@ -50,7 +49,7 @@ type App struct {
 	emailMsgr  manager.Messenger
 	importer   *subimporter.Importer
 	auth       *auth.Auth
-	media      media.Store
+	media      *tenantMedia
 	bounce     *bounce.Manager
 	captcha    *captcha.Captcha
 	i18n       *i18n.I18n
@@ -197,12 +196,21 @@ func init() {
 }
 
 func main() {
-	// Initialize SMTP messengers. Declared ahead of the var () block below
-	// since it needs error handling, which can't live inside a var () list.
+	// Initialize SMTP messengers and the media store. Declared ahead of the
+	// var () block below since they need error handling, which can't live
+	// inside a var () list.
 	smtpMsgrs, err := initSMTPMessengers(ko)
 	if err != nil {
 		lo.Fatalf("error initializing SMTP messengers: %v", err)
 	}
+	// Fail fast on bad upload config before serving traffic. The resulting
+	// store isn't retained here - per-tenant resolution (including tenant
+	// 1's) happens lazily via tenantMedia, same as SMTP's per-tenant
+	// resolver.
+	if _, err := initMediaStore(ko); err != nil {
+		lo.Fatalf("error initializing media store: %v", err)
+	}
+	lo.Printf("media upload provider: %s", ko.String("upload.provider"))
 
 	var (
 		// Initialize static global config.
@@ -214,19 +222,20 @@ func main() {
 		// Initialize i18n language map.
 		i18n = initI18n(ko.MustString("app.lang"), fs)
 
-		// Initialize the media store.
-		media = initMediaStore(ko)
-
 		fbOptinNotify = makeOptinNotifyHook(ko.Bool("privacy.unsubscribe_header"), urlCfg, queries, i18n)
 
 		// Crud core.
 		core = initCore(fbOptinNotify, queries, db, i18n, ko)
 
+		// Lazily resolves and caches each tenant's media.Store from their
+		// own settings (upload.* is per-tenant since phase 5).
+		mediaResolver = newTenantMedia(core)
+
 		// Initialize all messengers, SMTP and postback.
 		msgrs = append(smtpMsgrs, initPostbackMessengers(ko)...)
 
 		// Campaign manager.
-		mgr = initCampaignManager(msgrs, queries, urlCfg, core, media, i18n, ko)
+		mgr = initCampaignManager(msgrs, queries, urlCfg, core, mediaResolver, i18n, ko)
 
 		// Bulk importer.
 		importer = initImporter(queries, db, core, i18n, ko)
@@ -288,7 +297,7 @@ func main() {
 		emailMsgr:  emailMsgr,
 		importer:   importer,
 		auth:       auth,
-		media:      media,
+		media:      mediaResolver,
 		bounce:     bounce,
 		captcha:    initCaptcha(),
 		i18n:       i18n,

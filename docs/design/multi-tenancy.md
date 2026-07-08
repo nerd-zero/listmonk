@@ -14,8 +14,9 @@ views now carry a `tenant_id` dimension (migration `v6.7.0`) after a live
 cross-tenant read leak was found in the global fallback row they used to
 share — see Decisions log for both); phase 5 partially implemented
 (settings DB/Core layer shipped, subsystem redesign — SMTP/media/OIDC/manager
-— split into its own follow-up issue #41, in progress — SMTP messenger
-resolution slice done); phases 7-9 not started**. This document captures research and a phased
+— split into its own follow-up issue #41, in progress — SMTP and media/S3
+store resolution slices done, only OIDC per-tenant config resolution
+remains); phases 7-9 not started**. This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -530,6 +531,30 @@ UI-level "operator" role.
   one correctly-scoped row per tenant, then hit `/api/dashboard/counts`,
   `/api/dashboard/charts`, and `/api/subscribers` over HTTP and confirmed
   correct tenant-1-only numbers.
+
+- **Issue #41 slice 2 — media/S3 per-tenant store resolution implemented
+  (2026-07-08):** same shape as #41 slice 1 (SMTP): `upload.*` settings
+  were already per-tenant (Phase 5), but the `media.Store` consumer was
+  still a single process-lifetime singleton built once at boot. New
+  `cmd/tenant_media.go`'s `tenantMedia` lazily builds and caches a
+  `media.Store` per tenant from that tenant's own settings, reusing
+  `initMediaStore` (refactored to return an error instead of calling
+  `lo.Fatalf`, mirroring `initSMTPMessengers`'s Phase-41-slice-1 change,
+  so a lazy per-tenant failure doesn't crash the whole process). Unlike
+  the SMTP resolver, **no fallback map was needed** — every media
+  consumer (`cmd/media.go`'s HTTP handlers, `cmd/manager_store.go`'s
+  campaign-attachment methods on the real send path) already has a
+  `tenantID` in scope, so `App.media`'s type changed outright from
+  `media.Store` to `*tenantMedia`. Also fixed `cmd/admin.go`'s
+  `GetServerConfig` (the frontend's config-bootstrap endpoint), which had
+  the same latent bug as everywhere else pre-fix: it reported the global
+  boot-time upload provider rather than the requesting tenant's actual
+  one. Verified live: uploaded a file, confirmed `/api/config` reports
+  the correct per-tenant provider, then ran a real campaign with that
+  media attached to completion, confirming the campaign-send path's
+  `GetAttachment` resolved correctly through the new per-tenant store
+  before the expected fake-SMTP-host failure. Remaining in #41: only
+  OIDC per-tenant config resolution.
 
 ## Open questions
 

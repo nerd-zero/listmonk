@@ -35,6 +35,15 @@ var (
 //	@Failure		500		{object}	echo.HTTPError
 //	@Router			/api/media [post]
 func (a *App) UploadMedia(c echo.Context) error {
+	ctx := c.Request().Context()
+	tID := tenantID(c)
+
+	ms, settings, err := a.media.Get(ctx, tID)
+	if err != nil {
+		a.log.Printf("error resolving media store: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("globals.messages.internalError"))
+	}
+
 	file, err := c.FormFile("file")
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest,
@@ -56,8 +65,8 @@ func (a *App) UploadMedia(c echo.Context) error {
 	)
 
 	// Validate file extension.
-	if !inArray("*", a.cfg.MediaUpload.Extensions) {
-		if ok := inArray(ext, a.cfg.MediaUpload.Extensions); !ok {
+	if !inArray("*", settings.UploadExtensions) {
+		if ok := inArray(ext, settings.UploadExtensions); !ok {
 			return echo.NewHTTPError(http.StatusBadRequest,
 				a.i18n.Ts("media.unsupportedFileType", "type", ext))
 		}
@@ -67,7 +76,7 @@ func (a *App) UploadMedia(c echo.Context) error {
 	fName := makeFilename(file.Filename)
 
 	// If the filename already exists in the DB, make it unique by adding a random suffix.
-	if _, err := a.core.GetMedia(c.Request().Context(), tenantID(c), 0, "", fName, a.media); err == nil {
+	if _, err := a.core.GetMedia(ctx, tID, 0, "", fName, ms); err == nil {
 		suffix, err := generateRandomString(6)
 		if err != nil {
 			a.log.Printf("error generating random string: %v", err)
@@ -78,7 +87,7 @@ func (a *App) UploadMedia(c echo.Context) error {
 	}
 
 	// Upload the file to the media store.
-	fName, err = a.media.Put(fName, contentType, src)
+	fName, err = ms.Put(fName, contentType, src)
 	if err != nil {
 		a.log.Printf("error uploading file: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError,
@@ -93,10 +102,10 @@ func (a *App) UploadMedia(c echo.Context) error {
 	)
 	defer func() {
 		if cleanUp {
-			a.media.Delete(fName)
+			ms.Delete(fName)
 
 			if thumbfName != "" {
-				a.media.Delete(thumbfName)
+				ms.Delete(thumbfName)
 			}
 		}
 	}()
@@ -118,7 +127,7 @@ func (a *App) UploadMedia(c echo.Context) error {
 		height = he
 
 		// Upload thumbnail.
-		tf, err := a.media.Put(thumbPrefix+fName, contentType, thumbFile)
+		tf, err := ms.Put(thumbPrefix+fName, contentType, thumbFile)
 		if err != nil {
 			cleanUp = true
 			a.log.Printf("error saving thumbnail: %v", err)
@@ -141,7 +150,7 @@ func (a *App) UploadMedia(c echo.Context) error {
 	}
 
 	// Insert the media into the DB.
-	m, err := a.core.InsertMedia(c.Request().Context(), tenantID(c), fName, thumbfName, contentType, meta, a.cfg.MediaUpload.Provider, a.media)
+	m, err := a.core.InsertMedia(ctx, tID, fName, thumbfName, contentType, meta, settings.UploadProvider, ms)
 	if err != nil {
 		cleanUp = true
 		return err
@@ -168,8 +177,18 @@ func (a *App) GetAllMedia(c echo.Context) error {
 
 		pg = a.pg.NewFromURL(c.Request().URL.Query())
 	)
+
+	ctx := c.Request().Context()
+	tID := tenantID(c)
+
+	ms, settings, err := a.media.Get(ctx, tID)
+	if err != nil {
+		a.log.Printf("error resolving media store: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("globals.messages.internalError"))
+	}
+
 	// Fetch the media items from the DB.
-	res, total, err := a.core.QueryMedia(c.Request().Context(), tenantID(c), a.cfg.MediaUpload.Provider, a.media, query, pg.Offset, pg.Limit)
+	res, total, err := a.core.QueryMedia(ctx, tID, settings.UploadProvider, ms, query, pg.Offset, pg.Limit)
 	if err != nil {
 		return err
 	}
@@ -196,9 +215,18 @@ func (a *App) GetAllMedia(c echo.Context) error {
 //	@Failure		404	{object}	echo.HTTPError
 //	@Router			/api/media/{id} [get]
 func (a *App) GetMedia(c echo.Context) error {
+	ctx := c.Request().Context()
+	tID := tenantID(c)
+
+	ms, _, err := a.media.Get(ctx, tID)
+	if err != nil {
+		a.log.Printf("error resolving media store: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("globals.messages.internalError"))
+	}
+
 	// Fetch the media item from the DB.
 	id := getID(c)
-	out, err := a.core.GetMedia(c.Request().Context(), tenantID(c), id, "", "", a.media)
+	out, err := a.core.GetMedia(ctx, tID, id, "", "", ms)
 	if err != nil {
 		return err
 	}
@@ -218,17 +246,25 @@ func (a *App) GetMedia(c echo.Context) error {
 //	@Failure		404	{object}	echo.HTTPError
 //	@Router			/api/media/{id} [delete]
 func (a *App) DeleteMedia(c echo.Context) error {
+	ctx := c.Request().Context()
+	tID := tenantID(c)
+
+	ms, _, err := a.media.Get(ctx, tID)
+	if err != nil {
+		a.log.Printf("error resolving media store: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("globals.messages.internalError"))
+	}
 
 	// Delete the media from the DB. The query returns the filename.
 	id := getID(c)
-	fname, err := a.core.DeleteMedia(c.Request().Context(), tenantID(c), id)
+	fname, err := a.core.DeleteMedia(ctx, tID, id)
 	if err != nil {
 		return err
 	}
 
 	// Delete the files from the media store.
-	a.media.Delete(fname)
-	a.media.Delete(thumbPrefix + fname)
+	ms.Delete(fname)
+	ms.Delete(thumbPrefix + fname)
 
 	return c.JSON(http.StatusOK, okResp{true})
 }
@@ -240,7 +276,13 @@ func (a *App) ServeS3Media(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing media file path")
 	}
 
-	b, err := a.media.GetBlob(key)
+	ms, _, err := a.media.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		a.log.Printf("error resolving media store: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error fetching media")
+	}
+
+	b, err := ms.GetBlob(key)
 	if err != nil {
 		a.log.Printf("error fetching media from s3 %s: %v", key, err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "error fetching media")

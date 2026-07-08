@@ -597,7 +597,7 @@ func initCore(fnNotify func(sub models.Subscriber, listIDs []int) (int, error), 
 }
 
 // initCampaignManager initializes the campaign manager.
-func initCampaignManager(msgrs []manager.Messenger, q *models.Queries, u *UrlConfig, co *core.Core, md media.Store, i *i18n.I18n, ko *koanf.Koanf) *manager.Manager {
+func initCampaignManager(msgrs []manager.Messenger, q *models.Queries, u *UrlConfig, co *core.Core, md *tenantMedia, i *i18n.I18n, ko *koanf.Koanf) *manager.Manager {
 	if ko.Bool("passive") {
 		lo.Println("running in passive mode. won't process campaigns.")
 	}
@@ -780,8 +780,15 @@ func initPostbackMessengers(ko *koanf.Koanf) []manager.Messenger {
 	return out
 }
 
-// initMediaStore initializes Upload manager with a custom backend.
-func initMediaStore(ko *koanf.Koanf) media.Store {
+// initMediaStore initializes Upload manager with a custom backend. Takes ko
+// explicitly (rather than closing over the global ko) so it can be reused
+// for the boot-time global store (from tenant 1's settings, via the global
+// ko) and for per-tenant lazy construction (see cmd/tenant_media.go) -
+// mirrors initSMTPMessengers' reasoning. Returns an error instead of
+// calling lo.Fatalf directly: the boot-time caller still wants
+// fail-fast-on-bad-config behavior, but the lazy per-tenant path must not
+// crash the whole process over one tenant's malformed upload config.
+func initMediaStore(ko *koanf.Koanf) (media.Store, error) {
 	switch provider := ko.String("upload.provider"); provider {
 	case "s3":
 		var o s3.Opt
@@ -790,10 +797,9 @@ func initMediaStore(ko *koanf.Koanf) media.Store {
 
 		up, err := s3.NewS3Store(o)
 		if err != nil {
-			lo.Fatalf("error initializing s3 upload provider %s", err)
+			return nil, fmt.Errorf("error initializing s3 upload provider: %v", err)
 		}
-		lo.Println("media upload provider: s3")
-		return up
+		return up, nil
 
 	case "filesystem":
 		var o filesystem.Opts
@@ -804,15 +810,13 @@ func initMediaStore(ko *koanf.Koanf) media.Store {
 		o.UploadURI = filepath.Clean(o.UploadURI)
 		up, err := filesystem.New(o)
 		if err != nil {
-			lo.Fatalf("error initializing filesystem upload provider %s", err)
+			return nil, fmt.Errorf("error initializing filesystem upload provider: %v", err)
 		}
-		lo.Println("media upload provider: filesystem")
-		return up
+		return up, nil
 
 	default:
-		lo.Fatalf("unknown provider. select filesystem or s3")
+		return nil, fmt.Errorf("unknown upload provider %q, select filesystem or s3", provider)
 	}
-	return nil
 }
 
 // initNotifs initializes the notifier with the system e-mail templates.

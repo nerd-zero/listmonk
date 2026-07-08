@@ -81,7 +81,11 @@ func (a *App) GetServerConfig(c echo.Context) error {
 		out.PublicSubscription.CaptchaKey = null.StringFrom(a.cfg.Security.Captcha.HCaptcha.Key)
 	}
 
-	out.MediaProvider = a.cfg.MediaUpload.Provider
+	if _, settings, err := a.media.Get(c.Request().Context(), tenantID(c)); err == nil {
+		out.MediaProvider = settings.UploadProvider
+	} else {
+		out.MediaProvider = a.cfg.MediaUpload.Provider
+	}
 
 	// Language list.
 	langList, err := getI18nLangList(a.fs)

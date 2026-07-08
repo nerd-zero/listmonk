@@ -6,7 +6,6 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"github.com/knadh/listmonk/internal/core"
 	"github.com/knadh/listmonk/internal/manager"
-	"github.com/knadh/listmonk/internal/media"
 	"github.com/knadh/listmonk/models"
 	"github.com/lib/pq"
 )
@@ -16,7 +15,7 @@ import (
 type store struct {
 	queries *models.Queries
 	core    *core.Core
-	media   media.Store
+	media   *tenantMedia
 }
 
 type runningCamp struct {
@@ -27,7 +26,7 @@ type runningCamp struct {
 	ListID           int    `db:"list_id"`
 }
 
-func newManagerStore(q *models.Queries, c *core.Core, m media.Store) *store {
+func newManagerStore(q *models.Queries, c *core.Core, m *tenantMedia) *store {
 	return &store{
 		queries: q,
 		core:    c,
@@ -101,12 +100,17 @@ func (s *store) UpdateCampaignCounts(campID int, toSend int, sent int, lastSubID
 
 // GetAttachment fetches a media attachment blob.
 func (s *store) GetAttachment(ctx context.Context, tenantID int, mediaID int) (models.Attachment, error) {
-	m, err := s.core.GetMedia(ctx, tenantID, mediaID, "", "", s.media)
+	ms, _, err := s.media.Get(ctx, tenantID)
 	if err != nil {
 		return models.Attachment{}, err
 	}
 
-	b, err := s.media.GetBlob(m.URL)
+	m, err := s.core.GetMedia(ctx, tenantID, mediaID, "", "", ms)
+	if err != nil {
+		return models.Attachment{}, err
+	}
+
+	b, err := ms.GetBlob(m.URL)
 	if err != nil {
 		return models.Attachment{}, err
 	}
@@ -123,12 +127,17 @@ func (s *store) GetAttachment(ctx context.Context, tenantID int, mediaID int) (m
 // uniform across filesystem and S3 providers because both use the same media
 // store interface; the first match for a given filename is returned.
 func (s *store) GetInlineAttachmentByFilename(ctx context.Context, tenantID int, filename string) (models.Attachment, string, error) {
-	m, err := s.core.GetMedia(ctx, tenantID, 0, "", filename, s.media)
+	ms, _, err := s.media.Get(ctx, tenantID)
 	if err != nil {
 		return models.Attachment{}, "", err
 	}
 
-	b, err := s.media.GetBlob(m.URL)
+	m, err := s.core.GetMedia(ctx, tenantID, 0, "", filename, ms)
+	if err != nil {
+		return models.Attachment{}, "", err
+	}
+
+	b, err := ms.GetBlob(m.URL)
 	if err != nil {
 		return models.Attachment{}, "", err
 	}
