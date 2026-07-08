@@ -13,12 +13,26 @@ INSERT INTO users (username, password_login, password, email, name, type, user_r
     ), $4, $5, $6, (SELECT id FROM roles WHERE id = $7 AND type = 'user'), (SELECT id FROM roles WHERE id = $8 AND type = 'list'), $9, $10) RETURNING id;
 
 -- name: update-user
-WITH u AS (
+WITH sa AS (
+    -- The current tenant's own Super Admin role, identified by name/type
+    -- rather than a hardcoded id - role ids come from one sequence shared
+    -- across every tenant, so only tenant 1's Super Admin role happens to
+    -- have id 1. A literal `user_role_id = 1` here used to make this guard
+    -- misfire for every other tenant: since no user in a tenant's own
+    -- (RLS-scoped) `users` ever has user_role_id=1, the "other active
+    -- super admins" count was always 0, and $8 (a real per-tenant role id)
+    -- is never literally 1 either, so every edit that touches role/status
+    -- was rejected outright - found live via the operator-setup flow
+    -- failing with "needSuper" on a tenant that had exactly one, fully
+    -- active admin.
+    SELECT id FROM roles WHERE type = 'user' AND name = 'Super Admin' AND parent_id IS NULL LIMIT 1
+),
+u AS (
     -- Edit is only allowed if there are more than 1 active super users or
     -- if the only superadmin user's status/role isn't being changed.
     SELECT
         CASE
-            WHEN (SELECT COUNT(*) FROM users WHERE id != $1 AND status = 'enabled' AND type = 'user' AND user_role_id = 1) = 0  AND ($8 != 1 OR $10 != 'enabled')
+            WHEN (SELECT COUNT(*) FROM users WHERE id != $1 AND status = 'enabled' AND type = 'user' AND user_role_id = (SELECT id FROM sa)) = 0  AND ($8 != (SELECT id FROM sa) OR $10 != 'enabled')
             THEN FALSE
             ELSE TRUE
         END AS canEdit
@@ -42,8 +56,13 @@ UPDATE users SET
     WHERE id=$1 AND (SELECT canEdit FROM u) = TRUE;
 
 -- name: delete-users
-WITH u AS (
-    SELECT COUNT(*) AS num FROM users WHERE NOT(id = ANY($1)) AND user_role_id=1 AND type='user' AND status='enabled'
+WITH sa AS (
+    -- See update-user's identical comment: the tenant's own Super Admin
+    -- role, not a hardcoded id.
+    SELECT id FROM roles WHERE type = 'user' AND name = 'Super Admin' AND parent_id IS NULL LIMIT 1
+),
+u AS (
+    SELECT COUNT(*) AS num FROM users WHERE NOT(id = ANY($1)) AND user_role_id=(SELECT id FROM sa) AND type='user' AND status='enabled'
 )
 DELETE FROM users WHERE id = ALL($1) AND (SELECT num FROM u) > 0;
 
