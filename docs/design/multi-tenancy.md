@@ -12,11 +12,11 @@ the schema now sets `tenant_id` explicitly (previously relied on
 any tenant but 1), and the three dashboard/subscriber-count materialized
 views now carry a `tenant_id` dimension (migration `v6.7.0`) after a live
 cross-tenant read leak was found in the global fallback row they used to
-share — see Decisions log for both); phase 5 partially implemented
-(settings DB/Core layer shipped, subsystem redesign — SMTP/media/OIDC/manager
-— split into its own follow-up issue #41, in progress — SMTP and media/S3
-store resolution slices done, only OIDC per-tenant config resolution
-remains); phases 7-9 not started**. This document captures research and a phased
+share — see Decisions log for both); phase 5 fully implemented (settings
+DB/Core layer shipped, subsystem redesign — SMTP/media/OIDC/manager —
+split into its own follow-up issue #41, now fully complete: SMTP,
+media/S3, and OIDC per-tenant resolution all shipped); phases 7-9 not
+started**. This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -555,6 +555,43 @@ UI-level "operator" role.
   `GetAttachment` resolved correctly through the new per-tenant store
   before the expected fake-SMTP-host failure. Remaining in #41: only
   OIDC per-tenant config resolution.
+
+- **Issue #41 slice 3 — OIDC per-tenant config resolution implemented,
+  closes #41 (2026-07-08):** structurally different from the SMTP/media
+  slices since `internal/auth` correctly never imports `internal/core` —
+  extended the package's existing `Callbacks` bridge pattern
+  (`GetCookie`/`SetCookie`/`GetUser`) with a new `GetOIDCConfig(tenantID)
+  (OIDCConfig, error)` callback rather than introducing a `cmd/`-side
+  resolver type. `Auth`'s single global `provider`/`verifier`/`oauthCfg`
+  fields became a `map[int]*tenantOIDC` cache (reusing the struct's
+  existing mutex). Unlike SMTP/media, there was no boot-time fail-fast to
+  preserve — OIDC was already lazily initialized on first use even in the
+  original single-tenant code, so no `initX(ko) (X, error)`-style refactor
+  was needed. `RedirectURL` is computed in the callback (`cmd/init.go`)
+  from that tenant's own `AppRootURL`, not a single global one, so the
+  OAuth callback lands back on the correct subdomain per tenant.
+  **A genuine design decision, not just mechanical threading**:
+  `cmd/handlers.go` only registered `/auth/oidc` at boot if the global
+  config had OIDC enabled — under true per-tenant OIDC, one tenant could
+  enable it while the boot-time snapshot (tenant 1's settings) doesn't,
+  or vice versa. Resolved by registering the routes when
+  `app.multi_tenancy_enabled` is true (request-time per-tenant checks
+  take over from there) **or** the existing global flag is true
+  (unchanged behavior for today's default single-tenant deployments).
+  Also fixed the same "global config leaking into a per-tenant response"
+  bug class as slice 2's `GetServerConfig`, this time in
+  `renderLoginPage` (which OIDC button to show) and `createOIDCUser`
+  (which default role IDs to auto-provision with) — both now read the
+  resolved tenant's `GetSettings` instead of `a.cfg.Security.OIDC.*`.
+  **Verified live against a real IdP**, not a stub: enabled OIDC via the
+  Settings API pointed at `https://accounts.google.com` with a fake
+  client ID, confirmed the settings-restart flipped `/auth/oidc` from 404
+  to registered, then confirmed a real `302` redirect to a genuine Google
+  OAuth URL with the correct `client_id` and a `redirect_uri` derived
+  from tenant 1's own root URL — proving `oidc.NewProvider`'s real network
+  discovery succeeded and the whole resolver chain was live, not
+  hypothetical. Restored OIDC to disabled and confirmed the route
+  reverted to 404 afterward. Issue #41 is now fully complete.
 
 ## Open questions
 

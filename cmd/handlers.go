@@ -260,7 +260,14 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 		g.GET(path.Join(uriAdmin, "/reset"), a.ResetPage)
 		g.POST(path.Join(uriAdmin, "/reset"), a.ResetPage)
 
-		if a.cfg.Security.OIDC.Enabled {
+		// When multi-tenancy is enabled, OIDC is per-tenant (settings are
+		// per-tenant since phase 5) - a tenant may enable it even if the
+		// boot-time global config (tenant 1's settings) has it disabled, so
+		// the routes are always registered and OIDCLogin/OIDCFinish check
+		// the resolved tenant's own settings at request time. In
+		// single-tenant mode, the global flag is still the gate, preserving
+		// existing behavior (routes only exist if configured).
+		if a.cfg.MultiTenancyEnabled || a.cfg.Security.OIDC.Enabled {
 			g.POST("/auth/oidc", a.OIDCLogin)
 			g.GET("/auth/oidc", a.OIDCFinish)
 		}

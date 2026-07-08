@@ -634,6 +634,86 @@ afterward. `go build`, `go vet`, `go test ./... -race` all clean.
 **Remaining in #41:** OIDC per-tenant config resolution. Phase 6's
 scan-side tenant awareness already shipped separately (see Phase 6 below).
 
+### Slice 3 — OIDC per-tenant config resolution: implemented, closes #41
+
+Same subsystem-redesign shape as slices 1-2, but structurally different in
+one way: `internal/auth` is a separate package that (correctly) never
+imports `internal/core` — the existing `Callbacks` struct
+(`GetCookie`/`SetCookie`/`GetUser`) already bridges DB access across that
+boundary for session/user lookups, so this slice extends that same
+pattern rather than reaching for a `cmd/`-side resolver type like
+`tenantMessengers`/`tenantMedia`.
+
+**What shipped:**
+- `internal/auth.Callbacks` gained `GetOIDCConfig func(tenantID int)
+  (OIDCConfig, error)`. `auth.Config`'s `OIDC OIDCConfig` field was
+  removed entirely — every previous read of `o.cfg.OIDC.*` inside
+  `internal/auth` only ever happened inside `initOIDC`, and that entire
+  path is now driven by the callback instead, so keeping a stale
+  boot-time `OIDC` field on `Config` would just be dead weight (unlike
+  `MediaUpload.Extensions` in slice 2, which stayed as a legitimate UI
+  fallback).
+- `Auth`'s single `provider`/`verifier`/`oauthCfg` fields replaced with a
+  `map[int]*tenantOIDC` cache (mutex-protected, reusing the struct's
+  existing embedded `sync.RWMutex` — the same lock already guards
+  `apiUsers`, no need for a second one). `initOIDC(tenantID)` now calls
+  `o.cb.GetOIDCConfig(tenantID)`, and network-discovers+caches that
+  tenant's `oidc.Provider`/`verifier`/`oauth2.Config` exactly once.
+  **Unlike SMTP/media, there was no existing boot-time fail-fast to
+  preserve** — `auth.New()` never called `initOIDC()` eagerly even in the
+  original single-tenant code; it only initialized lazily on first
+  `GetOIDCAuthURL`/`ExchangeOIDCToken` call. This simplified the slice:
+  no `initX(ko) (X, error)` refactor was needed the way `initSMTPMessengers`/
+  `initMediaStore` needed one.
+- `GetOIDCAuthURL`/`ExchangeOIDCToken` both gained a leading `tenantID`
+  param; their two callers in `cmd/auth.go` (`OIDCLogin`/`OIDCFinish`)
+  pass `tenantID(c)`, same helper used everywhere else.
+- `cmd/init.go`'s `initAuth` builds `GetOIDCConfig` as a closure over
+  `co *core.Core`: fetches `co.GetSettings(ctx, tenantID)` and maps
+  `settings.OIDC.*` (already a per-tenant sub-struct since phase 5, same
+  dotted-key shape as SMTP/upload settings) into `auth.OIDCConfig`.
+  **`RedirectURL` is computed here, not inside `internal/auth`**: it's
+  `settings.AppRootURL + "/auth/oidc"`, using that *tenant's own* root
+  URL rather than a single global one — `internal/auth` has no notion of
+  tenant settings beyond what this callback returns, by design (matches
+  how `GetUser`'s callback fully owns the DB lookup).
+- **`cmd/handlers.go`'s route registration for `/auth/oidc` was a genuine
+  design decision, not just a signature change**: the original code only
+  registers the route at all if the boot-time global config has OIDC
+  enabled. Under true per-tenant OIDC, one tenant could enable OIDC while
+  the boot-time snapshot (tenant 1's settings) has it disabled, and vice
+  versa - registering routes based on a single tenant's flag doesn't fit.
+  Resolved by registering the routes whenever `app.multi_tenancy_enabled`
+  is true (letting `OIDCLogin`/`OIDCFinish` check each request's actual
+  resolved tenant at request time and fail cleanly if that tenant hasn't
+  enabled it) **or** the existing global flag is true (byte-identical
+  behavior for today's default single-tenant deployments — routes stay
+  absent unless configured, exactly as before).
+- `cmd/auth.go`'s `renderLoginPage` (which decides whether to show the
+  "Login with OIDC" button/logo) and `createOIDCUser` (auto-provisioning,
+  which needs `DefaultUserRoleID`/`DefaultListRoleID`) both switched from
+  reading `a.cfg.Security.OIDC.*` (global) to fetching
+  `a.core.GetSettings(ctx, tenantID(c))` and reading `settings.OIDC.*`
+  instead - the same class of fix as slice 2's `GetServerConfig` bug
+  (global config leaking into a per-tenant-facing response).
+
+**Verified live end-to-end against a real IdP, not a stub**: enabled OIDC
+via the Settings API pointed at `https://accounts.google.com` (a real,
+publicly reachable OIDC provider) with a fake client ID/secret, confirmed
+the settings-update restart picked up the change (`/auth/oidc` flipped
+from 404 to registered), then hit `POST /auth/oidc` with a valid nonce
+cookie and confirmed the `302 Location` header was a genuine Google OAuth
+URL with the correct `client_id`, a `redirect_uri` correctly derived from
+tenant 1's own `AppRootURL`, and the expected `state`/`nonce` - proving
+`oidc.NewProvider`'s real network discovery against Google's endpoint
+succeeded and every value came from the per-tenant resolver, not a
+hardcoded fallback. Restored OIDC to disabled afterward and confirmed
+`/auth/oidc` returned to 404, matching the pre-test baseline. `go build`,
+`go vet`, `go test ./... -race` all clean.
+
+Issue #41 (per-tenant SMTP/media/OIDC) is now fully complete. Manager/
+scan-side tenant awareness already shipped as Phase 6.
+
 ---
 
 ## Phase 7 — frontend

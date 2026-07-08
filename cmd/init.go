@@ -1149,22 +1149,6 @@ func initTplFuncs(i *i18n.I18n, u *UrlConfig) template.FuncMap {
 
 // initAuth initializes the auth module with the given DB connection and
 func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
-	var oidcCfg auth.OIDCConfig
-
-	// If OIDC is enabled, set up the OIDC config.
-	if ko.Bool("security.oidc.enabled") {
-		oidcCfg = auth.OIDCConfig{
-			Enabled:           true,
-			ProviderURL:       ko.String("security.oidc.provider_url"),
-			ClientID:          ko.String("security.oidc.client_id"),
-			ClientSecret:      ko.String("security.oidc.client_secret"),
-			AutoCreateUsers:   ko.Bool("security.oidc.auto_create_users"),
-			DefaultUserRoleID: ko.Int("security.oidc.default_user_role_id"),
-			DefaultListRoleID: ko.Int("security.oidc.default_list_role_id"),
-			RedirectURL:       fmt.Sprintf("%s/auth/oidc", strings.TrimRight(ko.String("app.root_url"), "/")),
-		}
-	}
-
 	// Setup the sessio manager callbacks for getting and setting cookies.
 	cb := &auth.Callbacks{
 		GetCookie: func(name string, r any) (*http.Cookie, error) {
@@ -1181,10 +1165,34 @@ func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
 		GetUser: func(id int) (auth.User, error) {
 			return co.GetUserUnscoped(id)
 		},
+
+		// GetOIDCConfig resolves the given tenant's own OIDC settings
+		// (per-tenant since phase 5) rather than a single global config -
+		// see internal/auth.Auth's per-tenant provider/verifier cache.
+		// RedirectURL is computed here (not in internal/auth, which has no
+		// notion of tenant settings) from that tenant's own root URL, so
+		// the OAuth callback lands back on the correct tenant subdomain.
+		GetOIDCConfig: func(tenantID int) (auth.OIDCConfig, error) {
+			settings, err := co.GetSettings(context.Background(), tenantID)
+			if err != nil {
+				return auth.OIDCConfig{}, err
+			}
+
+			return auth.OIDCConfig{
+				Enabled:           settings.OIDC.Enabled,
+				ProviderURL:       settings.OIDC.ProviderURL,
+				ClientID:          settings.OIDC.ClientID,
+				ClientSecret:      settings.OIDC.ClientSecret,
+				AutoCreateUsers:   settings.OIDC.AutoCreateUsers,
+				DefaultUserRoleID: int(settings.OIDC.DefaultUserRoleID.Int),
+				DefaultListRoleID: int(settings.OIDC.DefaultListRoleID.Int),
+				RedirectURL:       fmt.Sprintf("%s/auth/oidc", strings.TrimRight(settings.AppRootURL, "/")),
+			}, nil
+		},
 	}
 
 	// Initiaize the auth module.
-	a, err := auth.New(auth.Config{OIDC: oidcCfg}, db, cb, lo)
+	a, err := auth.New(auth.Config{}, db, cb, lo)
 	if err != nil {
 		lo.Fatalf("error initializing auth: %v", err)
 	}

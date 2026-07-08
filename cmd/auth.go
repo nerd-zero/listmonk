@@ -204,7 +204,7 @@ func (a *App) OIDCLogin(c echo.Context) error {
 	}
 
 	// Redirect to the external OIDC provider.
-	return c.Redirect(http.StatusFound, a.auth.GetOIDCAuthURL(base64.URLEncoding.EncodeToString(b), nonce.Value))
+	return c.Redirect(http.StatusFound, a.auth.GetOIDCAuthURL(tenantID(c), base64.URLEncoding.EncodeToString(b), nonce.Value))
 }
 
 // OIDCFinish receives the redirect callback from the OIDC provider and completes the handshake.
@@ -216,7 +216,7 @@ func (a *App) OIDCFinish(c echo.Context) error {
 	}
 
 	// Validate the OIDC token.
-	oidcToken, claims, err := a.auth.ExchangeOIDCToken(c.Request().URL.Query().Get("code"), nonce.Value)
+	oidcToken, claims, err := a.auth.ExchangeOIDCToken(tenantID(c), c.Request().URL.Query().Get("code"), nonce.Value)
 	if err != nil {
 		return a.renderLoginPage(c, err)
 	}
@@ -252,8 +252,9 @@ func (a *App) OIDCFinish(c echo.Context) error {
 	user, userErr := a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if userErr != nil {
 		// If the user doesn't exist, and auto-creation is enabled, create a new user.
-		if httpErr, ok := userErr.(*echo.HTTPError); ok && httpErr.Code == http.StatusNotFound && a.cfg.Security.OIDC.AutoCreateUsers {
-			u, err := a.createOIDCUser(claims, c)
+		settings, settingsErr := a.core.GetSettings(c.Request().Context(), tenantID(c))
+		if httpErr, ok := userErr.(*echo.HTTPError); ok && httpErr.Code == http.StatusNotFound && settingsErr == nil && settings.OIDC.AutoCreateUsers {
+			u, err := a.createOIDCUser(claims, settings, c)
 			if err != nil {
 				return a.renderLoginPage(c, err)
 			}
@@ -334,12 +335,14 @@ func (a *App) renderLoginPage(c echo.Context, loginErr error) error {
 		oidcProviderName = ""
 		oidcLogo         = ""
 	)
-	if a.cfg.Security.OIDC.Enabled {
+
+	settings, settingsErr := a.core.GetSettings(c.Request().Context(), tenantID(c))
+	if settingsErr == nil && settings.OIDC.Enabled {
 		// Defaults.
-		oidcProviderName = a.cfg.Security.OIDC.ProviderName
+		oidcProviderName = settings.OIDC.ProviderName
 		oidcLogo = "oidc.png"
 
-		u, err := url.Parse(a.cfg.Security.OIDC.ProviderURL)
+		u, err := url.Parse(settings.OIDC.ProviderURL)
 		if err == nil {
 			h := strings.Split(u.Hostname(), ".")
 
@@ -423,8 +426,9 @@ func (a *App) renderLoginSetupPage(c echo.Context, loginErr error) error {
 	return c.Render(http.StatusOK, "admin-login-setup", out)
 }
 
-// createOIDCUser creates a new user in the DB with the OIDC claims.
-func (a *App) createOIDCUser(claims auth.OIDCclaim, c echo.Context) (auth.User, error) {
+// createOIDCUser creates a new user in the DB with the OIDC claims, using
+// the requesting tenant's own OIDC default-role settings.
+func (a *App) createOIDCUser(claims auth.OIDCclaim, settings models.Settings, c echo.Context) (auth.User, error) {
 	name := claims.Name
 	if name == "" {
 		name = strings.TrimSpace(claims.PreferredUsername)
@@ -434,8 +438,9 @@ func (a *App) createOIDCUser(claims auth.OIDCclaim, c echo.Context) (auth.User, 
 	}
 
 	var listRoleID *int
-	if a.cfg.Security.OIDC.DefaultListRoleID > 0 {
-		listRoleID = &a.cfg.Security.OIDC.DefaultListRoleID
+	if settings.OIDC.DefaultListRoleID.Valid && settings.OIDC.DefaultListRoleID.Int > 0 {
+		id := int(settings.OIDC.DefaultListRoleID.Int)
+		listRoleID = &id
 	}
 
 	user, err := a.core.CreateUser(c.Request().Context(), tenantID(c), auth.User{
@@ -445,7 +450,7 @@ func (a *App) createOIDCUser(claims auth.OIDCclaim, c echo.Context) (auth.User, 
 		Username:      claims.Email,
 		Name:          name,
 		Email:         null.NewString(claims.Email, true),
-		UserRoleID:    a.cfg.Security.OIDC.DefaultUserRoleID,
+		UserRoleID:    int(settings.OIDC.DefaultUserRoleID.Int),
 		ListRoleID:    listRoleID,
 		Status:        auth.UserStatusEnabled,
 	})
