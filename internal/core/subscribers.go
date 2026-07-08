@@ -663,7 +663,7 @@ func (c *Core) getSubscriberCount(ctx context.Context, tenantID int, searchStr, 
 
 		total := 0
 		err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
-			return stmtx(tx, c.q.QuerySubscribersCountAll).Get(&total, pq.Array(listIDs), subStatus)
+			return stmtx(tx, c.q.QuerySubscribersCountAll).Get(&total, pq.Array(listIDs), subStatus, tenantID)
 		})
 		if err != nil {
 			return 0, echo.NewHTTPError(http.StatusInternalServerError,

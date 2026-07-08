@@ -315,9 +315,14 @@ SELECT COUNT(*) AS total FROM subscribers
 
 -- name: query-subscribers-count-all
 -- Cached query for getting the "all" subscriber count without arbitrary conditions.
+-- tenant_id ($3) is essential here, not just defense-in-depth: mat_list_subscriber_stats
+-- (see schema.sql/v6.7.0) has one list_id=0 "all subscribers" row per tenant, and the
+-- CARDINALITY($1)=0 fallback below hits that row on every unfiltered "get all" request -
+-- without the tenant_id filter this would sum every tenant's subscribers together.
 SELECT COALESCE(SUM(subscriber_count), 0) AS total FROM mat_list_subscriber_stats
     WHERE list_id = ANY(CASE WHEN CARDINALITY($1::INT[]) > 0 THEN $1 ELSE '{0}' END)
-    AND ($2 = '' OR status = $2::subscription_status);
+    AND ($2 = '' OR status = $2::subscription_status)
+    AND tenant_id = $3;
 
 -- name: query-subscribers-for-export
 -- raw: true

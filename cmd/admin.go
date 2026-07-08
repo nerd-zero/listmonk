@@ -119,7 +119,7 @@ func (a *App) GetServerConfig(c echo.Context) error {
 //	@Router			/api/dashboard/charts [get]
 func (a *App) GetDashboardCharts(c echo.Context) error {
 	// Get the chart data from the DB.
-	out, err := a.core.GetDashboardCharts()
+	out, err := a.core.GetDashboardCharts(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (a *App) GetDashboardCharts(c echo.Context) error {
 //	@Router			/api/dashboard/counts [get]
 func (a *App) GetDashboardCounts(c echo.Context) error {
 	// Get the chart data from the DB.
-	out, err := a.core.GetDashboardCounts()
+	out, err := a.core.GetDashboardCounts(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}

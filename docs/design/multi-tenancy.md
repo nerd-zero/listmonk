@@ -1,16 +1,18 @@
 # Multi-tenancy: research and implementation plan
 
 Status: **phases 1-3 and 6 implemented; phase 4 partially implemented
-(auth/subdomain resolution shipped, `internal/core` tenantID-threading
-split into its own follow-up issue #40 — now nearly complete:
+(auth/subdomain resolution shipped; `internal/core` tenantID-threading,
+split into its own follow-up issue #40, is now fully complete —
 `subscribers.go`, `subscriptions.go`, `campaigns.go`, `bounces.go`,
-`lists.go`, `media.go`, `roles.go`, `templates.go`, and `users.go` are all
-threaded through `WithTenant`/RLS, including a cross-cutting fix ensuring
-every `INSERT` across the schema sets `tenant_id` explicitly (previously
-relied on `DEFAULT 1`, which a real non-superuser RLS role would have
-rejected for any tenant but 1 — see Decisions log). Only `dashboard.go`
-(matview-backed counts/charts) remains, tracked under the existing
-"Matview refresh cost" open question below); phase 5 partially implemented
+`lists.go`, `media.go`, `roles.go`, `templates.go`, `users.go`, and
+`dashboard.go` are all threaded through `WithTenant`/RLS, including two
+cross-cutting fixes found while closing it out: every `INSERT` across
+the schema now sets `tenant_id` explicitly (previously relied on
+`DEFAULT 1`, which a real non-superuser RLS role would have rejected for
+any tenant but 1), and the three dashboard/subscriber-count materialized
+views now carry a `tenant_id` dimension (migration `v6.7.0`) after a live
+cross-tenant read leak was found in the global fallback row they used to
+share — see Decisions log for both); phase 5 partially implemented
 (settings DB/Core layer shipped, subsystem redesign — SMTP/media/OIDC/manager
 — split into its own follow-up issue #41, in progress — SMTP messenger
 resolution slice done); phases 7-9 not started**. This document captures research and a phased
@@ -488,14 +490,60 @@ UI-level "operator" role.
   existed from Phase 1; this was purely a `queries/*.sql` +
   `internal/core`/`cmd` fix.
 
+- **Matview cross-tenant data leak found and fixed, closing issue #40
+  (2026-07-08):** picking up the one remaining #40 file
+  (`internal/core/dashboard.go`) surfaced that this was more than a
+  threading gap. `mat_dashboard_counts`, `mat_dashboard_charts`, and
+  `mat_list_subscriber_stats` (this doc's own "Matview refresh cost"
+  open question, until now) each computed a **single global row** with
+  no `tenant_id` column at all. Worse than the write-rejection shape of
+  the INSERT gap above: this was a **live cross-tenant read leak**.
+  `queries/subscribers.sql`'s `query-subscribers-count-all` falls back to
+  `mat_list_subscriber_stats`'s `list_id=0` "all subscribers" row
+  whenever a request has no list filter — the common case (Subscribers
+  page load, no search) — so every tenant's unfiltered subscriber total
+  was silently the sum across every tenant's subscribers, not just their
+  own. Same shape for the dashboard's subscriber/list/campaign totals and
+  the click/view charts. Given the severity, asked the user whether to
+  fix now, file an issue, or explain first — user chose **fix now**.
+  Migration `v6.7.0` rewrites all three materialized views to compute
+  one row per tenant (driven by a join/group against the `tenants`
+  table), widens each view's required unique index to lead with
+  `tenant_id` (needed for `REFRESH MATERIALIZED VIEW CONCURRENTLY`,
+  already used by `Core.RefreshMatView`), and adds an explicit
+  `tenant_id` filter to `get-dashboard-charts`/`get-dashboard-counts`/
+  `query-subscribers-count-all`. The refresh mechanism itself is
+  unchanged — one `REFRESH` statement still refreshes every tenant's row
+  at once, matching this doc's own recommended default (keep the global
+  refresh cadence, filter by `tenant_id` at query time) instead of
+  building per-tenant incremental refresh. `dashboard.go`'s two methods
+  now take `ctx`/`tenantID` like the rest of `internal/core`, closing out
+  issue #40 completely.
+  **Found a second instance of the exact same class of bug already fixed
+  once this session**: `GetDashboardCharts`/`GetDashboardCounts` were
+  written accepting `ctx`/`tenantID` and correctly opening a
+  `WithTenant` transaction, but the actual `.Get(&out, ...)` call forgot
+  to pass `tenantID` as the query's new `$1` arg — caught immediately via
+  live `curl` (`sql: expected 1 arguments, got 0`), not by `go build`/`go
+  vet`. Fixed and reverified live. Verified end-to-end against the dev
+  DB: ran the migration, confirmed via `psql` that each matview now has
+  one correctly-scoped row per tenant, then hit `/api/dashboard/counts`,
+  `/api/dashboard/charts`, and `/api/subscribers` over HTTP and confirmed
+  correct tenant-1-only numbers.
+
 ## Open questions
 
-- **Matview refresh cost:** `mat_dashboard_counts`/`mat_dashboard_charts`
-  refresh globally today (`Core.RefreshMatViews`). Recommended default:
-  add a `tenant_id` dimension column to each matview, keep the existing
-  global refresh cadence (filtering by `tenant_id` at query time), and only
-  move to per-tenant incremental refresh if refresh time becomes a measured
-  problem at scale — not worth the added complexity up front.
+- **Matview refresh cost — resolved 2026-07-08:** `mat_dashboard_counts`,
+  `mat_dashboard_charts`, and `mat_list_subscriber_stats` now carry a
+  `tenant_id` dimension (migration `v6.7.0`), one row per tenant, and
+  still refresh globally in one `REFRESH MATERIALIZED VIEW CONCURRENTLY`
+  statement per `Core.RefreshMatViews` — the "recommended default" this
+  entry originally proposed. What escalated this from a performance
+  question to an actual fix: it turned out to be a **live cross-tenant
+  data leak**, not just a future refresh-cost concern — see the Decisions
+  log entry for what was actually leaking and how it was found. Move to
+  per-tenant incremental refresh only if refresh time becomes a measured
+  problem at scale.
 - **Upgrade path for existing single-tenant installs:** the default-tenant
   backfill in step 1 needs to guarantee zero-downtime, reversible migration
   per this repo's [migration conventions](/CLAUDE.md) (idempotent, updates

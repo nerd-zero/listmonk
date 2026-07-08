@@ -1,8 +1,8 @@
 -- name: get-dashboard-charts
-SELECT data FROM mat_dashboard_charts;
+SELECT data FROM mat_dashboard_charts WHERE tenant_id = $1;
 
 -- name: get-dashboard-counts
-SELECT data FROM mat_dashboard_counts;
+SELECT data FROM mat_dashboard_counts WHERE tenant_id = $1;
 
 -- name: get-settings
 SELECT JSON_OBJECT_AGG(key, value) AS settings FROM (SELECT * FROM settings WHERE tenant_id = $1 ORDER BY key) t;

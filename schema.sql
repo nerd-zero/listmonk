@@ -413,80 +413,81 @@ DROP INDEX IF EXISTS idx_sessions; CREATE INDEX idx_sessions ON sessions (id, cr
 -- dashboard stats
 DROP MATERIALIZED VIEW IF EXISTS mat_dashboard_counts;
 CREATE MATERIALIZED VIEW mat_dashboard_counts AS
-    WITH subs AS (
-        SELECT COUNT(*) AS num, status FROM subscribers GROUP BY status
-    )
-    SELECT NOW() AS updated_at,
+    SELECT NOW() AS updated_at, t.id AS tenant_id,
         JSON_BUILD_OBJECT(
             'subscribers', JSON_BUILD_OBJECT(
-                'total', (SELECT SUM(num) FROM subs),
-                'blocklisted', (SELECT num FROM subs WHERE status='blocklisted'),
+                'total', (SELECT COUNT(*) FROM subscribers WHERE tenant_id = t.id),
+                'blocklisted', (SELECT COUNT(*) FROM subscribers WHERE tenant_id = t.id AND status = 'blocklisted'),
                 'orphans', (
-                    SELECT COUNT(id) FROM subscribers
+                    SELECT COUNT(subscribers.id) FROM subscribers
                     LEFT JOIN subscriber_lists ON (subscribers.id = subscriber_lists.subscriber_id)
-                    WHERE subscriber_lists.subscriber_id IS NULL
+                    WHERE subscribers.tenant_id = t.id AND subscriber_lists.subscriber_id IS NULL
                 )
             ),
             'lists', JSON_BUILD_OBJECT(
-                'total', (SELECT COUNT(*) FROM lists),
-                'private', (SELECT COUNT(*) FROM lists WHERE type='private'),
-                'public', (SELECT COUNT(*) FROM lists WHERE type='public'),
-                'optin_single', (SELECT COUNT(*) FROM lists WHERE optin='single'),
-                'optin_double', (SELECT COUNT(*) FROM lists WHERE optin='double')
+                'total', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id),
+                'private', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id AND type='private'),
+                'public', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id AND type='public'),
+                'optin_single', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id AND optin='single'),
+                'optin_double', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id AND optin='double')
             ),
             'campaigns', JSON_BUILD_OBJECT(
-                'total', (SELECT COUNT(*) FROM campaigns),
+                'total', (SELECT COUNT(*) FROM campaigns WHERE tenant_id = t.id),
                 'by_status', (
-                    SELECT JSON_OBJECT_AGG (status, num) FROM
-                    (SELECT status, COUNT(*) AS num FROM campaigns GROUP BY status) r
+                    SELECT COALESCE(JSON_OBJECT_AGG (status, num), '{}'::JSON) FROM
+                    (SELECT status, COUNT(*) AS num FROM campaigns WHERE tenant_id = t.id GROUP BY status) r
                 )
             ),
-            'messages', (SELECT SUM(sent) AS messages FROM campaigns)
-        ) AS data;
-DROP INDEX IF EXISTS mat_dashboard_stats_idx; CREATE UNIQUE INDEX mat_dashboard_stats_idx ON mat_dashboard_counts (updated_at);
+            'messages', (SELECT COALESCE(SUM(sent), 0) FROM campaigns WHERE tenant_id = t.id)
+        ) AS data
+    FROM tenants t;
+DROP INDEX IF EXISTS mat_dashboard_stats_idx; CREATE UNIQUE INDEX mat_dashboard_stats_idx ON mat_dashboard_counts (tenant_id);
 
 
 DROP MATERIALIZED VIEW IF EXISTS mat_dashboard_charts;
 CREATE MATERIALIZED VIEW mat_dashboard_charts AS
-    WITH clicks AS (
-        SELECT JSON_AGG(ROW_TO_JSON(row))
-        FROM (
-            WITH viewDates AS (
-              SELECT created_at::DATE AS to_date,
-                     created_at::DATE - INTERVAL '30 DAY' AS from_date
-                     FROM link_clicks ORDER BY id DESC LIMIT 1
-            )
-            SELECT COUNT(*) AS count, created_at::DATE as date FROM link_clicks
-              WHERE created_at >= (SELECT from_date FROM viewDates)
-                AND created_at < (SELECT to_date FROM viewDates) + INTERVAL '1 day'
-              GROUP by date ORDER BY date
-        ) row
-    ),
-    views AS (
-        SELECT JSON_AGG(ROW_TO_JSON(row))
-        FROM (
-            WITH viewDates AS (
-              SELECT created_at::DATE AS to_date,
-                     created_at::DATE - INTERVAL '30 DAY' AS from_date
-                     FROM campaign_views ORDER BY id DESC LIMIT 1
-            )
-            SELECT COUNT(*) AS count, created_at::DATE as date FROM campaign_views
-              WHERE created_at >= (SELECT from_date FROM viewDates)
-                AND created_at < (SELECT to_date FROM viewDates) + INTERVAL '1 day'
-              GROUP by date ORDER BY date
-        ) row
-    )
-    SELECT NOW() AS updated_at, JSON_BUILD_OBJECT('link_clicks', COALESCE((SELECT * FROM clicks), '[]'),
-                                  'campaign_views', COALESCE((SELECT * FROM views), '[]')
-                                ) AS data;
-DROP INDEX IF EXISTS mat_dashboard_charts_idx; CREATE UNIQUE INDEX mat_dashboard_charts_idx ON mat_dashboard_charts (updated_at);
+    SELECT NOW() AS updated_at, t.id AS tenant_id,
+        JSON_BUILD_OBJECT(
+            'link_clicks', COALESCE((
+                SELECT JSON_AGG(ROW_TO_JSON(row))
+                FROM (
+                    WITH viewDates AS (
+                      SELECT created_at::DATE AS to_date,
+                             created_at::DATE - INTERVAL '30 DAY' AS from_date
+                             FROM link_clicks WHERE tenant_id = t.id ORDER BY id DESC LIMIT 1
+                    )
+                    SELECT COUNT(*) AS count, created_at::DATE as date FROM link_clicks
+                      WHERE tenant_id = t.id
+                        AND created_at >= (SELECT from_date FROM viewDates)
+                        AND created_at < (SELECT to_date FROM viewDates) + INTERVAL '1 day'
+                      GROUP by date ORDER BY date
+                ) row
+            ), '[]'),
+            'campaign_views', COALESCE((
+                SELECT JSON_AGG(ROW_TO_JSON(row))
+                FROM (
+                    WITH viewDates AS (
+                      SELECT created_at::DATE AS to_date,
+                             created_at::DATE - INTERVAL '30 DAY' AS from_date
+                             FROM campaign_views WHERE tenant_id = t.id ORDER BY id DESC LIMIT 1
+                    )
+                    SELECT COUNT(*) AS count, created_at::DATE as date FROM campaign_views
+                      WHERE tenant_id = t.id
+                        AND created_at >= (SELECT from_date FROM viewDates)
+                        AND created_at < (SELECT to_date FROM viewDates) + INTERVAL '1 day'
+                      GROUP by date ORDER BY date
+                ) row
+            ), '[]')
+        ) AS data
+    FROM tenants t;
+DROP INDEX IF EXISTS mat_dashboard_charts_idx; CREATE UNIQUE INDEX mat_dashboard_charts_idx ON mat_dashboard_charts (tenant_id);
 
 -- subscriber counts stats for lists
 DROP MATERIALIZED VIEW IF EXISTS mat_list_subscriber_stats;
 CREATE MATERIALIZED VIEW mat_list_subscriber_stats AS
-    SELECT NOW() AS updated_at, lists.id AS list_id, subscriber_lists.status, COUNT(subscriber_lists.status) AS subscriber_count FROM lists
+    SELECT NOW() AS updated_at, lists.tenant_id AS tenant_id, lists.id AS list_id, subscriber_lists.status, COUNT(subscriber_lists.status) AS subscriber_count FROM lists
     LEFT JOIN subscriber_lists ON (subscriber_lists.list_id = lists.id)
-    GROUP BY lists.id, subscriber_lists.status
+    GROUP BY lists.tenant_id, lists.id, subscriber_lists.status
     UNION ALL
-    SELECT NOW() AS updated_at, 0 AS list_id, NULL AS status, COUNT(id) AS subscriber_count FROM subscribers;
-DROP INDEX IF EXISTS mat_list_subscriber_stats_idx; CREATE UNIQUE INDEX mat_list_subscriber_stats_idx ON mat_list_subscriber_stats (list_id, status);
+    SELECT NOW() AS updated_at, subscribers.tenant_id AS tenant_id, 0 AS list_id, NULL AS status, COUNT(id) AS subscriber_count FROM subscribers GROUP BY subscribers.tenant_id;
+DROP INDEX IF EXISTS mat_list_subscriber_stats_idx; CREATE UNIQUE INDEX mat_list_subscriber_stats_idx ON mat_list_subscriber_stats (tenant_id, list_id, status);

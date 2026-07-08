@@ -783,6 +783,49 @@ views) — tracked under this doc's "Matview refresh cost" open question,
 not a plain threading job like the rest of #40 since it needs a
 `tenant_id` dimension added to the matviews themselves first.
 
+### `dashboard.go` (2026-07-08): implemented, closes issue #40
+
+Turned out to be more than a threading job: `mat_dashboard_counts`,
+`mat_dashboard_charts`, and `mat_list_subscriber_stats` each computed a
+single **global** row with no `tenant_id` column at all. Worse than the
+INSERT-rejection shape of the earlier fix, this was a **live cross-tenant
+read leak** — `query-subscribers-count-all` falls back to
+`mat_list_subscriber_stats`'s `list_id=0` "all subscribers" row whenever
+a request has no list filter (the common Subscribers-page-load case), so
+every tenant's unfiltered subscriber total was silently the sum across
+*every* tenant. Same shape for the dashboard's totals and charts. Asked
+the user how to scope this given the severity; chose to fix immediately.
+
+**Migration `v6.7.0`** rewrites all three materialized views to compute
+one row per tenant, driven by `SELECT ... FROM tenants t` with correlated
+per-tenant subqueries (dashboard views) or `GROUP BY tenant_id`
+(`mat_list_subscriber_stats`). Each view's unique index (required for
+`REFRESH MATERIALIZED VIEW CONCURRENTLY`, which `Core.RefreshMatView`
+already uses) is widened to lead with `tenant_id`. `queries/misc.sql`'s
+`get-dashboard-charts`/`get-dashboard-counts` and
+`queries/subscribers.sql`'s `query-subscribers-count-all` all gained an
+explicit `tenant_id` filter param. `internal/core/dashboard.go`'s two
+methods now take `ctx`/`tenantID` like everything else in `internal/core`
+and route through `WithTenant`. The refresh mechanism is unchanged — one
+`REFRESH` statement still refreshes every tenant's row in one shot,
+matching the "keep the global cadence, filter at query time" default this
+doc's Open Questions section already recommended.
+
+**Found the same class of bug a second time in the same session**:
+`GetDashboardCharts`/`GetDashboardCounts` correctly opened a `WithTenant`
+transaction but the `.Get(&out, ...)` call forgot to actually pass
+`tenantID` as the query's new `$1` arg (identical shape to the
+`CreateRole`/`CreateListRole` bug from the INSERT fix above). `go build`/
+`go vet` stayed clean; caught immediately via live `curl` (`sql: expected
+1 arguments, got 0`) against `/api/dashboard/counts`. Fixed and
+reverified live.
+
+**Verified live end-to-end**: ran the migration against the dev DB,
+confirmed via `psql` that each matview produces exactly one correctly-
+scoped row per tenant, then hit `/api/dashboard/counts`,
+`/api/dashboard/charts`, and `/api/subscribers` over HTTP and confirmed
+tenant-1-only numbers. `go build`, `go vet`, `go test ./... -race` clean.
+
 ---
 
 ## Phase 9 — operator API
