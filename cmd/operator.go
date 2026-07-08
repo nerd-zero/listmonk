@@ -533,5 +533,12 @@ func (a *App) doOperatorSetup(c echo.Context, token string, payload operatorSetu
 		return echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("globals.messages.internalError"))
 	}
 
-	return c.Render(http.StatusOK, tplMessage, makeMsgTpl(a.i18n.T("globals.messages.done"), "", a.i18n.T("public.prefsSaved")))
+	// Log the user in directly and land on the dashboard, rather than a
+	// dead-end "Done" message with no way to continue - same UX as the
+	// analogous forgot-password flow (cmd/auth.go's doResetPassword).
+	if err := a.auth.SaveSession(user, "", c); err != nil {
+		return err
+	}
+
+	return c.Redirect(http.StatusFound, uriAdmin)
 }
