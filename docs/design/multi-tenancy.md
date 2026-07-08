@@ -1,14 +1,12 @@
 # Multi-tenancy: research and implementation plan
 
-Status: **phases 1-3 implemented; phase 4 partially implemented (auth/
-subdomain resolution shipped, `internal/core` tenantID-threading split
-into its own follow-up issue #40, in progress file-by-file — slice 1
+Status: **phases 1-3 and 6 implemented; phase 4 partially implemented
+(auth/subdomain resolution shipped, `internal/core` tenantID-threading
+split into its own follow-up issue #40, in progress file-by-file — slice 1
 (`subscribers.go`) done); phase 5 partially implemented (settings DB/Core
 layer shipped, subsystem redesign — SMTP/media/OIDC/manager — split into
 its own follow-up issue #41, in progress — SMTP messenger resolution
-slice done); phase 6 blocked on #41's remaining slices (scan-side tenant
-awareness not yet meaningful without per-tenant dispatch, which now
-partially exists); phases 7-9 not started**. This document captures research and a phased
+slice done); phases 7-9 not started**. This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -386,9 +384,31 @@ UI-level "operator" role.
   path executes (visible as a second `initSMTPMessengers` log line at
   campaign-start, not just boot) before failing at the expected point — an
   actual SMTP connection attempt to this dev environment's fake mail host.
-  Media/OIDC per-tenant resolution and Phase 6's scan-side changes remain
-  as further #41/Phase 6 work. See `multi-tenancy-code-plan.md`'s
-  "Issue #41" section for full detail.
+  Media/OIDC per-tenant resolution remain as further #41 work.
+
+- **Phase 6 implementation (2026-07-08):** unblocked by #41 slice 1,
+  implemented the same session. `Store.NextCampaigns` gained a leading
+  `tenantID` param and a new `GetActiveTenantIDs` method;
+  `scanCampaigns` iterates active tenants each tick, calling
+  `NextCampaigns` once per tenant with only that tenant's in-flight
+  campaign IDs. Traced through a real correctness risk *before* writing
+  code: `next-campaigns` reuses its "current IDs" parameter to both
+  exclude in-flight campaigns *and* increment their `sent` counts, so
+  naively passing the same global in-flight list to every per-tenant call
+  would double/triple/etc.-count sends — fixed by grouping in-flight
+  campaigns by tenant in Go, not by changing the SQL's counting logic.
+  Separately, **caught a real bug via live-testing, not code review**:
+  `pq.Int64Array(nil)` serializes to SQL `NULL` rather than an empty
+  array, and `NOT(id = ANY(NULL))` is `NULL` (falsy) under normal SQL
+  three-valued logic — silently filtering out every campaign, no error
+  anywhere. A `running` campaign sat unpicked-up for several tick cycles
+  before this was caught by directly observing the symptom, then
+  root-caused by comparing against the original single-tenant code's
+  explicit non-nil-empty-slice construction (which its own comment had
+  flagged the reason for). Verified live end-to-end (started a real
+  campaign, confirmed pickup on the next tick, confirmed the SMTP
+  resolver and eventual expected-failure send all fired correctly) both
+  before and after the fix, to prove the bug and the fix were both real.
 
 ## Open questions
 

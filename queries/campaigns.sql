@@ -173,17 +173,22 @@ SELECT EXISTS (
 
 -- name: next-campaigns
 -- Retreives campaigns that are running (or scheduled and the time's up) and need
--- to be processed. It updates the to_send count and max_subscriber_id of the campaign,
--- that is, the total number of subscribers to be processed across all lists of a campaign.
--- Thus, it has a sideaffect.
+-- to be processed, scoped to a single tenant ($3). It updates the to_send count and
+-- max_subscriber_id of the campaign, that is, the total number of subscribers to be
+-- processed across all lists of a campaign. Thus, it has a sideaffect.
 -- In addition, it finds the max_subscriber_id, the upper limit across all lists of
 -- a campaign. This is used to fetch and slice subscribers for the campaign in next-campaign-subscribers.
+-- $1/$2 (currentIDs/sentCounts) must only contain campaigns belonging to tenant $3 -
+-- the caller (internal/manager) groups its globally-tracked in-flight campaigns by
+-- tenant before calling this per-tenant, so the sent-count increment below isn't
+-- applied once per tenant scanned per tick.
 WITH camps AS (
     -- Get all running campaigns and their template bodies (if the template's deleted, the default template body instead)
     SELECT campaigns.*, COALESCE(templates.body, (SELECT body FROM templates WHERE is_default = true LIMIT 1), '') AS template_body
     FROM campaigns
     LEFT JOIN templates ON (templates.id = campaigns.template_id)
     WHERE (status='running' OR (status='scheduled' AND NOW() >= campaigns.send_at))
+    AND campaigns.tenant_id = $3
     AND NOT(campaigns.id = ANY($1::INT[]))
 ),
 campLists AS (

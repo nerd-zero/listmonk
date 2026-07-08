@@ -433,44 +433,72 @@ subsystem-redesign follow-up.
 
 ## Phase 6 — tenant-aware manager/dispatcher
 
-**Status: blocked on / partially superseded by #41.** Investigation
-before starting found the "SMTP pool construction... needs to become
-per-tenant too" line below (from the original draft) was actually the
-prerequisite for this whole phase to be *meaningful* — without it,
-threading tenant IDs through the scan loop would correctly select the
-right campaigns per tenant but still dispatch every one of them through a
-single global SMTP pool, which isn't real isolation. Confirmed with the
-user: tackle that dependency (#41) directly instead of doing Phase 6's
-scan-side scaffolding in isolation. **#41 slice 1 (SMTP messenger
-resolution) is now done** — see that section below. The scanning side
-described here (`Store.NextCampaigns` gaining tenant awareness,
-`scanCampaigns` iterating active tenants) is **still not implemented** and
-remains this phase's remaining work, now genuinely meaningful to build
-since real per-tenant dispatch exists to receive it.
+**Status: implemented.** Was blocked on real per-tenant dispatch existing
+to receive tenant-scoped scan results — unblocked once #41 slice 1 (SMTP
+messenger resolution, below) shipped.
 
-### `internal/manager/manager.go`
+### What shipped
 
-`Store` interface (`~line 50`) — `NextCampaigns` needs tenant awareness:
+`Store` interface gained `NextCampaigns(tenantID int, currentIDs,
+sentCounts []int64) ([]*models.Campaign, error)` (tenantID added as the
+leading param) and a new `GetActiveTenantIDs() ([]int, error)` method,
+backed by a plain `SELECT id FROM tenants WHERE status = 'active'` query
+(no caching added — this only ever returns one row today with no way to
+create more, so premature to optimize; revisit if profiling shows a need,
+same deferral pattern used elsewhere in this plan).
 
-```go
-// before
-NextCampaigns(excludeIDs []int64, largestID int) (models.Campaigns, error)
+`scanCampaigns` now: fetches active tenant IDs each tick, groups the
+in-flight campaigns already being tracked (`m.pipes`) by tenant (via the
+`TenantID` field `models.Campaign` gained in #41 slice 1), then calls
+`NextCampaigns` once per active tenant with only that tenant's in-flight
+IDs/counts. `queries/campaigns.sql`'s `next-campaigns` gained a `tenant_id
+= $3` filter on its `camps` CTE.
 
-// after — scan tenant-by-tenant rather than globally
-NextCampaignsForTenant(tenantID int, excludeIDs []int64, largestID int) (models.Campaigns, error)
-```
+**Why "group in-flight campaigns by tenant" rather than just adding the
+tenant filter and calling it once per tenant with the same global
+in-flight list each time:** `next-campaigns` reuses its `$1` (current IDs)
+parameter for two purposes — excluding those campaigns from re-selection,
+*and* (via `unnest($1::INT[], $2::INT[])` in an `updateCounts` CTE)
+incrementing their `sent` counts in the DB. Passing the same global list to
+every per-tenant call would apply that increment once per tenant scanned
+each tick, double/triple/etc.-counting `sent`. Traced through this before
+writing any code, not discovered by testing — the fix is in
+`internal/manager`'s `getCurrentCampaigns` (now groups into
+`map[int]currentCampaignIDs`), not in the SQL.
 
-`scanCampaigns` (`~line 447`) changes from a single global scan to iterating
-active tenant IDs (a new cheap `SELECT id FROM tenants WHERE status='active'`
-call each tick, cached) and calling `NextCampaignsForTenant` per tenant,
-setting `app.current_tenant` for that batch via `core.WithTenant`.
+### A real bug caught by live-testing, not by reading the code
 
-Rate limiting (`app.message_rate`/`app.concurrency`) similarly needs a
-decision: keep one global worker-pool size shared across all tenants'
-campaigns (simplest, no per-tenant starvation protection) vs. per-tenant
-worker pools (fairer, more moving parts). Recommend starting with global
-pool + per-tenant send-rate throttling only, revisit if a tenant experiences
-starvation in practice.
+The zero-value of `currentCampaignIDs` (returned by a map lookup for a
+tenant with zero in-flight campaigns — the common case) has `nil` `ids`/
+`counts` slices. `pq.Int64Array(nil).Value()` serializes to SQL `NULL`,
+not an empty array (confirmed via a throwaway Go program, not assumed) —
+and `NOT(campaigns.id = ANY(NULL::INT[]))` evaluates to SQL `NULL` under
+ordinary three-valued comparison semantics, which a `WHERE` clause treats
+as "false", filtering out **every** row. A campaign set to `running` was
+never picked up; no error anywhere, just silently zero results every
+tick. Root-caused by comparing against the original single-tenant
+`getCurrentCampaigns`, which explicitly built its slices with
+`make([]int64, 0, len(m.pipes))` rather than a zero-value default — a
+detail its own comment ("needs to return an empty slice in case there are
+no campaigns") called out, that got lost when restructuring the return
+type to a per-tenant map. Fixed by explicitly defaulting `e.ids`/
+`e.counts` to `[]int64{}` before each `NextCampaigns` call, with a comment
+explaining why so the next refactor of this code doesn't reintroduce it.
+
+**Verified live**, not just built: started the existing draft campaign via
+the API, confirmed via the backend log that `scanCampaigns` picked it up
+on the very next tick, `getMessenger` resolved tenant 1's SMTP messenger
+(from #41 slice 1), and the send failed at the expected point (a real
+timeout against this dev environment's fake mail host) — then confirmed
+the fix by reproducing the *bug* first (campaign stuck in `running`,
+zero ticks logged as picking it up, across several tick cycles) before
+applying and re-verifying the fix. Campaign state reset to `draft`
+afterward.
+
+Rate limiting (`app.message_rate`/`app.concurrency`) still shares one
+global worker-pool size across all tenants' campaigns — deferred, matching
+the original draft's recommendation to start simple and revisit only if a
+tenant experiences starvation in practice.
 
 ---
 

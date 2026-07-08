@@ -33,12 +33,24 @@ func newManagerStore(q *models.Queries, c *core.Core, m media.Store) *store {
 	}
 }
 
-// NextCampaigns retrieves active campaigns ready to be processed excluding
-// campaigns that are also being processed. Additionally, it takes a map of campaignID:sentCount
-// of campaigns that are being processed and updates them in the DB.
-func (s *store) NextCampaigns(currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error) {
+// NextCampaigns retrieves active campaigns for the given tenant ready to be
+// processed, excluding campaigns that are also being processed. currentIDs/
+// sentCounts must only contain that tenant's campaigns (see
+// queries/campaigns.sql's next-campaigns for why) - the caller
+// (internal/manager) is responsible for that grouping, not this method.
+// Additionally, it takes a map of campaignID:sentCount of campaigns that
+// are being processed and updates them in the DB.
+func (s *store) NextCampaigns(tenantID int, currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error) {
 	var out []*models.Campaign
-	err := s.queries.NextCampaigns.Select(&out, pq.Int64Array(currentIDs), pq.Int64Array(sentCounts))
+	err := s.queries.NextCampaigns.Select(&out, pq.Int64Array(currentIDs), pq.Int64Array(sentCounts), tenantID)
+	return out, err
+}
+
+// GetActiveTenantIDs returns the IDs of all active tenants, for
+// scanCampaigns to iterate per tick.
+func (s *store) GetActiveTenantIDs() ([]int, error) {
+	var out []int
+	err := s.queries.GetActiveTenantIDs.Select(&out)
 	return out, err
 }
 

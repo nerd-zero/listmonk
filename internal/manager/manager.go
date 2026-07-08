@@ -48,7 +48,8 @@ const (
 // Store represents a data backend, such as a database,
 // that provides subscriber and campaign records.
 type Store interface {
-	NextCampaigns(currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error)
+	NextCampaigns(tenantID int, currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error)
+	GetActiveTenantIDs() ([]int, error)
 	NextSubscribers(campID, limit int) ([]models.Subscriber, error)
 	GetCampaign(campID int) (*models.Campaign, error)
 	GetAttachment(mediaID int) (models.Attachment, error)
@@ -492,33 +493,62 @@ func (m *Manager) scanCampaigns(tick time.Duration) {
 
 	// Periodically scan the data source for campaigns to process.
 	for range t.C {
-		ids, counts := m.getCurrentCampaigns()
-		campaigns, err := m.store.NextCampaigns(ids, counts)
+		tenantIDs, err := m.store.GetActiveTenantIDs()
 		if err != nil {
-			m.log.Printf("error fetching campaigns: %v", err)
+			m.log.Printf("error fetching active tenants: %v", err)
 			continue
 		}
 
-		for _, c := range campaigns {
-			// Create a new pipe that'll handle this campaign's states.
-			p, err := m.newPipe(c)
+		current := m.getCurrentCampaigns()
+
+		for _, tenantID := range tenantIDs {
+			// current[tenantID] is the zero value (nil ids/counts) for a
+			// tenant with no in-flight campaigns - must not pass that
+			// through as-is. pq.Int64Array(nil) serializes to SQL NULL,
+			// not an empty array, and next-campaigns' `NOT(id = ANY($1))`
+			// evaluates to NULL (filtering out every row) rather than
+			// TRUE against a NULL array, via ordinary three-valued SQL
+			// NULL comparison semantics - silently returning zero
+			// campaigns instead of erroring. Caught by live-testing (a
+			// campaign set to "running" was never picked up), not by
+			// reading the code. The original single-tenant
+			// getCurrentCampaigns avoided this by explicitly building
+			// with make([]int64, 0, ...) rather than a nil default.
+			e := current[tenantID]
+			if e.ids == nil {
+				e.ids = []int64{}
+			}
+			if e.counts == nil {
+				e.counts = []int64{}
+			}
+
+			campaigns, err := m.store.NextCampaigns(tenantID, e.ids, e.counts)
 			if err != nil {
-				m.log.Printf("error processing campaign (%s): %v", c.Name, err)
+				m.log.Printf("error fetching campaigns for tenant %d: %v", tenantID, err)
 				continue
 			}
-			m.log.Printf("start processing campaign (%s)", c.Name)
 
-			// If subscriber processing is busy, move on. Blocking and waiting
-			// can end up in a race condition where the waiting campaign's
-			// state in the data source has changed.
-			select {
-			case m.nextPipes <- p:
-			default:
-				// If the queue is full for any reason, stop the pipe and release it.
-				// The cleanup() records the state in DB and scanCampaigns() picks it up
-				// at a later point.
-				p.Stop(false)
-				p.wg.Done()
+			for _, c := range campaigns {
+				// Create a new pipe that'll handle this campaign's states.
+				p, err := m.newPipe(c)
+				if err != nil {
+					m.log.Printf("error processing campaign (%s): %v", c.Name, err)
+					continue
+				}
+				m.log.Printf("start processing campaign (%s)", c.Name)
+
+				// If subscriber processing is busy, move on. Blocking and waiting
+				// can end up in a race condition where the waiting campaign's
+				// state in the data source has changed.
+				select {
+				case m.nextPipes <- p:
+				default:
+					// If the queue is full for any reason, stop the pipe and release it.
+					// The cleanup() records the state in DB and scanCampaigns() picks it up
+					// at a later point.
+					p.Stop(false)
+					p.wg.Done()
+				}
 			}
 		}
 	}
@@ -633,25 +663,39 @@ func (m *Manager) worker() {
 
 // getCurrentCampaigns returns the IDs of campaigns currently being processed
 // and their sent counts.
-func (m *Manager) getCurrentCampaigns() ([]int64, []int64) {
-	// Needs to return an empty slice in case there are no campaigns.
+// currentCampaignIDs holds one tenant's in-flight campaign IDs and their
+// pending sent-count increments.
+type currentCampaignIDs struct {
+	ids    []int64
+	counts []int64
+}
+
+// getCurrentCampaigns groups all currently-processing campaigns (m.pipes,
+// tracked globally by campaign ID regardless of tenant) by tenant, so
+// scanCampaigns can call Store.NextCampaigns once per tenant with only
+// that tenant's IDs/counts. This grouping - not a SQL-level change - is
+// what keeps the per-tenant sent-count increment in
+// queries/campaigns.sql's next-campaigns from being applied once per
+// tenant scanned per tick (it would double/triple/etc.-count otherwise,
+// since that query updates by campaign ID with no awareness of which
+// call it's answering).
+func (m *Manager) getCurrentCampaigns() map[int]currentCampaignIDs {
 	m.pipesMut.RLock()
 	defer m.pipesMut.RUnlock()
 
-	var (
-		ids    = make([]int64, 0, len(m.pipes))
-		counts = make([]int64, 0, len(m.pipes))
-	)
+	out := make(map[int]currentCampaignIDs, len(m.pipes))
 	for _, p := range m.pipes {
-		ids = append(ids, int64(p.camp.ID))
+		e := out[p.camp.TenantID]
+		e.ids = append(e.ids, int64(p.camp.ID))
 
 		// Get the sent counts for campaigns and reset them to 0
 		// as in the database, they're stored cumulatively (sent += $newSent).
-		counts = append(counts, p.sent.Load())
+		e.counts = append(e.counts, p.sent.Load())
 		p.sent.Store(0)
+		out[p.camp.TenantID] = e
 	}
 
-	return ids, counts
+	return out
 }
 
 // trackLink register a URL and return its UUID to be used in message templates
