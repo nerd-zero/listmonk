@@ -514,9 +514,21 @@ func (a *App) doOperatorSetup(c echo.Context, token string, payload operatorSetu
 		return c.Render(http.StatusBadRequest, tplMessage, makeMsgTpl(a.i18n.T("users.resetPassword"), "", a.i18n.T("users.invalidResetLink")))
 	}
 
+	// UpdateUserProfile (not UpdateUser) - same as the analogous
+	// forgot-password flow (cmd/auth.go's doResetPassword). UpdateUser is
+	// for admin-editing-another-user and re-runs the last-Super-Admin
+	// guard against role_id/status; GetUser zeroes UserRoleID after
+	// copying it into UserRole.ID (setupUserFields, for JSON shaping), so
+	// passing it straight back to UpdateUser sent role_id=0 - the query's
+	// "unchanged" sentinel for a normal edit, but one the guard's OR
+	// condition didn't recognize as "unchanged," so it always treated a
+	// lone tenant admin's own password-setup as "reassigning away from
+	// Super Admin" and rejected it. UpdateUserProfile only ever touches
+	// name/email/password, sidestepping that guard entirely - correct,
+	// since setting your own password isn't a role/status change.
 	user.Password = null.NewString(password, true)
 	user.PasswordLogin = true
-	if _, err := a.core.UpdateUser(c.Request().Context(), payload.TenantID, user.ID, user); err != nil {
+	if _, err := a.core.UpdateUserProfile(c.Request().Context(), payload.TenantID, user.ID, user); err != nil {
 		a.log.Printf("error completing operator setup for user_id=%d: %v", user.ID, err)
 		return echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("globals.messages.internalError"))
 	}

@@ -166,7 +166,14 @@ WITH u AS (
 UPDATE users SET loggedin_at = NOW() WHERE id = (SELECT id FROM u) RETURNING *;
 
 -- name: update-user-profile
+-- password_login=$4 matters beyond forgot-password's existing use (which
+-- always passes back whatever GetUser fetched, so it was a same-value
+-- no-op there): cmd/operator.go's doOperatorSetup reuses this query to
+-- turn password login on for the first time for a freshly-provisioned,
+-- passwordless tenant admin. Without writing this column, the password
+-- hash gets set but the account still can't log in with it.
 UPDATE users SET name=$2, email=(CASE WHEN password_login THEN $3 ELSE email END),
+    password_login=$4,
     password=(CASE WHEN $4 = TRUE THEN (CASE WHEN $5 != '' THEN CRYPT($5, GEN_SALT('bf')) ELSE password END) ELSE NULL END)
     WHERE id=$1;
 
