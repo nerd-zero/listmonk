@@ -985,6 +985,7 @@ func initHTTPServer(cfg *Config, urlCfg *UrlConfig, i *i18n.I18n, fs stuffbin.Fi
 		templates:           tpl,
 		SiteName:            cfg.SiteName,
 		RootURL:             urlCfg.RootURL,
+		MultiTenancyEnabled: cfg.MultiTenancyEnabled,
 		LogoURL:             urlCfg.LogoURL,
 		FaviconURL:          urlCfg.FaviconURL,
 		AssetVersion:        cfg.AssetVersion,

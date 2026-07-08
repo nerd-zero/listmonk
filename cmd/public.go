@@ -27,9 +27,20 @@ const (
 
 // tplRenderer wraps a template.tplRenderer for echo.
 type tplRenderer struct {
-	templates           *template.Template
-	SiteName            string
+	templates *template.Template
+	SiteName  string
+	// RootURL is a single, boot-time value derived from tenant 1's
+	// settings - correct for single-tenant installs (where it may
+	// deliberately differ from the request Host, e.g. behind a reverse
+	// proxy/CDN), but wrong for every other tenant under multi-tenancy:
+	// every public page (subscription form, archive, unsub, etc.) would
+	// link back to tenant 1's domain instead of its own, and the ALTCHA
+	// captcha widget's own challenge/asset fetches - which must be
+	// same-origin - would fail outright as cross-origin requests. When
+	// MultiTenancyEnabled is set, Render derives the request's actual
+	// root URL from its Host header instead of using this field.
 	RootURL             string
+	MultiTenancyEnabled bool
 	LogoURL             string
 	FaviconURL          string
 	AssetVersion        string
@@ -104,9 +115,14 @@ var (
 
 // Render executes and renders a template for echo.
 func (t *tplRenderer) Render(w io.Writer, name string, data any, c echo.Context) error {
+	rootURL := t.RootURL
+	if t.MultiTenancyEnabled {
+		rootURL = c.Scheme() + "://" + c.Request().Host
+	}
+
 	return t.templates.ExecuteTemplate(w, name, tplData{
 		SiteName:            t.SiteName,
-		RootURL:             t.RootURL,
+		RootURL:             rootURL,
 		LogoURL:             t.LogoURL,
 		FaviconURL:          t.FaviconURL,
 		AssetVersion:        t.AssetVersion,
