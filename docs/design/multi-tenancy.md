@@ -6,12 +6,14 @@ phase's Decisions log entry for what shipped, the BYPASSRLS design fork
 resolved during implementation, and accepted v1 limitations (no
 per-operator audit trail, non-atomic two-connection tenant creation).
 Issues #40 and #41 (follow-up threading/subsystem work split out along
-the way) are both fully complete too. What's left, if anything, is
-incremental: tightening the still-permissive RLS fallback policy once
-confidence is high enough (see Open Questions), and the handful of
-already-documented soft global-uniqueness gaps (`subscribers.email`,
-`links.url`, `users.username`/`email`) that were deliberately deferred
-throughout — none of them block real usage today.**
+the way) are both fully complete too. `users.username`/`email` were also
+fixed to per-tenant uniqueness (migration `v6.9.0`) after blocking real
+onboarding of a second tenant — see Decisions log. What's left, if
+anything, is incremental: tightening the still-permissive RLS fallback
+policy once confidence is high enough (see Open Questions), and the
+remaining known soft global-uniqueness gaps (`subscribers.email`,
+`links.url`) that are still deliberately deferred pending their own
+`ON CONFLICT` review — neither blocks real usage today.**
 
 Earlier phase-by-phase summary retained below for detail: phases 1-3 and
 6 implemented; phase 4 partially implemented
@@ -768,6 +770,47 @@ UI-level "operator" role.
   aren't transactionally atomic across the two DB connections, so a
   failure between them can leave an orphaned tenant with no admin,
   recoverable by an operator noticing and retrying.
+
+- **`users.username`/`email` widened to per-tenant uniqueness, migration
+  `v6.9.0` (2026-07-08).** Found live, not in review: onboarding a real
+  second tenant through the just-shipped Operator API setup flow, the new
+  admin's natural choice of username ("admin") collided with tenant 1's
+  existing user of the same name — `users.username`/`email` were still
+  plain global `UNIQUE` constraints, already flagged as a known, deferred
+  gap during Phase 8 (unlike `roles`/`templates`, this one didn't block
+  onboarding outright, just collided on human-chosen values, so it was
+  left for later). "Later" turned out to be immediately, since it blocks
+  real usage the moment more than one tenant exists. Surfaced the
+  tradeoff to the user (quick unblock via distinct usernames vs. fixing
+  the constraint) — **user chose to fix it**. Before writing the
+  migration, confirmed (by grep, not assumption) that neither constraint
+  has any `ON CONFLICT` dependents in `queries/*.sql` nor any
+  constraint-name-based error handling in Go — unlike `subscribers.email`
+  and `links.url`, which do and still need their own dedicated review
+  before any similar widening. `v6.9.0` drops both `UNIQUE` column
+  constraints and replaces them with `UNIQUE (tenant_id, username)` /
+  `UNIQUE (tenant_id, email)` indexes of the same name.
+  **Also surfaced (and fixed) a real dev-environment gap while chasing
+  this down**: the dev database's own connecting role (`listmonk-dev`)
+  was a Postgres superuser, meaning RLS was silently inert for the whole
+  session's dev testing — every prior "verified live" claim in this doc
+  that needed genuine cross-tenant isolation had to reach for a
+  throwaway non-superuser role specifically because of this (documented
+  since phase 2). This is why the very first attempt at onboarding a
+  second tenant showed the *first* tenant's user as if it existed
+  everywhere (`HasUsers` returning true for a tenant with zero users).
+  Fixed properly rather than worked around: created a real non-superuser,
+  non-`BYPASSRLS` application role (`listmonk_app`) with correct table
+  grants, and switched the dev `config.toml`'s `[db]` section to use it —
+  matching what this doc has said all along any real deployment needs.
+  **Verified**: reproduced the exact collision via a direct RLS-scoped
+  insert simulation as the app's own new role (proving the bug), then
+  confirmed the identical insert succeeds after the migration (proving
+  the fix) — the same technique used throughout this session for
+  anything requiring genuine RLS enforcement. `go build`, `go vet`,
+  `go test ./... -race` all clean. Confirmed both real test tenants'
+  first-time-setup pages render correctly and the pre-existing `default`
+  tenant's login is unaffected.
 
 ## Open questions
 

@@ -381,10 +381,10 @@ DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
     id               SERIAL PRIMARY KEY,
     tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
-    username         TEXT NOT NULL UNIQUE,
+    username         TEXT NOT NULL,
     password_login   BOOLEAN NOT NULL DEFAULT false,
     password         TEXT NULL,
-    email            TEXT NOT NULL UNIQUE,
+    email            TEXT NOT NULL,
     name             TEXT NOT NULL,
     avatar           TEXT NULL,
     type             user_type NOT NULL DEFAULT 'user',
@@ -398,6 +398,8 @@ CREATE TABLE users (
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 DROP INDEX IF EXISTS idx_users_tenant; CREATE INDEX idx_users_tenant ON users(tenant_id);
+CREATE UNIQUE INDEX users_username_key ON users (tenant_id, username);
+CREATE UNIQUE INDEX users_email_key ON users (tenant_id, email);
 
 -- user sessions
 DROP TABLE IF EXISTS sessions CASCADE;
