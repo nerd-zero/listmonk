@@ -401,6 +401,68 @@ DROP INDEX IF EXISTS idx_users_tenant; CREATE INDEX idx_users_tenant ON users(te
 CREATE UNIQUE INDEX users_username_key ON users (tenant_id, username);
 CREATE UNIQUE INDEX users_email_key ON users (tenant_id, email);
 
+-- row level security: tenant isolation, enforced inside Postgres itself
+-- rather than solely relying on every hand-written query in queries/*.sql
+-- remembering a `WHERE tenant_id = ...` clause. FORCE (in addition to
+-- ENABLE) matters because most self-hosted listmonk installs use a single
+-- Postgres role for both schema ownership and the app connection, and
+-- table owners are exempt from RLS by default - plain ENABLE alone would
+-- silently be a no-op for that common setup. Superusers are always exempt
+-- regardless of FORCE.
+--
+-- The policy is permissive while `app.current_tenant` is unset (single-
+-- tenant/`multi_tenancy_enabled=false` installs never set it) and treats
+-- '' the same as unset via NULLIF: Postgres reverts a SET LOCAL custom GUC
+-- to '' (not NULL) once any transaction has ever touched it on a given
+-- connection, so casting straight to ::INTEGER without NULLIF fails on
+-- every later query on that same connection outside internal/core.WithTenant.
+ALTER TABLE subscribers      ENABLE ROW LEVEL SECURITY; ALTER TABLE subscribers      FORCE ROW LEVEL SECURITY;
+ALTER TABLE lists            ENABLE ROW LEVEL SECURITY; ALTER TABLE lists            FORCE ROW LEVEL SECURITY;
+ALTER TABLE templates        ENABLE ROW LEVEL SECURITY; ALTER TABLE templates        FORCE ROW LEVEL SECURITY;
+ALTER TABLE campaigns        ENABLE ROW LEVEL SECURITY; ALTER TABLE campaigns        FORCE ROW LEVEL SECURITY;
+ALTER TABLE media            ENABLE ROW LEVEL SECURITY; ALTER TABLE media            FORCE ROW LEVEL SECURITY;
+ALTER TABLE links            ENABLE ROW LEVEL SECURITY; ALTER TABLE links            FORCE ROW LEVEL SECURITY;
+ALTER TABLE bounces          ENABLE ROW LEVEL SECURITY; ALTER TABLE bounces          FORCE ROW LEVEL SECURITY;
+ALTER TABLE roles            ENABLE ROW LEVEL SECURITY; ALTER TABLE roles            FORCE ROW LEVEL SECURITY;
+ALTER TABLE users            ENABLE ROW LEVEL SECURITY; ALTER TABLE users            FORCE ROW LEVEL SECURITY;
+ALTER TABLE subscriber_lists ENABLE ROW LEVEL SECURITY; ALTER TABLE subscriber_lists FORCE ROW LEVEL SECURITY;
+ALTER TABLE campaign_lists   ENABLE ROW LEVEL SECURITY; ALTER TABLE campaign_lists   FORCE ROW LEVEL SECURITY;
+ALTER TABLE campaign_views   ENABLE ROW LEVEL SECURITY; ALTER TABLE campaign_views   FORCE ROW LEVEL SECURITY;
+ALTER TABLE campaign_media   ENABLE ROW LEVEL SECURITY; ALTER TABLE campaign_media   FORCE ROW LEVEL SECURITY;
+ALTER TABLE link_clicks      ENABLE ROW LEVEL SECURITY; ALTER TABLE link_clicks      FORCE ROW LEVEL SECURITY;
+ALTER TABLE settings         ENABLE ROW LEVEL SECURITY; ALTER TABLE settings         FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_isolation ON subscribers;
+CREATE POLICY tenant_isolation ON subscribers USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON lists;
+CREATE POLICY tenant_isolation ON lists USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON templates;
+CREATE POLICY tenant_isolation ON templates USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON campaigns;
+CREATE POLICY tenant_isolation ON campaigns USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON media;
+CREATE POLICY tenant_isolation ON media USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON links;
+CREATE POLICY tenant_isolation ON links USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON bounces;
+CREATE POLICY tenant_isolation ON bounces USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON roles;
+CREATE POLICY tenant_isolation ON roles USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON users;
+CREATE POLICY tenant_isolation ON users USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON subscriber_lists;
+CREATE POLICY tenant_isolation ON subscriber_lists USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON campaign_lists;
+CREATE POLICY tenant_isolation ON campaign_lists USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON campaign_views;
+CREATE POLICY tenant_isolation ON campaign_views USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON campaign_media;
+CREATE POLICY tenant_isolation ON campaign_media USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON link_clicks;
+CREATE POLICY tenant_isolation ON link_clicks USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON settings;
+CREATE POLICY tenant_isolation ON settings USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+
 -- user sessions
 DROP TABLE IF EXISTS sessions CASCADE;
 CREATE TABLE sessions (
