@@ -1148,7 +1148,7 @@ func initTplFuncs(i *i18n.I18n, u *UrlConfig) template.FuncMap {
 }
 
 // initAuth initializes the auth module with the given DB connection and
-func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
+func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) *auth.Auth {
 	// Setup the sessio manager callbacks for getting and setting cookies.
 	cb := &auth.Callbacks{
 		GetCookie: func(name string, r any) (*http.Cookie, error) {
@@ -1198,8 +1198,7 @@ func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
 	}
 
 	// Cache all API users in-memory for token auth.
-	hasUsers, err := cacheUsers(co, a)
-	if err != nil {
+	if _, err := cacheUsers(co, a); err != nil {
 		lo.Fatalf("error loading API users to cache: %v", err)
 	}
 
@@ -1227,7 +1226,7 @@ func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
 		lo.Println(`WARNING: Remove the admin_username and admin_password fields from the TOML configuration file. If you are using APIs, create and use new credentials. Users are now managed via the Admin -> Settings -> Users dashboard.`)
 	}
 
-	return hasUsers, a
+	return a
 }
 
 // joinFSPaths joins the given paths with the root path and returns the full paths.

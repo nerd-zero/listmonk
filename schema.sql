@@ -108,7 +108,7 @@ CREATE TABLE templates (
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-CREATE UNIQUE INDEX ON templates (is_default) WHERE is_default = true;
+CREATE UNIQUE INDEX templates_is_default_idx ON templates (tenant_id, is_default) WHERE is_default = true;
 DROP INDEX IF EXISTS idx_templates_tenant; CREATE INDEX idx_templates_tenant ON templates(tenant_id);
 
 
@@ -373,7 +373,7 @@ CREATE TABLE roles (
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 CREATE UNIQUE INDEX idx_roles ON roles (parent_id, list_id);
-CREATE UNIQUE INDEX idx_roles_name ON roles (type, name) WHERE name IS NOT NULL;
+CREATE UNIQUE INDEX idx_roles_name ON roles (tenant_id, type, name) WHERE name IS NOT NULL;
 DROP INDEX IF EXISTS idx_roles_tenant; CREATE INDEX idx_roles_tenant ON roles(tenant_id);
 
 -- users

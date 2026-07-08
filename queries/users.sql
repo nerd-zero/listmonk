@@ -47,6 +47,12 @@ WITH u AS (
 )
 DELETE FROM users WHERE id = ALL($1) AND (SELECT num FROM u) > 0;
 
+-- name: has-users
+-- Lightweight existence check used to decide whether a tenant needs the
+-- first-time-setup flow (see cmd/auth.go's LoginPage) - cheaper than
+-- get-users' full role/list-role joins for a plain boolean.
+SELECT EXISTS(SELECT 1 FROM users WHERE type = 'user');
+
 -- name: get-users
 WITH ur AS (
     SELECT id, name, permissions FROM roles WHERE type = 'user' AND parent_id IS NULL

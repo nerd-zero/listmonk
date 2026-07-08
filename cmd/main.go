@@ -68,9 +68,6 @@ type App struct {
 	// after a settings update.
 	needsRestart bool
 
-	// First time installation with no user records in the DB. Needs user setup.
-	needsUserSetup bool
-
 	// Global state that stores data on an available remote update.
 	update *AppUpdate
 	sync.Mutex
@@ -241,7 +238,7 @@ func main() {
 		importer = initImporter(queries, db, core, i18n, ko)
 
 		// Initialize the auth manager.
-		hasUsers, auth = initAuth(core, db.DB, ko)
+		auth = initAuth(core, db.DB, ko)
 
 		// Initialize the webhook/POP3 bounce processor.
 		bounce *bounce.Manager
@@ -317,9 +314,6 @@ func main() {
 		fnOptinNotify: fbOptinNotify,
 		about:         initAbout(queries, db),
 		chReload:      chReload,
-
-		// If there are no users, then the app needs to prompt for new user setup.
-		needsUserSetup: !hasUsers,
 	}
 
 	// Star the update checker.

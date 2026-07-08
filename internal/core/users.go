@@ -15,6 +15,23 @@ import (
 	"gopkg.in/volatiletech/null.v6"
 )
 
+// HasUsers reports whether the given tenant has at least one non-API user.
+// Used to decide whether that tenant needs the first-time-setup flow
+// (cmd/auth.go's LoginPage) - a lightweight existence check instead of
+// GetUsers' full role/list-role joins.
+func (c *Core) HasUsers(ctx context.Context, tenantID int) (bool, error) {
+	var out bool
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.HasUsers).Get(&out)
+	})
+	if err != nil {
+		return false, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.users}", "error", pqErrMsg(err)))
+	}
+
+	return out, nil
+}
+
 // GetUsers retrieves all users for the given tenant.
 func (c *Core) GetUsers(ctx context.Context, tenantID int) ([]auth.User, error) {
 	out := []auth.User{}

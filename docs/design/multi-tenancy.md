@@ -15,8 +15,14 @@ cross-tenant read leak was found in the global fallback row they used to
 share — see Decisions log for both); phase 5 fully implemented (settings
 DB/Core layer shipped, subsystem redesign — SMTP/media/OIDC/manager —
 split into its own follow-up issue #41, now fully complete: SMTP,
-media/S3, and OIDC per-tenant resolution all shipped); phases 7-9 not
-started**. This document captures research and a phased
+media/S3, and OIDC per-tenant resolution all shipped); phase 8 (public
+route audit) done — no cross-tenant leak found in public routes, but the
+audit surfaced and fixed 3 severe bugs that completely blocked
+onboarding any tenant past the first (a hardcoded role-ID bug, a
+global-instead-of-per-tenant first-time-setup gate, and two pre-existing
+single-tenant `UNIQUE` indexes on `roles`/`templates` — migration
+`v6.8.0`; see Decisions log); phases 7 and 9 not started**. This document
+captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -592,6 +598,72 @@ UI-level "operator" role.
   discovery succeeded and the whole resolver chain was live, not
   hypothetical. Restored OIDC to disabled and confirmed the route
   reverted to 404 afterward. Issue #41 is now fully complete.
+
+- **Phase 8 — public-facing route audit implemented (2026-07-08): no
+  cross-tenant leak in public routes, but 3 severe onboarding-blocking
+  bugs found and fixed.** Audited every multi-UUID public route
+  (`ViewCampaignMessage`, `LinkRedirect`, `RegisterCampaignView`,
+  `SubscriptionPrefs`) against this doc's own audit criterion — does a
+  second UUID/ID param get trusted without re-checking it belongs to the
+  same resolved tenant as the first? Traced every underlying SQL
+  statement rather than assuming: all of them run inside the same
+  `WithTenant` transaction, so RLS scopes every table reference to the
+  same `app.current_tenant` uniformly — a cross-tenant UUID inside a
+  compound query resolves to zero rows for that sub-lookup, either
+  degrading to a mis-attributed (not cross-tenant-leaked) record where
+  the column is nullable, or hitting a pre-existing `NOT NULL`-triggered
+  silent no-op where it isn't. **No cross-tenant data exposure found.**
+  Live-testing the onboarding path itself, however (a real second tenant
+  created via a throwaway DB row, tested via `curl -H "Host: ..."`
+  overrides against `127.0.0.1:9000` — confirmed
+  `internal/tenant.Middleware` reads `c.Request().Host` directly, so no
+  `/etc/hosts` changes were needed), surfaced three real, severe bugs
+  that blocked onboarding any tenant past the first entirely:
+  1. `doFirstTimeSetup` hardcoded the new admin's `user_role_id` to the
+     `SuperAdminRoleID` constant (1) instead of the ID of the role it had
+     just created. Only ever worked for the very first tenant on an
+     installation (whose first-ever `roles` row coincidentally gets
+     id=1, since the sequence is shared across every tenant) — every
+     subsequent tenant's new admin ended up with `user_role_id = NULL`
+     (the RLS-scoped role lookup silently finds nothing for a role
+     belonging to a different tenant), a login-successful but completely
+     permission-less account. Fixed by capturing and using the actual
+     created role's ID.
+  2. `App.needsUserSetup` was a single process-wide boolean, computed
+     once at boot from whether *any* tenant had *any* user and flipped
+     `false` globally the first time *any* tenant completed setup — so
+     every tenant after the first could never even reach the
+     first-time-setup form via `/admin/login`. Fixed by removing the
+     cached field and adding `Core.HasUsers(ctx, tenantID)` (a cheap
+     `EXISTS` query), checked per-request, per-tenant.
+  3. Two pre-existing single-tenant `UNIQUE` indexes — `roles(type,
+     name)` and `templates(is_default) WHERE is_default = true` — had no
+     `tenant_id` dimension and hard-blocked (not just weakened isolation
+     for) legitimate usage: the *second* tenant to ever run setup
+     hard-fails creating its "Super Admin" role (duplicate key), and no
+     tenant but the first could ever set their own default template.
+     Both predate phase 1's `tenant_id` columns and were deliberately
+     left untouched by phase 1 (see that phase's decision to defer
+     pre-existing constraints) — this is that deferred cleanup, scoped
+     to the two that actively block usage. New migration `v6.8.0` widens
+     both to `(tenant_id, ...)`. Two *other* known global-uniqueness
+     gaps (`subscribers.email`, `links.url`, already flagged earlier
+     this session) were deliberately left alone — they cause soft
+     collisions on human-chosen values, not hard failures, and widening
+     them changes `ON CONFLICT` semantics existing queries rely on.
+  All three were surfaced to the user via `AskUserQuestion` given their
+  severity before fixing — "fix now" chosen each time. Verified via a
+  direct SQL/RLS simulation under a throwaway non-superuser role
+  reproducing `doFirstTimeSetup`'s exact operations (confirmed the *old*
+  code's failure reproduces exactly as diagnosed, then confirmed the
+  fixed code succeeds with a correctly non-null `user_role_id`) — a full
+  HTTP-level test wasn't possible since the dev DB connection is itself a
+  superuser (RLS-exempt, the same limitation documented since phases
+  2/3). The `v6.8.0` migration itself was verified directly against the
+  dev DB via `psql`, and existing single-tenant login/template/role flows
+  were confirmed still working normally afterward. All test artifacts
+  (throwaway DB roles, temp tenant row, temporary `config.toml`
+  overrides) cleaned up and reverted to baseline.
 
 ## Open questions
 

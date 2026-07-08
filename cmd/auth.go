@@ -83,12 +83,16 @@ var (
 
 // LoginPage renders the login page and handles the login form.
 func (a *App) LoginPage(c echo.Context) error {
-	// Has the user been setup?
-	a.Lock()
-	needsUserSetup := a.needsUserSetup
-	a.Unlock()
+	// Has this tenant been set up yet? Checked per-request (not cached)
+	// since it's per-tenant: a tenant with zero users must reach the
+	// first-time-setup flow regardless of whether some other tenant has
+	// already completed it - see HasUsers' doc comment.
+	hasUsers, err := a.core.HasUsers(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
 
-	if needsUserSetup {
+	if !hasUsers {
 		return a.LoginSetupPage(c)
 	}
 
@@ -112,9 +116,6 @@ func (a *App) LoginSetupPage(c echo.Context) error {
 	if c.Request().Method == http.MethodPost {
 		loginErr = a.doFirstTimeSetup(c)
 		if loginErr == nil {
-			a.Lock()
-			a.needsUserSetup = false
-			a.Unlock()
 			return c.Redirect(http.StatusFound, utils.SanitizeURI(c.FormValue("next")))
 		}
 	}
@@ -533,6 +534,21 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 	}
 
 	// Create the default "Super Admin" with all permissions if it doesn't exist.
+	//
+	// roleID defaults to auth.SuperAdminRoleID (1) for the case where the
+	// role already exists - true only for the very first tenant ever set
+	// up on this installation, since role IDs are a single sequence shared
+	// across all tenants and RLS-scoped lookups of a *different* tenant's
+	// role id=1 correctly return not-found. For every subsequent tenant,
+	// GetRole's not-found branch below creates a brand new role that gets
+	// whatever the next value in that shared sequence is - NOT 1 - so it
+	// must be captured and used instead of the constant. Using the
+	// constant unconditionally here previously meant every tenant after
+	// the first got a user with user_role_id=NULL (the create-user query's
+	// `WHERE id = $7 AND type = 'user'` role lookup is itself RLS-scoped,
+	// so role id=1 belonging to a different tenant silently resolves to no
+	// rows) - a login-successful but completely permission-less account.
+	roleID := auth.SuperAdminRoleID
 	if _, err := a.core.GetRole(c.Request().Context(), tenantID(c), auth.SuperAdminRoleID); err != nil {
 		r := auth.Role{
 			Type: auth.RoleTypeUser,
@@ -543,9 +559,11 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 		}
 
 		// Create the role in the DB.
-		if _, err := a.core.CreateRole(c.Request().Context(), tenantID(c), r); err != nil {
+		newRole, err := a.core.CreateRole(c.Request().Context(), tenantID(c), r)
+		if err != nil {
 			return err
 		}
+		roleID = newRole.ID
 	}
 
 	// Create the super admin user in the DB.
@@ -557,7 +575,7 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 		Name:          username,
 		Password:      null.NewString(password, true),
 		Email:         null.NewString(email, true),
-		UserRoleID:    auth.SuperAdminRoleID,
+		UserRoleID:    roleID,
 		Status:        auth.UserStatusEnabled,
 	}
 	if _, err := a.core.CreateUser(c.Request().Context(), tenantID(c), u); err != nil {
