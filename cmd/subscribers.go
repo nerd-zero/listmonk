@@ -619,11 +619,11 @@ func (a *App) ManageSubscriberLists(c echo.Context) error {
 	var err error
 	switch req.Action {
 	case "add":
-		err = a.core.AddSubscriptions(subIDs, listIDs, req.Status)
+		err = a.core.AddSubscriptions(c.Request().Context(), tenantID(c), subIDs, listIDs, req.Status)
 	case "remove":
-		err = a.core.DeleteSubscriptions(subIDs, listIDs)
+		err = a.core.DeleteSubscriptions(c.Request().Context(), tenantID(c), subIDs, listIDs)
 	case "unsubscribe":
-		err = a.core.UnsubscribeLists(subIDs, listIDs, nil)
+		err = a.core.UnsubscribeLists(c.Request().Context(), tenantID(c), subIDs, listIDs, nil)
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidAction"))
 	}
@@ -842,11 +842,11 @@ func (a *App) ManageSubscriberListsByQuery(c echo.Context) error {
 	var err error
 	switch req.Action {
 	case "add":
-		err = a.core.AddSubscriptionsByQuery(req.Search, req.Query, sourceListIDs, targetListIDs, req.Status, req.SubscriptionStatus)
+		err = a.core.AddSubscriptionsByQuery(c.Request().Context(), tenantID(c), req.Search, req.Query, sourceListIDs, targetListIDs, req.Status, req.SubscriptionStatus)
 	case "remove":
-		err = a.core.DeleteSubscriptionsByQuery(req.Search, req.Query, sourceListIDs, targetListIDs, req.SubscriptionStatus)
+		err = a.core.DeleteSubscriptionsByQuery(c.Request().Context(), tenantID(c), req.Search, req.Query, sourceListIDs, targetListIDs, req.SubscriptionStatus)
 	case "unsubscribe":
-		err = a.core.UnsubscribeListsByQuery(req.Search, req.Query, sourceListIDs, targetListIDs, req.SubscriptionStatus)
+		err = a.core.UnsubscribeListsByQuery(c.Request().Context(), tenantID(c), req.Search, req.Query, sourceListIDs, targetListIDs, req.SubscriptionStatus)
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidAction"))
 	}

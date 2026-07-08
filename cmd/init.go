@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"database/sql"
 	"encoding/json"
@@ -632,20 +633,29 @@ func initCampaignManager(msgrs []manager.Messenger, q *models.Queries, u *UrlCon
 	return mgr
 }
 
-// initTxTemplates initializes and compiles the transactional templates and caches them in-memory.
+// initTxTemplates initializes and compiles the transactional templates of
+// every active tenant and caches them in-memory, same per-tenant boot loop
+// shape as scanCampaigns (phase 6).
 func initTxTemplates(m *manager.Manager, co *core.Core) {
-	tpls, err := co.GetTemplates(models.TemplateTypeTx, false)
+	tenantIDs, err := co.GetActiveTenantIDs()
 	if err != nil {
-		lo.Fatalf("error loading transactional templates: %v", err)
+		lo.Fatalf("error loading active tenants: %v", err)
 	}
 
-	for _, t := range tpls {
-		tpl := t
-		if err := tpl.Compile(m.GenericTemplateFuncs()); err != nil {
-			lo.Printf("error compiling transactional template %d: %v", tpl.ID, err)
-			continue
+	for _, tenantID := range tenantIDs {
+		tpls, err := co.GetTemplates(context.Background(), tenantID, models.TemplateTypeTx, false)
+		if err != nil {
+			lo.Fatalf("error loading transactional templates: %v", err)
 		}
-		m.CacheTpl(tpl.ID, &tpl)
+
+		for _, t := range tpls {
+			tpl := t
+			if err := tpl.Compile(m.GenericTemplateFuncs()); err != nil {
+				lo.Printf("error compiling transactional template %d: %v", tpl.ID, err)
+				continue
+			}
+			m.CacheTpl(tenantID, tpl.ID, &tpl)
+		}
 	}
 }
 
@@ -1165,7 +1175,7 @@ func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
 			return nil
 		},
 		GetUser: func(id int) (auth.User, error) {
-			return co.GetUser(id, "", "")
+			return co.GetUserUnscoped(id)
 		},
 	}
 

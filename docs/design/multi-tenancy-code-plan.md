@@ -684,6 +684,105 @@ per-layer test above is what actually confirms the code is correct.
 non-table-owner application role**, per the RLS "verify before merging"
 checklist in phase 2.
 
+### Slices 2-9 (2026-07-08): `campaigns.go`, `subscriptions.go`,
+`bounces.go`, `lists.go`, `media.go`, `roles.go`, `templates.go`,
+`users.go` — implemented, plus a cross-cutting RLS/INSERT gap fix
+
+What started as slice 2 (`campaigns.go`) surfaced a schema-wide gap before
+any code was written: Phase 2's RLS policy (`v6.5.0`) has no `FOR`/`WITH
+CHECK` clause, so an `ALL`-command policy's `WITH CHECK` defaults to the
+same expression as `USING` — every `INSERT` must supply a `tenant_id`
+matching `current_setting('app.current_tenant')` under a real
+(non-superuser) role, or the insert is rejected. Every `INSERT` in every
+`queries/*.sql` file relied on the column's `DEFAULT 1` from phase 1 with
+no exceptions. User chose the broadest option when asked: fix every
+`INSERT` across the whole schema in one pass rather than scoping to
+`campaigns.go` alone. Doing that requires `WithTenant` threading anyway
+(the only way `app.current_tenant` gets set), so this ended up completing
+slices 2-9 of issue #40 as a byproduct of the INSERT fix, not as
+separately-scoped work.
+
+**Shape notes specific to these slices** (beyond the 3 shapes documented
+in slice 1):
+- **`bounces.go`'s `RecordBounce`** is called from bounce
+  webhooks/POP3-mailbox polling (`internal/bounce`), which have no
+  request-scoped tenant at all — it does **not** go through `WithTenant`.
+  `queries/bounces.sql`'s `record-bounce` instead derives the inserted
+  row's `tenant_id` from the resolved subscriber's own `tenant_id`
+  (`sub` CTE now selects it), which works under RLS's permissive-when-unset
+  fallback regardless of session state.
+- **`internal/subimporter` (bulk CSV import)** and
+  **`cmd/manager_store.go`'s `CreateLink`/`GetAttachment`/
+  `GetInlineAttachmentByFilename`** both call raw queries/`Core` methods
+  from outside any HTTP request (`internal/manager`'s campaign-send
+  pipeline, the importer's own goroutine), bypassing `WithTenant`
+  entirely. Fixed by threading tenant identity through their own existing
+  data instead of `WithTenant`: `subimporter.SessionOpt` gained a
+  `TenantID` field (set by the HTTP handler that starts an import
+  session, `json:"-"` so it can't be client-supplied), and
+  `manager.Store`'s `CreateLink`/`GetAttachment`/
+  `GetInlineAttachmentByFilename` gained `ctx`/`tenantID` params sourced
+  from `models.Campaign.TenantID` (already present since #41 slice 1),
+  called with `context.Background()` since these are background
+  worker paths, matching the existing `getMessenger` convention.
+- **`users.go`'s `LoginUser` had zero tenant filtering** — found while
+  threading this file, not something being looked for. `username` is
+  still a global `UNIQUE` constraint (deferred in phase 1), so without
+  scoping, valid credentials for tenant A would also successfully log in
+  on tenant B's subdomain if a same-named account existed there. Fixed by
+  routing it through `WithTenant` like everything else. This is a
+  different bug from what `internal/auth.tenantMismatch` guards (replay
+  of an *existing* session/token against the wrong tenant) — that check
+  never ran during the login call itself.
+- **Two user lookups deliberately kept unscoped**, each with an explicit
+  comment: `Core.GetUserUnscoped` (used only by `cmd/init.go`'s
+  `auth.Callbacks.GetUser`, the session/API-token decode callback — it
+  must find the user regardless of tenant so `tenantMismatch` can compare
+  and reject with a *distinct* 403, rather than RLS making a cross-tenant
+  replay silently indistinguishable from "user not found") and
+  `Core.GetAllUsersUnscoped` (used only by `cmd/users.go`'s `cacheUsers`,
+  which populates the in-memory API-token cache — needs every tenant's
+  API users since an incoming token's tenant isn't known until *after*
+  the token itself is matched).
+- **`cmd/init.go`'s `initTxTemplates`** (boot-time tx-template cache
+  warmup) was pinned to tenant 1 as a stopgap immediately after
+  `manager.CacheTpl` gained a `tenantID` param (needed to compile), then
+  properly fixed once `templates.go` itself was threaded: it now calls
+  the same `Core.GetActiveTenantIDs()` phase-6's `scanCampaigns` uses and
+  loops per tenant.
+- **`install.go`'s many raw `q.X.Exec`/`q.X.Get` calls** (seed data —
+  lists, subscribers, templates, campaign, role, user) all needed a
+  trailing tenant literal `1` added by hand, since install always seeds
+  the one tenant that exists before any provisioning flow (phase 9) is
+  built. These are **not caught by `go build`** — prepared-statement
+  `Exec`/`Get` take variadic `...any`, so a wrong argument count is a
+  runtime `pq` error, not a compile error.
+- **A real bug caught only by live-testing, again**: `CreateRole`/
+  `CreateListRole` were written accepting the new `ctx`/`tenantID`
+  params but the SQL call itself forgot to actually pass `tenantID` as
+  the query's new trailing arg. `go build`/`go vet` were clean; a live
+  `curl POST /api/roles/users` immediately surfaced `sql: expected 4
+  arguments, got 3`. Fixed and reverified live.
+
+**Verified live end-to-end** against the dev server (tenant 1, default
+single-tenant config): created a list, a subscriber with a list
+subscription, a template, a user role, a list role (with list
+permissions), a user, a media upload, and a campaign (with a list and a
+media attachment); ran the campaign draft → running → finished and
+confirmed `campaign_media`, `campaign_lists`, and `links` (via a real
+`@TrackLink`-tagged URL — the one exercising the previously
+Core-bypassing `CreateLink` path) all wrote rows with `tenant_id=1`
+before the expected fake-SMTP-host send failure. All test data deleted
+afterward. `go build`, `go vet`, and `go test ./... -race` all clean. No
+new migration — `tenant_id` columns already existed from phase 1; this
+was purely a `queries/*.sql` + `internal/core`/`cmd` fix.
+
+**Remaining in #40:** only `internal/core/dashboard.go`
+(`GetDashboardCharts`/`GetDashboardCounts`, backed by global materialized
+views) — tracked under this doc's "Matview refresh cost" open question,
+not a plain threading job like the rest of #40 since it needs a
+`tenant_id` dimension added to the matviews themselves first.
+
 ---
 
 ## Phase 9 — operator API

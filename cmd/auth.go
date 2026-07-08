@@ -249,7 +249,7 @@ func (a *App) OIDCFinish(c echo.Context) error {
 	claims.Email = email
 
 	// Get the user by e-mail received from OIDC.
-	user, userErr := a.core.GetUser(0, "", email)
+	user, userErr := a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if userErr != nil {
 		// If the user doesn't exist, and auto-creation is enabled, create a new user.
 		if httpErr, ok := userErr.(*echo.HTTPError); ok && httpErr.Code == http.StatusNotFound && a.cfg.Security.OIDC.AutoCreateUsers {
@@ -265,7 +265,7 @@ func (a *App) OIDCFinish(c echo.Context) error {
 	}
 
 	// Update the user login state (avatar, logged in date) in the DB.
-	if err := a.core.UpdateUserLogin(user.ID, claims.Picture); err != nil {
+	if err := a.core.UpdateUserLogin(c.Request().Context(), tenantID(c), user.ID, claims.Picture); err != nil {
 		return a.renderLoginPage(c, err)
 	}
 
@@ -309,7 +309,7 @@ func (a *App) ResetPage(c echo.Context) error {
 	}
 
 	// Validate that the user exists.
-	_, err = a.core.GetUser(0, "", email)
+	_, err = a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if err != nil {
 		return c.Render(http.StatusBadRequest, tplMessage, makeMsgTpl(a.i18n.T("users.resetPassword"), "", a.i18n.T("users.invalidResetLink")))
 	}
@@ -438,7 +438,7 @@ func (a *App) createOIDCUser(claims auth.OIDCclaim, c echo.Context) (auth.User, 
 		listRoleID = &a.cfg.Security.OIDC.DefaultListRoleID
 	}
 
-	user, err := a.core.CreateUser(auth.User{
+	user, err := a.core.CreateUser(c.Request().Context(), tenantID(c), auth.User{
 		Type:          auth.UserTypeUser,
 		HasPassword:   false,
 		PasswordLogin: false,
@@ -476,7 +476,7 @@ func (a *App) doLogin(c echo.Context) error {
 	}
 
 	// Log the user in by fetching and verifying credentials from the DB.
-	user, err := a.core.LoginUser(username, password)
+	user, err := a.core.LoginUser(c.Request().Context(), tenantID(c), username, password)
 	if err != nil {
 		return err
 	}
@@ -528,7 +528,7 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 	}
 
 	// Create the default "Super Admin" with all permissions if it doesn't exist.
-	if _, err := a.core.GetRole(auth.SuperAdminRoleID); err != nil {
+	if _, err := a.core.GetRole(c.Request().Context(), tenantID(c), auth.SuperAdminRoleID); err != nil {
 		r := auth.Role{
 			Type: auth.RoleTypeUser,
 			Name: null.NewString("Super Admin", true),
@@ -538,7 +538,7 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 		}
 
 		// Create the role in the DB.
-		if _, err := a.core.CreateRole(r); err != nil {
+		if _, err := a.core.CreateRole(c.Request().Context(), tenantID(c), r); err != nil {
 			return err
 		}
 	}
@@ -555,12 +555,12 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 		UserRoleID:    auth.SuperAdminRoleID,
 		Status:        auth.UserStatusEnabled,
 	}
-	if _, err := a.core.CreateUser(u); err != nil {
+	if _, err := a.core.CreateUser(c.Request().Context(), tenantID(c), u); err != nil {
 		return err
 	}
 
 	// Log the user in directly.
-	user, err := a.core.LoginUser(username, password)
+	user, err := a.core.LoginUser(c.Request().Context(), tenantID(c), username, password)
 	if err != nil {
 		return err
 	}
@@ -596,7 +596,7 @@ func (a *App) doForgotPassword(c echo.Context) error {
 	}
 
 	// Get the user by email.
-	user, err := a.core.GetUser(0, "", email)
+	user, err := a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if err != nil {
 		return c.Render(http.StatusOK, tplMessage, makeMsgTpl(a.i18n.T("users.resetPassword"), "", a.i18n.T("users.resetLinkSent")))
 	}
@@ -678,7 +678,7 @@ func (a *App) doResetPassword(c echo.Context, token, email string) error {
 	}
 
 	// Get the user.
-	user, err := a.core.GetUser(0, "", email)
+	user, err := a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if err != nil {
 		return c.Render(http.StatusBadRequest, tplMessage, makeMsgTpl(a.i18n.T("users.resetPassword"), "", a.i18n.T("users.invalidResetLink")))
 	}
@@ -689,7 +689,7 @@ func (a *App) doResetPassword(c echo.Context, token, email string) error {
 	}
 
 	user.Password = null.NewString(password, true)
-	if _, err := a.core.UpdateUserProfile(user.ID, user); err != nil {
+	if _, err := a.core.UpdateUserProfile(c.Request().Context(), tenantID(c), user.ID, user); err != nil {
 		a.log.Printf("error updating user password: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("globals.messages.internalError"))
 	}
@@ -730,7 +730,7 @@ func (a *App) doTwofaVerify(c echo.Context, token string, userID int, next strin
 	}
 
 	// Get the user.
-	user, err := a.core.GetUser(userID, "", "")
+	user, err := a.core.GetUser(c.Request().Context(), tenantID(c), userID, "", "")
 	if err != nil {
 		return a.renderTwofaPage(c, token, next, a.i18n.T("users.invalidRequest"))
 	}

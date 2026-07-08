@@ -2,11 +2,18 @@
 
 Status: **phases 1-3 and 6 implemented; phase 4 partially implemented
 (auth/subdomain resolution shipped, `internal/core` tenantID-threading
-split into its own follow-up issue #40, in progress file-by-file — slice 1
-(`subscribers.go`) done); phase 5 partially implemented (settings DB/Core
-layer shipped, subsystem redesign — SMTP/media/OIDC/manager — split into
-its own follow-up issue #41, in progress — SMTP messenger resolution
-slice done); phases 7-9 not started**. This document captures research and a phased
+split into its own follow-up issue #40 — now nearly complete:
+`subscribers.go`, `subscriptions.go`, `campaigns.go`, `bounces.go`,
+`lists.go`, `media.go`, `roles.go`, `templates.go`, and `users.go` are all
+threaded through `WithTenant`/RLS, including a cross-cutting fix ensuring
+every `INSERT` across the schema sets `tenant_id` explicitly (previously
+relied on `DEFAULT 1`, which a real non-superuser RLS role would have
+rejected for any tenant but 1 — see Decisions log). Only `dashboard.go`
+(matview-backed counts/charts) remains, tracked under the existing
+"Matview refresh cost" open question below); phase 5 partially implemented
+(settings DB/Core layer shipped, subsystem redesign — SMTP/media/OIDC/manager
+— split into its own follow-up issue #41, in progress — SMTP messenger
+resolution slice done); phases 7-9 not started**. This document captures research and a phased
 implementation plan for adding multi-tenancy to listmonk. It is an internal
 engineering design doc, not end-user documentation.
 
@@ -409,6 +416,77 @@ UI-level "operator" role.
   campaign, confirmed pickup on the next tick, confirmed the SMTP
   resolver and eventual expected-failure send all fired correctly) both
   before and after the fix, to prove the bug and the fix were both real.
+
+- **Cross-cutting INSERT/RLS gap found and fixed (2026-07-08):** while
+  starting issue #40 slice 2 (`internal/core/campaigns.go`), found that
+  Phase 2's RLS policy (`v6.5.0`) has no explicit `FOR`/`WITH CHECK`
+  clause, so Postgres defaults an `ALL`-command policy's `WITH CHECK` to
+  the same expression as `USING` — meaning **every `INSERT`** across the
+  whole schema must supply a `tenant_id` value matching
+  `current_setting('app.current_tenant')`, or a non-superuser DB role
+  rejects the row. Checked every `queries/*.sql` file: **zero** `INSERT`
+  statements set `tenant_id` explicitly (they all relied on the column's
+  `DEFAULT 1` from Phase 1) — meaning every write for any tenant other
+  than tenant 1 would have been rejected under real (non-superuser) RLS
+  enforcement. Invisible until now because the dev DB role is a
+  superuser (RLS-exempt entirely — same reason Phase 2/3 needed a
+  throwaway non-superuser role to demonstrate isolation at all).
+  User chose the broad fix (over scoping to just campaigns.go or
+  deferring): swept every `INSERT` across `campaigns.sql`, `links.sql`,
+  `subscribers.sql`, `bounces.sql`, `lists.sql`, `media.sql`, `roles.sql`,
+  `templates.sql`, `users.sql`, adding an explicit `tenant_id` param to
+  each. This required threading `ctx`/`tenantID` through essentially all
+  of `internal/core` in the process — `campaigns.go`, `subscriptions.go`,
+  `bounces.go`, `lists.go`, `media.go`, `roles.go`, `templates.go`,
+  `users.go` — which amounts to completing the large majority of issue
+  #40 (Core-threading) as a side effect, not just its originally-planned
+  slice 2. Also fixed two call paths that bypass Core entirely and thus
+  never ran through `WithTenant`: the bulk CSV importer
+  (`internal/subimporter`, gained a `SessionOpt.TenantID` set by the
+  HTTP handler from the resolved request tenant) and
+  `cmd/manager_store.go`'s `CreateLink`/`GetAttachment`/
+  `GetInlineAttachmentByFilename` (called from `internal/manager`'s
+  campaign-send pipeline, now threaded via `models.Campaign.TenantID`
+  down through `Manager.trackLink`/`attachMedia`/`applyInlineImages`).
+  **Also found and fixed a related, adjacent bug in the same file**:
+  `LoginUser`'s query had zero tenant filtering — since `username` is
+  still a global `UNIQUE` constraint (Phase 1, deferred), a valid
+  username/password for tenant A would also log in successfully on
+  tenant B's subdomain if a same-named account existed there. Fixed by
+  routing `LoginUser` through `WithTenant` like everything else, so RLS
+  narrows the match to the resolved tenant. This is distinct from (and
+  was previously masked by) `internal/auth.tenantMismatch`, which only
+  guards *replaying* an existing session/token against the wrong tenant,
+  not the login call itself.
+  Two auth-adjacent lookups were deliberately kept **unscoped** (new
+  `Core.GetUserUnscoped`/`GetAllUsersUnscoped`, with comments explaining
+  why): the session/API-token lookup callback
+  (`cmd/init.go`'s `auth.Callbacks.GetUser`) must find a user regardless
+  of tenant so `tenantMismatch` can compare and reject with a distinct
+  403 rather than RLS silently making it look like "not found"; and the
+  API-token cache (`cmd/users.go`'s `cacheUsers`) must hold every
+  tenant's API users since an incoming token's tenant is only known
+  after the token itself is matched.
+  Found one additional bug via live-testing that pure code review had
+  missed: `CreateRole`/`CreateListRole` were written accepting
+  `ctx`/`tenantID` params but forgot to actually pass `tenantID` as the
+  new trailing SQL arg — caught immediately via a live `curl` against the
+  dev server (`sql: expected 4 arguments, got 3`), not by `go build`
+  (prepared-statement `.Exec`/`.Get` take variadic `any` args, so
+  arg-count mismatches are runtime-only). This reinforced the
+  session-wide pattern that live verification catches classes of bugs
+  code review and `go build`/`go vet` cannot. Verified live end-to-end
+  after the fix: created a list, subscriber (with list subscription),
+  template, user role, list role (with list permissions), user, media
+  upload, and a campaign (with list + media attachment), then ran the
+  campaign to completion (draft → running → finished) confirming
+  `campaign_media`, `campaign_lists`, and `links` (via a real
+  `@TrackLink`-tagged URL, exercising the previously-Core-bypassing
+  `CreateLink` path) all wrote rows with the correct `tenant_id` before
+  the expected fake-SMTP-host send failure. All test data cleaned up
+  afterward. No new migration needed — `tenant_id` columns already
+  existed from Phase 1; this was purely a `queries/*.sql` +
+  `internal/core`/`cmd` fix.
 
 ## Open questions
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/gofrs/uuid/v5"
 	"github.com/knadh/listmonk/internal/core"
 	"github.com/knadh/listmonk/internal/manager"
@@ -98,8 +100,8 @@ func (s *store) UpdateCampaignCounts(campID int, toSend int, sent int, lastSubID
 }
 
 // GetAttachment fetches a media attachment blob.
-func (s *store) GetAttachment(mediaID int) (models.Attachment, error) {
-	m, err := s.core.GetMedia(mediaID, "", "", s.media)
+func (s *store) GetAttachment(ctx context.Context, tenantID int, mediaID int) (models.Attachment, error) {
+	m, err := s.core.GetMedia(ctx, tenantID, mediaID, "", "", s.media)
 	if err != nil {
 		return models.Attachment{}, err
 	}
@@ -120,8 +122,8 @@ func (s *store) GetAttachment(mediaID int) (models.Attachment, error) {
 // it as an inline attachment along with the Content-ID value. The lookup is
 // uniform across filesystem and S3 providers because both use the same media
 // store interface; the first match for a given filename is returned.
-func (s *store) GetInlineAttachmentByFilename(filename string) (models.Attachment, string, error) {
-	m, err := s.core.GetMedia(0, "", filename, s.media)
+func (s *store) GetInlineAttachmentByFilename(ctx context.Context, tenantID int, filename string) (models.Attachment, string, error) {
+	m, err := s.core.GetMedia(ctx, tenantID, 0, "", filename, s.media)
 	if err != nil {
 		return models.Attachment{}, "", err
 	}
@@ -141,7 +143,7 @@ func (s *store) GetInlineAttachmentByFilename(filename string) (models.Attachmen
 }
 
 // CreateLink registers a URL with a UUID for tracking clicks and returns the UUID.
-func (s *store) CreateLink(url string) (string, error) {
+func (s *store) CreateLink(ctx context.Context, tenantID int, url string) (string, error) {
 	// Create a new UUID for the URL. If the URL already exists in the DB
 	// the UUID in the database is returned.
 	uu, err := uuid.NewV4()
@@ -150,7 +152,7 @@ func (s *store) CreateLink(url string) (string, error) {
 	}
 
 	var out string
-	if err := s.queries.CreateLink.Get(&out, uu, url); err != nil {
+	if err := s.queries.CreateLink.Get(&out, uu, url, tenantID); err != nil {
 		return "", err
 	}
 

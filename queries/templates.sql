@@ -9,7 +9,7 @@ SELECT id, name, type, subject,
     ORDER BY created_at;
 
 -- name: create-template
-INSERT INTO templates (name, type, subject, body, body_source) VALUES($1, $2, $3, $4, $5) RETURNING id;
+INSERT INTO templates (name, type, subject, body, body_source, tenant_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING id;
 
 -- name: update-template
 UPDATE templates SET

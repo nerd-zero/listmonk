@@ -25,7 +25,7 @@ WITH tpl AS (
 camp AS (
     INSERT INTO campaigns (uuid, type, name, subject, from_email, body, altbody,
         content_type, send_at, headers, attribs, tags, messenger, template_id, to_send,
-        max_subscriber_id, archive, archive_slug, archive_template_id, archive_meta, body_source)
+        max_subscriber_id, archive, archive_slug, archive_template_id, archive_meta, body_source, tenant_id)
         SELECT $1, $2, $3, $4, $5,
             -- body
             COALESCE(NULLIF($6, ''), (SELECT body FROM tpl), ''),
@@ -40,16 +40,18 @@ camp AS (
             $18,
             $19,
             -- body_source
-            COALESCE($21, (SELECT body_source FROM tpl))
+            COALESCE($21, (SELECT body_source FROM tpl)),
+            -- tenant_id
+            $22
         RETURNING id
 ),
 med AS (
-    INSERT INTO campaign_media (campaign_id, media_id, filename)
-        (SELECT (SELECT id FROM camp), id, filename FROM media WHERE id=ANY($20::INT[]))
+    INSERT INTO campaign_media (campaign_id, media_id, filename, tenant_id)
+        (SELECT (SELECT id FROM camp), id, filename, $22 FROM media WHERE id=ANY($20::INT[]))
 ),
 insLists AS (
-    INSERT INTO campaign_lists (campaign_id, list_id, list_name)
-        SELECT (SELECT id FROM camp), id, name FROM lists WHERE id=ANY($15::INT[])
+    INSERT INTO campaign_lists (campaign_id, list_id, list_name, tenant_id)
+        SELECT (SELECT id FROM camp), id, name, $22 FROM lists WHERE id=ANY($15::INT[])
 )
 SELECT id FROM camp;
 
@@ -429,12 +431,12 @@ med AS (
     AND ( media_id IS NULL or NOT(media_id = ANY($19))) RETURNING media_id
 ),
 medi AS (
-    INSERT INTO campaign_media (campaign_id, media_id, filename)
-        (SELECT $1 AS campaign_id, id, filename FROM media WHERE id=ANY($19::INT[]))
+    INSERT INTO campaign_media (campaign_id, media_id, filename, tenant_id)
+        (SELECT $1 AS campaign_id, id, filename, $21 FROM media WHERE id=ANY($19::INT[]))
         ON CONFLICT (campaign_id, media_id) DO NOTHING
 )
-INSERT INTO campaign_lists (campaign_id, list_id, list_name)
-    (SELECT $1 as campaign_id, id, name FROM lists WHERE id=ANY($14::INT[]))
+INSERT INTO campaign_lists (campaign_id, list_id, list_name, tenant_id)
+    (SELECT $1 as campaign_id, id, name, $21 FROM lists WHERE id=ANY($14::INT[]))
     ON CONFLICT (campaign_id, list_id) DO UPDATE SET list_name = EXCLUDED.list_name;
 
 -- name: update-campaign-counts
@@ -489,6 +491,6 @@ WITH view AS (
     LEFT JOIN subscribers ON (CASE WHEN $2::TEXT != '' THEN subscribers.uuid = $2::UUID ELSE FALSE END)
     WHERE campaigns.uuid = $1
 )
-INSERT INTO campaign_views (campaign_id, subscriber_id)
-    VALUES((SELECT campaign_id FROM view), (SELECT subscriber_id FROM view));
+INSERT INTO campaign_views (campaign_id, subscriber_id, tenant_id)
+    VALUES((SELECT campaign_id FROM view), (SELECT subscriber_id FROM view), $3);
 

@@ -96,7 +96,7 @@ func (a *App) GetCampaigns(c echo.Context) error {
 	)
 
 	// Query and retrieve campaigns from the DB.
-	res, total, err := a.core.QueryCampaigns(query, status, tags, orderBy, order, hasAllPerm, permittedLists, pg.Offset, pg.Limit)
+	res, total, err := a.core.QueryCampaigns(c.Request().Context(), tenantID(c), query, status, tags, orderBy, order, hasAllPerm, permittedLists, pg.Offset, pg.Limit)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (a *App) GetCampaign(c echo.Context) error {
 	}
 
 	// Get the campaign from the DB.
-	out, err := a.core.GetCampaign(id, "", "")
+	out, err := a.core.GetCampaign(c.Request().Context(), tenantID(c), id, "", "")
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func (a *App) PreviewCampaign(c echo.Context) error {
 	}
 
 	// Get the campaign from the DB for previewing with the `template_body` field.
-	camp, err := a.core.GetCampaignForPreview(id, tplID)
+	camp, err := a.core.GetCampaignForPreview(c.Request().Context(), tenantID(c), id, tplID)
 	if err != nil {
 		return err
 	}
@@ -275,7 +275,7 @@ func (a *App) PreviewCampaignArchive(c echo.Context) error {
 
 	// Fetch the campaign body from the DB.
 	tplID, _ := strconv.Atoi(c.FormValue("template_id"))
-	camp, err := a.core.GetCampaignForPreview(id, tplID)
+	camp, err := a.core.GetCampaignForPreview(c.Request().Context(), tenantID(c), id, tplID)
 	if err != nil {
 		return err
 	}
@@ -353,7 +353,7 @@ func (a *App) CreateCampaign(c echo.Context) error {
 	// If the campaign's 'opt-in', prepare a default message.
 	switch o.Type {
 	case models.CampaignTypeOptin:
-		op, err := a.makeOptinCampaignMessage(o)
+		op, err := a.makeOptinCampaignMessage(c.Request().Context(), tenantID(c), o)
 		if err != nil {
 			return err
 		}
@@ -377,7 +377,7 @@ func (a *App) CreateCampaign(c echo.Context) error {
 		o.ArchiveTemplateID = o.TemplateID
 	}
 
-	out, err := a.core.CreateCampaign(o.Campaign, o.ListIDs, o.MediaIDs)
+	out, err := a.core.CreateCampaign(c.Request().Context(), tenantID(c), o.Campaign, o.ListIDs, o.MediaIDs)
 	if err != nil {
 		return err
 	}
@@ -409,7 +409,7 @@ func (a *App) UpdateCampaign(c echo.Context) error {
 	}
 
 	// Retrieve the campaign from the DB.
-	cm, err := a.core.GetCampaign(id, "", "")
+	cm, err := a.core.GetCampaign(c.Request().Context(), tenantID(c), id, "", "")
 	if err != nil {
 		return err
 	}
@@ -441,7 +441,7 @@ func (a *App) UpdateCampaign(c echo.Context) error {
 		o = c
 	}
 
-	out, err := a.core.UpdateCampaign(id, o.Campaign, o.ListIDs, o.MediaIDs)
+	out, err := a.core.UpdateCampaign(c.Request().Context(), tenantID(c), id, o.Campaign, o.ListIDs, o.MediaIDs)
 	if err != nil {
 		return err
 	}
@@ -487,7 +487,7 @@ func (a *App) UpdateCampaignStatus(c echo.Context) error {
 	}
 
 	// Update the campaign status in the DB.
-	out, err := a.core.UpdateCampaignStatus(id, req.Status)
+	out, err := a.core.UpdateCampaignStatus(c.Request().Context(), tenantID(c), id, req.Status)
 	if err != nil {
 		return err
 	}
@@ -539,7 +539,7 @@ func (a *App) UpdateCampaignArchive(c echo.Context) error {
 		req.ArchiveSlug = s
 	}
 
-	if err := a.core.UpdateCampaignArchive(id, req.Archive, req.TemplateID, req.Meta, req.ArchiveSlug); err != nil {
+	if err := a.core.UpdateCampaignArchive(c.Request().Context(), tenantID(c), id, req.Archive, req.TemplateID, req.Meta, req.ArchiveSlug); err != nil {
 		return err
 	}
 
@@ -568,7 +568,7 @@ func (a *App) DeleteCampaign(c echo.Context) error {
 	}
 
 	// Delete the campaign from the DB.
-	if err := a.core.DeleteCampaign(id); err != nil {
+	if err := a.core.DeleteCampaign(c.Request().Context(), tenantID(c), id); err != nil {
 		return err
 	}
 
@@ -629,7 +629,7 @@ func (a *App) DeleteCampaigns(c echo.Context) error {
 	}
 
 	// Delete the campaigns from the DB.
-	if err := a.core.DeleteCampaigns(ids, query, hasAllPerm, permittedLists); err != nil {
+	if err := a.core.DeleteCampaigns(c.Request().Context(), tenantID(c), ids, query, hasAllPerm, permittedLists); err != nil {
 		return err
 	}
 
@@ -647,7 +647,7 @@ func (a *App) DeleteCampaigns(c echo.Context) error {
 //	@Router			/api/campaigns/running/stats [get]
 func (a *App) GetRunningCampaignStats(c echo.Context) error {
 	// Get the running campaign stats from the DB.
-	out, err := a.core.GetRunningCampaignStats()
+	out, err := a.core.GetRunningCampaignStats(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -739,7 +739,7 @@ func (a *App) TestCampaign(c echo.Context) error {
 
 	// Get the campaign from the DB for previewing.
 	tplID, _ := strconv.Atoi(c.FormValue("template_id"))
-	camp, err := a.core.GetCampaignForPreview(id, tplID)
+	camp, err := a.core.GetCampaignForPreview(c.Request().Context(), tenantID(c), id, tplID)
 	if err != nil {
 		return err
 	}
@@ -810,7 +810,7 @@ func (a *App) GetCampaignViewAnalytics(c echo.Context) error {
 
 	// Campaign link stats.
 	if typ == "links" {
-		out, err := a.core.GetCampaignAnalyticsLinks(ids, typ, from, to)
+		out, err := a.core.GetCampaignAnalyticsLinks(c.Request().Context(), tenantID(c), ids, typ, from, to)
 		if err != nil {
 			return err
 		}
@@ -819,7 +819,7 @@ func (a *App) GetCampaignViewAnalytics(c echo.Context) error {
 	}
 
 	// Get the analytics numbers from the DB for the campaigns.
-	out, err := a.core.GetCampaignAnalyticsCounts(ids, typ, from, to)
+	out, err := a.core.GetCampaignAnalyticsCounts(c.Request().Context(), tenantID(c), ids, typ, from, to)
 	if err != nil {
 		return err
 	}
@@ -938,13 +938,13 @@ func (a *App) validateCampaignFields(c campReq) (campReq, error) {
 }
 
 // makeOptinCampaignMessage makes a default opt-in campaign message body.
-func (a *App) makeOptinCampaignMessage(o campReq) (campReq, error) {
+func (a *App) makeOptinCampaignMessage(ctx context.Context, tenantID int, o campReq) (campReq, error) {
 	if len(o.ListIDs) == 0 {
 		return o, echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("campaigns.fieldInvalidListIDs"))
 	}
 
 	// Fetch double opt-in lists from the given list IDs from the DB.
-	lists, err := a.core.GetListsByOptin(o.ListIDs, models.ListOptinDouble)
+	lists, err := a.core.GetListsByOptin(ctx, tenantID, o.ListIDs, models.ListOptinDouble)
 	if err != nil {
 		return o, err
 	}
@@ -1005,7 +1005,7 @@ func (a *App) checkCampaignPerm(types auth.PermType, id int, c echo.Context) err
 	// all campaigns. If there are no *_all permissions, then ensure that the
 	// campaign belongs to the lists that the user has access to.
 	if hasAllPerm, permittedListIDs := user.GetPermittedLists(auth.PermTypeGet | auth.PermTypeManage); !hasAllPerm {
-		if ok, err := a.core.CampaignHasLists(id, permittedListIDs); err != nil {
+		if ok, err := a.core.CampaignHasLists(c.Request().Context(), tenantID(c), id, permittedListIDs); err != nil {
 			return err
 		} else if !ok {
 			return echo.NewHTTPError(http.StatusForbidden,
@@ -1034,7 +1034,7 @@ func (a *App) checkScrubJobOnCampaign(ctx context.Context, tenantID int, campaig
 	}
 
 	// Get campaign with its lists.
-	camp, err := a.core.GetCampaign(campaignID, "", "")
+	camp, err := a.core.GetCampaign(ctx, tenantID, campaignID, "", "")
 	if err != nil {
 		return false, "", err
 	}

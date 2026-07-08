@@ -122,7 +122,7 @@ func (t *tplRenderer) Render(w io.Writer, name string, data any, c echo.Context)
 // required to submit a subscription.
 func (a *App) GetPublicLists(c echo.Context) error {
 	// Get all public lists.
-	lists, err := a.core.GetLists(models.ListTypePublic, models.ListStatusActive, true, nil)
+	lists, err := a.core.GetLists(c.Request().Context(), tenantID(c), models.ListTypePublic, models.ListStatusActive, true, nil)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("public.errorFetchingLists"))
 	}
@@ -148,7 +148,7 @@ func (a *App) GetPublicLists(c echo.Context) error {
 func (a *App) ViewCampaignMessage(c echo.Context) error {
 	// Get the campaign.
 	campUUID := c.Param("campUUID")
-	camp, err := a.core.GetCampaign(0, campUUID, "")
+	camp, err := a.core.GetCampaign(c.Request().Context(), tenantID(c), 0, campUUID, "")
 	if err != nil {
 		if er, ok := err.(*echo.HTTPError); ok {
 			if er.Code == http.StatusBadRequest {
@@ -228,7 +228,7 @@ func (a *App) SubscriptionPage(c echo.Context) error {
 		out.ShowManage = showManage
 
 		// Get the subscriber's lists from the DB to render in the template.
-		subs, err := a.core.GetSubscriptions(0, subUUID, false)
+		subs, err := a.core.GetSubscriptions(c.Request().Context(), tenantID(c), 0, subUUID, false)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("public.errorFetchingLists"))
 		}
@@ -315,7 +315,7 @@ func (a *App) SubscriptionPrefs(c echo.Context) error {
 	}
 
 	// Get subscription from teh DB.
-	subs, err := a.core.GetSubscriptions(0, subUUID, false)
+	subs, err := a.core.GetSubscriptions(c.Request().Context(), tenantID(c), 0, subUUID, false)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("public.errorFetchingLists"))
 	}
@@ -332,7 +332,7 @@ func (a *App) SubscriptionPrefs(c echo.Context) error {
 	}
 
 	// Unsubscribe from lists.
-	if err := a.core.UnsubscribeLists([]int{sub.ID}, nil, unsubUUIDs); err != nil {
+	if err := a.core.UnsubscribeLists(c.Request().Context(), tenantID(c), []int{sub.ID}, nil, unsubUUIDs); err != nil {
 		return c.Render(http.StatusInternalServerError, tplMessage,
 			makeMsgTpl(a.i18n.T("public.errorTitle"), "", a.i18n.T("public.errorProcessingRequest")))
 
@@ -426,7 +426,7 @@ func (a *App) SubscriptionFormPage(c echo.Context) error {
 	}
 
 	// Get all public lists from the DB.
-	lists, err := a.core.GetLists(models.ListTypePublic, models.ListStatusActive, true, nil)
+	lists, err := a.core.GetLists(c.Request().Context(), tenantID(c), models.ListTypePublic, models.ListStatusActive, true, nil)
 	if err != nil {
 		return c.Render(http.StatusInternalServerError, tplMessage,
 			makeMsgTpl(a.i18n.T("public.errorTitle"), "", a.i18n.Ts("public.errorFetchingLists")))
@@ -557,7 +557,7 @@ func (a *App) LinkRedirect(c echo.Context) error {
 
 	// If tracking is globally disabled, resolve the URL without recording a click.
 	if a.cfg.Privacy.DisableTracking {
-		url, err := a.core.GetLinkURL(linkUUID)
+		url, err := a.core.GetLinkURL(c.Request().Context(), tenantID(c), linkUUID)
 		if err != nil {
 			e := err.(*echo.HTTPError)
 			return c.Render(e.Code, tplMessage, makeMsgTpl(a.i18n.T("public.errorTitle"), "", e.Error()))
@@ -571,7 +571,7 @@ func (a *App) LinkRedirect(c echo.Context) error {
 		subUUID = ""
 	}
 
-	url, err := a.core.RegisterCampaignLinkClick(linkUUID, campUUID, subUUID)
+	url, err := a.core.RegisterCampaignLinkClick(c.Request().Context(), tenantID(c), linkUUID, campUUID, subUUID)
 	if err != nil {
 		e := err.(*echo.HTTPError)
 		return c.Render(e.Code, tplMessage, makeMsgTpl(a.i18n.T("public.errorTitle"), "", e.Error()))
@@ -600,7 +600,7 @@ func (a *App) RegisterCampaignView(c echo.Context) error {
 	// Exclude dummy hits from template previews.
 	campUUID := c.Param("campUUID")
 	if campUUID != dummyUUID && subUUID != dummyUUID {
-		if err := a.core.RegisterCampaignView(campUUID, subUUID); err != nil {
+		if err := a.core.RegisterCampaignView(c.Request().Context(), tenantID(c), campUUID, subUUID); err != nil {
 			a.log.Printf("error registering campaign view: %s", err)
 		}
 	}
@@ -758,7 +758,7 @@ func (a *App) processSubForm(c echo.Context) (bool, error) {
 	listUUIDs := pq.StringArray(req.FormListUUIDs)
 
 	// Fetch the list types and ensure that they are not private.
-	listTypes, err := a.core.GetListTypes(nil, req.FormListUUIDs)
+	listTypes, err := a.core.GetListTypes(c.Request().Context(), tenantID(c), nil, req.FormListUUIDs)
 	if err != nil {
 		return false, echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("%s", err.(*echo.HTTPError).Message))
 	}

@@ -1,18 +1,23 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/knadh/listmonk/internal/auth"
 	"github.com/labstack/echo/v4"
 	"github.com/lib/pq"
 )
 
 // GetRoles retrieves all roles.
-func (c *Core) GetRoles() ([]auth.Role, error) {
+func (c *Core) GetRoles(ctx context.Context, tenantID int) ([]auth.Role, error) {
 	out := []auth.Role{}
-	if err := c.q.GetUserRoles.Select(&out, nil); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetUserRoles).Select(&out, nil)
+	})
+	if err != nil {
 		return nil, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "role", "error", pqErrMsg(err)))
 	}
@@ -21,9 +26,12 @@ func (c *Core) GetRoles() ([]auth.Role, error) {
 }
 
 // GetRole retrieves a role.
-func (c *Core) GetRole(id int) (auth.Role, error) {
+func (c *Core) GetRole(ctx context.Context, tenantID int, id int) (auth.Role, error) {
 	out := []auth.Role{}
-	if err := c.q.GetUserRoles.Select(&out, id); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetUserRoles).Select(&out, id)
+	})
+	if err != nil {
 		return auth.Role{}, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "role", "error", pqErrMsg(err)))
 	}
@@ -38,9 +46,12 @@ func (c *Core) GetRole(id int) (auth.Role, error) {
 }
 
 // GetListRoles retrieves all list roles.
-func (c *Core) GetListRoles() ([]auth.ListRole, error) {
+func (c *Core) GetListRoles(ctx context.Context, tenantID int) ([]auth.ListRole, error) {
 	out := []auth.ListRole{}
-	if err := c.q.GetListRoles.Select(&out); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetListRoles).Select(&out)
+	})
+	if err != nil {
 		return nil, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "role", "error", pqErrMsg(err)))
 	}
@@ -60,10 +71,13 @@ func (c *Core) GetListRoles() ([]auth.ListRole, error) {
 }
 
 // CreateRole creates a new role.
-func (c *Core) CreateRole(r auth.Role) (auth.Role, error) {
+func (c *Core) CreateRole(ctx context.Context, tenantID int, r auth.Role) (auth.Role, error) {
 	var out auth.Role
 
-	if err := c.q.CreateRole.Get(&out, r.Name, auth.RoleTypeUser, pq.Array(r.Permissions)); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.CreateRole).Get(&out, r.Name, auth.RoleTypeUser, pq.Array(r.Permissions), tenantID)
+	})
+	if err != nil {
 		return out, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{users.role}", "error", pqErrMsg(err)))
 	}
@@ -72,15 +86,18 @@ func (c *Core) CreateRole(r auth.Role) (auth.Role, error) {
 }
 
 // CreateListRole creates a new list role.
-func (c *Core) CreateListRole(r auth.ListRole) (auth.ListRole, error) {
+func (c *Core) CreateListRole(ctx context.Context, tenantID int, r auth.ListRole) (auth.ListRole, error) {
 	var out auth.ListRole
 
-	if err := c.q.CreateRole.Get(&out, r.Name, auth.RoleTypeList, pq.Array([]string{})); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.CreateRole).Get(&out, r.Name, auth.RoleTypeList, pq.Array([]string{}), tenantID)
+	})
+	if err != nil {
 		return out, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{users.role}", "error", pqErrMsg(err)))
 	}
 
-	if err := c.UpsertListPermissions(out.ID, r.Lists); err != nil {
+	if err := c.UpsertListPermissions(ctx, tenantID, out.ID, r.Lists); err != nil {
 		return out, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{users.role}", "error", pqErrMsg(err)))
 	}
@@ -89,7 +106,7 @@ func (c *Core) CreateListRole(r auth.ListRole) (auth.ListRole, error) {
 }
 
 // UpsertListPermissions upserts permission for a role.
-func (c *Core) UpsertListPermissions(roleID int, lp []auth.ListPermission) error {
+func (c *Core) UpsertListPermissions(ctx context.Context, tenantID int, roleID int, lp []auth.ListPermission) error {
 	var (
 		listIDs   = make([]int, 0, len(lp))
 		listPerms = make([][]string, 0, len(lp))
@@ -108,7 +125,11 @@ func (c *Core) UpsertListPermissions(roleID int, lp []auth.ListPermission) error
 		listPerms = append(listPerms, perms)
 	}
 
-	if _, err := c.q.UpsertListPermissions.Exec(roleID, pq.Array(listIDs), pq.Array(listPerms)); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.UpsertListPermissions).Exec(roleID, pq.Array(listIDs), pq.Array(listPerms), tenantID)
+		return err
+	})
+	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{users.role}", "error", pqErrMsg(err)))
 	}
@@ -117,8 +138,12 @@ func (c *Core) UpsertListPermissions(roleID int, lp []auth.ListPermission) error
 }
 
 // DeleteListPermission deletes a list permission entry from a role.
-func (c *Core) DeleteListPermission(roleID, listID int) error {
-	if _, err := c.q.DeleteListPermission.Exec(roleID, listID); err != nil {
+func (c *Core) DeleteListPermission(ctx context.Context, tenantID int, roleID, listID int) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.DeleteListPermission).Exec(roleID, listID)
+		return err
+	})
+	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Constraint == "users_role_id_fkey" {
 			return echo.NewHTTPError(http.StatusBadRequest, c.i18n.T("users.cantDeleteRole"))
 		}
@@ -130,10 +155,13 @@ func (c *Core) DeleteListPermission(roleID, listID int) error {
 }
 
 // UpdateUserRole updates a given role.
-func (c *Core) UpdateUserRole(id int, r auth.Role) (auth.Role, error) {
+func (c *Core) UpdateUserRole(ctx context.Context, tenantID int, id int, r auth.Role) (auth.Role, error) {
 	var out auth.Role
 
-	if err := c.q.UpdateRole.Get(&out, id, r.Name, pq.Array(r.Permissions)); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.UpdateRole).Get(&out, id, r.Name, pq.Array(r.Permissions))
+	})
+	if err != nil {
 		return out, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorUpdating", "name", "{users.userRole}", "error", pqErrMsg(err)))
 	}
@@ -146,10 +174,13 @@ func (c *Core) UpdateUserRole(id int, r auth.Role) (auth.Role, error) {
 }
 
 // UpdateListRole updates a given role.
-func (c *Core) UpdateListRole(id int, r auth.ListRole) (auth.ListRole, error) {
+func (c *Core) UpdateListRole(ctx context.Context, tenantID int, id int, r auth.ListRole) (auth.ListRole, error) {
 	var out auth.ListRole
 
-	if err := c.q.UpdateRole.Get(&out, id, r.Name, pq.Array([]string{})); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.UpdateRole).Get(&out, id, r.Name, pq.Array([]string{}))
+	})
+	if err != nil {
 		return out, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorUpdating", "name", "{users.listRole}", "error", pqErrMsg(err)))
 	}
@@ -158,7 +189,7 @@ func (c *Core) UpdateListRole(id int, r auth.ListRole) (auth.ListRole, error) {
 		return out, echo.NewHTTPError(http.StatusBadRequest, c.i18n.Ts("globals.messages.notFound", "name", "{users.listRole}"))
 	}
 
-	if err := c.UpsertListPermissions(out.ID, r.Lists); err != nil {
+	if err := c.UpsertListPermissions(ctx, tenantID, out.ID, r.Lists); err != nil {
 		return out, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{users.listRole}", "error", pqErrMsg(err)))
 	}
@@ -167,8 +198,12 @@ func (c *Core) UpdateListRole(id int, r auth.ListRole) (auth.ListRole, error) {
 }
 
 // DeleteRole deletes a given role.
-func (c *Core) DeleteRole(id int) error {
-	if _, err := c.q.DeleteRole.Exec(id); err != nil {
+func (c *Core) DeleteRole(ctx context.Context, tenantID int, id int) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.DeleteRole).Exec(id)
+		return err
+	})
+	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Constraint == "users_role_id_fkey" {
 			return echo.NewHTTPError(http.StatusBadRequest, c.i18n.T("users.cantDeleteRole"))
 		}

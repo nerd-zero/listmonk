@@ -365,7 +365,8 @@ func (c *Core) InsertSubscriber(ctx context.Context, tenantID int, sub models.Su
 			sub.Attribs,
 			pq.Array(listIDs),
 			pq.Array(listUUIDs),
-			subStatus)
+			subStatus,
+			tenantID)
 	})
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Constraint == "subscribers_email_key" {
@@ -468,7 +469,8 @@ func (c *Core) UpdateSubscriberWithLists(ctx context.Context, tenantID int, id i
 			subStatus,
 			deleteLists,
 			pq.Array(permittedListIDs),
-			allowResubscribe)
+			allowResubscribe,
+			tenantID)
 		return err
 	})
 	if err != nil {

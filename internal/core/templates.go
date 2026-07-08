@@ -1,18 +1,23 @@
 package core
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/knadh/listmonk/models"
 	"github.com/labstack/echo/v4"
 	null "gopkg.in/volatiletech/null.v6"
 )
 
 // GetTemplates retrieves all templates.
-func (c *Core) GetTemplates(status string, noBody bool) ([]models.Template, error) {
+func (c *Core) GetTemplates(ctx context.Context, tenantID int, status string, noBody bool) ([]models.Template, error) {
 	out := []models.Template{}
-	if err := c.q.GetTemplates.Select(&out, 0, noBody, status); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetTemplates).Select(&out, 0, noBody, status)
+	})
+	if err != nil {
 		return nil, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.templates}", "error", pqErrMsg(err)))
 	}
@@ -21,9 +26,12 @@ func (c *Core) GetTemplates(status string, noBody bool) ([]models.Template, erro
 }
 
 // GetTemplate retrieves a given template.
-func (c *Core) GetTemplate(id int, noBody bool) (models.Template, error) {
+func (c *Core) GetTemplate(ctx context.Context, tenantID int, id int, noBody bool) (models.Template, error) {
 	var out []models.Template
-	if err := c.q.GetTemplates.Select(&out, id, noBody, ""); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetTemplates).Select(&out, id, noBody, "")
+	})
+	if err != nil {
 		return models.Template{}, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.templates}", "error", pqErrMsg(err)))
 	}
@@ -37,35 +45,50 @@ func (c *Core) GetTemplate(id int, noBody bool) (models.Template, error) {
 }
 
 // CreateTemplate creates a new template.
-func (c *Core) CreateTemplate(name, typ, subject string, body []byte, bodySource null.String) (models.Template, error) {
+func (c *Core) CreateTemplate(ctx context.Context, tenantID int, name, typ, subject string, body []byte, bodySource null.String) (models.Template, error) {
 	var newID int
-	if err := c.q.CreateTemplate.Get(&newID, name, typ, subject, body, bodySource); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.CreateTemplate).Get(&newID, name, typ, subject, body, bodySource, tenantID)
+	})
+	if err != nil {
 		return models.Template{}, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{globals.terms.template}", "error", pqErrMsg(err)))
 	}
 
-	return c.GetTemplate(newID, false)
+	return c.GetTemplate(ctx, tenantID, newID, false)
 }
 
 // UpdateTemplate updates a given template.
-func (c *Core) UpdateTemplate(id int, name, subject string, body []byte, bodySource null.String) (models.Template, error) {
-	res, err := c.q.UpdateTemplate.Exec(id, name, subject, body, bodySource)
+func (c *Core) UpdateTemplate(ctx context.Context, tenantID int, id int, name, subject string, body []byte, bodySource null.String) (models.Template, error) {
+	var n int64
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		res, err := stmtx(tx, c.q.UpdateTemplate).Exec(id, name, subject, body, bodySource)
+		if err != nil {
+			return err
+		}
+		n, err = res.RowsAffected()
+		return err
+	})
 	if err != nil {
 		return models.Template{}, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorUpdating", "name", "{globals.terms.template}", "error", pqErrMsg(err)))
 	}
 
-	if n, _ := res.RowsAffected(); n == 0 {
+	if n == 0 {
 		return models.Template{}, echo.NewHTTPError(http.StatusBadRequest,
 			c.i18n.Ts("globals.messages.notFound", "name", "{globals.terms.template}"))
 	}
 
-	return c.GetTemplate(id, false)
+	return c.GetTemplate(ctx, tenantID, id, false)
 }
 
 // SetDefaultTemplate sets a template as default.
-func (c *Core) SetDefaultTemplate(id int) error {
-	if _, err := c.q.SetDefaultTemplate.Exec(id); err != nil {
+func (c *Core) SetDefaultTemplate(ctx context.Context, tenantID int, id int) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.SetDefaultTemplate).Exec(id)
+		return err
+	})
+	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorUpdating", "name", "{globals.terms.template}", "error", pqErrMsg(err)))
 	}
@@ -74,9 +97,12 @@ func (c *Core) SetDefaultTemplate(id int) error {
 }
 
 // DeleteTemplate deletes a given template.
-func (c *Core) DeleteTemplate(id int) error {
+func (c *Core) DeleteTemplate(ctx context.Context, tenantID int, id int) error {
 	var delID int
-	if err := c.q.DeleteTemplate.Get(&delID, id); err != nil && err != sql.ErrNoRows {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.DeleteTemplate).Get(&delID, id)
+	})
+	if err != nil && err != sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorDeleting", "name", "{globals.terms.template}", "error", pqErrMsg(err)))
 	}

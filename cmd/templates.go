@@ -49,7 +49,7 @@ func (a *App) GetTemplate(c echo.Context) error {
 
 	// Get the template from the DB.
 	id := getID(c)
-	out, err := a.core.GetTemplate(id, noBody)
+	out, err := a.core.GetTemplate(c.Request().Context(), tenantID(c), id, noBody)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (a *App) GetTemplates(c echo.Context) error {
 	noBody, _ := strconv.ParseBool(c.QueryParam("no_body"))
 
 	// Fetch templates from the DB.
-	out, err := a.core.GetTemplates("", noBody)
+	out, err := a.core.GetTemplates(c.Request().Context(), tenantID(c), "", noBody)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (a *App) GetTemplates(c echo.Context) error {
 func (a *App) PreviewTemplate(c echo.Context) error {
 	// Fetch one template from the DB.
 	id := getID(c)
-	tpl, err := a.core.GetTemplate(id, false)
+	tpl, err := a.core.GetTemplate(c.Request().Context(), tenantID(c), id, false)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (a *App) CreateTemplate(c echo.Context) error {
 	}
 
 	// Create the template the in the DB.
-	out, err := a.core.CreateTemplate(o.Name, o.Type, o.Subject, []byte(o.Body), o.BodySource)
+	out, err := a.core.CreateTemplate(c.Request().Context(), tenantID(c), o.Name, o.Type, o.Subject, []byte(o.Body), o.BodySource)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (a *App) CreateTemplate(c echo.Context) error {
 	// If it's a transactional template, cache it in the manager
 	// to be used for arbitrary incoming tx message pushes.
 	if o.Type == models.TemplateTypeTx {
-		a.manager.CacheTpl(out.ID, &o)
+		a.manager.CacheTpl(tenantID(c), out.ID, &o)
 	}
 
 	return c.JSON(http.StatusOK, okResp{out})
@@ -234,14 +234,14 @@ func (a *App) UpdateTemplate(c echo.Context) error {
 
 	// Update the template in the DB.
 	id := getID(c)
-	out, err := a.core.UpdateTemplate(id, o.Name, o.Subject, []byte(o.Body), o.BodySource)
+	out, err := a.core.UpdateTemplate(c.Request().Context(), tenantID(c), id, o.Name, o.Subject, []byte(o.Body), o.BodySource)
 	if err != nil {
 		return err
 	}
 
 	// If it's a transactional template, cache it.
 	if out.Type == models.TemplateTypeTx {
-		a.manager.CacheTpl(out.ID, &o)
+		a.manager.CacheTpl(tenantID(c), out.ID, &o)
 	}
 
 	return c.JSON(http.StatusOK, okResp{out})
@@ -262,7 +262,7 @@ func (a *App) UpdateTemplate(c echo.Context) error {
 func (a *App) TemplateSetDefault(c echo.Context) error {
 	// Update the template in the DB.
 	id := getID(c)
-	if err := a.core.SetDefaultTemplate(id); err != nil {
+	if err := a.core.SetDefaultTemplate(c.Request().Context(), tenantID(c), id); err != nil {
 		return err
 	}
 
@@ -283,7 +283,7 @@ func (a *App) TemplateSetDefault(c echo.Context) error {
 func (a *App) DeleteTemplate(c echo.Context) error {
 	// Delete the template from the DB.
 	id := getID(c)
-	if err := a.core.DeleteTemplate(id); err != nil {
+	if err := a.core.DeleteTemplate(c.Request().Context(), tenantID(c), id); err != nil {
 		return err
 	}
 

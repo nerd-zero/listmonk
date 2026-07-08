@@ -1,5 +1,5 @@
 -- name: create-user
-INSERT INTO users (username, password_login, password, email, name, type, user_role_id, list_role_id, status)
+INSERT INTO users (username, password_login, password, email, name, type, user_role_id, list_role_id, status, tenant_id)
     VALUES($1, $2, (
         CASE
             -- For user types with password_login enabled, bcrypt and store the hash of the password.
@@ -10,7 +10,7 @@ INSERT INTO users (username, password_login, password, email, name, type, user_r
                 THEN $3
             ELSE NULL
         END
-    ), $4, $5, $6, (SELECT id FROM roles WHERE id = $7 AND type = 'user'), (SELECT id FROM roles WHERE id = $8 AND type = 'list'), $9) RETURNING id;
+    ), $4, $5, $6, (SELECT id FROM roles WHERE id = $7 AND type = 'user'), (SELECT id FROM roles WHERE id = $8 AND type = 'list'), $9, $10) RETURNING id;
 
 -- name: update-user
 WITH u AS (

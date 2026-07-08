@@ -52,11 +52,11 @@ type Store interface {
 	GetActiveTenantIDs() ([]int, error)
 	NextSubscribers(campID, limit int) ([]models.Subscriber, error)
 	GetCampaign(campID int) (*models.Campaign, error)
-	GetAttachment(mediaID int) (models.Attachment, error)
-	GetInlineAttachmentByFilename(filename string) (models.Attachment, string, error)
+	GetAttachment(ctx context.Context, tenantID int, mediaID int) (models.Attachment, error)
+	GetInlineAttachmentByFilename(ctx context.Context, tenantID int, filename string) (models.Attachment, string, error)
 	UpdateCampaignStatus(campID int, status string) error
 	UpdateCampaignCounts(campID int, toSend int, sent int, lastSubID int) error
-	CreateLink(url string) (string, error)
+	CreateLink(ctx context.Context, tenantID int, url string) (string, error)
 	BlocklistSubscriber(id int64) error
 	DeleteSubscriber(id int64) error
 }
@@ -374,8 +374,8 @@ func (m *Manager) Run() {
 }
 
 // CacheTpl caches a template for ad-hoc use. This is currently only used by tx templates.
-func (m *Manager) CacheTpl(id int, tpl *models.Template) {
-	if body, atts := m.ApplyInlineImages(tpl.Body); len(atts) > 0 {
+func (m *Manager) CacheTpl(tenantID int, id int, tpl *models.Template) {
+	if body, atts := m.ApplyInlineImages(tenantID, tpl.Body); len(atts) > 0 {
 		tpl.Body = body
 		tpl.Attachments = atts
 		if err := tpl.Compile(m.GenericTemplateFuncs()); err != nil {
@@ -423,7 +423,7 @@ func (m *Manager) TemplateFuncs(c *models.Campaign) template.FuncMap {
 				subUUID = dummyUUID
 			}
 
-			return m.trackLink(url, msg.Campaign.UUID, subUUID)
+			return m.trackLink(msg.Campaign.TenantID, url, msg.Campaign.UUID, subUUID)
 		},
 		"TrackView": func(msg *CampaignMessage) template.HTML {
 			if m.cfg.DisableTracking {
@@ -700,7 +700,7 @@ func (m *Manager) getCurrentCampaigns() map[int]currentCampaignIDs {
 
 // trackLink register a URL and return its UUID to be used in message templates
 // for tracking links.
-func (m *Manager) trackLink(url, campUUID, subUUID string) string {
+func (m *Manager) trackLink(tenantID int, url, campUUID, subUUID string) string {
 	if m.cfg.DisableTracking {
 		return url
 	}
@@ -715,7 +715,7 @@ func (m *Manager) trackLink(url, campUUID, subUUID string) string {
 	m.linksMut.RUnlock()
 
 	// Register link.
-	uu, err := m.store.CreateLink(url)
+	uu, err := m.store.CreateLink(context.Background(), tenantID, url)
 	if err != nil {
 		m.log.Printf("error registering tracking for link '%s': %v", url, err)
 
@@ -788,7 +788,7 @@ func (m *Manager) attachMedia(c *models.Campaign) error {
 	}
 
 	for _, mid := range []int64(c.MediaIDs) {
-		a, err := m.store.GetAttachment(int(mid))
+		a, err := m.store.GetAttachment(context.Background(), c.TenantID, int(mid))
 		if err != nil {
 			return fmt.Errorf("error fetching attachment %d on campaign %s: %v", mid, c.Name, err)
 		}
@@ -806,10 +806,10 @@ func (m *Manager) LoadInlineImages(c *models.Campaign) error {
 	}
 
 	cidCache := make(map[string]string)
-	body, atts := m.applyInlineImages(c.Body, cidCache)
+	body, atts := m.applyInlineImages(c.TenantID, c.Body, cidCache)
 	c.Body = body
 
-	tplBody, tplAtts := m.applyInlineImages(c.TemplateBody, cidCache)
+	tplBody, tplAtts := m.applyInlineImages(c.TenantID, c.TemplateBody, cidCache)
 	c.TemplateBody = tplBody
 	atts = append(atts, tplAtts...)
 
@@ -820,11 +820,11 @@ func (m *Manager) LoadInlineImages(c *models.Campaign) error {
 // ApplyInlineImages scans body for <img ... data-embed ...> tags, resolves
 // each unique src filename to a media item, attaches it as an inline part, and
 // rewrites the matched img src to cid.
-func (m *Manager) ApplyInlineImages(body string) (string, []models.Attachment) {
-	return m.applyInlineImages(body, make(map[string]string))
+func (m *Manager) ApplyInlineImages(tenantID int, body string) (string, []models.Attachment) {
+	return m.applyInlineImages(tenantID, body, make(map[string]string))
 }
 
-func (m *Manager) applyInlineImages(body string, cache map[string]string) (string, []models.Attachment) {
+func (m *Manager) applyInlineImages(tenantID int, body string, cache map[string]string) (string, []models.Attachment) {
 	if !strings.Contains(body, attribInlineEmbed) {
 		return body, nil
 	}
@@ -843,7 +843,7 @@ func (m *Manager) applyInlineImages(body string, cache map[string]string) (strin
 
 		cid, ok := cache[src]
 		if !ok {
-			if a, c, err := m.store.GetInlineAttachmentByFilename(fname); err == nil {
+			if a, c, err := m.store.GetInlineAttachmentByFilename(context.Background(), tenantID, fname); err == nil {
 				atts = append(atts, a)
 				cid = c
 			} else {

@@ -32,7 +32,7 @@ var (
 func (a *App) GetUser(c echo.Context) error {
 	// Get the user from the DB.
 	id := getID(c)
-	out, err := a.core.GetUser(id, "", "")
+	out, err := a.core.GetUser(c.Request().Context(), tenantID(c), id, "", "")
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (a *App) GetUser(c echo.Context) error {
 //	@Router			/api/users [get]
 func (a *App) GetUsers(c echo.Context) error {
 	// Get all users from the DB.
-	out, err := a.core.GetUsers()
+	out, err := a.core.GetUsers(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (a *App) CreateUser(c echo.Context) error {
 	}
 
 	// Create the user in the DB.
-	user, err := a.core.CreateUser(u)
+	user, err := a.core.CreateUser(c.Request().Context(), tenantID(c), u)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (a *App) UpdateUser(c echo.Context) error {
 				}
 			} else {
 				// Get the user from the DB.
-				user, err := a.core.GetUser(id, "", "")
+				user, err := a.core.GetUser(c.Request().Context(), tenantID(c), id, "", "")
 				if err != nil {
 					return err
 				}
@@ -205,7 +205,7 @@ func (a *App) UpdateUser(c echo.Context) error {
 	}
 
 	// Update the user in the DB.
-	user, err := a.core.UpdateUser(id, u)
+	user, err := a.core.UpdateUser(c.Request().Context(), tenantID(c), id, u)
 	if err != nil {
 		return err
 	}
@@ -242,7 +242,7 @@ func (a *App) UpdateUser(c echo.Context) error {
 func (a *App) DeleteUser(c echo.Context) error {
 	// Delete the user(s) from the DB.
 	id := getID(c)
-	if err := a.core.DeleteUsers([]int{id}); err != nil {
+	if err := a.core.DeleteUsers(c.Request().Context(), tenantID(c), []int{id}); err != nil {
 		return err
 	}
 
@@ -271,7 +271,7 @@ func (a *App) DeleteUsers(c echo.Context) error {
 	}
 
 	// Delete the user(s) from the DB.
-	if err := a.core.DeleteUsers(ids); err != nil {
+	if err := a.core.DeleteUsers(c.Request().Context(), tenantID(c), ids); err != nil {
 		return err
 	}
 
@@ -341,7 +341,7 @@ func (a *App) UpdateUserProfile(c echo.Context) error {
 	}
 
 	// Update the user in the DB.
-	out, err := a.core.UpdateUserProfile(user.ID, u)
+	out, err := a.core.UpdateUserProfile(c.Request().Context(), tenantID(c), user.ID, u)
 	if err != nil {
 		return err
 	}
@@ -400,7 +400,7 @@ func (a *App) EnableTOTP(c echo.Context) error {
 	}
 
 	// Enable TOTP in the DB.
-	if err := a.core.SetTwoFA(u.ID, models.TwofaTypeTOTP, secret); err != nil {
+	if err := a.core.SetTwoFA(c.Request().Context(), tenantID(c), u.ID, models.TwofaTypeTOTP, secret); err != nil {
 		return err
 	}
 
@@ -437,12 +437,12 @@ func (a *App) DisableTOTP(c echo.Context) error {
 	}
 
 	// Verify the password.
-	if _, err := a.core.LoginUser(u.Username, password); err != nil {
+	if _, err := a.core.LoginUser(c.Request().Context(), tenantID(c), u.Username, password); err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, a.i18n.T("users.invalidPassword"))
 	}
 
 	// Disable TOTP in the DB.
-	if err := a.core.SetTwoFA(u.ID, models.TwofaTypeNone, ""); err != nil {
+	if err := a.core.SetTwoFA(c.Request().Context(), tenantID(c), u.ID, models.TwofaTypeNone, ""); err != nil {
 		return err
 	}
 
@@ -453,7 +453,7 @@ func (a *App) DisableTOTP(c echo.Context) error {
 // It also returns a bool indicating whether there are any actual users in the DB at all,
 // which if there aren't, the first time user setup needs to be run.
 func cacheUsers(co *core.Core, a *auth.Auth) (bool, error) {
-	users, err := co.GetUsers()
+	users, err := co.GetAllUsersUnscoped()
 	if err != nil {
 		return false, err
 	}

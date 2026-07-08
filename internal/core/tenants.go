@@ -25,3 +25,17 @@ func (c *Core) GetTenantBySlug(slug string) (models.Tenant, error) {
 
 	return out[0], nil
 }
+
+// GetActiveTenantIDs returns the IDs of all active tenants. Reused by
+// boot-time per-tenant loops (e.g. initTxTemplates) - the same underlying
+// query internal/manager's scanCampaigns (phase 6) uses via cmd/manager_store.go.
+func (c *Core) GetActiveTenantIDs() ([]int, error) {
+	var out []int
+	if err := c.q.GetActiveTenantIDs.Select(&out); err != nil {
+		c.log.Printf("error fetching active tenant IDs: %v", err)
+		return nil, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorFetching", "name", "tenant", "error", pqErrMsg(err)))
+	}
+
+	return out, nil
+}

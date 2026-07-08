@@ -25,7 +25,7 @@ import (
 func (a *App) GetBounce(c echo.Context) error {
 	// Fetch one bounce from the DB.
 	id := getID(c)
-	out, err := a.core.GetBounce(id)
+	out, err := a.core.GetBounce(c.Request().Context(), tenantID(c), id)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (a *App) GetBounces(c echo.Context) error {
 	)
 
 	// Query and fetch bounces from the DB.
-	res, total, err := a.core.QueryBounces(campID, 0, source, orderBy, order, pg.Offset, pg.Limit)
+	res, total, err := a.core.QueryBounces(c.Request().Context(), tenantID(c), campID, 0, source, orderBy, order, pg.Offset, pg.Limit)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (a *App) GetBounces(c echo.Context) error {
 func (a *App) GetSubscriberBounces(c echo.Context) error {
 	// Query and fetch bounces from the DB.
 	subID := getID(c)
-	out, _, err := a.core.QueryBounces(0, subID, "", "", "", 0, 1000)
+	out, _, err := a.core.QueryBounces(c.Request().Context(), tenantID(c), 0, subID, "", "", "", 0, 1000)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (a *App) DeleteBounces(c echo.Context) error {
 	}
 
 	// Delete bounces from the DB.
-	if err := a.core.DeleteBounces(ids, all); err != nil {
+	if err := a.core.DeleteBounces(c.Request().Context(), tenantID(c), ids, all); err != nil {
 		return err
 	}
 
@@ -151,7 +151,7 @@ func (a *App) DeleteBounces(c echo.Context) error {
 func (a *App) DeleteBounce(c echo.Context) error {
 	// Delete bounces from the DB.
 	id := getID(c)
-	if err := a.core.DeleteBounces([]int{id}, false); err != nil {
+	if err := a.core.DeleteBounces(c.Request().Context(), tenantID(c), []int{id}, false); err != nil {
 		return err
 	}
 
@@ -168,7 +168,7 @@ func (a *App) DeleteBounce(c echo.Context) error {
 //	@Failure		500	{object}	echo.HTTPError
 //	@Router			/api/bounces/blocklist [put]
 func (a *App) BlocklistBouncedSubscribers(c echo.Context) error {
-	if err := a.core.BlocklistBouncedSubscribers(); err != nil {
+	if err := a.core.BlocklistBouncedSubscribers(c.Request().Context(), tenantID(c)); err != nil {
 		return err
 	}
 

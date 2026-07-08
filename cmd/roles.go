@@ -20,7 +20,7 @@ import (
 //	@Router			/api/roles/users [get]
 func (a *App) GetUserRoles(c echo.Context) error {
 	// Get all roles.
-	out, err := a.core.GetRoles()
+	out, err := a.core.GetRoles(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func (a *App) GetUserRoles(c echo.Context) error {
 //	@Router			/api/roles/lists [get]
 func (a *App) GeListRoles(c echo.Context) error {
 	// Get all roles.
-	out, err := a.core.GetListRoles()
+	out, err := a.core.GetListRoles(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (a *App) CreateUserRole(c echo.Context) error {
 	}
 
 	// Create the role in the DB.
-	out, err := a.core.CreateRole(r)
+	out, err := a.core.CreateRole(c.Request().Context(), tenantID(c), r)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (a *App) CreateListRole(c echo.Context) error {
 	}
 
 	// Create the role in the DB.
-	out, err := a.core.CreateListRole(r)
+	out, err := a.core.CreateListRole(c.Request().Context(), tenantID(c), r)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (a *App) UpdateUserRole(c echo.Context) error {
 	r.Name.String = strings.TrimSpace(r.Name.String)
 
 	// Update the role in the DB.
-	out, err := a.core.UpdateUserRole(id, r)
+	out, err := a.core.UpdateUserRole(c.Request().Context(), tenantID(c), id, r)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func (a *App) UpdateListRole(c echo.Context) error {
 	r.Name.String = strings.TrimSpace(r.Name.String)
 
 	// Update the role in the DB.
-	out, err := a.core.UpdateListRole(id, r)
+	out, err := a.core.UpdateListRole(c.Request().Context(), tenantID(c), id, r)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (a *App) DeleteRole(c echo.Context) error {
 	}
 
 	// Delete the role from the DB.
-	if err := a.core.DeleteRole(int(id)); err != nil {
+	if err := a.core.DeleteRole(c.Request().Context(), tenantID(c), int(id)); err != nil {
 		return err
 	}
 
