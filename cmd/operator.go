@@ -44,7 +44,7 @@ type operatorTenant struct {
 	models.Tenant
 	UserCount       int `db:"user_count" json:"user_count"`
 	SubscriberCount int `db:"subscriber_count" json:"subscriber_count"`
-}
+} // @name OperatorTenant
 
 // operatorSetupToken is the payload stored against the one-time setup
 // link token returned by CreateTenant (internal/tmptokens, in-memory,
@@ -216,6 +216,28 @@ func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsern
 	return t, token, nil
 }
 
+// CreateSetupLink issues a fresh one-time setup token for an existing
+// tenant admin, without creating a new tenant/user. Needed because
+// internal/tmptokens is in-memory and process-lifetime only (see its own
+// docs) - a setup link issued by CreateTenant is lost on every app
+// restart, and there was previously no way to recover from that short of
+// recreating the tenant from scratch. Verifies the user actually exists
+// for this tenant/email first so this can't be used to probe for emails
+// across tenants.
+func (s *operatorStore) CreateSetupLink(ctx context.Context, tenantID int, email string) (string, error) {
+	if _, err := s.co.GetUser(ctx, tenantID, 0, "", email); err != nil {
+		return "", err
+	}
+
+	token, err := generateRandomString(tmpAuthTokenLen)
+	if err != nil {
+		return "", err
+	}
+	tmptokens.Set(token, operatorSetupTokenTTL, operatorSetupToken{TenantID: tenantID, Email: email})
+
+	return token, nil
+}
+
 // operatorTenantReq is the request body for CreateTenant.
 type operatorTenantReq struct {
 	Slug          string `json:"slug"`
@@ -224,7 +246,41 @@ type operatorTenantReq struct {
 	AdminEmail    string `json:"admin_email"`
 } // @name OperatorCreateTenantReq
 
+// operatorCreateTenantResp is the response body for CreateOperatorTenant.
+type operatorCreateTenantResp struct {
+	Tenant     models.Tenant `json:"tenant"`
+	SetupToken string        `json:"setup_token"`
+	SetupURL   string        `json:"setup_url,omitempty"`
+} // @name OperatorCreateTenantResp
+
+// operatorSetupLinkReq is the request body for CreateOperatorSetupLink.
+type operatorSetupLinkReq struct {
+	AdminEmail string `json:"admin_email"`
+} // @name OperatorCreateSetupLinkReq
+
+// operatorSetupLinkResp is the response body for CreateOperatorSetupLink.
+type operatorSetupLinkResp struct {
+	SetupToken string `json:"setup_token"`
+	SetupURL   string `json:"setup_url,omitempty"`
+} // @name OperatorCreateSetupLinkResp
+
+// operatorUpdateStatusReq is the request body for UpdateOperatorTenantStatus.
+type operatorUpdateStatusReq struct {
+	Status string `json:"status"`
+} // @name OperatorUpdateTenantStatusReq
+
 // ListOperatorTenants returns every tenant with basic cross-tenant counts.
+//
+//	@ID			listOperatorTenants
+//	@Summary		List tenants (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token, not a normal session/API-user token.
+//	@Tags			operator
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	[]operatorTenant
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/operator/tenants [get]
 func (a *App) ListOperatorTenants(c echo.Context) error {
 	out, err := a.operator.GetTenants()
 	if err != nil {
@@ -235,6 +291,18 @@ func (a *App) ListOperatorTenants(c echo.Context) error {
 }
 
 // GetOperatorTenant returns a single tenant with basic cross-tenant counts.
+//
+//	@ID			getOperatorTenant
+//	@Summary		Get a tenant (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token, not a normal session/API-user token.
+//	@Tags			operator
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"Tenant ID"
+//	@Success		200	{object}	operatorTenant
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/operator/tenants/{id} [get]
 func (a *App) GetOperatorTenant(c echo.Context) error {
 	id := getID(c)
 	out, err := a.operator.GetTenant(id)
@@ -245,6 +313,21 @@ func (a *App) GetOperatorTenant(c echo.Context) error {
 }
 
 // CreateOperatorTenant provisions a new tenant and its initial admin user.
+//
+//	@ID			createOperatorTenant
+//	@Summary		Create a tenant (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token, not a normal session/API-user token. Creates the tenant plus a passwordless initial admin user; the returned setup_url/setup_token is a one-time link the tenant's actual admin uses to set their own password - the operator never sets or sees it.
+//	@Tags			operator
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			tenant	body		operatorTenantReq	true	"Tenant to create"
+//	@Success		200	{object}	operatorCreateTenantResp
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		409	{object}	echo.HTTPError	"Slug already in use"
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/operator/tenants [post]
 func (a *App) CreateOperatorTenant(c echo.Context) error {
 	var req operatorTenantReq
 	if err := c.Bind(&req); err != nil {
@@ -274,27 +357,88 @@ func (a *App) CreateOperatorTenant(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "error creating tenant")
 	}
 
-	setupURL := ""
-	if a.cfg.RootDomain != "" {
-		if u, err := url.Parse(a.urlCfg.RootURL); err == nil && u.Scheme != "" {
-			setupURL = u.Scheme + "://" + tenant.Slug + "." + a.cfg.RootDomain + "/admin/operator-setup?token=" + token
-		}
+	return c.JSON(http.StatusOK, okResp{operatorCreateTenantResp{tenant, token, a.operatorSetupURL(tenant.Slug, token)}})
+}
+
+// operatorSetupURL builds the one-time setup link for a tenant's admin,
+// shared by CreateOperatorTenant and CreateOperatorSetupLink. Empty if
+// app.root_domain isn't configured or app.root_url has no scheme.
+func (a *App) operatorSetupURL(tenantSlug, token string) string {
+	if a.cfg.RootDomain == "" {
+		return ""
+	}
+	u, err := url.Parse(a.urlCfg.RootURL)
+	if err != nil || u.Scheme == "" {
+		return ""
+	}
+	return u.Scheme + "://" + tenantSlug + "." + a.cfg.RootDomain + "/admin/operator-setup?token=" + token
+}
+
+// CreateOperatorSetupLink issues a fresh one-time setup link for an
+// existing tenant's admin. Needed because setup tokens live only in
+// internal/tmptokens' in-memory store - restarting the app invalidates
+// every pending link issued by CreateOperatorTenant, and until this
+// endpoint existed the only recovery was recreating the tenant from
+// scratch (which fails outright since the slug is already taken).
+//
+//	@ID			createOperatorSetupLink
+//	@Summary		Reissue a tenant admin's setup link (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. Use when a prior setup_url from CreateOperatorTenant expired or was lost - e.g. every pending link is invalidated on app restart, since setup tokens are held in memory only.
+//	@Tags			operator
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"Tenant ID"
+//	@Param			email	body		operatorSetupLinkReq	true	"Existing admin's email"
+//	@Success		200	{object}	operatorSetupLinkResp
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError	"Tenant or admin email not found"
+//	@Router			/api/operator/tenants/{id}/setup-link [post]
+func (a *App) CreateOperatorSetupLink(c echo.Context) error {
+	id := getID(c)
+
+	var req operatorSetupLinkReq
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+	if !utils.ValidateEmail(req.AdminEmail) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid admin_email")
 	}
 
-	return c.JSON(http.StatusOK, okResp{struct {
-		Tenant     models.Tenant `json:"tenant"`
-		SetupToken string        `json:"setup_token"`
-		SetupURL   string        `json:"setup_url,omitempty"`
-	}{tenant, token, setupURL}})
+	tenant, err := a.operator.GetTenant(id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "tenant not found")
+	}
+
+	token, err := a.operator.CreateSetupLink(c.Request().Context(), id, req.AdminEmail)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "no admin with that email found for this tenant")
+	}
+
+	return c.JSON(http.StatusOK, okResp{operatorSetupLinkResp{token, a.operatorSetupURL(tenant.Slug, token)}})
 }
 
 // UpdateOperatorTenantStatus updates a tenant's status (active/suspended/disabled).
+//
+//	@ID			updateOperatorTenantStatus
+//	@Summary		Update a tenant's status (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token, not a normal session/API-user token.
+//	@Tags			operator
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"Tenant ID"
+//	@Param			status	body		operatorUpdateStatusReq	true	"New status"
+//	@Success		200	{object}	models.Tenant
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/operator/tenants/{id}/status [put]
 func (a *App) UpdateOperatorTenantStatus(c echo.Context) error {
 	id := getID(c)
 
-	var req struct {
-		Status string `json:"status"`
-	}
+	var req operatorUpdateStatusReq
 	if err := c.Bind(&req); err != nil {
 		return err
 	}

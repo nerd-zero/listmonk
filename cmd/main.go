@@ -1,9 +1,12 @@
 // @title listmonk API
 // @version 1.0
 // @description listmonk mailing list manager REST API.
-// @host localhost:9000
 // @BasePath /
 // @securityDefinitions.basic BasicAuth
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Operator API only (/api/operator/*) - static bearer token from [operator].token, e.g. "Bearer <token>". Fork-only, off by default.
 package main
 
 import (
