@@ -33,6 +33,7 @@ var reTenantSlug = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 // tenant-app pool. Never share these statements with the main *sqlx.DB.
 type operatorQueries struct {
 	CreateTenant       *sqlx.Stmt `query:"operator-create-tenant"`
+	SeedTenantSettings *sqlx.Stmt `query:"operator-seed-tenant-settings"`
 	GetTenant          *sqlx.Stmt `query:"operator-get-tenant"`
 	GetTenants         *sqlx.Stmt `query:"operator-get-tenants"`
 	UpdateTenantStatus *sqlx.Stmt `query:"operator-update-tenant-status"`
@@ -177,6 +178,10 @@ func (s *operatorStore) UpdateTenantStatus(id int, status string) (models.Tenant
 func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsername, adminEmail string) (models.Tenant, string, error) {
 	var t models.Tenant
 	if err := s.q.CreateTenant.Get(&t, slug, name); err != nil {
+		return t, "", err
+	}
+
+	if _, err := s.q.SeedTenantSettings.Exec(t.ID); err != nil {
 		return t, "", err
 	}
 

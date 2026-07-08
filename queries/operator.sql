@@ -9,6 +9,20 @@
 -- name: operator-create-tenant
 INSERT INTO tenants (slug, name, status) VALUES ($1, $2, 'active') RETURNING *;
 
+-- name: operator-seed-tenant-settings
+-- New tenants otherwise get zero settings rows (nothing seeds them -
+-- schema.sql's big INSERT INTO settings block relies on tenant_id's
+-- DEFAULT 1, so it only ever seeds tenant 1). Every other tenant's
+-- Core.GetSettings call - Settings page, per-tenant SMTP/media/OIDC
+-- resolution, the bulk importer's domain blocklist - failed with
+-- "unexpected end of JSON input" (JSON_OBJECT_AGG over zero rows is
+-- SQL NULL) until this ran. Copies tenant 1's current settings as the
+-- new tenant's starting defaults - requires the BYPASSRLS operator
+-- connection since it reads across tenants.
+INSERT INTO settings (tenant_id, key, value)
+SELECT $1, key, value FROM settings WHERE tenant_id = 1
+ON CONFLICT (tenant_id, key) DO NOTHING;
+
 -- name: operator-get-tenant
 SELECT t.*,
     (SELECT COUNT(*) FROM users WHERE tenant_id = t.id) AS user_count,
