@@ -34,7 +34,6 @@ import (
 	"github.com/knadh/listmonk/internal/i18n"
 	"github.com/knadh/listmonk/internal/manager"
 	"github.com/knadh/listmonk/internal/messenger/email"
-	"github.com/knadh/listmonk/internal/subimporter"
 	"github.com/knadh/listmonk/models"
 	"github.com/knadh/paginator"
 	"github.com/knadh/stuffbin"
@@ -51,7 +50,7 @@ type App struct {
 	manager    *manager.Manager
 	messengers []manager.Messenger
 	emailMsgr  manager.Messenger
-	importer   *subimporter.Importer
+	importers  *tenantImporters
 	auth       *auth.Auth
 	media      *tenantMedia
 	operator   *operatorStore
@@ -240,8 +239,8 @@ func main() {
 		// Campaign manager.
 		mgr = initCampaignManager(msgrs, queries, urlCfg, core, mediaResolver, i18n, ko)
 
-		// Bulk importer.
-		importer = initImporter(queries, db, core, i18n, ko)
+		// Bulk importer, resolved lazily per tenant (see cmd/tenant_importer.go).
+		importers = newTenantImporters(queries, db, core, i18n)
 
 		// Initialize the auth manager.
 		auth = initAuth(core, db.DB, ko)
@@ -303,7 +302,7 @@ func main() {
 		manager:    mgr,
 		messengers: msgrs,
 		emailMsgr:  emailMsgr,
-		importer:   importer,
+		importers:  importers,
 		auth:       auth,
 		media:      mediaResolver,
 		operator:   opStore,

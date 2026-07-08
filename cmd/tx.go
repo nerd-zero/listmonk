@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -63,7 +64,7 @@ func (a *App) SendTxMessage(c echo.Context) error {
 	}
 
 	// Validate fields.
-	if r, err := a.validateTxMessage(m); err != nil {
+	if r, err := a.validateTxMessage(c.Request().Context(), tenantID(c), m); err != nil {
 		return err
 	} else {
 		m = r
@@ -179,7 +180,7 @@ func (a *App) SendTxMessage(c echo.Context) error {
 }
 
 // validateTxMessage validates the tx message fields.
-func (a *App) validateTxMessage(m models.TxMessage) (models.TxMessage, error) {
+func (a *App) validateTxMessage(ctx context.Context, tenantID int, m models.TxMessage) (models.TxMessage, error) {
 	if len(m.SubscriberEmails) > 0 && m.SubscriberEmail != "" {
 		return m, echo.NewHTTPError(http.StatusBadRequest,
 			a.i18n.Ts("globals.messages.invalidFields", "name", "do not send `subscriber_email`"))
@@ -224,9 +225,14 @@ func (a *App) validateTxMessage(m models.TxMessage) (models.TxMessage, error) {
 			a.i18n.Ts("globals.messages.invalidFields", "name", "subscriber_mode"))
 	}
 
+	imp, err := a.importers.Get(ctx, tenantID)
+	if err != nil {
+		return m, err
+	}
+
 	for n, email := range m.SubscriberEmails {
 		if email != "" {
-			em, err := a.importer.SanitizeEmail(email)
+			em, err := imp.SanitizeEmail(email)
 			if err != nil {
 				return m, echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}

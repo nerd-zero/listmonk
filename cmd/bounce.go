@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -215,7 +216,7 @@ func (a *App) BounceWebhook(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, a.i18n.Ts("globals.messages.invalidData")+":"+err.Error())
 		}
 
-		if bv, err := a.validateBounceFields(b); err != nil {
+		if bv, err := a.validateBounceFields(c.Request().Context(), tenantID(c), b); err != nil {
 			return err
 		} else {
 			b = bv
@@ -353,7 +354,7 @@ func (a *App) BounceWebhook(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{true})
 }
 
-func (a *App) validateBounceFields(b models.Bounce) (models.Bounce, error) {
+func (a *App) validateBounceFields(ctx context.Context, tenantID int, b models.Bounce) (models.Bounce, error) {
 	if b.Email == "" && b.SubscriberUUID == "" {
 		return b, echo.NewHTTPError(http.StatusBadRequest, a.i18n.Ts("globals.messages.invalidFields", "name", "email / subscriber_uuid"))
 	}
@@ -363,7 +364,12 @@ func (a *App) validateBounceFields(b models.Bounce) (models.Bounce, error) {
 	}
 
 	if b.Email != "" {
-		em, err := a.importer.SanitizeEmail(b.Email)
+		imp, err := a.importers.Get(ctx, tenantID)
+		if err != nil {
+			return b, err
+		}
+
+		em, err := imp.SanitizeEmail(b.Email)
 		if err != nil {
 			return b, echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}

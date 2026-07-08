@@ -757,7 +757,12 @@ func (a *App) processSubForm(c echo.Context) (bool, error) {
 		return false, echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidEmail"))
 	}
 
-	em, err := a.importer.SanitizeEmail(req.Email)
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return false, err
+	}
+
+	em, err := imp.SanitizeEmail(req.Email)
 	if err != nil {
 		return false, echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}

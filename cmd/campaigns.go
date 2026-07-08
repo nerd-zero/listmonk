@@ -367,7 +367,7 @@ func (a *App) CreateCampaign(c echo.Context) error {
 	}
 
 	// Validate.
-	if c, err := a.validateCampaignFields(o); err != nil {
+	if c, err := a.validateCampaignFields(c.Request().Context(), tenantID(c), o); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	} else {
 		o = c
@@ -435,7 +435,7 @@ func (a *App) UpdateCampaign(c echo.Context) error {
 	user := auth.GetUser(c)
 	o.ListIDs = user.FilterListsByPerm(auth.PermTypeGet|auth.PermTypeManage, o.ListIDs)
 
-	if c, err := a.validateCampaignFields(o); err != nil {
+	if c, err := a.validateCampaignFields(c.Request().Context(), tenantID(c), o); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	} else {
 		o = c
@@ -707,7 +707,7 @@ func (a *App) TestCampaign(c echo.Context) error {
 	}
 
 	// Validate.
-	if c, err := a.validateCampaignFields(req); err != nil {
+	if c, err := a.validateCampaignFields(c.Request().Context(), tenantID(c), req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	} else {
 		req = c
@@ -851,11 +851,15 @@ func (a *App) sendTestMessage(sub models.Subscriber, camp *models.Campaign) erro
 }
 
 // validateCampaignFields validates incoming campaign field values.
-func (a *App) validateCampaignFields(c campReq) (campReq, error) {
+func (a *App) validateCampaignFields(ctx context.Context, tenantID int, c campReq) (campReq, error) {
 	if c.FromEmail == "" {
 		c.FromEmail = a.cfg.FromEmail
 	} else if !reFromAddress.Match([]byte(c.FromEmail)) {
-		if _, err := a.importer.SanitizeEmail(c.FromEmail); err != nil {
+		imp, err := a.importers.Get(ctx, tenantID)
+		if err != nil {
+			return c, err
+		}
+		if _, err := imp.SanitizeEmail(c.FromEmail); err != nil {
 			return c, errors.New(a.i18n.T("campaigns.fieldInvalidFromEmail"))
 		}
 	}

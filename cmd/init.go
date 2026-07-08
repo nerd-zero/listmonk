@@ -48,7 +48,6 @@ import (
 	"github.com/knadh/listmonk/internal/messenger/email"
 	"github.com/knadh/listmonk/internal/messenger/postback"
 	"github.com/knadh/listmonk/internal/notifs"
-	"github.com/knadh/listmonk/internal/subimporter"
 	"github.com/knadh/listmonk/internal/tenant"
 	"github.com/knadh/listmonk/models"
 	"github.com/knadh/stuffbin"
@@ -667,28 +666,6 @@ func initTxTemplates(m *manager.Manager, co *core.Core) {
 	}
 }
 
-// initImporter initializes the bulk subscriber importer.
-func initImporter(q *models.Queries, db *sqlx.DB, core *core.Core, i *i18n.I18n, ko *koanf.Koanf) *subimporter.Importer {
-	return subimporter.New(
-		subimporter.Options{
-			DomainBlocklist:    ko.Strings("privacy.domain_blocklist"),
-			DomainAllowlist:    ko.Strings("privacy.domain_allowlist"),
-			UpsertStmt:         q.UpsertSubscriber.Stmt,
-			BlocklistStmt:      q.UpsertBlocklistSubscriber.Stmt,
-			UpdateListDateStmt: q.UpdateListsDate.Stmt,
-
-			// Hook for triggering admin notifications and refreshing stats materialized
-			// views after a successful import.
-			PostCB: func(subject string, data any) error {
-				// Refresh cached subscriber counts and stats.
-				core.RefreshMatViews(true)
-
-				// Send admin notification.
-				notifs.NotifySystem(subject, notifs.TplImport, data, nil)
-				return nil
-			},
-		}, db.DB, i)
-}
 
 // initSMTPMessenger initializes the combined and individual SMTP messengers.
 // initSMTPMessengers builds SMTP messengers from the given koanf instance's

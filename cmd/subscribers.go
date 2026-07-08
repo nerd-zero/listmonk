@@ -296,7 +296,11 @@ func (a *App) CreateSubscriber(c echo.Context) error {
 	}
 
 	// Validate fields.
-	req, err := a.importer.ValidateFields(req)
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	req, err = imp.ValidateFields(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -347,7 +351,11 @@ func (a *App) UpdateSubscriber(c echo.Context) error {
 	}
 
 	// Sanitize and validate the email field.
-	if em, err := a.importer.SanitizeEmail(req.Email); err != nil {
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	if em, err := imp.SanitizeEmail(req.Email); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	} else {
 		req.Email = em
@@ -424,7 +432,11 @@ func (a *App) PatchSubscriber(c echo.Context) error {
 		return err
 	}
 
-	if em, err := a.importer.SanitizeEmail(req.Email); err != nil {
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	if em, err := imp.SanitizeEmail(req.Email); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	} else {
 		req.Email = em
