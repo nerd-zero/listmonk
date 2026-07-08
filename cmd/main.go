@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/knadh/goyesql/v2"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/v2"
 	"github.com/knadh/listmonk/internal/auth"
@@ -50,6 +51,7 @@ type App struct {
 	importer   *subimporter.Importer
 	auth       *auth.Auth
 	media      *tenantMedia
+	operator   *operatorStore
 	bounce     *bounce.Manager
 	captcha    *captcha.Captcha
 	i18n       *i18n.I18n
@@ -83,6 +85,7 @@ var (
 	fs      stuffbin.FileSystem
 	db      *sqlx.DB
 	queries *models.Queries
+	qMap    goyesql.Queries
 
 	// Compile-time variables.
 	buildString   string
@@ -181,7 +184,7 @@ func init() {
 	}
 
 	// Read the SQL queries from the queries file.
-	qMap := readQueries(queryFilePath, fs)
+	qMap = readQueries(queryFilePath, fs)
 
 	// Load settings from DB.
 	if q, ok := qMap["get-settings"]; ok {
@@ -240,6 +243,11 @@ func main() {
 		// Initialize the auth manager.
 		auth = initAuth(core, db.DB, ko)
 
+		// Operator API (off by default - see initOperatorDB). Uses a
+		// separate BYPASSRLS DB connection, distinct from the tenant-app
+		// pool above.
+		opStore = newOperatorStoreIfEnabled(qMap, core, cfg.Permissions)
+
 		// Initialize the webhook/POP3 bounce processor.
 		bounce *bounce.Manager
 
@@ -295,6 +303,7 @@ func main() {
 		importer:   importer,
 		auth:       auth,
 		media:      mediaResolver,
+		operator:   opStore,
 		bounce:     bounce,
 		captcha:    initCaptcha(),
 		i18n:       i18n,

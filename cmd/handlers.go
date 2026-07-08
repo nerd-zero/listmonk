@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/knadh/listmonk/docs" // swaggo generated docs
 	"github.com/knadh/listmonk/internal/auth"
+	"github.com/knadh/listmonk/internal/operator"
 	"github.com/knadh/listmonk/models"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -235,6 +236,22 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 	}
 
 	// =================================================================
+	// Operator API: cross-tenant tenant provisioning/management. Entirely
+	// separate auth model (static bearer token, see internal/operator) -
+	// no session/JWT, no RLS-scoped DB role. Off by default; the group is
+	// only registered when the Operator API is configured (a.operator is
+	// non-nil), so it's simply absent (404) otherwise, not just
+	// unauthenticated - see docs/design/multi-tenancy.md's Operator API
+	// section.
+	if a.operator != nil {
+		g := e.Group("/api/operator", operator.Middleware(a.cfg.Operator.Token))
+		g.GET("/tenants", a.ListOperatorTenants)
+		g.GET("/tenants/:id", hasID(a.GetOperatorTenant))
+		g.POST("/tenants", a.CreateOperatorTenant)
+		g.PUT("/tenants/:id/status", hasID(a.UpdateOperatorTenantStatus))
+	}
+
+	// =================================================================
 	// Public API endpoints.
 	{
 		// Public unauthenticated endpoints.
@@ -259,6 +276,13 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 		g.POST(path.Join(uriAdmin, "/forgot"), a.ForgotPage)
 		g.GET(path.Join(uriAdmin, "/reset"), a.ResetPage)
 		g.POST(path.Join(uriAdmin, "/reset"), a.ResetPage)
+
+		// Consumes the one-time setup link an Operator API-provisioned
+		// tenant's initial admin uses to set their password. Registered
+		// unconditionally (harmless when the Operator API itself is
+		// disabled - no tokens can ever exist to redeem).
+		g.GET(path.Join(uriAdmin, "/operator-setup"), a.OperatorSetupPage)
+		g.POST(path.Join(uriAdmin, "/operator-setup"), a.OperatorSetupPage)
 
 		// When multi-tenancy is enabled, OIDC is per-tenant (settings are
 		// per-tenant since phase 5) - a tenant may enable it even if the

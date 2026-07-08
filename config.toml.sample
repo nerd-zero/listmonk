@@ -29,3 +29,23 @@ max_lifetime = "300s"
 
 # Optional space separated Postgres DSN params. eg: "application_name=listmonk gssencmode=disable"
 params = ""
+
+# Operator API (fork-only, multi-tenancy companion feature, not upstream).
+# A separate, cross-tenant API for provisioning/managing tenants - distinct
+# from the tenant-facing app, authenticated by a single static bearer
+# token instead of user sessions. Leave token empty (default) to disable
+# it entirely; this is an advanced feature most single-tenant installs
+# will never need. See docs/design/multi-tenancy.md's "Operator API"
+# section before enabling this in production.
+[operator]
+token = ""
+
+# DB credentials for a *separate* Postgres role with the BYPASSRLS
+# attribute, connecting to the same host/port/database as [db] above -
+# required because listing/aggregating data across every tenant at once
+# is impossible under Row-Level Security using the normal app role (which
+# must never have BYPASSRLS). Leave empty to use [db]'s own credentials
+# (only appropriate for local development, never production - see the
+# design doc for how to create this role).
+db_user = ""
+db_password = ""

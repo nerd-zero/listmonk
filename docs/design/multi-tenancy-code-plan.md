@@ -1171,6 +1171,113 @@ g.PUT("/tenants/:id/status", handleOperatorUpdateTenantStatus)
   in-flight send — same "finish current batch, don't start new ones"
   semantics as pausing a single campaign today).
 
+### Implemented (2026-07-08)
+
+Built close to this section's sketch, with a few things resolved
+concretely during implementation:
+
+- **`internal/operator/operator.go`**: the middleware as sketched, plus a
+  404 (not 401) when the token isn't configured at all, so an unconfigured
+  Operator API is indistinguishable from a route that doesn't exist -
+  matching how the group is only registered in `cmd/handlers.go` when
+  `a.operator != nil`.
+- **Config**: `[operator]` gained two more fields beyond the sketch's
+  `token` - `db_user`/`db_password`, for the separate BYPASSRLS
+  connection (see below). All three via `ko.Unmarshal("operator",
+  &c.Operator)` in `initConstConfig`, `LISTMONK_operator__*` env vars
+  work automatically (the env-var provider is fully generic, not
+  per-section).
+- **The BYPASSRLS DB role turned out to be a genuine design fork, not a
+  given**: `tenants` itself has no RLS policy at all (confirmed earlier
+  this session - it's the table that *identifies* tenants), so the
+  normal app role can already read/write it freely. The only thing that
+  actually needs cross-tenant visibility is `GetTenants`/`GetTenant`'s
+  aggregate `user_count`/`subscriber_count` columns (one row per tenant,
+  every tenant visible at once - impossible under RLS scoped to a single
+  `current_setting('app.current_tenant')` at a time). Raised this to the
+  user as an explicit choice (skip BYPASSRLS entirely and loop
+  per-tenant via the existing `WithTenant` helper, vs. build the
+  connection as originally sketched) - **user chose to build it as
+  planned**, so `cmd/operator.go`'s `initOperatorDB` opens a second
+  `*sqlx.DB` reusing `[db]`'s host/port/dbname/sslmode but a different
+  role/password, and is nil (feature off) unless both `operator.token`
+  and `operator.db_user` are set.
+- **`queries/operator.sql`** (new file) holds the 4 queries, prepared
+  against the *operator* connection via the same `goyesqlx.ScanToStruct`
+  mechanism every other query set uses - just pointed at a different
+  `*sqlx.DB`, reusing the same parsed `qMap` (promoted from a
+  function-local to a package-level var in `cmd/main.go` so both the
+  main and operator preparation calls can see it).
+- **Creating the initial admin deliberately does *not* use the
+  BYPASSRLS connection**: `operatorStore.CreateTenant` inserts the
+  `tenants` row via the operator connection, but creates the "Super
+  Admin" role and the admin user via the *normal* tenant-app `Core`
+  (`Core.CreateRole`/`Core.CreateUser`, called with the newly-allocated
+  tenant's own ID) - a same-tenant write using a real tenant ID needs no
+  elevated privilege, and reusing already-hardened Core methods (the
+  exact ones `cmd/auth.go`'s `doFirstTimeSetup` uses, including this
+  session's role-ID-capture fix) keeps the two provisioning paths
+  consistent rather than reimplementing user/role creation against a
+  different connection.
+- **Setup-link token flow**: `CreateTenant` generates a
+  `generateRandomString(tmpAuthTokenLen)` token, stores
+  `{TenantID, Email}` against it in `internal/tmptokens` (7-day TTL, the
+  same in-memory/process-lifetime store already used for password-reset
+  and 2FA tokens - same accepted limitation: a process restart between
+  provisioning and redemption invalidates a pending link). New public
+  route `GET/POST /admin/operator-setup` (registered unconditionally -
+  harmless when the Operator API is off, since no token could ever
+  exist to redeem) renders a set-password form
+  (`static/public/templates/operator-setup.html`, structurally identical
+  to the existing password-reset template) and, on submit, sets the
+  user's password and flips `PasswordLogin: true` via the ordinary
+  `Core.UpdateUser`. The link naturally resolves to the correct tenant
+  because it points at that tenant's own subdomain
+  (`https://<slug>.<root_domain>/admin/operator-setup?token=...`) and
+  the existing subdomain-resolution middleware does the rest - no
+  special-casing needed.
+- **Found while wiring routes**: `internal/tenant.Middleware` is applied
+  globally via `srv.Use`, so it was rejecting every `/api/operator/*`
+  request outright (no subdomain can ever match an inherently
+  cross-tenant path). Added an explicit `/api/operator/` path-prefix
+  exemption inside the middleware, falling through to the same
+  `defaultTenant` stub used when multi-tenancy is disabled entirely -
+  correct since none of the operator handlers ever read the resolved
+  tenant from context.
+- **Found via live-testing**: a duplicate slug surfaced as a generic 500
+  instead of a clean error. Fixed by checking for
+  `pq.Error.Constraint == "tenants_slug_key"` and returning 409.
+  Separately, the setup-link URL's scheme extraction was originally
+  hand-rolled string slicing (`RootURL[:strings.Index(...)+3]`), which
+  would panic on a malformed/empty `RootURL` - replaced with
+  `net/url.Parse` before this shipped.
+
+**Verified live end-to-end** with a real non-superuser `BYPASSRLS` role
+(confirmed via `pg_roles.rolbypassrls`, not another superuser): token
+auth (missing/wrong/correct), tenant listing with correct cross-tenant
+counts, tenant creation (confirmed the created role has every
+permission, scoped to the new tenant, and the new user's
+`user_role_id` correctly points at it - not `NULL`, not tenant 1's role
+1), the full setup-link flow (GET renders the form, POST sets the
+password, the new admin then successfully logs in on their own
+subdomain with real credentials), status transitions (`suspended` ->
+503 workspace-unavailable on that subdomain, `active` -> restored), and
+the duplicate-slug 409. Confirmed the Operator API is a true no-op when
+unconfigured (route absent, existing single-tenant login/config
+untouched). All test tenants, throwaway DB roles, and temporary
+`config.toml` overrides cleaned up and reverted to baseline. `go build`,
+`go vet`, `go test ./... -race` all clean.
+
+**Known v1 limitations, matching the doc's original framing**: no
+per-operator identity/audit trail (single shared token); setup tokens
+don't survive a process restart (same as password-reset tokens);
+`CreateTenant`'s two writes (tenant row, then role+user) aren't
+transactionally atomic across the two DB connections - a failure
+between them can leave an orphaned tenant with no admin, recoverable by
+an operator noticing and retrying (a different slug, or manual
+cleanup). None of these block v1 usage; they're accepted tradeoffs the
+design doc already called out.
+
 ---
 
 ## Testing strategy across all phases

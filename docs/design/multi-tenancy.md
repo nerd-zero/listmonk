@@ -1,6 +1,20 @@
 # Multi-tenancy: research and implementation plan
 
-Status: **phases 1-3 and 6 implemented; phase 4 partially implemented
+Status: **all 9 phases implemented. Phase 9 (Operator API) shipped
+2026-07-08, closing out the design doc's original phased plan — see that
+phase's Decisions log entry for what shipped, the BYPASSRLS design fork
+resolved during implementation, and accepted v1 limitations (no
+per-operator audit trail, non-atomic two-connection tenant creation).
+Issues #40 and #41 (follow-up threading/subsystem work split out along
+the way) are both fully complete too. What's left, if anything, is
+incremental: tightening the still-permissive RLS fallback policy once
+confidence is high enough (see Open Questions), and the handful of
+already-documented soft global-uniqueness gaps (`subscribers.email`,
+`links.url`, `users.username`/`email`) that were deliberately deferred
+throughout — none of them block real usage today.**
+
+Earlier phase-by-phase summary retained below for detail: phases 1-3 and
+6 implemented; phase 4 partially implemented
 (auth/subdomain resolution shipped; `internal/core` tenantID-threading,
 split into its own follow-up issue #40, is now fully complete —
 `subscribers.go`, `subscriptions.go`, `campaigns.go`, `bounces.go`,
@@ -686,6 +700,74 @@ UI-level "operator" role.
   original checklist concern (stale state surviving a user switch) was
   actually about same-tenant user hygiene, and that's already handled by
   the existing hard-navigation logout.
+
+- **Phase 9 — Operator API implemented (2026-07-08), closing out the
+  original phased plan.** Built close to this doc's sketch (new
+  `internal/operator` package, static bearer-token middleware, a
+  `/api/operator/*` route group entirely separate from the tenant-facing
+  app), with two things resolved concretely during implementation rather
+  than left as sketched:
+  - **The `BYPASSRLS` DB role turned out to be a genuine design fork, not
+    a given.** `tenants` itself carries no RLS policy at all (it's the
+    table that *identifies* tenants), so the normal app role can already
+    read/write it freely — the only thing that actually needs
+    cross-tenant visibility is the tenant-listing view's aggregate
+    `user_count`/`subscriber_count` columns (every tenant's counts
+    visible at once, impossible under RLS scoped to one
+    `current_setting('app.current_tenant')` at a time). Surfaced this as
+    an explicit choice via `AskUserQuestion` — skip the whole
+    second-connection/new-role setup and loop per-tenant via the existing
+    `WithTenant` helper instead, vs. build the `BYPASSRLS` connection as
+    originally planned. **User chose to build it as planned.** Creating
+    the initial tenant admin deliberately does *not* use this elevated
+    connection, though — it's a same-tenant write against the
+    newly-allocated tenant's own ID, so it reuses the ordinary
+    `Core.CreateRole`/`Core.CreateUser` (the same hardened methods
+    `doFirstTimeSetup` uses, including this session's earlier role-ID-capture
+    fix) via the normal tenant-app pool, confining the `BYPASSRLS`
+    connection's blast radius to just the `tenants` table and its
+    cross-tenant count aggregates.
+  - **The "how does the initial admin get credentials" open question**
+    was resolved using the doc's own suggested v1 placeholder: `CreateTenant`
+    generates a one-time token (`internal/tmptokens`, the same
+    in-memory store already backing password-reset/2FA — same accepted
+    "a restart invalidates pending links" limitation), returns it (and a
+    ready-to-use setup URL pointed at the new tenant's own subdomain) in
+    the API response, and a new public `/admin/operator-setup` page lets
+    the token holder set their password — no e-mail sending required
+    (a brand-new tenant has no SMTP config of its own to send through
+    yet).
+  - **Found while wiring routes**: `internal/tenant.Middleware`'s global
+    `srv.Use` registration was rejecting every `/api/operator/*` request
+    outright, since an inherently cross-tenant path can never match a
+    single subdomain. Added an explicit path-prefix exemption.
+  - **Found via live-testing**: a duplicate tenant slug surfaced as a
+    generic 500 rather than a clean error (fixed to a proper 409), and
+    the setup-link URL's scheme was originally extracted via hand-rolled
+    string slicing that would have panicked on a malformed/empty root
+    URL (replaced with `net/url.Parse`).
+  **Verified live end-to-end with a real non-superuser `BYPASSRLS` role**
+  (confirmed via `pg_roles.rolbypassrls`, not another superuser): token
+  auth (missing/wrong/correct), tenant listing with correct cross-tenant
+  counts, tenant creation (the created role has every permission scoped
+  to the *new* tenant, and the new user's `user_role_id` correctly
+  points at it, not `NULL` and not tenant 1's role), the full
+  setup-link flow end to end (including a real subsequent login with the
+  password the new admin set), status transitions (`suspended` → 503
+  workspace-unavailable on that tenant's subdomain, `active` → restored),
+  and the duplicate-slug 409. Confirmed the feature is a true no-op when
+  unconfigured (route absent by omission, not just unauthenticated;
+  existing single-tenant login/config completely untouched). All test
+  tenants, throwaway DB roles, and temporary `config.toml` overrides
+  cleaned up and reverted to baseline afterward. `go build`, `go vet`,
+  `go test ./... -race` all clean.
+  **Known v1 limitations** (matching this doc's original framing, not
+  new gaps): no per-operator identity or audit trail (one shared token
+  authorizes every request); setup tokens don't survive a process
+  restart; `CreateTenant`'s tenant-row insert and role/user creation
+  aren't transactionally atomic across the two DB connections, so a
+  failure between them can leave an orphaned tenant with no admin,
+  recoverable by an operator noticing and retrying.
 
 ## Open questions
 

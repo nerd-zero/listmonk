@@ -26,6 +26,12 @@ var defaultTenant = &models.Tenant{
 	Status: "active",
 }
 
+// operatorPathPrefix is exempted from subdomain resolution entirely - the
+// Operator API (cmd/operator.go) is inherently cross-tenant, authenticated
+// by its own static bearer token rather than a tenant session, and its
+// handlers never read the resolved tenant from context.
+const operatorPathPrefix = "/api/operator/"
+
 // Middleware resolves the tenant for a request and stores it on the echo
 // context under models.TenantCtxKey. When enabled is false it always
 // resolves to the seeded default tenant without touching the database.
@@ -35,7 +41,7 @@ var defaultTenant = &models.Tenant{
 func Middleware(core *core.Core, rootDomain string, enabled bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if !enabled {
+			if !enabled || strings.HasPrefix(c.Request().URL.Path, operatorPathPrefix) {
 				c.Set(models.TenantCtxKey, defaultTenant)
 				return next(c)
 			}

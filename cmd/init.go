@@ -92,7 +92,12 @@ type Config struct {
 	DBBatchSize                   int      `koanf:"batch_size"`
 	MultiTenancyEnabled           bool     `koanf:"multi_tenancy_enabled"`
 	RootDomain                    string   `koanf:"root_domain"`
-	Privacy                       struct {
+	Operator                      struct {
+		Token      string `koanf:"token"`
+		DBUser     string `koanf:"db_user"`
+		DBPassword string `koanf:"db_password"`
+	} `koanf:"operator"`
+	Privacy struct {
 		IndividualTracking bool            `koanf:"individual_tracking"`
 		DisableTracking    bool            `koanf:"disable_tracking"`
 		AllowPreferences   bool            `koanf:"allow_preferences"`
@@ -506,6 +511,9 @@ func initConstConfig(ko *koanf.Koanf) *Config {
 	}
 	if err := ko.Unmarshal("security", &c.Security); err != nil {
 		lo.Fatalf("error loading app.security config: %v", err)
+	}
+	if err := ko.Unmarshal("operator", &c.Operator); err != nil {
+		lo.Fatalf("error loading operator config: %v", err)
 	}
 
 	if err := ko.UnmarshalWithConf("appearance", &c.Appearance, koanf.UnmarshalConf{FlatPaths: true}); err != nil {
