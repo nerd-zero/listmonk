@@ -533,23 +533,34 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("users.passwordMismatch"))
 	}
 
-	// Create the default "Super Admin" with all permissions if it doesn't exist.
+	// Create the default "Super Admin" with all permissions if it doesn't
+	// already exist for this tenant.
 	//
-	// roleID defaults to auth.SuperAdminRoleID (1) for the case where the
-	// role already exists - true only for the very first tenant ever set
-	// up on this installation, since role IDs are a single sequence shared
-	// across all tenants and RLS-scoped lookups of a *different* tenant's
-	// role id=1 correctly return not-found. For every subsequent tenant,
-	// GetRole's not-found branch below creates a brand new role that gets
-	// whatever the next value in that shared sequence is - NOT 1 - so it
-	// must be captured and used instead of the constant. Using the
-	// constant unconditionally here previously meant every tenant after
-	// the first got a user with user_role_id=NULL (the create-user query's
-	// `WHERE id = $7 AND type = 'user'` role lookup is itself RLS-scoped,
-	// so role id=1 belonging to a different tenant silently resolves to no
-	// rows) - a login-successful but completely permission-less account.
-	roleID := auth.SuperAdminRoleID
-	if _, err := a.core.GetRole(c.Request().Context(), tenantID(c), auth.SuperAdminRoleID); err != nil {
+	// Looked up by name (not auth.SuperAdminRoleID, a global constant)
+	// since role IDs are a single sequence shared across all tenants - a
+	// different tenant's role id=1 is invisible under RLS, so checking by
+	// ID alone can never find a non-first tenant's existing role. That
+	// previously meant every tenant after the first unconditionally
+	// created a brand new role on every first-time-setup attempt,
+	// including retries: if a prior attempt got as far as creating the
+	// role but failed before creating the user (e.g. a duplicate
+	// username, a network blip), the orphaned role stuck around, and
+	// retrying hit `idx_roles_name`'s (tenant_id, type, name) uniqueness
+	// constraint instead of reusing it. Found live during real tenant
+	// onboarding, not from reading the code.
+	roleID := 0
+	roles, err := a.core.GetRoles(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	for _, r := range roles {
+		if r.Type == auth.RoleTypeUser && r.Name.String == "Super Admin" {
+			roleID = r.ID
+			break
+		}
+	}
+
+	if roleID == 0 {
 		r := auth.Role{
 			Type: auth.RoleTypeUser,
 			Name: null.NewString("Super Admin", true),
