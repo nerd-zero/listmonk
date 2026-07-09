@@ -633,7 +633,10 @@ $ease:           cubic-bezier(0.4, 0, 0.2, 1);
     font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: #f8fafc;
+    // Was #f8fafc (near-white) - invisible against $sidebar-bg's #ffffff.
+    // Pre-existing bug, unrelated to organizations; found and fixed while
+    // adding .sidebar-org-name below, which inherited the same color.
+    color: var(--lm-text);
     white-space: nowrap;
   }
 
@@ -642,7 +645,7 @@ $ease:           cubic-bezier(0.4, 0, 0.2, 1);
   .sidebar-org-name {
     padding: 0.3rem 1.25rem 0.5rem;
     font-size: 0.75rem;
-    color: rgba(248, 250, 252, 0.55);
+    color: $nav-label;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
