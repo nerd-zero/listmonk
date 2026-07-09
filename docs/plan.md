@@ -227,7 +227,7 @@ Ship v1 with tenants on **`{slug}.ourapp.com`** — a subdomain of a domain we a
 | Language / layout | Go, `cmd/api` + `cmd/worker` | One module, two entrypoints sharing `internal/` — no microservices to deploy for v1. `cmd/worker` is still a bootstrap stub — nothing runs on it yet since there's no River queue behind it (see Background jobs below). |
 | HTTP router | **chi — in use** | `internal/httpapi`. Idiomatic `net/http`, middleware chain, no magic. |
 | Control-plane DB | **Postgres + pgx + sqlc — in use** | Typed queries generated from SQL we actually write (`db/queries/*.sql` → `internal/db`); no ORM behavior to fight. |
-| Migrations | golang-migrate | Plain SQL up/down files exist (`db/migrations/0001_init.{up,down}.sql`) and are applied by hand today; the `golang-migrate` tooling itself isn't wired into `cmd/api`/`cmd/worker` yet. |
+| Migrations | **golang-migrate — in use** | `cmd/migrate` (`go run ./cmd/migrate [-direction up\|down]`) wraps the library against `db/migrations/0001_init.{up,down}.sql` and `DATABASE_URL`. Explicit step, not run automatically by `cmd/api`/`cmd/worker` on boot. |
 | Background jobs | River (confirmed, **not yet wired**) | `CreateInstance`'s one real step currently runs synchronously in the request handler — nothing to retry asynchronously yet with only one step. Revisit once Postmark/DNS jobs land (see Provisioning state machine). |
 | Kubernetes client | client-go (ops only) | Not needed at all yet — day-2 ops on the one shared deployment isn't in scope for what's been built so far. |
 | Postmark client | Thin hand-rolled HTTP client | Not yet built. |
@@ -440,7 +440,7 @@ Mirrors the style of the listmonk fork's own `docs/design/multi-tenancy.md` deci
   - `internal/authn`'s Zitadel JWKS verification is real code (go-oidc) but not live-tested — no Zitadel tenant is configured in this dev environment. Everything beneath it in the stack is live-verified.
   - `CreateInstance`'s Operator API call runs synchronously in the request handler, not through River — there's only one real step today, so nothing to retry asynchronously yet. Revisit once Postmark/DNS steps (build-order step 3) land.
   - No `DELETE .../instances/{id}` or `retry` HTTP handler yet (the underlying `DeleteInstance` sqlc query exists, unused).
-  - `golang-migrate` itself isn't wired into `cmd/api`/`cmd/worker` — migrations are applied by hand for now.
+  - **Resolved (2026-07-09):** `cmd/migrate` wraps `golang-migrate` for real now (`go run ./cmd/migrate`) — live-verified against the docker-compose dev DB: `up`, `down` (full round-trip back to a bare `schema_migrations` table), re-`up`, and a redundant `up` correctly resolving as a no-op (`migrate.ErrNoChange`) rather than an error. Still an explicit step, not run automatically by `cmd/api`/`cmd/worker` on boot.
 
 ## Sources
 
