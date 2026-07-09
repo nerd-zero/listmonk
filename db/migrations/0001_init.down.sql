@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS provisioning_jobs;
+DROP TABLE IF EXISTS dns_records;
+DROP TABLE IF EXISTS postmark_servers;
+DROP TABLE IF EXISTS instances;
+DROP TABLE IF EXISTS org_members;
+DROP TABLE IF EXISTS orgs;
+DROP TABLE IF EXISTS users;

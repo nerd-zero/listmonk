@@ -1,0 +1,72 @@
+// Package httpapi is the REST surface described in docs/plan.md: orgs and
+// the instances (tenants) each org owns, backed by internal/provisioning.
+package httpapi
+
+import (
+	"net/http"
+
+	"listnun/internal/authn"
+	"listnun/internal/provisioning"
+
+	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
+)
+
+type API struct {
+	svc      *provisioning.Service
+	verifier *authn.Verifier
+}
+
+func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
+	a := &API{svc: svc, verifier: verifier}
+
+	r := chi.NewRouter()
+	r.Use(chimw.Logger)
+	r.Use(chimw.Recoverer)
+
+	r.Get("/api/health", a.health)
+
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(a.authMiddleware)
+
+		r.Route("/orgs", func(r chi.Router) {
+			r.Get("/", a.listOrgs)
+			r.Post("/", a.createOrg)
+
+			r.Route("/{orgID}", func(r chi.Router) {
+				r.Use(a.requireOrgMembership)
+
+				r.Route("/instances", func(r chi.Router) {
+					r.Get("/", a.listInstances)
+					r.Post("/", a.createInstance)
+
+					r.Route("/{instanceID}", func(r chi.Router) {
+						r.Get("/", a.getInstance)
+						r.Get("/events", a.listEvents)
+						r.Post("/setup-link", a.resendSetupLink)
+					})
+				})
+
+				r.Post("/members", a.inviteMember)
+			})
+		})
+
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(a.requireSuperAdmin)
+
+			r.Get("/orgs", a.adminListOrgs)
+			r.Get("/instances", a.adminListInstances)
+			r.Route("/instances/{instanceID}", func(r chi.Router) {
+				r.Get("/", a.adminGetInstance)
+				r.Put("/status", a.adminSetTenantStatus)
+				r.Post("/setup-link", a.adminResendSetupLink)
+			})
+		})
+	})
+
+	return r
+}
+
+func (a *API) health(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}

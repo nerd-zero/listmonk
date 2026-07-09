@@ -1,0 +1,109 @@
+# Local dev only. Adapted from the proven Zitadel block in
+# /home/tawanda/work/scrub/docker-compose.yml (already verified to boot in
+# this environment) -- container names changed to listnun-* so both stacks
+# can coexist by name. Zitadel itself is remapped to host port 8081 (8080
+# was already bound by listmonk's frontend dev server on this machine);
+# zitadel-login stays on 3000, matching the reference.
+#
+# Zitadel's ZITADEL_FIRSTINSTANCE_ORG_MACHINE_* below auto-provisions a
+# machine user + Personal Access Token on first boot only, written to the
+# listnun-zitadel-bootstrap volume -- no manual console step needed to get
+# a working service-account credential for internal/zitadelmgmt.
+services:
+  listnun-db:
+    image: postgres:17-alpine
+    container_name: listnun-db
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: listnun
+      POSTGRES_PASSWORD: listnun
+      POSTGRES_DB: listnun
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U listnun"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    volumes:
+      - listnun-db:/var/lib/postgresql/data
+
+  zitadel-db:
+    image: postgres:17
+    container_name: listnun-zitadel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: zitadel
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    volumes:
+      - listnun-zitadel-db:/var/lib/postgresql/data
+
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:v4.12.1
+    container_name: listnun-zitadel
+    command: start-from-init --masterkey "MasterkeyNeedsToHave32Characters" --tlsMode disabled
+    restart: unless-stopped
+    user: "0"
+    environment:
+      ZITADEL_DATABASE_POSTGRES_HOST: zitadel-db
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_EXTERNALPORT: 8081
+      ZITADEL_EXTERNALDOMAIN: localhost
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: zitadel-admin@zitadel.localhost
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: Password1!
+      ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel/bootstrap/automation.pat
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: automation
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: Automation Service Account
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2030-01-01T00:00:00Z"
+      ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /zitadel/bootstrap/login-client.pat
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Automatically Initialized IAM_LOGIN_CLIENT
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: "2030-01-01T00:00:00Z"
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "true"
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://localhost:3000/ui/v2/login/
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: http://localhost:3000/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://localhost:3000/ui/v2/login/logout?post_logout_redirect=
+      ZITADEL_SAML_DEFAULTLOGINURLV2: http://localhost:3000/ui/v2/login/login?samlRequest=
+    ports:
+      - "8081:8080"
+    volumes:
+      - listnun-zitadel-bootstrap:/zitadel/bootstrap:rw
+    depends_on:
+      zitadel-db:
+        condition: service_healthy
+
+  zitadel-login:
+    image: ghcr.io/zitadel/zitadel-login:v4.12.1
+    container_name: listnun-zitadel-login
+    restart: unless-stopped
+    user: "0"
+    environment:
+      ZITADEL_API_URL: http://zitadel:8080
+      NEXT_PUBLIC_BASE_PATH: /ui/v2/login
+      ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel/bootstrap/login-client.pat
+      CUSTOM_REQUEST_HEADERS: Host:localhost:8081
+    ports:
+      - "3000:3000"
+    volumes:
+      - listnun-zitadel-bootstrap:/zitadel/bootstrap:ro
+    depends_on:
+      - zitadel
+
+volumes:
+  listnun-db:
+  listnun-zitadel-db:
+  listnun-zitadel-bootstrap:

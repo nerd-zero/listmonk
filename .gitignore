@@ -1,0 +1,18 @@
+# Local tool/session state
+.claude/
+
+# Env files and secrets
+.env
+.env.*
+*.pat
+key.json
+*-key.json
+
+# Go build artifacts
+/bin/
+*.exe
+*.test
+*.out
+
+# OS cruft
+.DS_Store
