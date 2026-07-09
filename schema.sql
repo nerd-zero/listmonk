@@ -16,16 +16,33 @@ DROP TYPE IF EXISTS tenant_status CASCADE; CREATE TYPE tenant_status AS ENUM ('a
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- tenants
-DROP TABLE IF EXISTS tenants CASCADE;
-CREATE TABLE tenants (
+-- organizations
+-- A purely cross-tenant grouping construct, managed only via the Operator
+-- API (see docs/design/multi-tenancy.md) - never RLS-scoped, never
+-- resolved per-request the way tenants are. One organization can own
+-- multiple tenants ("listmonks") for different purposes (e.g. separate
+-- brands/departments), or none at all - tenants.organization_id is
+-- nullable so existing/standalone tenants aren't forced into one.
+DROP TABLE IF EXISTS organizations CASCADE;
+CREATE TABLE organizations (
     id          SERIAL PRIMARY KEY,
-    slug        TEXT NOT NULL UNIQUE,
     name        TEXT NOT NULL,
-    status      tenant_status NOT NULL DEFAULT 'active',
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- tenants
+DROP TABLE IF EXISTS tenants CASCADE;
+CREATE TABLE tenants (
+    id              SERIAL PRIMARY KEY,
+    organization_id INTEGER NULL REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    slug            TEXT NOT NULL UNIQUE,
+    name            TEXT NOT NULL,
+    status          tenant_status NOT NULL DEFAULT 'active',
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+DROP INDEX IF EXISTS idx_tenants_organization; CREATE INDEX idx_tenants_organization ON tenants(organization_id);
 INSERT INTO tenants (id, slug, name, status) VALUES (1, 'default', 'Default', 'active');
 SELECT setval('tenants_id_seq', 1);
 

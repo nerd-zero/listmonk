@@ -1931,6 +1931,144 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/operator/organizations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "operator"
+                ],
+                "summary": "List organizations (Operator API)",
+                "operationId": "listOperatorOrganizations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/OperatorOrganization"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. An organization is just a name that tenants can optionally be created under (via organization_id on POST /api/operator/tenants) - it groups multiple tenants (\"listmonks\") for the same customer under one umbrella.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "operator"
+                ],
+                "summary": "Create an organization (Operator API)",
+                "operationId": "createOperatorOrganization",
+                "parameters": [
+                    {
+                        "description": "Organization to create",
+                        "name": "organization",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/OperatorCreateOrganizationReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Organization"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/operator/organizations/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "operator"
+                ],
+                "summary": "Get an organization (Operator API)",
+                "operationId": "getOperatorOrganization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/OperatorOrganizationResp"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/operator/tenants": {
             "get": {
                 "security": [
@@ -4987,6 +5125,14 @@ const docTemplate = `{
                 }
             }
         },
+        "OperatorCreateOrganizationReq": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "OperatorCreateSetupLinkReq": {
             "type": "object",
             "properties": {
@@ -5018,6 +5164,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "organization_id": {
+                    "type": "integer"
+                },
                 "slug": {
                     "type": "string"
                 }
@@ -5034,6 +5183,52 @@ const docTemplate = `{
                 },
                 "tenant": {
                     "$ref": "#/definitions/models.Tenant"
+                }
+            }
+        },
+        "OperatorOrganization": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tenant_count": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "OperatorOrganizationResp": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tenant_count": {
+                    "type": "integer"
+                },
+                "tenants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OperatorTenant"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -5117,6 +5312,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "organization_id": {
+                    "$ref": "#/definitions/null.Int"
+                },
                 "slug": {
                     "type": "string"
                 },
@@ -5138,6 +5336,23 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "Organization": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -6166,6 +6381,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "organization_id": {
+                    "$ref": "#/definitions/null.Int"
                 },
                 "slug": {
                     "type": "string"

@@ -253,19 +253,66 @@ UI-level "operator" role.
   uses (see the RLS gotcha above: `BYPASSRLS`/superuser silently disables every
   policy). This role becomes the second consumer of the "separate maintenance
   role" already flagged for migrations/backups in the phased plan below.
-- **Endpoints (v1, minimal):**
+- **Endpoints (as implemented):**
   - `GET /api/operator/tenants` — list all tenants + status + basic counts
     (users, subscribers) for a support/billing dashboard.
   - `GET /api/operator/tenants/:id` — tenant detail.
   - `POST /api/operator/tenants` — provision a new tenant (slug, name, initial
-    admin user).
+    admin user, optional `organization_id` — see "Organizations" below).
+    Returns a one-time setup link (`internal/tmptokens`, in-memory) the
+    caller delivers to the new admin so they can set their own password —
+    the operator never sets or sees it.
+  - `POST /api/operator/tenants/:id/setup-link` — reissue a fresh setup
+    link for an existing tenant admin. Needed because setup tokens are
+    in-memory/process-lifetime: an app restart invalidates every pending
+    link, and without this endpoint the only recovery was recreating the
+    tenant from scratch (which fails outright since the slug is taken).
+  - `PUT /api/operator/tenants/:id/smtp` — replace a tenant's SMTP settings
+    with a single server entry. listmonk has zero mail-provider-specific
+    logic here — the caller is responsible for actually creating the
+    server/credentials with whatever provider it uses, this only writes
+    them into the tenant's settings. (An earlier draft had listmonk itself
+    auto-provision a Postmark server per tenant; moved out once it became
+    clear that responsibility belongs in the separate orchestration service
+    that already owns Postmark/Cloudflare/DNS provisioning — see
+    `listnun/docs/plan.md` in the sibling repo. listmonk's Operator API
+    stays provider-agnostic: generic tenant/organization CRUD and generic
+    settings-setting, nothing provider-aware.)
   - `PUT /api/operator/tenants/:id/status` — suspend/reactivate/disable
     (`{"status":"suspended"}`); a suspended tenant's subdomain shows the
     "workspace unavailable" page (from tenant-resolution middleware above),
     and the manager/dispatcher scan (phase 6) skips it.
+  - `POST /api/operator/organizations`, `GET /api/operator/organizations`,
+    `GET /api/operator/organizations/:id` — organization CRUD, see
+    "Organizations" below.
 - **Out of scope for this plan:** actual payment-provider integration
   (Stripe subscription state, invoicing). The operator API just provides the
   status/suspend lever a billing webhook handler would call into.
+
+### Organizations
+
+**Decided (2026-07-09):** a tenant ("listmonk") and a customer aren't
+necessarily the same thing — one customer may want several tenants for
+different purposes (e.g. separate brands or departments), each still fully
+isolated by the existing per-tenant RLS/subdomain machinery. `organizations`
+is a new, deliberately minimal table (`id`, `name`, timestamps) that exists
+purely to group tenants for operator-side management — it is **not**
+RLS-scoped and **not** resolved per-request the way a tenant is; nothing
+outside the Operator API ever needs to know an organization exists.
+
+- `tenants.organization_id` is a nullable FK (`ON DELETE SET NULL`) — a
+  tenant doesn't have to belong to one, and deleting an organization row
+  (not currently exposed via any endpoint) never cascades into deleting the
+  tenants under it.
+- `POST /api/operator/tenants` accepts an optional `organization_id`,
+  validated against `GET /api/operator/organizations/:id` before creating
+  the tenant so a bad ID fails fast with 400 rather than surfacing as an FK
+  violation.
+- `GET /api/operator/organizations/:id` returns the organization plus every
+  tenant belonging to it (with the same per-tenant user/subscriber counts
+  `GET /api/operator/tenants` exposes) in one call, since "show me this
+  customer's tenants" is the primary reason to look an organization up.
+- Migration `v6.12.0`.
 
 ## Phased implementation plan
 
@@ -811,6 +858,31 @@ UI-level "operator" role.
   `go test ./... -race` all clean. Confirmed both real test tenants'
   first-time-setup pages render correctly and the pre-existing `default`
   tenant's login is unaffected.
+- **Organizations added (2026-07-09):** see "Organizations" under the
+  Operator API section above for the design. Migration `v6.12.0` adds
+  `organizations` (`id`, `name`, timestamps — deliberately minimal, no
+  status/slug/other fields since nothing needed them yet) and
+  `tenants.organization_id` (nullable FK, `ON DELETE SET NULL`). Three
+  new Operator API endpoints (`POST`/`GET /api/operator/organizations`,
+  `GET /api/operator/organizations/:id`); `POST /api/operator/tenants`
+  gained an optional `organization_id` field, validated against an
+  existing organization before the tenant is created. **Also reverted in
+  the same window**: an earlier draft of `PUT
+  /api/operator/tenants/:id/smtp` had listmonk auto-provision a dedicated
+  Postmark server per tenant directly (new `internal/postmark` package, an
+  `[operator].postmark_account_token` config value) — reverted once it
+  became clear that responsibility belongs in `listnun` (the sibling
+  orchestration-service repo that already has `postmark_servers`/
+  `provisioning_jobs` tables and, per its own `docs/plan.md`, is meant to
+  call Postmark's Account API directly and separately call listmonk's
+  Operator API). The endpoint that shipped instead is fully
+  provider-agnostic: it writes whatever SMTP config it's handed into the
+  tenant's settings, with zero Postmark-specific code in listmonk.
+  **Verified**: created an organization via the API, created two tenants
+  under it (`organization_id` correctly set on both, correctly `null` for
+  a tenant created without one), confirmed `GET
+  /api/operator/organizations/:id` returns both tenants with their
+  per-tenant counts. `go build`, `go vet`, `go test ./...` all clean.
 
 ## Open questions
 

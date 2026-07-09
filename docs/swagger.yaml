@@ -405,6 +405,11 @@ definitions:
       name:
         type: string
     type: object
+  OperatorCreateOrganizationReq:
+    properties:
+      name:
+        type: string
+    type: object
   OperatorCreateSetupLinkReq:
     properties:
       admin_email:
@@ -425,6 +430,8 @@ definitions:
         type: string
       name:
         type: string
+      organization_id:
+        type: integer
       slug:
         type: string
     type: object
@@ -436,6 +443,36 @@ definitions:
         type: string
       tenant:
         $ref: '#/definitions/models.Tenant'
+    type: object
+  OperatorOrganization:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      tenant_count:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  OperatorOrganizationResp:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      tenant_count:
+        type: integer
+      tenants:
+        items:
+          $ref: '#/definitions/OperatorTenant'
+        type: array
+      updated_at:
+        type: string
     type: object
   OperatorSMTPEntry:
     properties:
@@ -490,6 +527,8 @@ definitions:
         type: integer
       name:
         type: string
+      organization_id:
+        $ref: '#/definitions/null.Int'
       slug:
         type: string
       status:
@@ -504,6 +543,17 @@ definitions:
   OperatorUpdateTenantStatusReq:
     properties:
       status:
+        type: string
+    type: object
+  Organization:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
         type: string
     type: object
   PageResults:
@@ -1185,6 +1235,8 @@ definitions:
         type: integer
       name:
         type: string
+      organization_id:
+        $ref: '#/definitions/null.Int'
       slug:
         type: string
       status:
@@ -2479,6 +2531,100 @@ paths:
       summary: Get a media item
       tags:
       - media
+  /api/operator/organizations:
+    get:
+      description: Fork-only, off by default (see [operator] config). Requires the
+        Operator API bearer token.
+      operationId: listOperatorOrganizations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/OperatorOrganization'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: List organizations (Operator API)
+      tags:
+      - operator
+    post:
+      consumes:
+      - application/json
+      description: Fork-only, off by default (see [operator] config). Requires the
+        Operator API bearer token. An organization is just a name that tenants can
+        optionally be created under (via organization_id on POST /api/operator/tenants)
+        - it groups multiple tenants ("listmonks") for the same customer under one
+        umbrella.
+      operationId: createOperatorOrganization
+      parameters:
+      - description: Organization to create
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/OperatorCreateOrganizationReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Organization'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Create an organization (Operator API)
+      tags:
+      - operator
+  /api/operator/organizations/{id}:
+    get:
+      description: Fork-only, off by default (see [operator] config). Requires the
+        Operator API bearer token.
+      operationId: getOperatorOrganization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/OperatorOrganizationResp'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Get an organization (Operator API)
+      tags:
+      - operator
   /api/operator/tenants:
     get:
       description: Fork-only, off by default (see [operator] config). Requires the

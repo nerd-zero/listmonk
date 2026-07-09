@@ -6,8 +6,29 @@
 -- must never have BYPASSRLS; see docs/design/multi-tenancy.md's Operator
 -- API section). Never load these against the main tenant-app pool.
 
+-- name: operator-create-organization
+INSERT INTO organizations (name) VALUES ($1) RETURNING *;
+
+-- name: operator-get-organization
+SELECT o.*,
+    (SELECT COUNT(*) FROM tenants WHERE organization_id = o.id) AS tenant_count
+FROM organizations o WHERE o.id = $1;
+
+-- name: operator-get-organizations
+SELECT o.*,
+    (SELECT COUNT(*) FROM tenants WHERE organization_id = o.id) AS tenant_count
+FROM organizations o ORDER BY o.id;
+
+-- name: operator-get-organization-tenants
+SELECT t.*,
+    (SELECT COUNT(*) FROM users WHERE tenant_id = t.id) AS user_count,
+    (SELECT COUNT(*) FROM subscribers WHERE tenant_id = t.id) AS subscriber_count
+FROM tenants t WHERE t.organization_id = $1 ORDER BY t.id;
+
 -- name: operator-create-tenant
-INSERT INTO tenants (slug, name, status) VALUES ($1, $2, 'active') RETURNING *;
+-- $3 (organization_id) is nullable - a tenant doesn't have to belong to
+-- an organization.
+INSERT INTO tenants (slug, name, status, organization_id) VALUES ($1, $2, 'active', $3) RETURNING *;
 
 -- name: operator-seed-tenant-settings
 -- New tenants otherwise get zero settings rows (nothing seeds them -
@@ -33,9 +54,8 @@ ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value;
 
 -- name: operator-set-tenant-smtp
 -- Replaces the tenant's smtp setting (copied as tenant 1's placeholder
--- example entries by operator-seed-tenant-settings) with the real,
--- auto-provisioned Postmark server's SMTP config - see
--- internal/postmark and CreateTenant's postmarkAccountToken handling.
+-- example entries by operator-seed-tenant-settings) with a real entry
+-- supplied by the caller - see cmd/operator.go's SetTenantSMTP.
 INSERT INTO settings (tenant_id, key, value) VALUES ($1, 'smtp', $2::JSONB)
 ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value;
 

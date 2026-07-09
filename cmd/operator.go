@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -34,13 +35,17 @@ var reTenantSlug = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 // pool using a Postgres role with BYPASSRLS, distinct from the
 // tenant-app pool. Never share these statements with the main *sqlx.DB.
 type operatorQueries struct {
-	CreateTenant       *sqlx.Stmt `query:"operator-create-tenant"`
-	SeedTenantSettings *sqlx.Stmt `query:"operator-seed-tenant-settings"`
-	SetTenantRootURL   *sqlx.Stmt `query:"operator-set-tenant-root-url"`
-	SetTenantSMTP      *sqlx.Stmt `query:"operator-set-tenant-smtp"`
-	GetTenant          *sqlx.Stmt `query:"operator-get-tenant"`
-	GetTenants         *sqlx.Stmt `query:"operator-get-tenants"`
-	UpdateTenantStatus *sqlx.Stmt `query:"operator-update-tenant-status"`
+	CreateOrganization     *sqlx.Stmt `query:"operator-create-organization"`
+	GetOrganization        *sqlx.Stmt `query:"operator-get-organization"`
+	GetOrganizations       *sqlx.Stmt `query:"operator-get-organizations"`
+	GetOrganizationTenants *sqlx.Stmt `query:"operator-get-organization-tenants"`
+	CreateTenant           *sqlx.Stmt `query:"operator-create-tenant"`
+	SeedTenantSettings     *sqlx.Stmt `query:"operator-seed-tenant-settings"`
+	SetTenantRootURL       *sqlx.Stmt `query:"operator-set-tenant-root-url"`
+	SetTenantSMTP          *sqlx.Stmt `query:"operator-set-tenant-smtp"`
+	GetTenant              *sqlx.Stmt `query:"operator-get-tenant"`
+	GetTenants             *sqlx.Stmt `query:"operator-get-tenants"`
+	UpdateTenantStatus     *sqlx.Stmt `query:"operator-update-tenant-status"`
 }
 
 // operatorTenant is a tenant row augmented with cross-tenant counts, only
@@ -50,6 +55,14 @@ type operatorTenant struct {
 	UserCount       int `db:"user_count" json:"user_count"`
 	SubscriberCount int `db:"subscriber_count" json:"subscriber_count"`
 } // @name OperatorTenant
+
+// operatorOrganization is an organization row augmented with a
+// cross-tenant tenant count, only obtainable via the BYPASSRLS operator
+// connection.
+type operatorOrganization struct {
+	models.Organization
+	TenantCount int `db:"tenant_count" json:"tenant_count"`
+} // @name OperatorOrganization
 
 // operatorSetupToken is the payload stored against the one-time setup
 // link token returned by CreateTenant (internal/tmptokens, in-memory,
@@ -171,7 +184,41 @@ func (s *operatorStore) UpdateTenantStatus(id int, status string) (models.Tenant
 	return out, nil
 }
 
-// CreateTenant creates a tenant row, then - via the normal tenant-app
+func (s *operatorStore) CreateOrganization(name string) (models.Organization, error) {
+	var out models.Organization
+	if err := s.q.CreateOrganization.Get(&out, name); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (s *operatorStore) GetOrganizations() ([]operatorOrganization, error) {
+	out := []operatorOrganization{}
+	if err := s.q.GetOrganizations.Select(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s *operatorStore) GetOrganization(id int) (operatorOrganization, error) {
+	var out operatorOrganization
+	if err := s.q.GetOrganization.Get(&out, id); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// GetOrganizationTenants lists every tenant belonging to an organization.
+func (s *operatorStore) GetOrganizationTenants(id int) ([]operatorTenant, error) {
+	out := []operatorTenant{}
+	if err := s.q.GetOrganizationTenants.Select(&out, id); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CreateTenant creates a tenant row (optionally under an organization -
+// organizationID <= 0 means none), then - via the normal tenant-app
 // Core, not the operator connection - a "Super Admin" role with every
 // permission and an initial admin user for it (PasswordLogin disabled,
 // no password set yet). Returns the tenant and a one-time setup token
@@ -179,9 +226,14 @@ func (s *operatorStore) UpdateTenantStatus(id int, status string) (models.Tenant
 // placeholder: returned directly in the API response - see the design
 // doc's Operator API section for why e-mailing it isn't possible yet,
 // a brand new tenant has no SMTP config of its own).
-func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsername, adminEmail, rootURL string) (models.Tenant, string, error) {
+func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsername, adminEmail, rootURL string, organizationID int) (models.Tenant, string, error) {
+	var orgID sql.NullInt64
+	if organizationID > 0 {
+		orgID = sql.NullInt64{Int64: int64(organizationID), Valid: true}
+	}
+
 	var t models.Tenant
-	if err := s.q.CreateTenant.Get(&t, slug, name); err != nil {
+	if err := s.q.CreateTenant.Get(&t, slug, name, orgID); err != nil {
 		return t, "", err
 	}
 
@@ -300,10 +352,11 @@ func (s *operatorStore) CreateSetupLink(ctx context.Context, tenantID int, email
 
 // operatorTenantReq is the request body for CreateTenant.
 type operatorTenantReq struct {
-	Slug          string `json:"slug"`
-	Name          string `json:"name"`
-	AdminUsername string `json:"admin_username"`
-	AdminEmail    string `json:"admin_email"`
+	Slug           string `json:"slug"`
+	Name           string `json:"name"`
+	AdminUsername  string `json:"admin_username"`
+	AdminEmail     string `json:"admin_email"`
+	OrganizationID int    `json:"organization_id,omitempty"`
 } // @name OperatorCreateTenantReq
 
 // operatorCreateTenantResp is the response body for CreateOperatorTenant.
@@ -328,6 +381,105 @@ type operatorSetupLinkResp struct {
 type operatorUpdateStatusReq struct {
 	Status string `json:"status"`
 } // @name OperatorUpdateTenantStatusReq
+
+// operatorOrganizationReq is the request body for CreateOperatorOrganization.
+type operatorOrganizationReq struct {
+	Name string `json:"name"`
+} // @name OperatorCreateOrganizationReq
+
+// CreateOperatorOrganization creates an organization - a purely
+// cross-tenant grouping construct that tenants can optionally belong to
+// (see models.Organization).
+//
+//	@ID			createOperatorOrganization
+//	@Summary		Create an organization (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. An organization is just a name that tenants can optionally be created under (via organization_id on POST /api/operator/tenants) - it groups multiple tenants ("listmonks") for the same customer under one umbrella.
+//	@Tags			operator
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			organization	body		operatorOrganizationReq	true	"Organization to create"
+//	@Success		200	{object}	models.Organization
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		401	{object}	echo.HTTPError
+//	@Router			/api/operator/organizations [post]
+func (a *App) CreateOperatorOrganization(c echo.Context) error {
+	var req operatorOrganizationReq
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if !strHasLen(req.Name, 1, stdInputMaxLen) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid name")
+	}
+
+	out, err := a.operator.CreateOrganization(req.Name)
+	if err != nil {
+		a.log.Printf("error creating organization: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error creating organization")
+	}
+
+	return c.JSON(http.StatusOK, okResp{out})
+}
+
+// ListOperatorOrganizations returns every organization with a
+// cross-tenant tenant count.
+//
+//	@ID			listOperatorOrganizations
+//	@Summary		List organizations (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token.
+//	@Tags			operator
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	[]operatorOrganization
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		500	{object}	echo.HTTPError
+//	@Router			/api/operator/organizations [get]
+func (a *App) ListOperatorOrganizations(c echo.Context) error {
+	out, err := a.operator.GetOrganizations()
+	if err != nil {
+		a.log.Printf("error fetching organizations: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error fetching organizations")
+	}
+	return c.JSON(http.StatusOK, okResp{out})
+}
+
+// GetOperatorOrganization returns a single organization (with a
+// cross-tenant tenant count) plus the list of tenants belonging to it.
+//
+//	@ID			getOperatorOrganization
+//	@Summary		Get an organization (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token.
+//	@Tags			operator
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"Organization ID"
+//	@Success		200	{object}	operatorOrganizationResp
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/operator/organizations/{id} [get]
+func (a *App) GetOperatorOrganization(c echo.Context) error {
+	id := getID(c)
+
+	org, err := a.operator.GetOrganization(id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "organization not found")
+	}
+
+	tenants, err := a.operator.GetOrganizationTenants(id)
+	if err != nil {
+		a.log.Printf("error fetching organization tenants: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error fetching organization tenants")
+	}
+
+	return c.JSON(http.StatusOK, okResp{operatorOrganizationResp{org, tenants}})
+}
+
+// operatorOrganizationResp is the response body for GetOperatorOrganization.
+type operatorOrganizationResp struct {
+	operatorOrganization
+	Tenants []operatorTenant `json:"tenants"`
+} // @name OperatorOrganizationResp
 
 // ListOperatorTenants returns every tenant with basic cross-tenant counts.
 //
@@ -407,8 +559,13 @@ func (a *App) CreateOperatorTenant(c echo.Context) error {
 	if !utils.ValidateEmail(req.AdminEmail) {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid admin_email")
 	}
+	if req.OrganizationID > 0 {
+		if _, err := a.operator.GetOrganization(req.OrganizationID); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "organization not found")
+		}
+	}
 
-	tenant, token, err := a.operator.CreateTenant(c.Request().Context(), req.Slug, req.Name, req.AdminUsername, req.AdminEmail, a.tenantRootURL(req.Slug))
+	tenant, token, err := a.operator.CreateTenant(c.Request().Context(), req.Slug, req.Name, req.AdminUsername, req.AdminEmail, a.tenantRootURL(req.Slug), req.OrganizationID)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Constraint == "tenants_slug_key" {
 			return echo.NewHTTPError(http.StatusConflict, "a tenant with this slug already exists")
