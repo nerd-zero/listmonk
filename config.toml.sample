@@ -49,3 +49,14 @@ token = ""
 # design doc for how to create this role).
 db_user = ""
 db_password = ""
+
+# Postmark account API token. If set, every new tenant created via the
+# Operator API gets its own dedicated Postmark server auto-provisioned,
+# with its SMTP credentials wired into that tenant's settings
+# automatically. Leave empty (default) to disable - new tenants then
+# keep the same placeholder SMTP examples every fresh tenant gets by
+# default, same as before this existed. Note: this only wires up the
+# SMTP transport - Postmark still requires a verified Sender Signature
+# or domain for the "from" address before that tenant can actually send
+# mail, which has to be done manually in the Postmark dashboard.
+postmark_account_token = ""

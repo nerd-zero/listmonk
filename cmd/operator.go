@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -9,12 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofrs/uuid/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/knadh/goyesql/v2"
 	goyesqlx "github.com/knadh/goyesql/v2/sqlx"
 	"github.com/knadh/koanf/v2"
 	"github.com/knadh/listmonk/internal/auth"
 	"github.com/knadh/listmonk/internal/core"
+	"github.com/knadh/listmonk/internal/postmark"
 	"github.com/knadh/listmonk/internal/tmptokens"
 	"github.com/knadh/listmonk/internal/utils"
 	"github.com/knadh/listmonk/models"
@@ -35,6 +38,7 @@ type operatorQueries struct {
 	CreateTenant       *sqlx.Stmt `query:"operator-create-tenant"`
 	SeedTenantSettings *sqlx.Stmt `query:"operator-seed-tenant-settings"`
 	SetTenantRootURL   *sqlx.Stmt `query:"operator-set-tenant-root-url"`
+	SetTenantSMTP      *sqlx.Stmt `query:"operator-set-tenant-smtp"`
 	GetTenant          *sqlx.Stmt `query:"operator-get-tenant"`
 	GetTenants         *sqlx.Stmt `query:"operator-get-tenants"`
 	UpdateTenantStatus *sqlx.Stmt `query:"operator-update-tenant-status"`
@@ -71,6 +75,10 @@ type operatorStore struct {
 	q           *operatorQueries
 	co          *core.Core
 	permissions map[string]struct{}
+
+	// postmarkAccountToken, if set, makes CreateTenant auto-provision a
+	// dedicated Postmark server per tenant (see internal/postmark).
+	postmarkAccountToken string
 }
 
 // initOperatorDB connects to the same database as the main [db] config
@@ -129,7 +137,7 @@ func initOperatorDB(ko *koanf.Koanf) *sqlx.DB {
 // and prepares its queries against the same parsed SQL map every other
 // query set is prepared from (queries/operator.sql is loaded alongside
 // the rest). Returns nil if the Operator API isn't configured.
-func newOperatorStoreIfEnabled(qMap goyesql.Queries, co *core.Core, permissions map[string]struct{}) *operatorStore {
+func newOperatorStoreIfEnabled(qMap goyesql.Queries, co *core.Core, permissions map[string]struct{}, postmarkAccountToken string) *operatorStore {
 	db := initOperatorDB(ko)
 	if db == nil {
 		return nil
@@ -141,7 +149,10 @@ func newOperatorStoreIfEnabled(qMap goyesql.Queries, co *core.Core, permissions 
 	}
 
 	lo.Println("operator API enabled")
-	return &operatorStore{db: db, q: &q, co: co, permissions: permissions}
+	if postmarkAccountToken != "" {
+		lo.Println("operator: Postmark auto-provisioning enabled")
+	}
+	return &operatorStore{db: db, q: &q, co: co, permissions: permissions, postmarkAccountToken: postmarkAccountToken}
 }
 
 func (s *operatorStore) GetTenants() ([]operatorTenant, error) {
@@ -192,6 +203,18 @@ func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsern
 		}
 	}
 
+	if s.postmarkAccountToken != "" {
+		if err := s.provisionPostmark(t.ID, slug); err != nil {
+			// Non-fatal: the tenant is still fully usable, just without
+			// SMTP configured - the admin can add it manually via
+			// Settings. Failing tenant creation outright over a
+			// third-party API call (rate limits, a transient network
+			// blip, a duplicate server name) would be a worse outcome
+			// than a tenant that needs one extra manual step.
+			lo.Printf("error auto-provisioning Postmark server for tenant %q: %v", slug, err)
+		}
+	}
+
 	r := auth.Role{
 		Type: auth.RoleTypeUser,
 		Name: null.NewString("Super Admin", true),
@@ -226,6 +249,78 @@ func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsern
 	tmptokens.Set(token, operatorSetupTokenTTL, operatorSetupToken{TenantID: t.ID, Email: adminEmail})
 
 	return t, token, nil
+}
+
+// operatorSMTPEntry mirrors one entry of models.Settings' SMTP field
+// (an anonymous struct there, so redeclared here for JSON marshaling -
+// see operator-set-tenant-smtp).
+type operatorSMTPEntry struct {
+	Name          string              `json:"name"`
+	UUID          string              `json:"uuid"`
+	Enabled       bool                `json:"enabled"`
+	Host          string              `json:"host"`
+	HelloHostname string              `json:"hello_hostname"`
+	Port          int                 `json:"port"`
+	AuthProtocol  string              `json:"auth_protocol"`
+	Username      string              `json:"username"`
+	Password      string              `json:"password"`
+	EmailHeaders  []map[string]string `json:"email_headers"`
+	MaxConns      int                 `json:"max_conns"`
+	MaxMsgRetries int                 `json:"max_msg_retries"`
+	MsgRetryDelay string              `json:"msg_retry_delay"`
+	IdleTimeout   string              `json:"idle_timeout"`
+	WaitTimeout   string              `json:"wait_timeout"`
+	TLSType       string              `json:"tls_type"`
+	TLSSkipVerify bool                `json:"tls_skip_verify"`
+	FromAddresses []string            `json:"from_addresses"`
+}
+
+// provisionPostmark creates a dedicated Postmark server for the tenant
+// and replaces its smtp setting (until now, tenant 1's placeholder
+// example entries, copied by operator-seed-tenant-settings) with one
+// pointing at that server. Postmark's SMTP relay uses the server's own
+// API token as both username and password - there's no separate
+// "SMTP credentials" concept to fetch.
+//
+// This does NOT make the tenant able to send mail immediately: Postmark
+// still requires a verified Sender Signature or domain for the "from"
+// address, which isn't something this API call can do - that's a
+// manual step the tenant/operator does in the Postmark dashboard
+// afterward. This only wires up the transport.
+func (s *operatorStore) provisionPostmark(tenantID int, slug string) error {
+	srv, err := postmark.CreateServer(s.postmarkAccountToken, slug)
+	if err != nil {
+		return err
+	}
+
+	entry := operatorSMTPEntry{
+		UUID:          uuid.Must(uuid.NewV4()).String(),
+		Enabled:       true,
+		Host:          postmark.SMTPHost,
+		Port:          postmark.SMTPPort,
+		AuthProtocol:  "login",
+		Username:      srv.ApiTokens[0],
+		Password:      srv.ApiTokens[0],
+		EmailHeaders:  []map[string]string{},
+		MaxConns:      10,
+		MaxMsgRetries: 2,
+		MsgRetryDelay: "10ms",
+		IdleTimeout:   "15s",
+		WaitTimeout:   "5s",
+		TLSType:       "STARTTLS",
+		FromAddresses: []string{},
+	}
+	b, err := json.Marshal([]operatorSMTPEntry{entry})
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.q.SetTenantSMTP.Exec(tenantID, b); err != nil {
+		return err
+	}
+
+	lo.Printf("provisioned Postmark server %q (ID %d) for tenant %q", srv.Name, srv.ID, slug)
+	return nil
 }
 
 // CreateSetupLink issues a fresh one-time setup token for an existing
@@ -328,7 +423,7 @@ func (a *App) GetOperatorTenant(c echo.Context) error {
 //
 //	@ID			createOperatorTenant
 //	@Summary		Create a tenant (Operator API)
-//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token, not a normal session/API-user token. Creates the tenant plus a passwordless initial admin user; the returned setup_url/setup_token is a one-time link the tenant's actual admin uses to set their own password - the operator never sets or sees it.
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token, not a normal session/API-user token. Creates the tenant plus a passwordless initial admin user; the returned setup_url/setup_token is a one-time link the tenant's actual admin uses to set their own password - the operator never sets or sees it. If [operator].postmark_account_token is set, also auto-provisions a dedicated Postmark server and wires its SMTP credentials into the new tenant's settings.
 //	@Tags			operator
 //	@Accept			json
 //	@Produce		json

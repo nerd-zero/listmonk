@@ -31,6 +31,14 @@ ON CONFLICT (tenant_id, key) DO NOTHING;
 INSERT INTO settings (tenant_id, key, value) VALUES ($1, 'app.root_url', to_jsonb($2::TEXT))
 ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value;
 
+-- name: operator-set-tenant-smtp
+-- Replaces the tenant's smtp setting (copied as tenant 1's placeholder
+-- example entries by operator-seed-tenant-settings) with the real,
+-- auto-provisioned Postmark server's SMTP config - see
+-- internal/postmark and CreateTenant's postmarkAccountToken handling.
+INSERT INTO settings (tenant_id, key, value) VALUES ($1, 'smtp', $2::JSONB)
+ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value;
+
 -- name: operator-get-tenant
 SELECT t.*,
     (SELECT COUNT(*) FROM users WHERE tenant_id = t.id) AS user_count,

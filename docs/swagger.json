@@ -1970,7 +1970,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token, not a normal session/API-user token. Creates the tenant plus a passwordless initial admin user; the returned setup_url/setup_token is a one-time link the tenant's actual admin uses to set their own password - the operator never sets or sees it.",
+                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token, not a normal session/API-user token. Creates the tenant plus a passwordless initial admin user; the returned setup_url/setup_token is a one-time link the tenant's actual admin uses to set their own password - the operator never sets or sees it. If [operator].postmark_account_token is set, also auto-provisions a dedicated Postmark server and wires its SMTP credentials into the new tenant's settings.",
                 "consumes": [
                     "application/json"
                 ],
