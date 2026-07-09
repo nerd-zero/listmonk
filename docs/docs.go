@@ -2146,6 +2146,71 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/operator/tenants/{id}/smtp": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. listmonk has no mail-provider-specific logic - the caller (e.g. an external provisioner that owns the actual Postmark/SES/etc. API calls) is responsible for creating the server/credentials and passes them here as-is; this endpoint only writes them into the tenant's settings, replacing its placeholder SMTP examples.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "operator"
+                ],
+                "summary": "Set a tenant's SMTP settings (Operator API)",
+                "operationId": "setOperatorTenantSmtp",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "SMTP server config",
+                        "name": "smtp",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/OperatorSMTPEntry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/cmd.okResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Tenant not found",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/operator/tenants/{id}/status": {
             "put": {
                 "security": [
@@ -4972,6 +5037,74 @@ const docTemplate = `{
                 }
             }
         },
+        "OperatorSMTPEntry": {
+            "type": "object",
+            "properties": {
+                "auth_protocol": {
+                    "type": "string"
+                },
+                "email_headers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "from_addresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "hello_hostname": {
+                    "type": "string"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "idle_timeout": {
+                    "type": "string"
+                },
+                "max_conns": {
+                    "type": "integer"
+                },
+                "max_msg_retries": {
+                    "type": "integer"
+                },
+                "msg_retry_delay": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "tls_skip_verify": {
+                    "type": "boolean"
+                },
+                "tls_type": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                },
+                "wait_timeout": {
+                    "type": "string"
+                }
+            }
+        },
         "OperatorTenant": {
             "type": "object",
             "properties": {
@@ -6008,6 +6141,12 @@ const docTemplate = `{
                 "username": {
                     "type": "string"
                 }
+            }
+        },
+        "cmd.okResp": {
+            "type": "object",
+            "properties": {
+                "data": {}
             }
         },
         "echo.HTTPError": {

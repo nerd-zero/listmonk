@@ -17,7 +17,6 @@ import (
 	"github.com/knadh/koanf/v2"
 	"github.com/knadh/listmonk/internal/auth"
 	"github.com/knadh/listmonk/internal/core"
-	"github.com/knadh/listmonk/internal/postmark"
 	"github.com/knadh/listmonk/internal/tmptokens"
 	"github.com/knadh/listmonk/internal/utils"
 	"github.com/knadh/listmonk/models"
@@ -75,10 +74,6 @@ type operatorStore struct {
 	q           *operatorQueries
 	co          *core.Core
 	permissions map[string]struct{}
-
-	// postmarkAccountToken, if set, makes CreateTenant auto-provision a
-	// dedicated Postmark server per tenant (see internal/postmark).
-	postmarkAccountToken string
 }
 
 // initOperatorDB connects to the same database as the main [db] config
@@ -137,7 +132,7 @@ func initOperatorDB(ko *koanf.Koanf) *sqlx.DB {
 // and prepares its queries against the same parsed SQL map every other
 // query set is prepared from (queries/operator.sql is loaded alongside
 // the rest). Returns nil if the Operator API isn't configured.
-func newOperatorStoreIfEnabled(qMap goyesql.Queries, co *core.Core, permissions map[string]struct{}, postmarkAccountToken string) *operatorStore {
+func newOperatorStoreIfEnabled(qMap goyesql.Queries, co *core.Core, permissions map[string]struct{}) *operatorStore {
 	db := initOperatorDB(ko)
 	if db == nil {
 		return nil
@@ -149,10 +144,7 @@ func newOperatorStoreIfEnabled(qMap goyesql.Queries, co *core.Core, permissions 
 	}
 
 	lo.Println("operator API enabled")
-	if postmarkAccountToken != "" {
-		lo.Println("operator: Postmark auto-provisioning enabled")
-	}
-	return &operatorStore{db: db, q: &q, co: co, permissions: permissions, postmarkAccountToken: postmarkAccountToken}
+	return &operatorStore{db: db, q: &q, co: co, permissions: permissions}
 }
 
 func (s *operatorStore) GetTenants() ([]operatorTenant, error) {
@@ -203,18 +195,6 @@ func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsern
 		}
 	}
 
-	if s.postmarkAccountToken != "" {
-		if err := s.provisionPostmark(t.ID, slug); err != nil {
-			// Non-fatal: the tenant is still fully usable, just without
-			// SMTP configured - the admin can add it manually via
-			// Settings. Failing tenant creation outright over a
-			// third-party API call (rate limits, a transient network
-			// blip, a duplicate server name) would be a worse outcome
-			// than a tenant that needs one extra manual step.
-			lo.Printf("error auto-provisioning Postmark server for tenant %q: %v", slug, err)
-		}
-	}
-
 	r := auth.Role{
 		Type: auth.RoleTypeUser,
 		Name: null.NewString("Super Admin", true),
@@ -252,8 +232,11 @@ func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsern
 }
 
 // operatorSMTPEntry mirrors one entry of models.Settings' SMTP field
-// (an anonymous struct there, so redeclared here for JSON marshaling -
-// see operator-set-tenant-smtp).
+// (an anonymous struct there, so redeclared here for JSON marshaling).
+// Used by SetTenantSMTP to accept a single SMTP server's config from an
+// external provisioner (e.g. listnun, which owns the actual Postmark/
+// SES/etc. API calls - this endpoint only ever writes whatever
+// credentials it's given, listmonk has no provider-specific knowledge).
 type operatorSMTPEntry struct {
 	Name          string              `json:"name"`
 	UUID          string              `json:"uuid"`
@@ -273,54 +256,24 @@ type operatorSMTPEntry struct {
 	TLSType       string              `json:"tls_type"`
 	TLSSkipVerify bool                `json:"tls_skip_verify"`
 	FromAddresses []string            `json:"from_addresses"`
-}
+} // @name OperatorSMTPEntry
 
-// provisionPostmark creates a dedicated Postmark server for the tenant
-// and replaces its smtp setting (until now, tenant 1's placeholder
-// example entries, copied by operator-seed-tenant-settings) with one
-// pointing at that server. Postmark's SMTP relay uses the server's own
-// API token as both username and password - there's no separate
-// "SMTP credentials" concept to fetch.
-//
-// This does NOT make the tenant able to send mail immediately: Postmark
-// still requires a verified Sender Signature or domain for the "from"
-// address, which isn't something this API call can do - that's a
-// manual step the tenant/operator does in the Postmark dashboard
-// afterward. This only wires up the transport.
-func (s *operatorStore) provisionPostmark(tenantID int, slug string) error {
-	srv, err := postmark.CreateServer(s.postmarkAccountToken, slug)
-	if err != nil {
-		return err
-	}
+// SetTenantSMTP replaces a tenant's smtp setting (until now, tenant 1's
+// placeholder example entries, copied in by
+// operator-seed-tenant-settings) with a single real entry - the calling
+// provisioner (e.g. listnun's create_postmark_server job) is responsible
+// for actually creating the mail-provider server/credentials; this only
+// writes whatever it's given into the tenant's settings.
+func (s *operatorStore) SetTenantSMTP(tenantID int, entry operatorSMTPEntry) error {
+	entry.UUID = uuid.Must(uuid.NewV4()).String()
 
-	entry := operatorSMTPEntry{
-		UUID:          uuid.Must(uuid.NewV4()).String(),
-		Enabled:       true,
-		Host:          postmark.SMTPHost,
-		Port:          postmark.SMTPPort,
-		AuthProtocol:  "login",
-		Username:      srv.ApiTokens[0],
-		Password:      srv.ApiTokens[0],
-		EmailHeaders:  []map[string]string{},
-		MaxConns:      10,
-		MaxMsgRetries: 2,
-		MsgRetryDelay: "10ms",
-		IdleTimeout:   "15s",
-		WaitTimeout:   "5s",
-		TLSType:       "STARTTLS",
-		FromAddresses: []string{},
-	}
 	b, err := json.Marshal([]operatorSMTPEntry{entry})
 	if err != nil {
 		return err
 	}
 
-	if _, err := s.q.SetTenantSMTP.Exec(tenantID, b); err != nil {
-		return err
-	}
-
-	lo.Printf("provisioned Postmark server %q (ID %d) for tenant %q", srv.Name, srv.ID, slug)
-	return nil
+	_, err = s.q.SetTenantSMTP.Exec(tenantID, b)
+	return err
 }
 
 // CreateSetupLink issues a fresh one-time setup token for an existing
@@ -578,6 +531,46 @@ func (a *App) UpdateOperatorTenantStatus(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, okResp{out})
+}
+
+// SetOperatorTenantSMTP replaces a tenant's SMTP settings with a single
+// server entry.
+//
+//	@ID			setOperatorTenantSmtp
+//	@Summary		Set a tenant's SMTP settings (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. listmonk has no mail-provider-specific logic - the caller (e.g. an external provisioner that owns the actual Postmark/SES/etc. API calls) is responsible for creating the server/credentials and passes them here as-is; this endpoint only writes them into the tenant's settings, replacing its placeholder SMTP examples.
+//	@Tags			operator
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int					true	"Tenant ID"
+//	@Param			smtp	body		operatorSMTPEntry	true	"SMTP server config"
+//	@Success		200	{object}	okResp
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError	"Tenant not found"
+//	@Router			/api/operator/tenants/{id}/smtp [put]
+func (a *App) SetOperatorTenantSMTP(c echo.Context) error {
+	id := getID(c)
+
+	if _, err := a.operator.GetTenant(id); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "tenant not found")
+	}
+
+	var req operatorSMTPEntry
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+	if req.Host == "" || req.Username == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "host and username are required")
+	}
+
+	if err := a.operator.SetTenantSMTP(id, req); err != nil {
+		a.log.Printf("error setting tenant SMTP: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error setting tenant SMTP")
+	}
+
+	return c.JSON(http.StatusOK, okResp{true})
 }
 
 // OperatorSetupPage renders (GET) and processes (POST) the one-time

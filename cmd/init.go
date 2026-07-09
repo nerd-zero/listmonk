@@ -95,13 +95,6 @@ type Config struct {
 		Token      string `koanf:"token"`
 		DBUser     string `koanf:"db_user"`
 		DBPassword string `koanf:"db_password"`
-
-		// PostmarkAccountToken, if set, makes CreateOperatorTenant
-		// auto-provision a dedicated Postmark server for every new
-		// tenant and wire its SMTP credentials into that tenant's
-		// settings - off by default, same as the rest of the
-		// Operator API.
-		PostmarkAccountToken string `koanf:"postmark_account_token"`
 	} `koanf:"operator"`
 	Privacy struct {
 		IndividualTracking bool            `koanf:"individual_tracking"`

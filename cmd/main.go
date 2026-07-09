@@ -248,7 +248,7 @@ func main() {
 		// Operator API (off by default - see initOperatorDB). Uses a
 		// separate BYPASSRLS DB connection, distinct from the tenant-app
 		// pool above.
-		opStore = newOperatorStoreIfEnabled(qMap, core, cfg.Permissions, cfg.Operator.PostmarkAccountToken)
+		opStore = newOperatorStoreIfEnabled(qMap, core, cfg.Permissions)
 
 		// Initialize the webhook/POP3 bounce processor.
 		bounce *bounce.Manager
