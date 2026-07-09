@@ -5,11 +5,13 @@ package httpapi
 import (
 	"net/http"
 
+	_ "listnun/internal/apidocs" // swagger docs, registered via side-effect init
 	"listnun/internal/authn"
 	"listnun/internal/provisioning"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type API struct {
@@ -25,6 +27,7 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 	r.Use(chimw.Recoverer)
 
 	r.Get("/api/health", a.health)
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(a.authMiddleware)
@@ -67,6 +70,13 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 	return r
 }
 
+// health godoc
+//
+//	@Summary	Health check
+//	@Tags		health
+//	@Produce	json
+//	@Success	200	{object}	healthResponse
+//	@Router		/health [get]
 func (a *API) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

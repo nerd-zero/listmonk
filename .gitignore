@@ -4,6 +4,7 @@
 # Env files and secrets
 .env
 .env.*
+!.env.example
 *.pat
 key.json
 *-key.json

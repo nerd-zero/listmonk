@@ -1,0 +1,186 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Design tokens ported from the reviewed dashboard mockup: warm paper/ink
+  palette, mono type reserved for technical values (domains, ids, DNS
+  records), status color as the only accent. Light values first, dark
+  overrides in .dark below.
+*/
+:root {
+  --background: #f6f3ec;
+  --foreground: #1b1e24;
+
+  --card: #ffffff;
+  --card-foreground: #1b1e24;
+  --popover: #ffffff;
+  --popover-foreground: #1b1e24;
+
+  --primary: #1b1e24;
+  --primary-foreground: #f6f3ec;
+
+  --secondary: #efebe1;
+  --secondary-foreground: #1b1e24;
+
+  --muted: #efebe1;
+  --muted-foreground: #6b6f76;
+
+  --accent: #efebe1;
+  --accent-foreground: #1b1e24;
+
+  --destructive: #c1503b;
+  --destructive-foreground: #f6f3ec;
+
+  --border: #dedad0;
+  --input: #dedad0;
+  --ring: #d97d3d;
+
+  --radius: 0.375rem;
+
+  /* Status semantics -- not part of shadcn's default palette, used by
+     pills/rail/segmented controls to keep provisioning vs. account
+     status visually distinct from primary/destructive UI actions. */
+  --status-green: #3f8f6c;
+  --status-green-soft: #dcebe3;
+  --status-amber: #d97d3d;
+  --status-amber-soft: #f3e2d0;
+  --status-red: #c1503b;
+  --status-red-soft: #f3ddd6;
+  --grey-line: #c9c4b7;
+  --chart-1: #3f8f6c;
+  --chart-2: #d97d3d;
+  --chart-3: #c1503b;
+  --chart-4: #6b6f76;
+  --chart-5: #1b1e24;
+  --sidebar: #f6f3ec;
+  --sidebar-foreground: #1b1e24;
+  --sidebar-primary: #1b1e24;
+  --sidebar-primary-foreground: #f6f3ec;
+  --sidebar-accent: #efebe1;
+  --sidebar-accent-foreground: #1b1e24;
+  --sidebar-border: #dedad0;
+  --sidebar-ring: #d97d3d;
+}
+
+.dark {
+  --background: #14171c;
+  --foreground: #ece9e1;
+
+  --card: #1b1f26;
+  --card-foreground: #ece9e1;
+  --popover: #1b1f26;
+  --popover-foreground: #ece9e1;
+
+  --primary: #ece9e1;
+  --primary-foreground: #14171c;
+
+  --secondary: #181b21;
+  --secondary-foreground: #ece9e1;
+
+  --muted: #181b21;
+  --muted-foreground: #9599a0;
+
+  --accent: #181b21;
+  --accent-foreground: #ece9e1;
+
+  --destructive: #c1503b;
+  --destructive-foreground: #14171c;
+
+  --border: #2b2f36;
+  --input: #2b2f36;
+  --ring: #d97d3d;
+
+  --status-green: #3f8f6c;
+  --status-green-soft: #1d3128;
+  --status-amber: #d97d3d;
+  --status-amber-soft: #3a2c1e;
+  --status-red: #c1503b;
+  --status-red-soft: #3a2320;
+  --grey-line: #3a3f47;
+  --chart-1: #3f8f6c;
+  --chart-2: #d97d3d;
+  --chart-3: #c1503b;
+  --chart-4: #9599a0;
+  --chart-5: #ece9e1;
+  --sidebar: #14171c;
+  --sidebar-foreground: #ece9e1;
+  --sidebar-primary: #ece9e1;
+  --sidebar-primary-foreground: #14171c;
+  --sidebar-accent: #181b21;
+  --sidebar-accent-foreground: #ece9e1;
+  --sidebar-border: #2b2f36;
+  --sidebar-ring: #d97d3d;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-status-green: var(--status-green);
+  --color-status-green-soft: var(--status-green-soft);
+  --color-status-amber: var(--status-amber);
+  --color-status-amber-soft: var(--status-amber-soft);
+  --color-status-red: var(--status-red);
+  --color-status-red-soft: var(--status-red-soft);
+  --color-grey-line: var(--grey-line);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: 'Inter Variable', sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+}

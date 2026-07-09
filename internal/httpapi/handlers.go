@@ -29,6 +29,16 @@ func writeError(w http.ResponseWriter, status int, message string) {
 
 // --- orgs -------------------------------------------------------------
 
+// listOrgs godoc
+//
+//	@Summary	List the caller's orgs
+//	@Tags		orgs
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Success	200	{object}	orgListResponse
+//	@Failure	401	{object}	errorResponse
+//	@Failure	500	{object}	errorResponse
+//	@Router		/v1/orgs [get]
 func (a *API) listOrgs(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFromContext(r.Context())
 	orgs, err := a.svc.ListOrgsForUser(r.Context(), uuid.UUID(user.ID.Bytes))
@@ -43,6 +53,20 @@ type createOrgRequest struct {
 	Name string `json:"name"`
 }
 
+// createOrg godoc
+//
+//	@Summary	Create an additional org
+//	@Description	Also creates the org's mirrored listmonk Organization (see internal/provisioning.createListmonkOrganization).
+//	@Tags		orgs
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		org	body		createOrgRequest	true	"Org to create"
+//	@Success	200	{object}	orgResponse
+//	@Failure	400	{object}	errorResponse
+//	@Failure	401	{object}	errorResponse
+//	@Failure	500	{object}	errorResponse
+//	@Router		/v1/orgs [post]
 func (a *API) createOrg(w http.ResponseWriter, r *http.Request) {
 	var req createOrgRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -65,6 +89,18 @@ func (a *API) createOrg(w http.ResponseWriter, r *http.Request) {
 
 // --- instances ----------------------------------------------------------
 
+// listInstances godoc
+//
+//	@Summary	List an org's instances
+//	@Tags		instances
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path		string	true	"Org ID"
+//	@Success	200		{object}	instanceListResponse
+//	@Failure	401		{object}	errorResponse
+//	@Failure	403		{object}	errorResponse
+//	@Failure	500		{object}	errorResponse
+//	@Router		/v1/orgs/{orgID}/instances [get]
 func (a *API) listInstances(w http.ResponseWriter, r *http.Request) {
 	instances, err := a.svc.ListInstances(r.Context(), orgIDFromRequest(r))
 	if err != nil {
@@ -81,6 +117,23 @@ type createInstanceRequest struct {
 	AdminEmail    string `json:"admin_email"`
 }
 
+// createInstance godoc
+//
+//	@Summary		Create an instance
+//	@Description	Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section).
+//	@Tags			instances
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string					true	"Org ID"
+//	@Param			instance	body		createInstanceRequest	true	"Instance to create"
+//	@Success		200			{object}	instanceResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		403			{object}	errorResponse
+//	@Failure		409			{object}	errorResponse	"Slug already in use"
+//	@Failure		500			{object}	errorResponse
+//	@Router			/v1/orgs/{orgID}/instances [post]
 func (a *API) createInstance(w http.ResponseWriter, r *http.Request) {
 	var req createInstanceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -109,6 +162,19 @@ func (a *API) createInstance(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, inst)
 }
 
+// getInstance godoc
+//
+//	@Summary	Get instance detail
+//	@Tags		instances
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID		path		string	true	"Org ID"
+//	@Param		instanceID	path		string	true	"Instance ID"
+//	@Success	200			{object}	instanceResponse
+//	@Failure	400			{object}	errorResponse
+//	@Failure	401			{object}	errorResponse
+//	@Failure	404			{object}	errorResponse
+//	@Router		/v1/orgs/{orgID}/instances/{instanceID} [get]
 func (a *API) getInstance(w http.ResponseWriter, r *http.Request) {
 	instanceID, err := instanceIDFromRequest(r)
 	if err != nil {
@@ -124,6 +190,20 @@ func (a *API) getInstance(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, inst)
 }
 
+// listEvents godoc
+//
+//	@Summary		Provisioning timeline for an instance
+//	@Description	Maps to provisioning_jobs; backs the dashboard's provisioning-status UI.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string	true	"Org ID"
+//	@Param			instanceID	path		string	true	"Instance ID"
+//	@Success		200			{object}	provisioningJobListResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		404			{object}	errorResponse
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/events [get]
 func (a *API) listEvents(w http.ResponseWriter, r *http.Request) {
 	instanceID, err := instanceIDFromRequest(r)
 	if err != nil {
@@ -145,6 +225,20 @@ func (a *API) listEvents(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, events)
 }
 
+// resendSetupLink godoc
+//
+//	@Summary		Reissue an instance admin's one-time setup link
+//	@Description	Needed because the original link's token is lost on a listmonk restart.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string	true	"Org ID"
+//	@Param			instanceID	path		string	true	"Instance ID"
+//	@Success		200			{object}	setupLinkResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		500			{object}	errorResponse
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/setup-link [post]
 func (a *API) resendSetupLink(w http.ResponseWriter, r *http.Request) {
 	instanceID, err := instanceIDFromRequest(r)
 	if err != nil {
@@ -168,6 +262,22 @@ type inviteMemberRequest struct {
 	Role        string `json:"role"`
 }
 
+// inviteMember godoc
+//
+//	@Summary		Invite a person into an org
+//	@Description	Owner-only. Creates the person's Zitadel identity directly if a service account is configured (see internal/zitadelmgmt); otherwise returns 501.
+//	@Tags			members
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		string				true	"Org ID"
+//	@Param			member	body		inviteMemberRequest	true	"Person to invite"
+//	@Success		200		{object}	userResponse
+//	@Failure		400		{object}	errorResponse
+//	@Failure		401		{object}	errorResponse
+//	@Failure		403		{object}	errorResponse	"Not an org owner"
+//	@Failure		501		{object}	errorResponse	"Invites not configured"
+//	@Router			/v1/orgs/{orgID}/members [post]
 func (a *API) inviteMember(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFromContext(r.Context())
 	orgID := orgIDFromRequest(r)

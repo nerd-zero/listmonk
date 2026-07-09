@@ -1,5 +1,15 @@
 // Command api serves the REST API described in docs/plan.md: orgs and the
 // listmonk-tenant instances each org owns.
+//
+//	@title			listnun API
+//	@description	Orgs and the listmonk-tenant instances each org owns. See docs/plan.md for architecture.
+//	@version		1.0
+//	@BasePath		/api
+//
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Bearer token verified against Zitadel's JWKS -- no signup/login endpoints of our own, see docs/plan.md's Auth section.
 package main
 
 import (
