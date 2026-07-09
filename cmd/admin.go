@@ -27,16 +27,17 @@ type serverConfig struct {
 		DisableTracking    bool `json:"disable_tracking"`
 		IndividualTracking bool `json:"individual_tracking"`
 	} `json:"privacy"`
-	MediaProvider string          `json:"media_provider"`
-	Messengers    []string        `json:"messengers"`
-	Langs         []i18nLang      `json:"langs"`
-	Lang          string          `json:"lang"`
-	Permissions   json.RawMessage `json:"permissions"`
-	Update        *AppUpdate      `json:"update"`
-	NeedsRestart  bool            `json:"needs_restart"`
-	HasLegacyUser bool            `json:"has_legacy_user"`
-	ScrubEnabled  bool            `json:"scrub_enabled"`
-	Version       string          `json:"version"`
+	MediaProvider    string          `json:"media_provider"`
+	Messengers       []string        `json:"messengers"`
+	Langs            []i18nLang      `json:"langs"`
+	Lang             string          `json:"lang"`
+	Permissions      json.RawMessage `json:"permissions"`
+	Update           *AppUpdate      `json:"update"`
+	NeedsRestart     bool            `json:"needs_restart"`
+	HasLegacyUser    bool            `json:"has_legacy_user"`
+	ScrubEnabled     bool            `json:"scrub_enabled"`
+	Version          string          `json:"version"`
+	OrganizationName string          `json:"organization_name,omitempty"`
 } // @name ServerConfig
 
 // GetServerConfig returns general server config.
@@ -94,6 +95,14 @@ func (a *App) GetServerConfig(c echo.Context) error {
 		out.MediaProvider = settings.UploadProvider
 	} else {
 		out.MediaProvider = a.cfg.MediaUpload.Provider
+	}
+
+	// Organizations are an operator-managed, multi-tenancy-only concept -
+	// single-tenant installs have no tenant to look one up for.
+	if a.cfg.MultiTenancyEnabled {
+		if name, err := a.core.GetTenantOrganizationName(tenantID(c)); err == nil {
+			out.OrganizationName = name
+		}
 	}
 
 	// Language list.

@@ -138,8 +138,9 @@ type Queries struct {
 	UpsertListPermissions *sqlx.Stmt `query:"upsert-list-permissions"`
 	DeleteListPermission  *sqlx.Stmt `query:"delete-list-permission"`
 
-	GetTenantBySlug    *sqlx.Stmt `query:"get-tenant-by-slug"`
-	GetActiveTenantIDs *sqlx.Stmt `query:"get-active-tenant-ids"`
+	GetTenantBySlug           *sqlx.Stmt `query:"get-tenant-by-slug"`
+	GetActiveTenantIDs        *sqlx.Stmt `query:"get-active-tenant-ids"`
+	GetTenantOrganizationName *sqlx.Stmt `query:"get-tenant-organization-name"`
 }
 
 // compileSubscriberQueryTpl takes an arbitrary WHERE expressions

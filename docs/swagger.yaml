@@ -611,6 +611,8 @@ definitions:
         type: array
       needs_restart:
         type: boolean
+      organization_name:
+        type: string
       permissions:
         items:
           type: integer

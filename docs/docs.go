@@ -5446,6 +5446,9 @@ const docTemplate = `{
                 "needs_restart": {
                     "type": "boolean"
                 },
+                "organization_name": {
+                    "type": "string"
+                },
                 "permissions": {
                     "type": "array",
                     "items": {

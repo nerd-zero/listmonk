@@ -637,6 +637,18 @@ $ease:           cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
   }
 
+  // Only rendered when the tenant belongs to an organization (multi-tenancy,
+  // Operator API-managed - see docs/design/multi-tenancy.md).
+  .sidebar-org-name {
+    padding: 0.3rem 1.25rem 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(248, 250, 252, 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid $sidebar-border;
+  }
+
   .sidebar-nav {
     flex: 1;
     overflow-y: auto;
@@ -852,6 +864,7 @@ $ease:           cubic-bezier(0.4, 0, 0.2, 1);
   @media (min-width: 992px) {
     .app-sidebar { transform: none; width: 60px; }
     .sidebar-brand-name,
+    .sidebar-org-name,
     .nav-label,
     .nav-item span { display: none; }
     .app-main { margin-left: 60px; }

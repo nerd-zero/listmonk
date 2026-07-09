@@ -12,6 +12,9 @@
             <span class="sidebar-brand-name">listmonk</span>
           </router-link>
         </div>
+        <div v-if="serverConfig.organization_name" class="sidebar-org-name" :title="serverConfig.organization_name">
+          {{ serverConfig.organization_name }}
+        </div>
 
         <nav class="sidebar-nav">
           <navigation :active-item="activeItem" />

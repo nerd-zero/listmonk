@@ -1,6 +1,7 @@
 package core
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/knadh/listmonk/models"
@@ -38,4 +39,23 @@ func (c *Core) GetActiveTenantIDs() ([]int, error) {
 	}
 
 	return out, nil
+}
+
+// GetTenantOrganizationName returns the name of the organization the given
+// tenant belongs to, or "" if it doesn't belong to one. Like
+// GetTenantBySlug, this is a plain, unscoped lookup - organizations carry
+// no RLS policy either (they're a purely cross-tenant, operator-managed
+// concept - see docs/design/multi-tenancy.md's "Organizations" section),
+// so this doesn't need WithTenant.
+func (c *Core) GetTenantOrganizationName(tenantID int) (string, error) {
+	var out sql.NullString
+	if err := c.q.GetTenantOrganizationName.Get(&out, tenantID); err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		c.log.Printf("error fetching tenant organization name: %v", err)
+		return "", echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorFetching", "name", "organization", "error", pqErrMsg(err)))
+	}
+	return out.String, nil
 }
