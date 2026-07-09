@@ -300,6 +300,9 @@ purely to group tenants for operator-side management — it is **not**
 RLS-scoped and **not** resolved per-request the way a tenant is; nothing
 outside the Operator API ever needs to know an organization exists.
 
+- `organizations.name` is unique (migration `v6.13.0`) — `POST
+  /api/operator/organizations` returns 409 on a duplicate name rather than
+  silently creating a second, indistinguishable organization.
 - `tenants.organization_id` is a nullable FK (`ON DELETE SET NULL`) — a
   tenant doesn't have to belong to one, and deleting an organization row
   (not currently exposed via any endpoint) never cascades into deleting the

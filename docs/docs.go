@@ -1977,7 +1977,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. An organization is just a name that tenants can optionally be created under (via organization_id on POST /api/operator/tenants) - it groups multiple tenants (\"listmonks\") for the same customer under one umbrella.",
+                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. An organization is just a unique name that tenants can optionally be created under (via organization_id on POST /api/operator/tenants) - it groups multiple tenants (\"listmonks\") for the same customer under one umbrella.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2015,6 +2015,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "409": {
+                        "description": "Name already in use",
                         "schema": {
                             "$ref": "#/definitions/echo.HTTPError"
                         }

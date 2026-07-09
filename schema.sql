@@ -26,7 +26,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 DROP TABLE IF EXISTS organizations CASCADE;
 CREATE TABLE organizations (
     id          SERIAL PRIMARY KEY,
-    name        TEXT NOT NULL,
+    name        TEXT NOT NULL UNIQUE,
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

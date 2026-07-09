@@ -393,7 +393,7 @@ type operatorOrganizationReq struct {
 //
 //	@ID			createOperatorOrganization
 //	@Summary		Create an organization (Operator API)
-//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. An organization is just a name that tenants can optionally be created under (via organization_id on POST /api/operator/tenants) - it groups multiple tenants ("listmonks") for the same customer under one umbrella.
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. An organization is just a unique name that tenants can optionally be created under (via organization_id on POST /api/operator/tenants) - it groups multiple tenants ("listmonks") for the same customer under one umbrella.
 //	@Tags			operator
 //	@Accept			json
 //	@Produce		json
@@ -402,6 +402,7 @@ type operatorOrganizationReq struct {
 //	@Success		200	{object}	models.Organization
 //	@Failure		400	{object}	echo.HTTPError
 //	@Failure		401	{object}	echo.HTTPError
+//	@Failure		409	{object}	echo.HTTPError	"Name already in use"
 //	@Router			/api/operator/organizations [post]
 func (a *App) CreateOperatorOrganization(c echo.Context) error {
 	var req operatorOrganizationReq
@@ -415,6 +416,9 @@ func (a *App) CreateOperatorOrganization(c echo.Context) error {
 
 	out, err := a.operator.CreateOrganization(req.Name)
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Constraint == "organizations_name_key" {
+			return echo.NewHTTPError(http.StatusConflict, "an organization with this name already exists")
+		}
 		a.log.Printf("error creating organization: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "error creating organization")
 	}
