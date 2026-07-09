@@ -9,11 +9,15 @@
         <div class="sidebar-header">
           <router-link :to="{ name: 'dashboard' }" class="sidebar-brand">
             <img src="@/assets/logo.svg" alt="listmonk" class="sidebar-logo" />
-            <span class="sidebar-brand-name">listmonk</span>
+            <span class="sidebar-brand-text">
+              <span class="sidebar-brand-name">listmonk</span>
+              <span
+                v-if="serverConfig.organization_name"
+                class="sidebar-org-name"
+                :title="serverConfig.organization_name"
+              >{{ serverConfig.organization_name }}</span>
+            </span>
           </router-link>
-        </div>
-        <div v-if="serverConfig.organization_name" class="sidebar-org-name" :title="serverConfig.organization_name">
-          {{ serverConfig.organization_name }}
         </div>
 
         <nav class="sidebar-nav">

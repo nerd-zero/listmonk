@@ -629,6 +629,17 @@ $ease:           cubic-bezier(0.4, 0, 0.2, 1);
     filter: brightness(1.1);
   }
 
+  // Wraps the brand name + organization name (when present) as one tight
+  // vertical lockup next to the logo, rather than a full-width second row -
+  // reads as a single "listmonk, for {org}" identity rather than two
+  // unrelated header lines.
+  .sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    min-width: 0;
+  }
+
   .sidebar-brand-name {
     font-size: 1.1rem;
     font-weight: 700;
@@ -643,13 +654,12 @@ $ease:           cubic-bezier(0.4, 0, 0.2, 1);
   // Only rendered when the tenant belongs to an organization (multi-tenancy,
   // Operator API-managed - see docs/design/multi-tenancy.md).
   .sidebar-org-name {
-    padding: 0.3rem 1.25rem 0.5rem;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 500;
     color: $nav-label;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    border-bottom: 1px solid $sidebar-border;
   }
 
   .sidebar-nav {
