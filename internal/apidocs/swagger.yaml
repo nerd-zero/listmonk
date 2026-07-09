@@ -1,0 +1,756 @@
+basePath: /api
+definitions:
+  AdminInstanceDetailResponse:
+    properties:
+      data:
+        $ref: '#/definitions/httpapi.adminInstanceDetail'
+    type: object
+  AdminInstanceListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/db.ListAllInstancesWithOrgNameRow'
+        type: array
+    type: object
+  AdminOrgListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/db.ListAllOrgsWithInstanceCountRow'
+        type: array
+    type: object
+  ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  HealthResponse:
+    properties:
+      data:
+        properties:
+          status:
+            type: string
+        type: object
+    type: object
+  InstanceListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/db.Instance'
+        type: array
+    type: object
+  InstanceResponse:
+    properties:
+      data:
+        $ref: '#/definitions/db.Instance'
+    type: object
+  OrgListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/db.Org'
+        type: array
+    type: object
+  OrgResponse:
+    properties:
+      data:
+        $ref: '#/definitions/db.Org'
+    type: object
+  ProvisioningJobListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/db.ProvisioningJob'
+        type: array
+    type: object
+  SetupLinkResponse:
+    properties:
+      data:
+        properties:
+          setup_url:
+            type: string
+        type: object
+    type: object
+  TenantResponse:
+    properties:
+      data:
+        $ref: '#/definitions/operatorclient.Tenant'
+    type: object
+  UserResponse:
+    properties:
+      data:
+        $ref: '#/definitions/db.User'
+    type: object
+  db.Instance:
+    properties:
+      admin_email:
+        type: string
+      admin_setup_url:
+        type: string
+      admin_username:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      listmonk_tenant_id:
+        type: integer
+      name:
+        type: string
+      org_id:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  db.ListAllInstancesWithOrgNameRow:
+    properties:
+      admin_email:
+        type: string
+      admin_setup_url:
+        type: string
+      admin_username:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      listmonk_tenant_id:
+        type: integer
+      name:
+        type: string
+      org_id:
+        type: string
+      org_name:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  db.ListAllOrgsWithInstanceCountRow:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      instance_count:
+        type: integer
+      listmonk_organization_id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  db.Org:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      listmonk_organization_id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  db.ProvisioningJob:
+    properties:
+      attempts:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: string
+      instance_id:
+        type: string
+      job_type:
+        type: string
+      last_error:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  db.User:
+    properties:
+      created_at:
+        type: string
+      display_name:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_super_admin:
+        type: boolean
+      updated_at:
+        type: string
+      zitadel_subject:
+        type: string
+    type: object
+  httpapi.adminInstanceDetail:
+    properties:
+      instance: {}
+      listmonk_tenant: {}
+    type: object
+  httpapi.adminSetStatusRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  httpapi.createInstanceRequest:
+    properties:
+      admin_email:
+        type: string
+      admin_username:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
+  httpapi.createOrgRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  httpapi.inviteMemberRequest:
+    properties:
+      display_name:
+        type: string
+      email:
+        type: string
+      role:
+        type: string
+    type: object
+  operatorclient.Tenant:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      slug:
+        type: string
+      status:
+        description: active | suspended | disabled
+        type: string
+      updated_at:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Orgs and the listmonk-tenant instances each org owns. See docs/plan.md
+    for architecture.
+  title: listnun API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /v1/admin/instances:
+    get:
+      description: Super-admin only. Bypasses org membership; includes each instance's
+        org name.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AdminInstanceListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Not a super admin
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List every instance on the platform
+      tags:
+      - admin
+  /v1/admin/instances/{instanceID}:
+    get:
+      description: Merges listnun's own provisioning status with the tenant's live
+        status/counts straight from listmonk -- two different dimensions, see provisioning.AdminGetTenantLiveStatus's
+        doc comment.
+      parameters:
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AdminInstanceDetailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Not a super admin
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instance detail (super admin)
+      tags:
+      - admin
+  /v1/admin/instances/{instanceID}/setup-link:
+    post:
+      description: Same as the org-scoped resend-setup-link endpoint, without the
+        org-membership requirement.
+      parameters:
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SetupLinkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Not a super admin
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reissue any instance's setup link (super admin)
+      tags:
+      - admin
+  /v1/admin/instances/{instanceID}/status:
+    put:
+      consumes:
+      - application/json
+      description: Super-admin only. Writes directly to listmonk; deliberately not
+        mirrored into instances.status (a different dimension -- provisioning state
+        vs. account lifecycle).
+      parameters:
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      - description: New status
+        in: body
+        name: status
+        required: true
+        schema:
+          $ref: '#/definitions/httpapi.adminSetStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/TenantResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Not a super admin
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Suspend, reactivate, or disable a tenant
+      tags:
+      - admin
+  /v1/admin/orgs:
+    get:
+      description: Super-admin only. Bypasses org membership.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AdminOrgListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Not a super admin
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List every org on the platform
+      tags:
+      - admin
+  /v1/orgs:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/OrgListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List the caller's orgs
+      tags:
+      - orgs
+    post:
+      consumes:
+      - application/json
+      description: Also creates the org's mirrored listmonk Organization (see internal/provisioning.createListmonkOrganization).
+      parameters:
+      - description: Org to create
+        in: body
+        name: org
+        required: true
+        schema:
+          $ref: '#/definitions/httpapi.createOrgRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/OrgResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an additional org
+      tags:
+      - orgs
+  /v1/orgs/{orgID}/instances:
+    get:
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/InstanceListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List an org's instances
+      tags:
+      - instances
+    post:
+      consumes:
+      - application/json
+      description: Provisions a real tenant via the listmonk fork's Operator API,
+        synchronously (see docs/plan.md's Provisioning state machine section).
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance to create
+        in: body
+        name: instance
+        required: true
+        schema:
+          $ref: '#/definitions/httpapi.createInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/InstanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Slug already in use
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an instance
+      tags:
+      - instances
+  /v1/orgs/{orgID}/instances/{instanceID}:
+    get:
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/InstanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instance detail
+      tags:
+      - instances
+  /v1/orgs/{orgID}/instances/{instanceID}/events:
+    get:
+      description: Maps to provisioning_jobs; backs the dashboard's provisioning-status
+        UI.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ProvisioningJobListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Provisioning timeline for an instance
+      tags:
+      - instances
+  /v1/orgs/{orgID}/instances/{instanceID}/setup-link:
+    post:
+      description: Needed because the original link's token is lost on a listmonk
+        restart.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SetupLinkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reissue an instance admin's one-time setup link
+      tags:
+      - instances
+  /v1/orgs/{orgID}/members:
+    post:
+      consumes:
+      - application/json
+      description: Owner-only. Creates the person's Zitadel identity directly if a
+        service account is configured (see internal/zitadelmgmt); otherwise returns
+        501.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Person to invite
+        in: body
+        name: member
+        required: true
+        schema:
+          $ref: '#/definitions/httpapi.inviteMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Not an org owner
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Invites not configured
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite a person into an org
+      tags:
+      - members
+securityDefinitions:
+  BearerAuth:
+    description: Bearer token verified against Zitadel's JWKS -- no signup/login endpoints
+      of our own, see docs/plan.md's Auth section.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
