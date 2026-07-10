@@ -1,16 +1,18 @@
 #!/bin/bash
 
-# Provisions the "listnun" project + a User Agent (SPA/PKCE) OIDC app in the
-# dev Zitadel from ../docker-compose.yml, for react-oidc-context to use.
+# Provisions the "listnun" project + a User Agent (SPA/PKCE) OIDC app, and
+# an active SMTP config pointed at mailhog, in the dev Zitadel from
+# ../docker-compose.yml.
 #
-# The automation PAT used to drive the Management API is read straight off
-# the listnun-zitadel-bootstrap volume (see ZITADEL_FIRSTINSTANCE_PATPATH /
-# ZITADEL_FIRSTINSTANCE_ORG_MACHINE_* in docker-compose.yml) -- no console
-# step required. Pass -t/--token to target an instance where that volume
-# isn't reachable (e.g. a remote/shared Zitadel).
+# The automation PAT used to drive the Management/Admin API is read
+# straight off the listnun-zitadel-bootstrap volume (see
+# ZITADEL_FIRSTINSTANCE_PATPATH / ZITADEL_FIRSTINSTANCE_ORG_MACHINE_* in
+# docker-compose.yml) -- no console step required. Pass -t/--token to
+# target an instance where that volume isn't reachable (e.g. a
+# remote/shared Zitadel).
 #
-# Re-running this script is safe: it looks up the project/app by name first
-# and reuses them instead of creating duplicates.
+# Re-running this script is safe: it looks up the project/app/SMTP config
+# first and reuses them instead of creating duplicates.
 
 DEFAULT_ZITADEL_URL="http://localhost:8081"
 DEFAULT_ZITADEL_CONTAINER="listnun-zitadel"
@@ -18,6 +20,12 @@ DEFAULT_PROJECT_NAME="listnun"
 DEFAULT_APP_NAME="web"
 DEFAULT_REDIRECT_URI="http://localhost:5173/auth/callback"
 DEFAULT_POST_LOGOUT_URI="http://localhost:5173"
+# "mailhog", not "listnun-mailhog" -- Zitadel resolves this from inside the
+# compose network, where services reach each other by service name (the
+# compose file's key), not container_name. See docker-compose.yml.
+DEFAULT_SMTP_HOST="mailhog:1025"
+DEFAULT_SMTP_SENDER_ADDRESS="no-reply@listnun.test"
+DEFAULT_SMTP_SENDER_NAME="listnun (dev)"
 
 usage() {
     echo "Usage: $0 [options]"
@@ -30,6 +38,8 @@ usage() {
     echo "  -a, --app-name      App name (default: ${DEFAULT_APP_NAME})"
     echo "  -r, --redirect-uri  Redirect URI (default: ${DEFAULT_REDIRECT_URI})"
     echo "  -l, --logout-uri    Post-logout redirect URI (default: ${DEFAULT_POST_LOGOUT_URI})"
+    echo "  --smtp-host         SMTP host:port (default: ${DEFAULT_SMTP_HOST})"
+    echo "  --no-smtp           Skip SMTP setup entirely"
     echo "  -h, --help          Show this help"
     exit 1
 }
@@ -40,6 +50,8 @@ PROJECT_NAME="$DEFAULT_PROJECT_NAME"
 APP_NAME="$DEFAULT_APP_NAME"
 REDIRECT_URI="$DEFAULT_REDIRECT_URI"
 POST_LOGOUT_URI="$DEFAULT_POST_LOGOUT_URI"
+SMTP_HOST="$DEFAULT_SMTP_HOST"
+SKIP_SMTP=false
 PAT=""
 
 while [[ $# -gt 0 ]]; do
@@ -51,6 +63,8 @@ while [[ $# -gt 0 ]]; do
         -a|--app-name) APP_NAME="$2"; shift 2 ;;
         -r|--redirect-uri) REDIRECT_URI="$2"; shift 2 ;;
         -l|--logout-uri) POST_LOGOUT_URI="$2"; shift 2 ;;
+        --smtp-host) SMTP_HOST="$2"; shift 2 ;;
+        --no-smtp) SKIP_SMTP=true; shift ;;
         -h|--help) usage ;;
         *) echo "Unknown option: $1"; usage ;;
     esac
@@ -107,6 +121,27 @@ if [[ -n "$APP_ID" ]]; then
     echo "   Found existing app, id ${APP_ID} -- fetching its client id..."
     APP_DETAIL=$(curl -sS "${MGMT_API}/projects/${PROJECT_ID}/apps/${APP_ID}" -H "$AUTH_HEADER")
     CLIENT_ID=$(echo "$APP_DETAIL" | grep -o '"clientId":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+    # Re-apply the OIDC config on every run so config changes to this script
+    # (e.g. the accessTokenType fix -- see git history) land on an
+    # already-provisioned app, not just freshly-created ones.
+    echo "   Re-applying OIDC config to keep it in sync with this script..."
+    UPDATE_RESP=$(curl -sS -X PUT "${MGMT_API}/projects/${PROJECT_ID}/apps/${APP_ID}/oidc_config" \
+        -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+        -d "{
+            \"redirectUris\": [\"${REDIRECT_URI}\"],
+            \"responseTypes\": [\"OIDC_RESPONSE_TYPE_CODE\"],
+            \"grantTypes\": [\"OIDC_GRANT_TYPE_AUTHORIZATION_CODE\"],
+            \"appType\": \"OIDC_APP_TYPE_USER_AGENT\",
+            \"authMethodType\": \"OIDC_AUTH_METHOD_TYPE_NONE\",
+            \"postLogoutRedirectUris\": [\"${POST_LOGOUT_URI}\"],
+            \"devMode\": true,
+            \"accessTokenType\": \"OIDC_TOKEN_TYPE_JWT\",
+            \"accessTokenRoleAssertion\": false,
+            \"idTokenRoleAssertion\": false,
+            \"idTokenUserinfoAssertion\": false
+        }")
+    check_response "$UPDATE_RESP" "update application oidc config"
 else
     echo "==> Creating User Agent application '${APP_NAME}'..."
     APP_RESP=$(curl -sS -X POST "${MGMT_API}/projects/${PROJECT_ID}/apps/oidc" \
@@ -121,7 +156,7 @@ else
             \"postLogoutRedirectUris\": [\"${POST_LOGOUT_URI}\"],
             \"version\": \"OIDC_VERSION_1_0\",
             \"devMode\": true,
-            \"accessTokenType\": \"OIDC_TOKEN_TYPE_BEARER\",
+            \"accessTokenType\": \"OIDC_TOKEN_TYPE_JWT\",
             \"accessTokenRoleAssertion\": false,
             \"idTokenRoleAssertion\": false,
             \"idTokenUserinfoAssertion\": false,
@@ -137,6 +172,39 @@ if [[ -z "$CLIENT_ID" ]]; then
     exit 1
 fi
 echo "   Client ID: ${CLIENT_ID}"
+
+if [[ "$SKIP_SMTP" != "true" ]]; then
+    ADMIN_API="${ZITADEL_URL}/admin/v1"
+
+    echo "==> Checking SMTP configuration..."
+    SMTP_SEARCH=$(curl -sS -X POST "${ADMIN_API}/smtp/_search" \
+        -H "$AUTH_HEADER" -H "Content-Type: application/json" -d '{}')
+    SMTP_ID=$(echo "$SMTP_SEARCH" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+    SMTP_STATE=$(echo "$SMTP_SEARCH" | grep -o '"state":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+    if [[ -z "$SMTP_ID" ]]; then
+        echo "==> Creating SMTP config pointed at ${SMTP_HOST}..."
+        SMTP_RESP=$(curl -sS -X POST "${ADMIN_API}/smtp" \
+            -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+            -d "{
+                \"senderAddress\": \"${DEFAULT_SMTP_SENDER_ADDRESS}\",
+                \"senderName\": \"${DEFAULT_SMTP_SENDER_NAME}\",
+                \"tls\": false,
+                \"host\": \"${SMTP_HOST}\",
+                \"user\": \"\",
+                \"password\": \"\"
+            }")
+        check_response "$SMTP_RESP" "create SMTP config"
+        SMTP_ID=$(echo "$SMTP_RESP" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        SMTP_STATE=""
+    fi
+
+    if [[ "$SMTP_STATE" != "SMTP_CONFIG_ACTIVE" ]]; then
+        echo "==> Activating SMTP config ${SMTP_ID}..."
+        curl -sS -X POST "${ADMIN_API}/smtp/${SMTP_ID}/_activate" -H "$AUTH_HEADER" >/dev/null
+    fi
+    echo "   SMTP: ${SMTP_HOST} -- catches everything at http://localhost:8025 (mailhog)"
+fi
 
 echo ""
 echo "==> Done. Set the following in web/.env.local:"
