@@ -6,16 +6,20 @@
  * OpenAPI spec version: 1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -247,87 +251,51 @@ export const postV1OrgsOrgIDInstances = async (orgID: string,
 
 
 
-export const getPostV1OrgsOrgIDInstancesQueryKey = (orgID: string,
-    httpapiCreateInstanceRequest?: HttpapiCreateInstanceRequest,) => {
-    return [
-    'POST', `/v1/orgs/${orgID}/instances`, httpapiCreateInstanceRequest
-    ] as const;
-    }
+export const getPostV1OrgsOrgIDInstancesMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError,{orgID: string;data: HttpapiCreateInstanceRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError,{orgID: string;data: HttpapiCreateInstanceRequest}, TContext> => {
 
-
-export const getPostV1OrgsOrgIDInstancesQueryOptions = <TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError = ErrorResponse>(orgID: string,
-    httpapiCreateInstanceRequest: HttpapiCreateInstanceRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getPostV1OrgsOrgIDInstancesQueryKey(orgID,httpapiCreateInstanceRequest);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>> = ({ signal }) => postV1OrgsOrgIDInstances(orgID,httpapiCreateInstanceRequest, { signal, ...requestOptions });
+const mutationKey = ['postV1OrgsOrgIDInstances'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
 
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, {orgID: string;data: HttpapiCreateInstanceRequest}> = (props) => {
+          const {orgID,data} = props ?? {};
 
-   return  { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type PostV1OrgsOrgIDInstancesQueryResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>>
-export type PostV1OrgsOrgIDInstancesQueryError = ErrorResponse
+          return  postV1OrgsOrgIDInstances(orgID,data,requestOptions)
+        }
 
 
-export function usePostV1OrgsOrgIDInstances<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError = ErrorResponse>(
- orgID: string,
-    httpapiCreateInstanceRequest: HttpapiCreateInstanceRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>,
-          TError,
-          Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1OrgsOrgIDInstances<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError = ErrorResponse>(
- orgID: string,
-    httpapiCreateInstanceRequest: HttpapiCreateInstanceRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>,
-          TError,
-          Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1OrgsOrgIDInstances<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError = ErrorResponse>(
- orgID: string,
-    httpapiCreateInstanceRequest: HttpapiCreateInstanceRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV1OrgsOrgIDInstancesMutationResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>>
+    export type PostV1OrgsOrgIDInstancesMutationBody = HttpapiCreateInstanceRequest
+    export type PostV1OrgsOrgIDInstancesMutationError = ErrorResponse
+
+    /**
  * @summary Create an instance
  */
-
-export function usePostV1OrgsOrgIDInstances<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError = ErrorResponse>(
- orgID: string,
-    httpapiCreateInstanceRequest: HttpapiCreateInstanceRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getPostV1OrgsOrgIDInstancesQueryOptions(orgID,httpapiCreateInstanceRequest,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-export type getV1OrgsOrgIDInstancesInstanceIDResponse200 = {
+export const usePostV1OrgsOrgIDInstances = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>, TError,{orgID: string;data: HttpapiCreateInstanceRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV1OrgsOrgIDInstances>>,
+        TError,
+        {orgID: string;data: HttpapiCreateInstanceRequest},
+        TContext
+      > => {
+      return useMutation(getPostV1OrgsOrgIDInstancesMutationOptions(options), queryClient);
+    }
+    export type getV1OrgsOrgIDInstancesInstanceIDResponse200 = {
   data: InstanceResponse
   status: 200
 }
@@ -660,83 +628,47 @@ export const postV1OrgsOrgIDInstancesInstanceIDSetupLink = async (orgID: string,
 
 
 
-export const getPostV1OrgsOrgIDInstancesInstanceIDSetupLinkQueryKey = (orgID: string,
-    instanceID: string,) => {
-    return [
-    'POST', `/v1/orgs/${orgID}/instances/${instanceID}/setup-link`
-    ] as const;
-    }
+export const getPostV1OrgsOrgIDInstancesInstanceIDSetupLinkMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError,{orgID: string;instanceID: string}, TContext> => {
 
-
-export const getPostV1OrgsOrgIDInstancesInstanceIDSetupLinkQueryOptions = <TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(orgID: string,
-    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getPostV1OrgsOrgIDInstancesInstanceIDSetupLinkQueryKey(orgID,instanceID);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>> = ({ signal }) => postV1OrgsOrgIDInstancesInstanceIDSetupLink(orgID,instanceID, { signal, ...requestOptions });
+const mutationKey = ['postV1OrgsOrgIDInstancesInstanceIDSetupLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
 
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, {orgID: string;instanceID: string}> = (props) => {
+          const {orgID,instanceID} = props ?? {};
 
-   return  { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined && instanceID !== null && instanceID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type PostV1OrgsOrgIDInstancesInstanceIDSetupLinkQueryResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>>
-export type PostV1OrgsOrgIDInstancesInstanceIDSetupLinkQueryError = ErrorResponse
+          return  postV1OrgsOrgIDInstancesInstanceIDSetupLink(orgID,instanceID,requestOptions)
+        }
 
 
-export function usePostV1OrgsOrgIDInstancesInstanceIDSetupLink<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(
- orgID: string,
-    instanceID: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>,
-          TError,
-          Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1OrgsOrgIDInstancesInstanceIDSetupLink<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(
- orgID: string,
-    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>,
-          TError,
-          Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1OrgsOrgIDInstancesInstanceIDSetupLink<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(
- orgID: string,
-    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV1OrgsOrgIDInstancesInstanceIDSetupLinkMutationResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>>
+
+    export type PostV1OrgsOrgIDInstancesInstanceIDSetupLinkMutationError = ErrorResponse
+
+    /**
  * @summary Reissue an instance admin's one-time setup link
  */
-
-export function usePostV1OrgsOrgIDInstancesInstanceIDSetupLink<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(
- orgID: string,
-    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getPostV1OrgsOrgIDInstancesInstanceIDSetupLinkQueryOptions(orgID,instanceID,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
+export const usePostV1OrgsOrgIDInstancesInstanceIDSetupLink = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSetupLink>>,
+        TError,
+        {orgID: string;instanceID: string},
+        TContext
+      > => {
+      return useMutation(getPostV1OrgsOrgIDInstancesInstanceIDSetupLinkMutationOptions(options), queryClient);
+    }

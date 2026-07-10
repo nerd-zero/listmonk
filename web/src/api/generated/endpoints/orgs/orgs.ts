@@ -6,16 +6,20 @@
  * OpenAPI spec version: 1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -229,77 +233,47 @@ export const postV1Orgs = async (httpapiCreateOrgRequest: HttpapiCreateOrgReques
 
 
 
-export const getPostV1OrgsQueryKey = (httpapiCreateOrgRequest?: HttpapiCreateOrgRequest,) => {
-    return [
-    'POST', `/v1/orgs`, httpapiCreateOrgRequest
-    ] as const;
-    }
+export const getPostV1OrgsMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError,{data: HttpapiCreateOrgRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError,{data: HttpapiCreateOrgRequest}, TContext> => {
 
-
-export const getPostV1OrgsQueryOptions = <TData = Awaited<ReturnType<typeof postV1Orgs>>, TError = ErrorResponse>(httpapiCreateOrgRequest: HttpapiCreateOrgRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getPostV1OrgsQueryKey(httpapiCreateOrgRequest);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof postV1Orgs>>> = ({ signal }) => postV1Orgs(httpapiCreateOrgRequest, { signal, ...requestOptions });
+const mutationKey = ['postV1Orgs'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
 
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV1Orgs>>, {data: HttpapiCreateOrgRequest}> = (props) => {
+          const {data} = props ?? {};
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type PostV1OrgsQueryResult = NonNullable<Awaited<ReturnType<typeof postV1Orgs>>>
-export type PostV1OrgsQueryError = ErrorResponse
+          return  postV1Orgs(data,requestOptions)
+        }
 
 
-export function usePostV1Orgs<TData = Awaited<ReturnType<typeof postV1Orgs>>, TError = ErrorResponse>(
- httpapiCreateOrgRequest: HttpapiCreateOrgRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1Orgs>>,
-          TError,
-          Awaited<ReturnType<typeof postV1Orgs>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1Orgs<TData = Awaited<ReturnType<typeof postV1Orgs>>, TError = ErrorResponse>(
- httpapiCreateOrgRequest: HttpapiCreateOrgRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1Orgs>>,
-          TError,
-          Awaited<ReturnType<typeof postV1Orgs>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1Orgs<TData = Awaited<ReturnType<typeof postV1Orgs>>, TError = ErrorResponse>(
- httpapiCreateOrgRequest: HttpapiCreateOrgRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV1OrgsMutationResult = NonNullable<Awaited<ReturnType<typeof postV1Orgs>>>
+    export type PostV1OrgsMutationBody = HttpapiCreateOrgRequest
+    export type PostV1OrgsMutationError = ErrorResponse
+
+    /**
  * @summary Create an additional org
  */
-
-export function usePostV1Orgs<TData = Awaited<ReturnType<typeof postV1Orgs>>, TError = ErrorResponse>(
- httpapiCreateOrgRequest: HttpapiCreateOrgRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getPostV1OrgsQueryOptions(httpapiCreateOrgRequest,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
+export const usePostV1Orgs = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1Orgs>>, TError,{data: HttpapiCreateOrgRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV1Orgs>>,
+        TError,
+        {data: HttpapiCreateOrgRequest},
+        TContext
+      > => {
+      return useMutation(getPostV1OrgsMutationOptions(options), queryClient);
+    }

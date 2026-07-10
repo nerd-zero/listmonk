@@ -6,16 +6,20 @@
  * OpenAPI spec version: 1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -23,6 +27,7 @@ import type {
 import type {
   ErrorResponse,
   HttpapiInviteMemberRequest,
+  MemberListResponse,
   UserResponse
 } from '../../model';
 
@@ -47,6 +52,135 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export type getV1OrgsOrgIDMembersResponse200 = {
+  data: MemberListResponse
+  status: 200
+}
+
+export type getV1OrgsOrgIDMembersResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type getV1OrgsOrgIDMembersResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getV1OrgsOrgIDMembersResponse500 = {
+  data: ErrorResponse
+  status: 500
+}
+
+export type getV1OrgsOrgIDMembersResponseSuccess = (getV1OrgsOrgIDMembersResponse200) & {
+  headers: Headers;
+};
+export type getV1OrgsOrgIDMembersResponseError = (getV1OrgsOrgIDMembersResponse401 | getV1OrgsOrgIDMembersResponse403 | getV1OrgsOrgIDMembersResponse500) & {
+  headers: Headers;
+};
+
+export type getV1OrgsOrgIDMembersResponse = (getV1OrgsOrgIDMembersResponseSuccess | getV1OrgsOrgIDMembersResponseError)
+
+export const getGetV1OrgsOrgIDMembersUrl = (orgID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/members`
+}
+
+/**
+ * @summary List an org's members
+ */
+export const getV1OrgsOrgIDMembers = async (orgID: string, options?: RequestInit): Promise<getV1OrgsOrgIDMembersResponse> => {
+
+  return customFetch<getV1OrgsOrgIDMembersResponse>(getGetV1OrgsOrgIDMembersUrl(orgID),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetV1OrgsOrgIDMembersQueryKey = (orgID: string,) => {
+    return [
+    `/v1/orgs/${orgID}/members`
+    ] as const;
+    }
+
+
+export const getGetV1OrgsOrgIDMembersQueryOptions = <TData = Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError = ErrorResponse>(orgID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetV1OrgsOrgIDMembersQueryKey(orgID);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>> = ({ signal }) => getV1OrgsOrgIDMembers(orgID, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetV1OrgsOrgIDMembersQueryResult = NonNullable<Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>>
+export type GetV1OrgsOrgIDMembersQueryError = ErrorResponse
+
+
+export function useGetV1OrgsOrgIDMembers<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError = ErrorResponse>(
+ orgID: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>,
+          TError,
+          Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetV1OrgsOrgIDMembers<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError = ErrorResponse>(
+ orgID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>,
+          TError,
+          Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetV1OrgsOrgIDMembers<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError = ErrorResponse>(
+ orgID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List an org's members
+ */
+
+export function useGetV1OrgsOrgIDMembers<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError = ErrorResponse>(
+ orgID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDMembers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetV1OrgsOrgIDMembersQueryOptions(orgID,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
 
 export type postV1OrgsOrgIDMembersResponse200 = {
   data: UserResponse
@@ -110,83 +244,47 @@ export const postV1OrgsOrgIDMembers = async (orgID: string,
 
 
 
-export const getPostV1OrgsOrgIDMembersQueryKey = (orgID: string,
-    httpapiInviteMemberRequest?: HttpapiInviteMemberRequest,) => {
-    return [
-    'POST', `/v1/orgs/${orgID}/members`, httpapiInviteMemberRequest
-    ] as const;
-    }
+export const getPostV1OrgsOrgIDMembersMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError,{orgID: string;data: HttpapiInviteMemberRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError,{orgID: string;data: HttpapiInviteMemberRequest}, TContext> => {
 
-
-export const getPostV1OrgsOrgIDMembersQueryOptions = <TData = Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError = ErrorResponse>(orgID: string,
-    httpapiInviteMemberRequest: HttpapiInviteMemberRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getPostV1OrgsOrgIDMembersQueryKey(orgID,httpapiInviteMemberRequest);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>> = ({ signal }) => postV1OrgsOrgIDMembers(orgID,httpapiInviteMemberRequest, { signal, ...requestOptions });
+const mutationKey = ['postV1OrgsOrgIDMembers'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
 
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, {orgID: string;data: HttpapiInviteMemberRequest}> = (props) => {
+          const {orgID,data} = props ?? {};
 
-   return  { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type PostV1OrgsOrgIDMembersQueryResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>>
-export type PostV1OrgsOrgIDMembersQueryError = ErrorResponse
+          return  postV1OrgsOrgIDMembers(orgID,data,requestOptions)
+        }
 
 
-export function usePostV1OrgsOrgIDMembers<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError = ErrorResponse>(
- orgID: string,
-    httpapiInviteMemberRequest: HttpapiInviteMemberRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>,
-          TError,
-          Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1OrgsOrgIDMembers<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError = ErrorResponse>(
- orgID: string,
-    httpapiInviteMemberRequest: HttpapiInviteMemberRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>,
-          TError,
-          Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1OrgsOrgIDMembers<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError = ErrorResponse>(
- orgID: string,
-    httpapiInviteMemberRequest: HttpapiInviteMemberRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV1OrgsOrgIDMembersMutationResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>>
+    export type PostV1OrgsOrgIDMembersMutationBody = HttpapiInviteMemberRequest
+    export type PostV1OrgsOrgIDMembersMutationError = ErrorResponse
+
+    /**
  * @summary Invite a person into an org
  */
-
-export function usePostV1OrgsOrgIDMembers<TData = Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError = ErrorResponse>(
- orgID: string,
-    httpapiInviteMemberRequest: HttpapiInviteMemberRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getPostV1OrgsOrgIDMembersQueryOptions(orgID,httpapiInviteMemberRequest,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
+export const usePostV1OrgsOrgIDMembers = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>, TError,{orgID: string;data: HttpapiInviteMemberRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV1OrgsOrgIDMembers>>,
+        TError,
+        {orgID: string;data: HttpapiInviteMemberRequest},
+        TContext
+      > => {
+      return useMutation(getPostV1OrgsOrgIDMembersMutationOptions(options), queryClient);
+    }

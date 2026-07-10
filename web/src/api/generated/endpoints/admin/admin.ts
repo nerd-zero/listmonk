@@ -6,16 +6,20 @@
  * OpenAPI spec version: 1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -378,81 +382,51 @@ export const postV1AdminInstancesInstanceIDSetupLink = async (instanceID: string
 
 
 
-export const getPostV1AdminInstancesInstanceIDSetupLinkQueryKey = (instanceID: string,) => {
-    return [
-    'POST', `/v1/admin/instances/${instanceID}/setup-link`
-    ] as const;
-    }
+export const getPostV1AdminInstancesInstanceIDSetupLinkMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError,{instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError,{instanceID: string}, TContext> => {
 
-
-export const getPostV1AdminInstancesInstanceIDSetupLinkQueryOptions = <TData = Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getPostV1AdminInstancesInstanceIDSetupLinkQueryKey(instanceID);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>> = ({ signal }) => postV1AdminInstancesInstanceIDSetupLink(instanceID, { signal, ...requestOptions });
+const mutationKey = ['postV1AdminInstancesInstanceIDSetupLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
 
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, {instanceID: string}> = (props) => {
+          const {instanceID} = props ?? {};
 
-   return  { queryKey, queryFn, enabled: instanceID !== null && instanceID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type PostV1AdminInstancesInstanceIDSetupLinkQueryResult = NonNullable<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>>
-export type PostV1AdminInstancesInstanceIDSetupLinkQueryError = ErrorResponse
+          return  postV1AdminInstancesInstanceIDSetupLink(instanceID,requestOptions)
+        }
 
 
-export function usePostV1AdminInstancesInstanceIDSetupLink<TData = Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(
- instanceID: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>,
-          TError,
-          Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1AdminInstancesInstanceIDSetupLink<TData = Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(
- instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>,
-          TError,
-          Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostV1AdminInstancesInstanceIDSetupLink<TData = Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(
- instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV1AdminInstancesInstanceIDSetupLinkMutationResult = NonNullable<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>>
+
+    export type PostV1AdminInstancesInstanceIDSetupLinkMutationError = ErrorResponse
+
+    /**
  * @summary Reissue any instance's setup link (super admin)
  */
-
-export function usePostV1AdminInstancesInstanceIDSetupLink<TData = Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError = ErrorResponse>(
- instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getPostV1AdminInstancesInstanceIDSetupLinkQueryOptions(instanceID,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-export type putV1AdminInstancesInstanceIDStatusResponse200 = {
+export const usePostV1AdminInstancesInstanceIDSetupLink = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>, TError,{instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV1AdminInstancesInstanceIDSetupLink>>,
+        TError,
+        {instanceID: string},
+        TContext
+      > => {
+      return useMutation(getPostV1AdminInstancesInstanceIDSetupLinkMutationOptions(options), queryClient);
+    }
+    export type putV1AdminInstancesInstanceIDStatusResponse200 = {
   data: TenantResponse
   status: 200
 }
@@ -514,87 +488,51 @@ export const putV1AdminInstancesInstanceIDStatus = async (instanceID: string,
 
 
 
-export const getPutV1AdminInstancesInstanceIDStatusQueryKey = (instanceID: string,
-    httpapiAdminSetStatusRequest?: HttpapiAdminSetStatusRequest,) => {
-    return [
-    'PUT', `/v1/admin/instances/${instanceID}/status`, httpapiAdminSetStatusRequest
-    ] as const;
-    }
+export const getPutV1AdminInstancesInstanceIDStatusMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError,{instanceID: string;data: HttpapiAdminSetStatusRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError,{instanceID: string;data: HttpapiAdminSetStatusRequest}, TContext> => {
 
-
-export const getPutV1AdminInstancesInstanceIDStatusQueryOptions = <TData = Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError = ErrorResponse>(instanceID: string,
-    httpapiAdminSetStatusRequest: HttpapiAdminSetStatusRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getPutV1AdminInstancesInstanceIDStatusQueryKey(instanceID,httpapiAdminSetStatusRequest);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>> = ({ signal }) => putV1AdminInstancesInstanceIDStatus(instanceID,httpapiAdminSetStatusRequest, { signal, ...requestOptions });
+const mutationKey = ['putV1AdminInstancesInstanceIDStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
 
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, {instanceID: string;data: HttpapiAdminSetStatusRequest}> = (props) => {
+          const {instanceID,data} = props ?? {};
 
-   return  { queryKey, queryFn, enabled: instanceID !== null && instanceID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type PutV1AdminInstancesInstanceIDStatusQueryResult = NonNullable<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>>
-export type PutV1AdminInstancesInstanceIDStatusQueryError = ErrorResponse
+          return  putV1AdminInstancesInstanceIDStatus(instanceID,data,requestOptions)
+        }
 
 
-export function usePutV1AdminInstancesInstanceIDStatus<TData = Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError = ErrorResponse>(
- instanceID: string,
-    httpapiAdminSetStatusRequest: HttpapiAdminSetStatusRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>,
-          TError,
-          Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePutV1AdminInstancesInstanceIDStatus<TData = Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError = ErrorResponse>(
- instanceID: string,
-    httpapiAdminSetStatusRequest: HttpapiAdminSetStatusRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>,
-          TError,
-          Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePutV1AdminInstancesInstanceIDStatus<TData = Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError = ErrorResponse>(
- instanceID: string,
-    httpapiAdminSetStatusRequest: HttpapiAdminSetStatusRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PutV1AdminInstancesInstanceIDStatusMutationResult = NonNullable<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>>
+    export type PutV1AdminInstancesInstanceIDStatusMutationBody = HttpapiAdminSetStatusRequest
+    export type PutV1AdminInstancesInstanceIDStatusMutationError = ErrorResponse
+
+    /**
  * @summary Suspend, reactivate, or disable a tenant
  */
-
-export function usePutV1AdminInstancesInstanceIDStatus<TData = Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError = ErrorResponse>(
- instanceID: string,
-    httpapiAdminSetStatusRequest: HttpapiAdminSetStatusRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getPutV1AdminInstancesInstanceIDStatusQueryOptions(instanceID,httpapiAdminSetStatusRequest,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-export type getV1AdminOrgsResponse200 = {
+export const usePutV1AdminInstancesInstanceIDStatus = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>, TError,{instanceID: string;data: HttpapiAdminSetStatusRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof putV1AdminInstancesInstanceIDStatus>>,
+        TError,
+        {instanceID: string;data: HttpapiAdminSetStatusRequest},
+        TContext
+      > => {
+      return useMutation(getPutV1AdminInstancesInstanceIDStatusMutationOptions(options), queryClient);
+    }
+    export type getV1AdminOrgsResponse200 = {
   data: AdminOrgListResponse
   status: 200
 }
