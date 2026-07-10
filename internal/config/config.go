@@ -47,7 +47,7 @@ func Load() Config {
 	domain, insecurePort := parseZitadelHost(issuer)
 	return Config{
 		DatabaseURL:                  getenv("DATABASE_URL", "postgres://listnun:listnun@localhost:5432/listnun?sslmode=disable"),
-		HTTPAddr:                     getenv("HTTP_ADDR", ":8080"),
+		HTTPAddr:                     getenv("HTTP_ADDR", ":8181"),
 		ZitadelIssuer:                issuer,
 		ZitadelClientID:              os.Getenv("ZITADEL_CLIENT_ID"),
 		ZitadelServiceAccountKeyPath: os.Getenv("ZITADEL_SERVICE_ACCOUNT_KEY_PATH"),
