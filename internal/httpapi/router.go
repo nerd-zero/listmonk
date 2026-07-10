@@ -50,7 +50,10 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 					})
 				})
 
-				r.Post("/members", a.inviteMember)
+				r.Route("/members", func(r chi.Router) {
+					r.Get("/", a.listMembers)
+					r.Post("/", a.inviteMember)
+				})
 			})
 		})
 
