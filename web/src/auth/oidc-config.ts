@@ -18,14 +18,21 @@ export const userManagerSettings: UserManagerSettings = {
   redirect_uri: import.meta.env.VITE_OIDC_REDIRECT_URI,
   post_logout_redirect_uri: import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI,
   scope: "openid profile email",
+  // oidc-client-ts defaults this to false -- without it, user.profile only
+  // has whatever's directly embedded in the ID token, and Zitadel's ID
+  // token is minimal (idTokenUserinfoAssertion is off), so email/name
+  // never showed up. This makes it fetch /oidc/v1/userinfo after login.
+  loadUserInfo: true,
   userStore: new WebStorageStateStore({ store: window.localStorage }),
 };
 
 export const oidcConfig: AuthProviderProps = {
   ...userManagerSettings,
   onSigninCallback: () => {
-    // Strip the ?code=&state= params Zitadel appended so a refresh doesn't
-    // try to re-process a spent authorization code.
-    window.history.replaceState({}, document.title, window.location.pathname);
+    // redirect_uri points at the dedicated /auth/callback path, which has
+    // no matching <Route> in App.tsx -- land back on "/" instead of just
+    // stripping ?code=&state= and leaving the browser stuck on a route
+    // that renders nothing.
+    window.history.replaceState({}, document.title, "/");
   },
 };

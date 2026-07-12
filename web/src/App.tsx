@@ -1,6 +1,12 @@
+import { Routes, Route, Navigate } from "react-router";
 import { useAuth } from "react-oidc-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { OrgProvider } from "@/lib/org-context";
+import { AppShell } from "@/components/app-shell";
+import { InstancesPage } from "@/pages/instances-page";
+import { InstanceDetailPage } from "@/pages/instance-detail-page";
+import { MembersPage } from "@/pages/members-page";
 
 function App() {
   const auth = useAuth();
@@ -21,20 +27,19 @@ function App() {
 
   if (auth.isAuthenticated) {
     return (
-      <CenteredShell>
-        <p className="text-sm text-muted-foreground">Signed in as</p>
-        <p className="font-mono text-sm font-semibold">
-          {auth.user?.profile.email ?? auth.user?.profile.sub}
-        </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-5"
-          onClick={() => void auth.signoutRedirect()}
-        >
-          Sign out
-        </Button>
-      </CenteredShell>
+      <OrgProvider>
+        <AppShell>
+          <Routes>
+            <Route path="/" element={<InstancesPage />} />
+            <Route
+              path="/instances/:instanceId"
+              element={<InstanceDetailPage />}
+            />
+            <Route path="/members" element={<MembersPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppShell>
+      </OrgProvider>
     );
   }
 
