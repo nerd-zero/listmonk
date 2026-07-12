@@ -80,19 +80,25 @@ swagger: ## Regenerate the OpenAPI spec (internal/apidocs) from handler doc comm
 ## --- frontend (web/) ---
 
 .PHONY: web-install
-web-install: ## npm install in web/
-	cd web && npm install
+web-install: ## bun install in web/
+	cd web && bun install
 
 .PHONY: web-dev
 web-dev: ## Run the frontend dev server
-	cd web && npm run dev
+	cd web && bun run dev
 
 .PHONY: web-build
 web-build: ## Build the frontend for production
-	cd web && npm run build
+	cd web && bun run build
 
 .PHONY: orval
 orval: ## Regenerate the frontend's typed API client from internal/apidocs/swagger.json
 	cd web && npx orval
+
+## --- release ---
+
+.PHONY: version
+version: ## Bump VERSION (CalVer YYYY.MM.XXX)
+	@scripts/increment-version.sh
 
 .DEFAULT_GOAL := help

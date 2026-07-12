@@ -19,6 +19,8 @@ RUN go build -o bin/worker ./cmd/worker
 RUN go build -o bin/migrate ./cmd/migrate
 
 FROM alpine
+ARG APP_VERSION
+LABEL org.opencontainers.image.version=${APP_VERSION}
 RUN apk add --no-cache ca-certificates tzdata && update-ca-certificates
 RUN adduser -S -D -u 1000 appuser
 
