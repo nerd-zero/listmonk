@@ -11,6 +11,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
+      workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,6 +30,8 @@ jobs:
               - 'Dockerfile'
             web:
               - 'web/**'
+            workflows:
+              - '.github/workflows/**'
 
   version-check:
     needs: changes
@@ -51,7 +54,7 @@ jobs:
 
   test-backend:
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +78,7 @@ jobs:
 
   lint-web:
     needs: changes
-    if: needs.changes.outputs.web == 'true'
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -97,7 +100,7 @@ jobs:
 
   build-backend-image:
     needs: [changes, test-backend]
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -106,7 +109,7 @@ jobs:
 
   build-web-image:
     needs: [changes, lint-web]
-    if: needs.changes.outputs.web == 'true'
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
