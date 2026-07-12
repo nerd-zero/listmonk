@@ -194,6 +194,11 @@ func (s *Service) RequireOrgOwner(ctx context.Context, orgID, userID uuid.UUID) 
 	return nil
 }
 
+// ListMembers returns everyone in an org, joined with their user profile.
+func (s *Service) ListMembers(ctx context.Context, orgID uuid.UUID) ([]db.ListOrgMembersWithUserRow, error) {
+	return s.q.ListOrgMembersWithUser(ctx, pgUUID(orgID))
+}
+
 // InviteMember adds a new person to an org. If a Zitadel service account
 // is configured, this creates their Zitadel identity outright (see
 // internal/zitadelmgmt) and links it into org_members in one step -- no

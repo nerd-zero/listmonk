@@ -7,6 +7,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 // Zitadel access token as a Bearer header, matching internal/authn's
 // verification on the Go side. No signup/login endpoints of our own to
 // call here, per docs/plan.md's Auth section.
+//
+// Must resolve to { data, status, headers } (an axios-like envelope), not
+// the parsed body directly -- orval's `httpClient: "fetch"` generator
+// types every endpoint's return as exactly that shape (see any generated
+// endpoints/*.ts's `...ResponseSuccess` type) and its own code accesses
+// `.data`/`.status` uniformly. Our backend's own {"data": ...} envelope
+// (see internal/httpapi's writeJSON) then lives one level down, at
+// `.data.data` -- e.g. a hook's `query.data?.data.data` to reach the
+// actual array/object.
 export const customFetch = async <T,>(
   url: string,
   options: RequestInit,
@@ -24,15 +33,17 @@ export const customFetch = async <T,>(
     headers,
   });
 
+  const body = response.status === 204 ? undefined : await response.json();
+
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
     throw new Error(body?.error ?? `Request failed: ${response.status}`);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return response.json() as Promise<T>;
+  return {
+    data: body,
+    status: response.status,
+    headers: response.headers,
+  } as T;
 };
 
 export default customFetch;

@@ -21,9 +21,6 @@ export default defineConfig({
           path: "src/api/mutator.ts",
           name: "customFetch",
         },
-        query: {
-          useQuery: true,
-        },
       },
     },
   },

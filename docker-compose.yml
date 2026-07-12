@@ -103,6 +103,14 @@ services:
     depends_on:
       - zitadel
 
+  mailhog:
+    image: mailhog/mailhog
+    container_name: listnun-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP -- point any local outbound mail (Zitadel's SMTP settings, a future Postmark-less test path) here
+      - "8025:8025" # web UI: http://localhost:8025
+
 volumes:
   listnun-db:
   listnun-zitadel-db:

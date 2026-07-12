@@ -256,6 +256,27 @@ func (a *API) resendSetupLink(w http.ResponseWriter, r *http.Request) {
 
 // --- members --------------------------------------------------------------
 
+// listMembers godoc
+//
+//	@Summary	List an org's members
+//	@Tags		members
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path		string	true	"Org ID"
+//	@Success	200		{object}	memberListResponse
+//	@Failure	401		{object}	errorResponse
+//	@Failure	403		{object}	errorResponse
+//	@Failure	500		{object}	errorResponse
+//	@Router		/v1/orgs/{orgID}/members [get]
+func (a *API) listMembers(w http.ResponseWriter, r *http.Request) {
+	members, err := a.svc.ListMembers(r.Context(), orgIDFromRequest(r))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "listing members")
+		return
+	}
+	writeJSON(w, http.StatusOK, members)
+}
+
 type inviteMemberRequest struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name"`

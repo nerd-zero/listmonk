@@ -44,6 +44,13 @@ definitions:
       data:
         $ref: '#/definitions/db.Instance'
     type: object
+  MemberListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/db.ListOrgMembersWithUserRow'
+        type: array
+    type: object
   OrgListResponse:
     properties:
       data:
@@ -146,6 +153,19 @@ definitions:
       name:
         type: string
       updated_at:
+        type: string
+    type: object
+  db.ListOrgMembersWithUserRow:
+    properties:
+      created_at:
+        type: string
+      display_name:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      role:
         type: string
     type: object
   db.Org:
@@ -700,6 +720,37 @@ paths:
       tags:
       - instances
   /v1/orgs/{orgID}/members:
+    get:
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MemberListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List an org's members
+      tags:
+      - members
     post:
       consumes:
       - application/json

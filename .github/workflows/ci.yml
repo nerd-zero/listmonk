@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'cmd/**'
+              - 'internal/**'
+              - 'db/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Dockerfile'
+            web:
+              - 'web/**'
+
+  version-check:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version bump
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          BASE_VERSION=$(git show origin/${{ github.base_ref }}:VERSION 2>/dev/null | tr -d '[:space:]' || true)
+          PR_VERSION=$(cat VERSION | tr -d '[:space:]')
+          if [ "$BASE_VERSION" == "$PR_VERSION" ]; then
+            echo "::error::VERSION file has not been bumped. Run 'make version' and commit."
+            exit 1
+          fi
+
+  test-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Check gofmt
+        run: test -z "$(gofmt -l .)" || (echo "not gofmt'd:"; gofmt -l .; exit 1)
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./... -race -count=1
+
+  lint-web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck and build
+        run: bun run build
+
+  build-backend-image:
+    needs: [changes, test-backend]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build --build-arg APP_VERSION="$(cat VERSION)" -t listnun-api .
+
+  build-web-image:
+    needs: [changes, lint-web]
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build web image
+        run: docker build --build-arg APP_VERSION="$(cat VERSION)" -t listnun-web web/

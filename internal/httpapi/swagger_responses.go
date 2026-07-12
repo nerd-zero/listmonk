@@ -52,6 +52,10 @@ type userResponse struct {
 	Data db.User `json:"data"`
 } // @name UserResponse
 
+type memberListResponse struct {
+	Data []db.ListOrgMembersWithUserRow `json:"data"`
+} // @name MemberListResponse
+
 type adminOrgListResponse struct {
 	Data []db.ListAllOrgsWithInstanceCountRow `json:"data"`
 } // @name AdminOrgListResponse

@@ -46,6 +46,9 @@ type Querier interface {
 	ListDNSRecordsByInstance(ctx context.Context, instanceID pgtype.UUID) ([]DnsRecord, error)
 	ListInstancesByOrg(ctx context.Context, orgID pgtype.UUID) ([]Instance, error)
 	ListOrgMembers(ctx context.Context, orgID pgtype.UUID) ([]OrgMember, error)
+	// Backs the dashboard's members page: needs email/display_name, which
+	// org_members alone doesn't carry.
+	ListOrgMembersWithUser(ctx context.Context, orgID pgtype.UUID) ([]ListOrgMembersWithUserRow, error)
 	ListOrgsByUser(ctx context.Context, userID pgtype.UUID) ([]Org, error)
 	// Backs GET /instances/{id}/events -- the provisioning timeline shown in the UI.
 	ListProvisioningJobsByInstance(ctx context.Context, instanceID pgtype.UUID) ([]ProvisioningJob, error)

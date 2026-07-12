@@ -699,6 +699,55 @@ const docTemplate = `{
             }
         },
         "/v1/orgs/{orgID}/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "members"
+                ],
+                "summary": "List an org's members",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Org ID",
+                        "name": "orgID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MemberListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -837,6 +886,17 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/db.Instance"
+                }
+            }
+        },
+        "MemberListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/db.ListOrgMembersWithUserRow"
+                    }
                 }
             }
         },
@@ -997,6 +1057,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "db.ListOrgMembersWithUserRow": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 }
             }

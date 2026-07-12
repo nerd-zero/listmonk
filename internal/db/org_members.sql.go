@@ -85,3 +85,47 @@ func (q *Queries) ListOrgMembers(ctx context.Context, orgID pgtype.UUID) ([]OrgM
 	}
 	return items, nil
 }
+
+const listOrgMembersWithUser = `-- name: ListOrgMembersWithUser :many
+SELECT org_members.role, org_members.created_at, users.id, users.email, users.display_name
+FROM org_members
+JOIN users ON users.id = org_members.user_id
+WHERE org_members.org_id = $1
+ORDER BY org_members.created_at
+`
+
+type ListOrgMembersWithUserRow struct {
+	Role        string             `json:"role"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID          pgtype.UUID        `json:"id"`
+	Email       string             `json:"email"`
+	DisplayName *string            `json:"display_name"`
+}
+
+// Backs the dashboard's members page: needs email/display_name, which
+// org_members alone doesn't carry.
+func (q *Queries) ListOrgMembersWithUser(ctx context.Context, orgID pgtype.UUID) ([]ListOrgMembersWithUserRow, error) {
+	rows, err := q.db.Query(ctx, listOrgMembersWithUser, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOrgMembersWithUserRow{}
+	for rows.Next() {
+		var i ListOrgMembersWithUserRow
+		if err := rows.Scan(
+			&i.Role,
+			&i.CreatedAt,
+			&i.ID,
+			&i.Email,
+			&i.DisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
