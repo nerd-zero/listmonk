@@ -1,0 +1,96 @@
+name: Build and Push
+
+on:
+  push:
+    branches:
+      - main
+      - prod
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          token: ""
+          filters: |
+            backend:
+              - 'cmd/**'
+              - 'internal/**'
+              - 'db/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Dockerfile'
+            web:
+              - 'web/**'
+
+  prepare:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set_variables.outputs.APP_VERSION }}
+      api_image: ${{ steps.set_variables.outputs.API_IMAGE }}
+      web_image: ${{ steps.set_variables.outputs.WEB_IMAGE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: set_variables
+        name: Set variables
+        run: |
+          VER=$(cat VERSION | tr -d '[:space:]')
+          BRANCH="${{ github.ref_name }}"
+
+          # prod ships the bare CalVer tag; every other branch (just main,
+          # for now -- uat is coming later) gets an -alpha suffix so alpha
+          # and prod images are never confused for one another.
+          if [[ "$BRANCH" == "prod" ]]; then
+            TAG="$VER"
+          else
+            TAG="${VER}-alpha"
+          fi
+
+          echo "APP_VERSION=${TAG}" >> $GITHUB_OUTPUT
+          echo "API_IMAGE=ghcr.io/nerd-zero/listnun-api:${TAG}" >> $GITHUB_OUTPUT
+          echo "WEB_IMAGE=ghcr.io/nerd-zero/listnun-web:${TAG}" >> $GITHUB_OUTPUT
+
+  publish:
+    needs: [changes, prepare]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          docker build \
+            --build-arg "APP_VERSION=${{ needs.prepare.outputs.version }}" \
+            --tag "${{ needs.prepare.outputs.api_image }}" \
+            .
+          docker push "${{ needs.prepare.outputs.api_image }}"
+
+      - name: Build and push web image
+        if: needs.changes.outputs.web == 'true'
+        run: |
+          docker build \
+            --build-arg "APP_VERSION=${{ needs.prepare.outputs.version }}" \
+            --tag "${{ needs.prepare.outputs.web_image }}" \
+            web/
+          docker push "${{ needs.prepare.outputs.web_image }}"
