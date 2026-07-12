@@ -27,6 +27,25 @@ jobs:
             web:
               - 'web/**'
 
+  version-check:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version bump
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          BASE_VERSION=$(git show origin/${{ github.base_ref }}:VERSION 2>/dev/null | tr -d '[:space:]' || true)
+          PR_VERSION=$(cat VERSION | tr -d '[:space:]')
+          if [ "$BASE_VERSION" == "$PR_VERSION" ]; then
+            echo "::error::VERSION file has not been bumped. Run 'make version' and commit."
+            exit 1
+          fi
+
   test-backend:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
