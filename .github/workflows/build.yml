@@ -96,6 +96,11 @@ jobs:
         run: |
           docker build \
             --build-arg "APP_VERSION=${{ needs.prepare.outputs.version }}" \
+            --build-arg "VITE_OIDC_AUTHORITY=https://id.n0.rocks" \
+            --build-arg "VITE_OIDC_CLIENT_ID=381575147787715149" \
+            --build-arg "VITE_OIDC_REDIRECT_URI=https://dev.listnun.app/auth/callback" \
+            --build-arg "VITE_OIDC_POST_LOGOUT_REDIRECT_URI=https://dev.listnun.app" \
+            --build-arg "VITE_API_BASE_URL=/api" \
             --tag "${{ needs.prepare.outputs.web_image }}" \
             web/
           docker push "${{ needs.prepare.outputs.web_image }}"
