@@ -5,19 +5,24 @@ on:
     branches:
       - main
       - prod
+  # Lets you force a build+push from the Actions tab (or `gh workflow run
+  # build.yml`) without needing an actual backend/web code change to land
+  # first -- e.g. to publish the very first image.
+  workflow_dispatch: {}
 
 jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      web: ${{ steps.filter.outputs.web }}
+      backend: ${{ steps.filter.outputs.backend || 'true' }}
+      web: ${{ steps.filter.outputs.web || 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
+        if: github.event_name != 'workflow_dispatch'
         with:
           token: ""
           filters: |
