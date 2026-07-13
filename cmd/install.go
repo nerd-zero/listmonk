@@ -9,6 +9,7 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/knadh/listmonk/internal/auth"
+	"github.com/knadh/listmonk/internal/migrations"
 	"github.com/knadh/listmonk/internal/utils"
 	"github.com/knadh/listmonk/models"
 	"github.com/knadh/stuffbin"
@@ -58,6 +59,14 @@ func install(lastVer string, db *sqlx.DB, fs stuffbin.FileSystem, prompt, idempo
 	// Migrate the tables.
 	if err := installSchema(lastVer, db, fs); err != nil {
 		lo.Fatalf("error migrating DB schema: %v", err)
+	}
+
+	// schema.sql has no way to template the configured [operator] BYPASSRLS
+	// role name in, and installSchema() marks every registered migration
+	// (including the one that grants it) as already applied - so apply it
+	// directly here too. See ApplyOperatorGrants's doc comment.
+	if err := migrations.ApplyOperatorGrants(db, ko, lo); err != nil {
+		lo.Fatalf("error granting operator role access: %v", err)
 	}
 
 	// Load the queries.
