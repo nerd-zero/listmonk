@@ -1,9 +1,12 @@
 // @title listmonk API
 // @version 1.0
 // @description listmonk mailing list manager REST API.
-// @host localhost:9000
 // @BasePath /
 // @securityDefinitions.basic BasicAuth
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Operator API only (/api/operator/*) - static bearer token from [operator].token, e.g. "Bearer <token>". Fork-only, off by default.
 package main
 
 import (
@@ -19,6 +22,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/knadh/goyesql/v2"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/v2"
 	"github.com/knadh/listmonk/internal/auth"
@@ -29,9 +33,7 @@ import (
 	"github.com/knadh/listmonk/internal/events"
 	"github.com/knadh/listmonk/internal/i18n"
 	"github.com/knadh/listmonk/internal/manager"
-	"github.com/knadh/listmonk/internal/media"
 	"github.com/knadh/listmonk/internal/messenger/email"
-	"github.com/knadh/listmonk/internal/subimporter"
 	"github.com/knadh/listmonk/models"
 	"github.com/knadh/paginator"
 	"github.com/knadh/stuffbin"
@@ -48,9 +50,10 @@ type App struct {
 	manager    *manager.Manager
 	messengers []manager.Messenger
 	emailMsgr  manager.Messenger
-	importer   *subimporter.Importer
+	importers  *tenantImporters
 	auth       *auth.Auth
-	media      media.Store
+	media      *tenantMedia
+	operator   *operatorStore
 	bounce     *bounce.Manager
 	captcha    *captcha.Captcha
 	i18n       *i18n.I18n
@@ -69,9 +72,6 @@ type App struct {
 	// after a settings update.
 	needsRestart bool
 
-	// First time installation with no user records in the DB. Needs user setup.
-	needsUserSetup bool
-
 	// Global state that stores data on an available remote update.
 	update *AppUpdate
 	sync.Mutex
@@ -87,6 +87,7 @@ var (
 	fs      stuffbin.FileSystem
 	db      *sqlx.DB
 	queries *models.Queries
+	qMap    goyesql.Queries
 
 	// Compile-time variables.
 	buildString   string
@@ -185,7 +186,7 @@ func init() {
 	}
 
 	// Read the SQL queries from the queries file.
-	qMap := readQueries(queryFilePath, fs)
+	qMap = readQueries(queryFilePath, fs)
 
 	// Load settings from DB.
 	if q, ok := qMap["get-settings"]; ok {
@@ -197,6 +198,22 @@ func init() {
 }
 
 func main() {
+	// Initialize SMTP messengers and the media store. Declared ahead of the
+	// var () block below since they need error handling, which can't live
+	// inside a var () list.
+	smtpMsgrs, err := initSMTPMessengers(ko)
+	if err != nil {
+		lo.Fatalf("error initializing SMTP messengers: %v", err)
+	}
+	// Fail fast on bad upload config before serving traffic. The resulting
+	// store isn't retained here - per-tenant resolution (including tenant
+	// 1's) happens lazily via tenantMedia, same as SMTP's per-tenant
+	// resolver.
+	if _, err := initMediaStore(ko); err != nil {
+		lo.Fatalf("error initializing media store: %v", err)
+	}
+	lo.Printf("media upload provider: %s", ko.String("upload.provider"))
+
 	var (
 		// Initialize static global config.
 		cfg = initConstConfig(ko)
@@ -207,25 +224,31 @@ func main() {
 		// Initialize i18n language map.
 		i18n = initI18n(ko.MustString("app.lang"), fs)
 
-		// Initialize the media store.
-		media = initMediaStore(ko)
-
 		fbOptinNotify = makeOptinNotifyHook(ko.Bool("privacy.unsubscribe_header"), urlCfg, queries, i18n)
 
 		// Crud core.
 		core = initCore(fbOptinNotify, queries, db, i18n, ko)
 
+		// Lazily resolves and caches each tenant's media.Store from their
+		// own settings (upload.* is per-tenant since phase 5).
+		mediaResolver = newTenantMedia(core)
+
 		// Initialize all messengers, SMTP and postback.
-		msgrs = append(initSMTPMessengers(), initPostbackMessengers(ko)...)
+		msgrs = append(smtpMsgrs, initPostbackMessengers(ko)...)
 
 		// Campaign manager.
-		mgr = initCampaignManager(msgrs, queries, urlCfg, core, media, i18n, ko)
+		mgr = initCampaignManager(msgrs, queries, urlCfg, core, mediaResolver, i18n, ko)
 
-		// Bulk importer.
-		importer = initImporter(queries, db, core, i18n, ko)
+		// Bulk importer, resolved lazily per tenant (see cmd/tenant_importer.go).
+		importers = newTenantImporters(queries, db, core, i18n)
 
 		// Initialize the auth manager.
-		hasUsers, auth = initAuth(core, db.DB, ko)
+		auth = initAuth(core, db.DB, ko)
+
+		// Operator API (off by default - see initOperatorDB). Uses a
+		// separate BYPASSRLS DB connection, distinct from the tenant-app
+		// pool above.
+		opStore = newOperatorStoreIfEnabled(qMap, core, cfg.Permissions)
 
 		// Initialize the webhook/POP3 bounce processor.
 		bounce *bounce.Manager
@@ -279,9 +302,10 @@ func main() {
 		manager:    mgr,
 		messengers: msgrs,
 		emailMsgr:  emailMsgr,
-		importer:   importer,
+		importers:  importers,
 		auth:       auth,
-		media:      media,
+		media:      mediaResolver,
+		operator:   opStore,
 		bounce:     bounce,
 		captcha:    initCaptcha(),
 		i18n:       i18n,
@@ -301,9 +325,6 @@ func main() {
 		fnOptinNotify: fbOptinNotify,
 		about:         initAbout(queries, db),
 		chReload:      chReload,
-
-		// If there are no users, then the app needs to prompt for new user setup.
-		needsUserSetup: !hasUsers,
 	}
 
 	// Star the update checker.

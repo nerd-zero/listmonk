@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/knadh/listmonk/models"
 	"github.com/labstack/echo/v4"
 	"github.com/zerodha/simplesessions/stores/postgres/v3"
 	"github.com/zerodha/simplesessions/v3"
@@ -47,7 +48,6 @@ type BasicAuthConfig struct {
 }
 
 type Config struct {
-	OIDC      OIDCConfig
 	BasicAuth BasicAuthConfig
 }
 
@@ -56,6 +56,24 @@ type Callbacks struct {
 	SetCookie func(cookie *http.Cookie, w any) error
 	GetCookie func(name string, r any) (*http.Cookie, error)
 	GetUser   func(id int) (User, error)
+
+	// GetOIDCConfig returns the given tenant's OIDC config (settings are
+	// per-tenant since phase 5). Called lazily and cached per tenant - see
+	// tenantOIDC/initOIDC. RedirectURL must already be resolved against
+	// that tenant's own root URL by the callback's implementation; this
+	// package has no notion of tenant settings beyond what's returned here.
+	GetOIDCConfig func(tenantID int) (OIDCConfig, error)
+}
+
+// tenantOIDC holds one tenant's resolved OIDC provider/verifier/OAuth
+// config, built lazily on first use and cached for the process's lifetime
+// (matches every other per-tenant resolver in cmd/ - settings updates
+// require a full restart to take effect today).
+type tenantOIDC struct {
+	cfg      OIDCConfig
+	provider *oidc.Provider
+	verifier *oidc.IDTokenVerifier
+	oauthCfg oauth2.Config
 }
 
 type Auth struct {
@@ -63,9 +81,7 @@ type Auth struct {
 	sync.RWMutex
 
 	cfg       Config
-	oauthCfg  oauth2.Config
-	verifier  *oidc.IDTokenVerifier
-	provider  *oidc.Provider
+	oidcCache map[int]*tenantOIDC
 	sess      *simplesessions.Manager
 	sessStore *postgres.Store
 	cb        *Callbacks
@@ -81,7 +97,8 @@ func New(cfg Config, db *sql.DB, cb *Callbacks, lo *log.Logger) (*Auth, error) {
 		cb:  cb,
 		log: lo,
 
-		apiUsers: map[string]User{},
+		apiUsers:  map[string]User{},
+		oidcCache: map[int]*tenantOIDC{},
 	}
 
 	// Initialize session manager.
@@ -145,91 +162,77 @@ func (o *Auth) GetAPIToken(user string, token string) (User, bool) {
 	return t, true
 }
 
-// initOIDC initializes the OIDC provider, verifier, and OAuth config.
-func (o *Auth) initOIDC() error {
-	if !o.cfg.OIDC.Enabled {
-		return fmt.Errorf("OIDC is not enabled")
+// initOIDC fetches the given tenant's OIDC config via the GetOIDCConfig
+// callback and builds+caches its provider, verifier, and OAuth config.
+// Must be called with o's lock held.
+func (o *Auth) initOIDC(tenantID int) (*tenantOIDC, error) {
+	if o.cb.GetOIDCConfig == nil {
+		return nil, fmt.Errorf("OIDC is not configured")
 	}
 
-	provider, err := oidc.NewProvider(context.Background(), o.cfg.OIDC.ProviderURL)
+	cfg, err := o.cb.GetOIDCConfig(tenantID)
 	if err != nil {
-		return fmt.Errorf("error initializing OIDC OAuth provider: %v", err)
+		return nil, fmt.Errorf("error fetching OIDC config: %v", err)
+	}
+	if !cfg.Enabled {
+		return nil, fmt.Errorf("OIDC is not enabled")
 	}
 
-	o.verifier = provider.Verifier(&oidc.Config{
-		ClientID: o.cfg.OIDC.ClientID,
-	})
-
-	o.oauthCfg = oauth2.Config{
-		ClientID:     o.cfg.OIDC.ClientID,
-		ClientSecret: o.cfg.OIDC.ClientSecret,
-		Endpoint:     provider.Endpoint(),
-		RedirectURL:  o.cfg.OIDC.RedirectURL,
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+	provider, err := oidc.NewProvider(context.Background(), cfg.ProviderURL)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing OIDC OAuth provider: %v", err)
 	}
-	o.provider = provider
 
-	return nil
+	t := &tenantOIDC{
+		cfg:      cfg,
+		provider: provider,
+		verifier: provider.Verifier(&oidc.Config{
+			ClientID: cfg.ClientID,
+		}),
+		oauthCfg: oauth2.Config{
+			ClientID:     cfg.ClientID,
+			ClientSecret: cfg.ClientSecret,
+			Endpoint:     provider.Endpoint(),
+			RedirectURL:  cfg.RedirectURL,
+			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+		},
+	}
+	o.oidcCache[tenantID] = t
+
+	return t, nil
 }
 
-// getProvider returns the OIDC provider, initializing it if necessary.
-func (o *Auth) getProvider() (*oidc.Provider, error) {
+// getTenantOIDC returns the given tenant's cached OIDC state, initializing
+// it if necessary.
+func (o *Auth) getTenantOIDC(tenantID int) (*tenantOIDC, error) {
 	o.Lock()
 	defer o.Unlock()
 
-	if o.provider == nil {
-		if err := o.initOIDC(); err != nil {
-			return nil, err
-		}
+	if t, ok := o.oidcCache[tenantID]; ok {
+		return t, nil
 	}
-	return o.provider, nil
+	return o.initOIDC(tenantID)
 }
 
-// getVerifier returns the OIDC verifier, initializing it if necessary.
-func (o *Auth) getVerifier() (*oidc.IDTokenVerifier, error) {
-	o.Lock()
-	defer o.Unlock()
-
-	if o.verifier == nil {
-		if err := o.initOIDC(); err != nil {
-			return nil, err
-		}
-	}
-	return o.verifier, nil
-}
-
-// getOAuthConfig returns the OAuth config, initializing it if necessary.
-func (o *Auth) getOAuthConfig() (*oauth2.Config, error) {
-	o.Lock()
-	defer o.Unlock()
-
-	if o.oauthCfg.ClientID == "" {
-		if err := o.initOIDC(); err != nil {
-			return nil, err
-		}
-	}
-	return &o.oauthCfg, nil
-}
-
-// GetOIDCAuthURL returns the OIDC provider's auth URL to redirect to.
-func (o *Auth) GetOIDCAuthURL(state, nonce string) string {
-	cfg, err := o.getOAuthConfig()
+// GetOIDCAuthURL returns the given tenant's OIDC provider auth URL to redirect to.
+func (o *Auth) GetOIDCAuthURL(tenantID int, state, nonce string) string {
+	t, err := o.getTenantOIDC(tenantID)
 	if err != nil {
 		o.log.Printf("error getting OAuth config: %v", err)
 		return ""
 	}
-	return cfg.AuthCodeURL(state, oidc.Nonce(nonce))
+	return t.oauthCfg.AuthCodeURL(state, oidc.Nonce(nonce))
 }
 
 // ExchangeOIDCToken takes an OIDC authorization code (recieved via redirect from the OIDC provider),
 // validates it, and returns an OIDC token for subsequent auth.
-func (o *Auth) ExchangeOIDCToken(code, nonce string) (string, OIDCclaim, error) {
-	cfg, err := o.getOAuthConfig()
+func (o *Auth) ExchangeOIDCToken(tenantID int, code, nonce string) (string, OIDCclaim, error) {
+	t, err := o.getTenantOIDC(tenantID)
 	if err != nil {
 		return "", OIDCclaim{}, echo.NewHTTPError(http.StatusUnauthorized, fmt.Sprintf("error getting OAuth config: %v", err))
 	}
 
-	tk, err := cfg.Exchange(context.TODO(), code)
+	tk, err := t.oauthCfg.Exchange(context.TODO(), code)
 	if err != nil {
 		return "", OIDCclaim{}, echo.NewHTTPError(http.StatusUnauthorized, fmt.Sprintf("error exchanging token: %v", err))
 	}
@@ -239,12 +242,7 @@ func (o *Auth) ExchangeOIDCToken(code, nonce string) (string, OIDCclaim, error) 
 		return "", OIDCclaim{}, echo.NewHTTPError(http.StatusUnauthorized, "`id_token` missing.")
 	}
 
-	verifier, err := o.getVerifier()
-	if err != nil {
-		return "", OIDCclaim{}, echo.NewHTTPError(http.StatusUnauthorized, fmt.Sprintf("error getting verifier: %v", err))
-	}
-
-	idTk, err := verifier.Verify(context.TODO(), rawIDTk)
+	idTk, err := t.verifier.Verify(context.TODO(), rawIDTk)
 	if err != nil {
 		return "", OIDCclaim{}, echo.NewHTTPError(http.StatusUnauthorized, fmt.Sprintf("error verifying ID token: %v", err))
 	}
@@ -260,12 +258,7 @@ func (o *Auth) ExchangeOIDCToken(code, nonce string) (string, OIDCclaim, error) 
 
 	// If claims doesn't have the e-mail, attempt to fetch it from the userinfo endpoint.
 	if claims.Email == "" {
-		provider, err := o.getProvider()
-		if err != nil {
-			return "", OIDCclaim{}, fmt.Errorf("error getting provider: %v", err)
-		}
-
-		userInfo, err := provider.UserInfo(context.TODO(), oauth2.StaticTokenSource(tk))
+		userInfo, err := t.provider.UserInfo(context.TODO(), oauth2.StaticTokenSource(tk))
 		if err != nil {
 			return "", OIDCclaim{}, errors.New("error fetching user info from OIDC")
 		}
@@ -312,6 +305,10 @@ func (o *Auth) Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 				c.Set(UserHTTPCtxKey, echo.NewHTTPError(http.StatusForbidden, "invalid API credentials"))
 				return next(c)
 			}
+			if tenantMismatch(c, user) {
+				c.Set(UserHTTPCtxKey, echo.NewHTTPError(http.StatusForbidden, "invalid session"))
+				return next(c)
+			}
 
 			// Set the user details on the handler context.
 			c.Set(UserHTTPCtxKey, user)
@@ -324,12 +321,28 @@ func (o *Auth) Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 			c.Set(UserHTTPCtxKey, echo.NewHTTPError(http.StatusForbidden, "invalid session"))
 			return next(c)
 		}
+		if tenantMismatch(c, user) {
+			c.Set(UserHTTPCtxKey, echo.NewHTTPError(http.StatusForbidden, "invalid session"))
+			return next(c)
+		}
 
 		// Set the user details on the handler context.
 		c.Set(UserHTTPCtxKey, user)
 		c.Set(SessionKey, sess)
 		return next(c)
 	}
+}
+
+// tenantMismatch reports whether the resolved tenant (set by
+// internal/tenant's middleware, which runs before this one) doesn't match
+// the given user's own tenant - defense in depth against a session/token
+// issued for one tenant being replayed against a different tenant's
+// subdomain. Returns false (no mismatch) if no tenant was resolved onto
+// the context at all, so this is a no-op wherever the tenant middleware
+// isn't wired in (e.g. in tests that construct Auth directly).
+func tenantMismatch(c echo.Context, user User) bool {
+	t, ok := c.Get(models.TenantCtxKey).(*models.Tenant)
+	return ok && user.TenantID != t.ID
 }
 
 // Perm is an HTTP handler middleware that checks if the authenticated user has the required permissions.

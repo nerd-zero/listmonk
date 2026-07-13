@@ -85,6 +85,8 @@ type Base struct {
 type User struct {
 	Base
 
+	TenantID int `db:"tenant_id" json:"tenant_id,omitempty"`
+
 	Username string `db:"username" json:"username"`
 
 	// For API users, this is the plaintext API token.

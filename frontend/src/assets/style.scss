@@ -629,12 +629,37 @@ $ease:           cubic-bezier(0.4, 0, 0.2, 1);
     filter: brightness(1.1);
   }
 
+  // Wraps the brand name + organization name (when present) as one tight
+  // vertical lockup next to the logo, rather than a full-width second row -
+  // reads as a single "listmonk, for {org}" identity rather than two
+  // unrelated header lines.
+  .sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    min-width: 0;
+  }
+
   .sidebar-brand-name {
     font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: #f8fafc;
+    // Was #f8fafc (near-white) - invisible against $sidebar-bg's #ffffff.
+    // Pre-existing bug, unrelated to organizations; found and fixed while
+    // adding .sidebar-org-name below, which inherited the same color.
+    color: var(--lm-text);
     white-space: nowrap;
+  }
+
+  // Only rendered when the tenant belongs to an organization (multi-tenancy,
+  // Operator API-managed - see docs/design/multi-tenancy.md).
+  .sidebar-org-name {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: $nav-label;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .sidebar-nav {
@@ -852,6 +877,7 @@ $ease:           cubic-bezier(0.4, 0, 0.2, 1);
   @media (min-width: 992px) {
     .app-sidebar { transform: none; width: 60px; }
     .sidebar-brand-name,
+    .sidebar-org-name,
     .nav-label,
     .nav-item span { display: none; }
     .app-main { margin-left: 60px; }

@@ -85,8 +85,8 @@ SELECT lists.*,
 
 -- name: insert-subscriber
 WITH sub AS (
-    INSERT INTO subscribers (uuid, email, name, status, attribs)
-    VALUES($1, $2, $3, $4, $5)
+    INSERT INTO subscribers (uuid, email, name, status, attribs, tenant_id)
+    VALUES($1, $2, $3, $4, $5, $9)
     RETURNING id, status
 ),
 listIDs AS (
@@ -95,11 +95,12 @@ listIDs AS (
               ELSE uuid=ANY($7::UUID[]) END)
 ),
 subs AS (
-    INSERT INTO subscriber_lists (subscriber_id, list_id, status)
+    INSERT INTO subscriber_lists (subscriber_id, list_id, status, tenant_id)
     VALUES(
         (SELECT id FROM sub),
         UNNEST(ARRAY(SELECT id FROM listIDs)),
-        (CASE WHEN $4='blocklisted' THEN 'unsubscribed'::subscription_status ELSE $8::subscription_status END)
+        (CASE WHEN $4='blocklisted' THEN 'unsubscribed'::subscription_status ELSE $8::subscription_status END),
+        $9
     )
     ON CONFLICT (subscriber_id, list_id) DO UPDATE
         SET updated_at=NOW(),
@@ -115,9 +116,9 @@ SELECT id from sub;
 -- Upserts a subscriber where existing subscribers get their names and attributes overwritten.
 -- If $7 = true, update name/attribs. If $8 = true, update subscription status.
 WITH sub AS (
-    INSERT INTO subscribers as s (uuid, email, name, attribs, status)
-    VALUES($1, $2, $3, $4, 'enabled')
-    ON CONFLICT (email)
+    INSERT INTO subscribers as s (uuid, email, name, attribs, status, tenant_id)
+    VALUES($1, $2, $3, $4, 'enabled', $9)
+    ON CONFLICT (tenant_id, email)
     DO UPDATE SET
         name=(CASE WHEN $7 THEN $3 ELSE s.name END),
         attribs=(CASE WHEN $7 THEN $4 ELSE s.attribs END),
@@ -125,8 +126,8 @@ WITH sub AS (
     RETURNING uuid, id, status
 ),
 subs AS (
-    INSERT INTO subscriber_lists (subscriber_id, list_id, status)
-    SELECT sub.id, listID, CASE WHEN sub.status = 'blocklisted' THEN 'unsubscribed' ELSE $6::subscription_status END
+    INSERT INTO subscriber_lists (subscriber_id, list_id, status, tenant_id)
+    SELECT sub.id, listID, CASE WHEN sub.status = 'blocklisted' THEN 'unsubscribed' ELSE $6::subscription_status END, $9
     FROM sub, UNNEST($5::INT[]) AS listID
     ON CONFLICT (subscriber_id, list_id) DO UPDATE
     SET updated_at = NOW(),
@@ -140,9 +141,9 @@ SELECT uuid, id from sub;
 -- existing subscriptions are marked as 'unsubscribed'.
 -- This is used in the bulk importer.
 WITH sub AS (
-    INSERT INTO subscribers (uuid, email, name, attribs, status)
-    VALUES($1, $2, $3, $4, 'blocklisted')
-    ON CONFLICT (email) DO UPDATE SET status='blocklisted', updated_at=NOW()
+    INSERT INTO subscribers (uuid, email, name, attribs, status, tenant_id)
+    VALUES($1, $2, $3, $4, 'blocklisted', $5)
+    ON CONFLICT (tenant_id, email) DO UPDATE SET status='blocklisted', updated_at=NOW()
     RETURNING id
 )
 UPDATE subscriber_lists SET status='unsubscribed', updated_at=NOW()
@@ -179,11 +180,12 @@ d AS (
         AND list_id != ALL(SELECT id FROM listIDs)
         AND (CARDINALITY($10::INT[]) = 0 OR list_id = ANY($10::INT[]))
 )
-INSERT INTO subscriber_lists (subscriber_id, list_id, status)
+INSERT INTO subscriber_lists (subscriber_id, list_id, status, tenant_id)
     VALUES(
         (SELECT id FROM s),
         UNNEST(ARRAY(SELECT id FROM listIDs)),
-        (CASE WHEN $4='blocklisted' THEN 'unsubscribed'::subscription_status ELSE $8::subscription_status END)
+        (CASE WHEN $4='blocklisted' THEN 'unsubscribed'::subscription_status ELSE $8::subscription_status END),
+        $12
     )
     ON CONFLICT (subscriber_id, list_id) DO UPDATE
     SET status = (
@@ -220,8 +222,8 @@ UPDATE subscriber_lists SET status='unsubscribed', updated_at=NOW()
     WHERE subscriber_id = ANY($1::INT[]);
 
 -- name: add-subscribers-to-lists
-INSERT INTO subscriber_lists (subscriber_id, list_id, status)
-    (SELECT a, b, (CASE WHEN $3 != '' THEN $3::subscription_status ELSE 'unconfirmed' END) FROM UNNEST($1::INT[]) a, UNNEST($2::INT[]) b)
+INSERT INTO subscriber_lists (subscriber_id, list_id, status, tenant_id)
+    (SELECT a, b, (CASE WHEN $3 != '' THEN $3::subscription_status ELSE 'unconfirmed' END), $4 FROM UNNEST($1::INT[]) a, UNNEST($2::INT[]) b)
     ON CONFLICT (subscriber_id, list_id) DO UPDATE SET status=(CASE WHEN $3 != '' THEN $3::subscription_status ELSE subscriber_lists.status END);
 
 -- name: delete-subscriptions
@@ -313,9 +315,14 @@ SELECT COUNT(*) AS total FROM subscribers
 
 -- name: query-subscribers-count-all
 -- Cached query for getting the "all" subscriber count without arbitrary conditions.
+-- tenant_id ($3) is essential here, not just defense-in-depth: mat_list_subscriber_stats
+-- (see schema.sql/v6.7.0) has one list_id=0 "all subscribers" row per tenant, and the
+-- CARDINALITY($1)=0 fallback below hits that row on every unfiltered "get all" request -
+-- without the tenant_id filter this would sum every tenant's subscribers together.
 SELECT COALESCE(SUM(subscriber_count), 0) AS total FROM mat_list_subscriber_stats
     WHERE list_id = ANY(CASE WHEN CARDINALITY($1::INT[]) > 0 THEN $1 ELSE '{0}' END)
-    AND ($2 = '' OR status = $2::subscription_status);
+    AND ($2 = '' OR status = $2::subscription_status)
+    AND tenant_id = $3;
 
 -- name: query-subscribers-for-export
 -- raw: true
@@ -383,8 +390,8 @@ UPDATE subscriber_lists SET status='unsubscribed', updated_at=NOW()
 -- name: add-subscribers-to-lists-by-query
 -- raw: true
 WITH subs AS (%query%)
-INSERT INTO subscriber_lists (subscriber_id, list_id, status)
-    (SELECT a, b, (CASE WHEN $6 != '' THEN $6::subscription_status ELSE 'unconfirmed' END) FROM UNNEST(ARRAY(SELECT id FROM subs)) a, UNNEST($5::INT[]) b)
+INSERT INTO subscriber_lists (subscriber_id, list_id, status, tenant_id)
+    (SELECT a, b, (CASE WHEN $6 != '' THEN $6::subscription_status ELSE 'unconfirmed' END), $7 FROM UNNEST(ARRAY(SELECT id FROM subs)) a, UNNEST($5::INT[]) b)
     ON CONFLICT (subscriber_id, list_id) DO NOTHING;
 
 -- name: delete-subscriptions-by-query

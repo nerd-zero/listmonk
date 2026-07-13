@@ -25,7 +25,7 @@ WITH tpl AS (
 camp AS (
     INSERT INTO campaigns (uuid, type, name, subject, from_email, body, altbody,
         content_type, send_at, headers, attribs, tags, messenger, template_id, to_send,
-        max_subscriber_id, archive, archive_slug, archive_template_id, archive_meta, body_source)
+        max_subscriber_id, archive, archive_slug, archive_template_id, archive_meta, body_source, tenant_id)
         SELECT $1, $2, $3, $4, $5,
             -- body
             COALESCE(NULLIF($6, ''), (SELECT body FROM tpl), ''),
@@ -40,16 +40,18 @@ camp AS (
             $18,
             $19,
             -- body_source
-            COALESCE($21, (SELECT body_source FROM tpl))
+            COALESCE($21, (SELECT body_source FROM tpl)),
+            -- tenant_id
+            $22
         RETURNING id
 ),
 med AS (
-    INSERT INTO campaign_media (campaign_id, media_id, filename)
-        (SELECT (SELECT id FROM camp), id, filename FROM media WHERE id=ANY($20::INT[]))
+    INSERT INTO campaign_media (campaign_id, media_id, filename, tenant_id)
+        (SELECT (SELECT id FROM camp), id, filename, $22 FROM media WHERE id=ANY($20::INT[]))
 ),
 insLists AS (
-    INSERT INTO campaign_lists (campaign_id, list_id, list_name)
-        SELECT (SELECT id FROM camp), id, name FROM lists WHERE id=ANY($15::INT[])
+    INSERT INTO campaign_lists (campaign_id, list_id, list_name, tenant_id)
+        SELECT (SELECT id FROM camp), id, name, $22 FROM lists WHERE id=ANY($15::INT[])
 )
 SELECT id FROM camp;
 
@@ -173,17 +175,22 @@ SELECT EXISTS (
 
 -- name: next-campaigns
 -- Retreives campaigns that are running (or scheduled and the time's up) and need
--- to be processed. It updates the to_send count and max_subscriber_id of the campaign,
--- that is, the total number of subscribers to be processed across all lists of a campaign.
--- Thus, it has a sideaffect.
+-- to be processed, scoped to a single tenant ($3). It updates the to_send count and
+-- max_subscriber_id of the campaign, that is, the total number of subscribers to be
+-- processed across all lists of a campaign. Thus, it has a sideaffect.
 -- In addition, it finds the max_subscriber_id, the upper limit across all lists of
 -- a campaign. This is used to fetch and slice subscribers for the campaign in next-campaign-subscribers.
+-- $1/$2 (currentIDs/sentCounts) must only contain campaigns belonging to tenant $3 -
+-- the caller (internal/manager) groups its globally-tracked in-flight campaigns by
+-- tenant before calling this per-tenant, so the sent-count increment below isn't
+-- applied once per tenant scanned per tick.
 WITH camps AS (
     -- Get all running campaigns and their template bodies (if the template's deleted, the default template body instead)
     SELECT campaigns.*, COALESCE(templates.body, (SELECT body FROM templates WHERE is_default = true LIMIT 1), '') AS template_body
     FROM campaigns
     LEFT JOIN templates ON (templates.id = campaigns.template_id)
     WHERE (status='running' OR (status='scheduled' AND NOW() >= campaigns.send_at))
+    AND campaigns.tenant_id = $3
     AND NOT(campaigns.id = ANY($1::INT[]))
 ),
 campLists AS (
@@ -424,12 +431,12 @@ med AS (
     AND ( media_id IS NULL or NOT(media_id = ANY($19))) RETURNING media_id
 ),
 medi AS (
-    INSERT INTO campaign_media (campaign_id, media_id, filename)
-        (SELECT $1 AS campaign_id, id, filename FROM media WHERE id=ANY($19::INT[]))
+    INSERT INTO campaign_media (campaign_id, media_id, filename, tenant_id)
+        (SELECT $1 AS campaign_id, id, filename, $21 FROM media WHERE id=ANY($19::INT[]))
         ON CONFLICT (campaign_id, media_id) DO NOTHING
 )
-INSERT INTO campaign_lists (campaign_id, list_id, list_name)
-    (SELECT $1 as campaign_id, id, name FROM lists WHERE id=ANY($14::INT[]))
+INSERT INTO campaign_lists (campaign_id, list_id, list_name, tenant_id)
+    (SELECT $1 as campaign_id, id, name, $21 FROM lists WHERE id=ANY($14::INT[]))
     ON CONFLICT (campaign_id, list_id) DO UPDATE SET list_name = EXCLUDED.list_name;
 
 -- name: update-campaign-counts
@@ -484,6 +491,6 @@ WITH view AS (
     LEFT JOIN subscribers ON (CASE WHEN $2::TEXT != '' THEN subscribers.uuid = $2::UUID ELSE FALSE END)
     WHERE campaigns.uuid = $1
 )
-INSERT INTO campaign_views (campaign_id, subscriber_id)
-    VALUES((SELECT campaign_id FROM view), (SELECT subscriber_id FROM view));
+INSERT INTO campaign_views (campaign_id, subscriber_id, tenant_id)
+    VALUES((SELECT campaign_id FROM view), (SELECT subscriber_id FROM view), $3);
 

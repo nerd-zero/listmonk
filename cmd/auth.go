@@ -83,12 +83,16 @@ var (
 
 // LoginPage renders the login page and handles the login form.
 func (a *App) LoginPage(c echo.Context) error {
-	// Has the user been setup?
-	a.Lock()
-	needsUserSetup := a.needsUserSetup
-	a.Unlock()
+	// Has this tenant been set up yet? Checked per-request (not cached)
+	// since it's per-tenant: a tenant with zero users must reach the
+	// first-time-setup flow regardless of whether some other tenant has
+	// already completed it - see HasUsers' doc comment.
+	hasUsers, err := a.core.HasUsers(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
 
-	if needsUserSetup {
+	if !hasUsers {
 		return a.LoginSetupPage(c)
 	}
 
@@ -112,9 +116,6 @@ func (a *App) LoginSetupPage(c echo.Context) error {
 	if c.Request().Method == http.MethodPost {
 		loginErr = a.doFirstTimeSetup(c)
 		if loginErr == nil {
-			a.Lock()
-			a.needsUserSetup = false
-			a.Unlock()
 			return c.Redirect(http.StatusFound, utils.SanitizeURI(c.FormValue("next")))
 		}
 	}
@@ -204,7 +205,7 @@ func (a *App) OIDCLogin(c echo.Context) error {
 	}
 
 	// Redirect to the external OIDC provider.
-	return c.Redirect(http.StatusFound, a.auth.GetOIDCAuthURL(base64.URLEncoding.EncodeToString(b), nonce.Value))
+	return c.Redirect(http.StatusFound, a.auth.GetOIDCAuthURL(tenantID(c), base64.URLEncoding.EncodeToString(b), nonce.Value))
 }
 
 // OIDCFinish receives the redirect callback from the OIDC provider and completes the handshake.
@@ -216,7 +217,7 @@ func (a *App) OIDCFinish(c echo.Context) error {
 	}
 
 	// Validate the OIDC token.
-	oidcToken, claims, err := a.auth.ExchangeOIDCToken(c.Request().URL.Query().Get("code"), nonce.Value)
+	oidcToken, claims, err := a.auth.ExchangeOIDCToken(tenantID(c), c.Request().URL.Query().Get("code"), nonce.Value)
 	if err != nil {
 		return a.renderLoginPage(c, err)
 	}
@@ -249,11 +250,12 @@ func (a *App) OIDCFinish(c echo.Context) error {
 	claims.Email = email
 
 	// Get the user by e-mail received from OIDC.
-	user, userErr := a.core.GetUser(0, "", email)
+	user, userErr := a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if userErr != nil {
 		// If the user doesn't exist, and auto-creation is enabled, create a new user.
-		if httpErr, ok := userErr.(*echo.HTTPError); ok && httpErr.Code == http.StatusNotFound && a.cfg.Security.OIDC.AutoCreateUsers {
-			u, err := a.createOIDCUser(claims, c)
+		settings, settingsErr := a.core.GetSettings(c.Request().Context(), tenantID(c))
+		if httpErr, ok := userErr.(*echo.HTTPError); ok && httpErr.Code == http.StatusNotFound && settingsErr == nil && settings.OIDC.AutoCreateUsers {
+			u, err := a.createOIDCUser(claims, settings, c)
 			if err != nil {
 				return a.renderLoginPage(c, err)
 			}
@@ -265,7 +267,7 @@ func (a *App) OIDCFinish(c echo.Context) error {
 	}
 
 	// Update the user login state (avatar, logged in date) in the DB.
-	if err := a.core.UpdateUserLogin(user.ID, claims.Picture); err != nil {
+	if err := a.core.UpdateUserLogin(c.Request().Context(), tenantID(c), user.ID, claims.Picture); err != nil {
 		return a.renderLoginPage(c, err)
 	}
 
@@ -309,7 +311,7 @@ func (a *App) ResetPage(c echo.Context) error {
 	}
 
 	// Validate that the user exists.
-	_, err = a.core.GetUser(0, "", email)
+	_, err = a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if err != nil {
 		return c.Render(http.StatusBadRequest, tplMessage, makeMsgTpl(a.i18n.T("users.resetPassword"), "", a.i18n.T("users.invalidResetLink")))
 	}
@@ -334,12 +336,14 @@ func (a *App) renderLoginPage(c echo.Context, loginErr error) error {
 		oidcProviderName = ""
 		oidcLogo         = ""
 	)
-	if a.cfg.Security.OIDC.Enabled {
+
+	settings, settingsErr := a.core.GetSettings(c.Request().Context(), tenantID(c))
+	if settingsErr == nil && settings.OIDC.Enabled {
 		// Defaults.
-		oidcProviderName = a.cfg.Security.OIDC.ProviderName
+		oidcProviderName = settings.OIDC.ProviderName
 		oidcLogo = "oidc.png"
 
-		u, err := url.Parse(a.cfg.Security.OIDC.ProviderURL)
+		u, err := url.Parse(settings.OIDC.ProviderURL)
 		if err == nil {
 			h := strings.Split(u.Hostname(), ".")
 
@@ -423,8 +427,9 @@ func (a *App) renderLoginSetupPage(c echo.Context, loginErr error) error {
 	return c.Render(http.StatusOK, "admin-login-setup", out)
 }
 
-// createOIDCUser creates a new user in the DB with the OIDC claims.
-func (a *App) createOIDCUser(claims auth.OIDCclaim, c echo.Context) (auth.User, error) {
+// createOIDCUser creates a new user in the DB with the OIDC claims, using
+// the requesting tenant's own OIDC default-role settings.
+func (a *App) createOIDCUser(claims auth.OIDCclaim, settings models.Settings, c echo.Context) (auth.User, error) {
 	name := claims.Name
 	if name == "" {
 		name = strings.TrimSpace(claims.PreferredUsername)
@@ -434,18 +439,19 @@ func (a *App) createOIDCUser(claims auth.OIDCclaim, c echo.Context) (auth.User, 
 	}
 
 	var listRoleID *int
-	if a.cfg.Security.OIDC.DefaultListRoleID > 0 {
-		listRoleID = &a.cfg.Security.OIDC.DefaultListRoleID
+	if settings.OIDC.DefaultListRoleID.Valid && settings.OIDC.DefaultListRoleID.Int > 0 {
+		id := int(settings.OIDC.DefaultListRoleID.Int)
+		listRoleID = &id
 	}
 
-	user, err := a.core.CreateUser(auth.User{
+	user, err := a.core.CreateUser(c.Request().Context(), tenantID(c), auth.User{
 		Type:          auth.UserTypeUser,
 		HasPassword:   false,
 		PasswordLogin: false,
 		Username:      claims.Email,
 		Name:          name,
 		Email:         null.NewString(claims.Email, true),
-		UserRoleID:    a.cfg.Security.OIDC.DefaultUserRoleID,
+		UserRoleID:    int(settings.OIDC.DefaultUserRoleID.Int),
 		ListRoleID:    listRoleID,
 		Status:        auth.UserStatusEnabled,
 	})
@@ -476,7 +482,7 @@ func (a *App) doLogin(c echo.Context) error {
 	}
 
 	// Log the user in by fetching and verifying credentials from the DB.
-	user, err := a.core.LoginUser(username, password)
+	user, err := a.core.LoginUser(c.Request().Context(), tenantID(c), username, password)
 	if err != nil {
 		return err
 	}
@@ -527,8 +533,34 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("users.passwordMismatch"))
 	}
 
-	// Create the default "Super Admin" with all permissions if it doesn't exist.
-	if _, err := a.core.GetRole(auth.SuperAdminRoleID); err != nil {
+	// Create the default "Super Admin" with all permissions if it doesn't
+	// already exist for this tenant.
+	//
+	// Looked up by name (not auth.SuperAdminRoleID, a global constant)
+	// since role IDs are a single sequence shared across all tenants - a
+	// different tenant's role id=1 is invisible under RLS, so checking by
+	// ID alone can never find a non-first tenant's existing role. That
+	// previously meant every tenant after the first unconditionally
+	// created a brand new role on every first-time-setup attempt,
+	// including retries: if a prior attempt got as far as creating the
+	// role but failed before creating the user (e.g. a duplicate
+	// username, a network blip), the orphaned role stuck around, and
+	// retrying hit `idx_roles_name`'s (tenant_id, type, name) uniqueness
+	// constraint instead of reusing it. Found live during real tenant
+	// onboarding, not from reading the code.
+	roleID := 0
+	roles, err := a.core.GetRoles(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	for _, r := range roles {
+		if r.Type == auth.RoleTypeUser && r.Name.String == "Super Admin" {
+			roleID = r.ID
+			break
+		}
+	}
+
+	if roleID == 0 {
 		r := auth.Role{
 			Type: auth.RoleTypeUser,
 			Name: null.NewString("Super Admin", true),
@@ -538,9 +570,11 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 		}
 
 		// Create the role in the DB.
-		if _, err := a.core.CreateRole(r); err != nil {
+		newRole, err := a.core.CreateRole(c.Request().Context(), tenantID(c), r)
+		if err != nil {
 			return err
 		}
+		roleID = newRole.ID
 	}
 
 	// Create the super admin user in the DB.
@@ -552,15 +586,15 @@ func (a *App) doFirstTimeSetup(c echo.Context) error {
 		Name:          username,
 		Password:      null.NewString(password, true),
 		Email:         null.NewString(email, true),
-		UserRoleID:    auth.SuperAdminRoleID,
+		UserRoleID:    roleID,
 		Status:        auth.UserStatusEnabled,
 	}
-	if _, err := a.core.CreateUser(u); err != nil {
+	if _, err := a.core.CreateUser(c.Request().Context(), tenantID(c), u); err != nil {
 		return err
 	}
 
 	// Log the user in directly.
-	user, err := a.core.LoginUser(username, password)
+	user, err := a.core.LoginUser(c.Request().Context(), tenantID(c), username, password)
 	if err != nil {
 		return err
 	}
@@ -596,7 +630,7 @@ func (a *App) doForgotPassword(c echo.Context) error {
 	}
 
 	// Get the user by email.
-	user, err := a.core.GetUser(0, "", email)
+	user, err := a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if err != nil {
 		return c.Render(http.StatusOK, tplMessage, makeMsgTpl(a.i18n.T("users.resetPassword"), "", a.i18n.T("users.resetLinkSent")))
 	}
@@ -678,7 +712,7 @@ func (a *App) doResetPassword(c echo.Context, token, email string) error {
 	}
 
 	// Get the user.
-	user, err := a.core.GetUser(0, "", email)
+	user, err := a.core.GetUser(c.Request().Context(), tenantID(c), 0, "", email)
 	if err != nil {
 		return c.Render(http.StatusBadRequest, tplMessage, makeMsgTpl(a.i18n.T("users.resetPassword"), "", a.i18n.T("users.invalidResetLink")))
 	}
@@ -689,7 +723,7 @@ func (a *App) doResetPassword(c echo.Context, token, email string) error {
 	}
 
 	user.Password = null.NewString(password, true)
-	if _, err := a.core.UpdateUserProfile(user.ID, user); err != nil {
+	if _, err := a.core.UpdateUserProfile(c.Request().Context(), tenantID(c), user.ID, user); err != nil {
 		a.log.Printf("error updating user password: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("globals.messages.internalError"))
 	}
@@ -730,7 +764,7 @@ func (a *App) doTwofaVerify(c echo.Context, token string, userID int, next strin
 	}
 
 	// Get the user.
-	user, err := a.core.GetUser(userID, "", "")
+	user, err := a.core.GetUser(c.Request().Context(), tenantID(c), userID, "", "")
 	if err != nil {
 		return a.renderTwofaPage(c, token, next, a.i18n.T("users.invalidRequest"))
 	}

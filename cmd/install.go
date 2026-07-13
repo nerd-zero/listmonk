@@ -137,6 +137,7 @@ func installLists(q *models.Queries) (int, int) {
 		defList   int
 		optinList int
 	)
+	// tenant_id=1: install always seeds tenant 1.
 	if err := q.CreateList.Get(&defList,
 		uuid.Must(uuid.NewV4()),
 		"Default list",
@@ -145,6 +146,7 @@ func installLists(q *models.Queries) (int, int) {
 		models.ListStatusActive,
 		pq.StringArray{"test"},
 		"",
+		1,
 	); err != nil {
 		lo.Fatalf("error creating list: %v", err)
 	}
@@ -156,6 +158,7 @@ func installLists(q *models.Queries) (int, int) {
 		models.ListStatusActive,
 		pq.StringArray{"test"},
 		"",
+		1,
 	); err != nil {
 		lo.Fatalf("error creating list: %v", err)
 	}
@@ -164,7 +167,7 @@ func installLists(q *models.Queries) (int, int) {
 }
 
 func installSubs(defListID, optinListID int, q *models.Queries) {
-	// Sample subscriber.
+	// Sample subscriber. tenant_id=1: install always seeds tenant 1.
 	if _, err := q.UpsertSubscriber.Exec(
 		uuid.Must(uuid.NewV4()),
 		"john@example.com",
@@ -172,7 +175,7 @@ func installSubs(defListID, optinListID int, q *models.Queries) {
 		`{"type": "known", "good": true, "city": "Bengaluru"}`,
 		pq.Int64Array{int64(defListID)},
 		models.SubscriptionStatusUnconfirmed,
-		true, true); err != nil {
+		true, true, 1); err != nil {
 		lo.Fatalf("Error creating subscriber: %v", err)
 	}
 	if _, err := q.UpsertSubscriber.Exec(
@@ -182,7 +185,7 @@ func installSubs(defListID, optinListID int, q *models.Queries) {
 		`{"type": "unknown", "good": true, "city": "Bengaluru"}`,
 		pq.Int64Array{int64(optinListID)},
 		models.SubscriptionStatusUnconfirmed,
-		true, true); err != nil {
+		true, true, 1); err != nil {
 		lo.Fatalf("error creating subscriber: %v", err)
 	}
 }
@@ -194,8 +197,9 @@ func installTemplates(q *models.Queries) (int, int) {
 		lo.Fatalf("error reading default e-mail template: %v", err)
 	}
 
+	// tenant_id=1: install always seeds tenant 1.
 	var campTplID int
-	if err := q.CreateTemplate.Get(&campTplID, "Default campaign template", models.TemplateTypeCampaign, "", campTpl.ReadBytes(), nil); err != nil {
+	if err := q.CreateTemplate.Get(&campTplID, "Default campaign template", models.TemplateTypeCampaign, "", campTpl.ReadBytes(), nil, 1); err != nil {
 		lo.Fatalf("error creating default campaign template: %v", err)
 	}
 	if _, err := q.SetDefaultTemplate.Exec(campTplID); err != nil {
@@ -209,7 +213,7 @@ func installTemplates(q *models.Queries) (int, int) {
 	}
 
 	var archiveTplID int
-	if err := q.CreateTemplate.Get(&archiveTplID, "Default archive template", models.TemplateTypeCampaign, "", archiveTpl.ReadBytes(), nil); err != nil {
+	if err := q.CreateTemplate.Get(&archiveTplID, "Default archive template", models.TemplateTypeCampaign, "", archiveTpl.ReadBytes(), nil, 1); err != nil {
 		lo.Fatalf("error creating default campaign template: %v", err)
 	}
 
@@ -219,7 +223,7 @@ func installTemplates(q *models.Queries) (int, int) {
 		lo.Fatalf("error reading default e-mail template: %v", err)
 	}
 
-	if _, err := q.CreateTemplate.Exec("Sample transactional template", models.TemplateTypeTx, "Welcome {{ .Subscriber.Name }}", txTpl.ReadBytes(), nil); err != nil {
+	if _, err := q.CreateTemplate.Exec("Sample transactional template", models.TemplateTypeTx, "Welcome {{ .Subscriber.Name }}", txTpl.ReadBytes(), nil, 1); err != nil {
 		lo.Fatalf("error creating sample transactional template: %v", err)
 	}
 
@@ -233,7 +237,7 @@ func installTemplates(q *models.Queries) (int, int) {
 		lo.Fatalf("error reading default visual template json: %v", err)
 	}
 
-	if _, err := q.CreateTemplate.Exec("Sample visual template", models.TemplateTypeCampaignVisual, "", visualTpl.ReadBytes(), visualSrc.ReadBytes()); err != nil {
+	if _, err := q.CreateTemplate.Exec("Sample visual template", models.TemplateTypeCampaignVisual, "", visualTpl.ReadBytes(), visualSrc.ReadBytes(), 1); err != nil {
 		lo.Fatalf("error creating default campaign template: %v", err)
 	}
 
@@ -270,6 +274,8 @@ func installCampaign(campTplID, archiveTplID int, q *models.Queries) {
 		`{"name": "Subscriber"}`,
 		nil,
 		nil,
+		// tenant_id - install always seeds tenant 1.
+		1,
 	); err != nil {
 		lo.Fatalf("error creating sample campaign: %v", err)
 	}
@@ -277,11 +283,14 @@ func installCampaign(campTplID, archiveTplID int, q *models.Queries) {
 }
 
 // recordMigrationVersion inserts the given version (of DB migration) into the
-// `migrations` array in the settings table.
+// `migrations` array in the settings table, against tenant 1 - this
+// bookkeeping happens before any tenant concept is meaningful to the
+// upgrade runner itself, and matches initSettings' boot-time pin to
+// tenant 1 (see its comment for why).
 func recordMigrationVersion(ver string, db *sqlx.DB) error {
-	_, err := db.Exec(fmt.Sprintf(`INSERT INTO settings (key, value)
-	VALUES('migrations', '["%s"]'::JSONB)
-	ON CONFLICT (key) DO UPDATE SET value = settings.value || EXCLUDED.value`, ver))
+	_, err := db.Exec(fmt.Sprintf(`INSERT INTO settings (key, value, tenant_id)
+	VALUES('migrations', '["%s"]'::JSONB, 1)
+	ON CONFLICT (tenant_id, key) DO UPDATE SET value = settings.value || EXCLUDED.value`, ver))
 	return err
 }
 
@@ -321,14 +330,14 @@ func installUser(username, password, apiUsername string, q *models.Queries) {
 		perms = append(perms, p)
 	}
 
-	// Create the Super Admin role in the DB.
+	// Create the Super Admin role in the DB. tenant_id=1: install always seeds tenant 1.
 	var role auth.Role
-	if err := q.CreateRole.Get(&role, "Super Admin", auth.RoleTypeUser, pq.Array(perms)); err != nil {
+	if err := q.CreateRole.Get(&role, "Super Admin", auth.RoleTypeUser, pq.Array(perms), 1); err != nil {
 		lo.Fatalf("error creating super admin role: %v", err)
 	}
 
-	// Create the admin user.
-	if _, err := q.CreateUser.Exec(username, true, password, username+"@listmonk", username, auth.RoleTypeUser, role.ID, nil, auth.UserStatusEnabled); err != nil {
+	// Create the admin user. tenant_id=1: install always seeds tenant 1.
+	if _, err := q.CreateUser.Exec(username, true, password, username+"@listmonk", username, auth.RoleTypeUser, role.ID, nil, auth.UserStatusEnabled, 1); err != nil {
 		lo.Fatalf("error creating superadmin user: %v", err)
 	}
 
@@ -345,7 +354,7 @@ func installUser(username, password, apiUsername string, q *models.Queries) {
 			password = null.String{String: tk, Valid: true}
 		)
 
-		if _, err := q.CreateUser.Exec(apiUsername, false, password, email, apiUsername, auth.UserTypeAPI, role.ID, nil, auth.UserStatusEnabled); err != nil {
+		if _, err := q.CreateUser.Exec(apiUsername, false, password, email, apiUsername, auth.UserTypeAPI, role.ID, nil, auth.UserStatusEnabled, 1); err != nil {
 			lo.Fatalf("error creating superadmin API user: %v", err)
 		}
 

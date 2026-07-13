@@ -65,7 +65,7 @@ var (
 //	@Failure		500	{object}	echo.HTTPError
 //	@Router			/api/settings [get]
 func (a *App) GetSettings(c echo.Context) error {
-	s, err := a.core.GetSettings()
+	s, err := a.core.GetSettings(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (a *App) UpdateSettings(c echo.Context) error {
 	}
 
 	// Get the existing settings.
-	cur, err := a.core.GetSettings()
+	cur, err := a.core.GetSettings(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -343,7 +343,7 @@ func (a *App) UpdateSettings(c echo.Context) error {
 	}
 
 	// Update the settings in the DB.
-	if err := a.core.UpdateSettings(set); err != nil {
+	if err := a.core.UpdateSettings(c.Request().Context(), tenantID(c), set); err != nil {
 		return err
 	}
 
@@ -375,7 +375,7 @@ func (a *App) UpdateSettingsByKey(c echo.Context) error {
 	}
 
 	// Update the value in the DB.
-	if err := a.core.UpdateSettingsByKey(key, b); err != nil {
+	if err := a.core.UpdateSettingsByKey(c.Request().Context(), tenantID(c), key, b); err != nil {
 		return err
 	}
 
@@ -513,7 +513,7 @@ func (a *App) TestScrubSettings(c echo.Context) error {
 
 	// Use the current stored key if the UI sent back a masked placeholder.
 	if strings.Contains(req.APIKey, pwdMask) {
-		s, err := a.core.GetSettings()
+		s, err := a.core.GetSettings(c.Request().Context(), tenantID(c))
 		if err != nil {
 			return err
 		}
@@ -557,7 +557,7 @@ func (a *App) TestScrubSettings(c echo.Context) error {
 //	@Failure	400	{object}	echo.HTTPError
 //	@Router		/api/lists/scrub [get]
 func (a *App) GetScrubListStatus(c echo.Context) error {
-	s, err := a.core.GetSettings()
+	s, err := a.core.GetSettings(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -606,7 +606,7 @@ func (a *App) GetScrubListStatus(c echo.Context) error {
 func (a *App) ScrubList(c echo.Context) error {
 	id := getID(c)
 
-	s, err := a.core.GetSettings()
+	s, err := a.core.GetSettings(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}

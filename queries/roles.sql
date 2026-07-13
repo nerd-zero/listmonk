@@ -27,7 +27,7 @@ SELECT p.*, COALESCE(l.listPerms, '[]'::JSONB) AS "list_permissions" FROM mainro
 
 
 -- name: create-role
-INSERT INTO roles (name, type, permissions, created_at, updated_at) VALUES($1, $2, $3, NOW(), NOW()) RETURNING *;
+INSERT INTO roles (name, type, permissions, created_at, updated_at, tenant_id) VALUES($1, $2, $3, NOW(), NOW(), $4) RETURNING *;
 
 -- name: upsert-list-permissions
 WITH d AS (
@@ -38,8 +38,8 @@ p AS (
     -- Get (list_id, perms[]), (list_id, perms[])
     SELECT UNNEST($2) AS list_id, JSONB_ARRAY_ELEMENTS(TO_JSONB($3::TEXT[][])) AS perms
 )
-INSERT INTO roles (parent_id, list_id, permissions, type)
-    SELECT $1, list_id, ARRAY_REMOVE(ARRAY(SELECT JSONB_ARRAY_ELEMENTS_TEXT(perms)), ''), 'list' FROM p
+INSERT INTO roles (parent_id, list_id, permissions, type, tenant_id)
+    SELECT $1, list_id, ARRAY_REMOVE(ARRAY(SELECT JSONB_ARRAY_ELEMENTS_TEXT(perms)), ''), 'list', $4 FROM p
     ON CONFLICT (parent_id, list_id) DO UPDATE SET permissions = EXCLUDED.permissions;
 
 -- name: delete-list-permission

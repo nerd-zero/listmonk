@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -47,14 +48,15 @@ const (
 // Store represents a data backend, such as a database,
 // that provides subscriber and campaign records.
 type Store interface {
-	NextCampaigns(currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error)
+	NextCampaigns(tenantID int, currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error)
+	GetActiveTenantIDs() ([]int, error)
 	NextSubscribers(campID, limit int) ([]models.Subscriber, error)
 	GetCampaign(campID int) (*models.Campaign, error)
-	GetAttachment(mediaID int) (models.Attachment, error)
-	GetInlineAttachmentByFilename(filename string) (models.Attachment, string, error)
+	GetAttachment(ctx context.Context, tenantID int, mediaID int) (models.Attachment, error)
+	GetInlineAttachmentByFilename(ctx context.Context, tenantID int, filename string) (models.Attachment, string, error)
 	UpdateCampaignStatus(campID int, status string) error
 	UpdateCampaignCounts(campID int, toSend int, sent int, lastSubID int) error
-	CreateLink(url string) (string, error)
+	CreateLink(ctx context.Context, tenantID int, url string) (string, error)
 	BlocklistSubscriber(id int64) error
 	DeleteSubscriber(id int64) error
 }
@@ -68,6 +70,22 @@ type Messenger interface {
 	Close() error
 }
 
+// ErrMessengerNotFound is returned by MessengerResolver when the given
+// tenant has no messenger by that name - callers fall back to the
+// process-global messenger map (e.g. for postback messengers, which
+// aren't tenant-scoped by this resolver).
+var ErrMessengerNotFound = errors.New("messenger not found")
+
+// MessengerResolver resolves a tenant-scoped messenger by name,
+// constructing and caching it lazily. Introduced so per-tenant SMTP
+// config (settings are per-tenant since phase 5) can back real sends
+// without internal/manager needing to import internal/core directly -
+// the concrete implementation lives in cmd/, mirroring how Store already
+// bridges DB access without a direct import.
+type MessengerResolver interface {
+	GetMessenger(ctx context.Context, tenantID int, name string) (Messenger, error)
+}
+
 // CampStats contains campaign stats like per minute send rate.
 type CampStats struct {
 	SendRate int
@@ -78,6 +96,7 @@ type CampStats struct {
 type Manager struct {
 	cfg        Config
 	store      Store
+	resolver   MessengerResolver
 	i18n       *i18n.I18n
 	messengers map[string]Messenger
 	fnNotify   func(subject string, data any) error
@@ -163,7 +182,7 @@ type Config struct {
 var pushTimeout = time.Second * 3
 
 // New returns a new instance of Mailer.
-func New(cfg Config, store Store, i *i18n.I18n, l *log.Logger) *Manager {
+func New(cfg Config, store Store, resolver MessengerResolver, i *i18n.I18n, l *log.Logger) *Manager {
 	if cfg.BatchSize < 1 {
 		cfg.BatchSize = 1000
 	}
@@ -175,9 +194,10 @@ func New(cfg Config, store Store, i *i18n.I18n, l *log.Logger) *Manager {
 	}
 
 	m := &Manager{
-		cfg:   cfg,
-		store: store,
-		i18n:  i,
+		cfg:      cfg,
+		store:    store,
+		resolver: resolver,
+		i18n:     i,
 		fnNotify: func(subject string, data any) error {
 			return notifs.NotifySystem(subject, notifs.TplCampaignStatus, data, nil)
 		},
@@ -249,6 +269,29 @@ func (m *Manager) HasMessenger(id string) bool {
 	_, ok := m.messengers[id]
 
 	return ok
+}
+
+// getMessenger resolves a tenant-scoped messenger by name, falling back to
+// the process-global messenger map (postback messengers, and the pre-#41
+// path if no resolver is set) when the resolver doesn't have one for that
+// tenant. ctx is context.Background() at all current call sites - these
+// are background worker/job paths, not HTTP-request-scoped.
+func (m *Manager) getMessenger(ctx context.Context, tenantID int, name string) (Messenger, error) {
+	if m.resolver != nil {
+		msgr, err := m.resolver.GetMessenger(ctx, tenantID, name)
+		if err == nil {
+			return msgr, nil
+		}
+		if !errors.Is(err, ErrMessengerNotFound) {
+			return nil, err
+		}
+	}
+
+	msgr, ok := m.messengers[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown messenger: %s", name)
+	}
+	return msgr, nil
 }
 
 // HasRunningCampaigns checks if there are any active campaigns.
@@ -331,8 +374,8 @@ func (m *Manager) Run() {
 }
 
 // CacheTpl caches a template for ad-hoc use. This is currently only used by tx templates.
-func (m *Manager) CacheTpl(id int, tpl *models.Template) {
-	if body, atts := m.ApplyInlineImages(tpl.Body); len(atts) > 0 {
+func (m *Manager) CacheTpl(tenantID int, id int, tpl *models.Template) {
+	if body, atts := m.ApplyInlineImages(tenantID, tpl.Body); len(atts) > 0 {
 		tpl.Body = body
 		tpl.Attachments = atts
 		if err := tpl.Compile(m.GenericTemplateFuncs()); err != nil {
@@ -380,7 +423,7 @@ func (m *Manager) TemplateFuncs(c *models.Campaign) template.FuncMap {
 				subUUID = dummyUUID
 			}
 
-			return m.trackLink(url, msg.Campaign.UUID, subUUID)
+			return m.trackLink(msg.Campaign.TenantID, url, msg.Campaign.UUID, subUUID)
 		},
 		"TrackView": func(msg *CampaignMessage) template.HTML {
 			if m.cfg.DisableTracking {
@@ -450,33 +493,62 @@ func (m *Manager) scanCampaigns(tick time.Duration) {
 
 	// Periodically scan the data source for campaigns to process.
 	for range t.C {
-		ids, counts := m.getCurrentCampaigns()
-		campaigns, err := m.store.NextCampaigns(ids, counts)
+		tenantIDs, err := m.store.GetActiveTenantIDs()
 		if err != nil {
-			m.log.Printf("error fetching campaigns: %v", err)
+			m.log.Printf("error fetching active tenants: %v", err)
 			continue
 		}
 
-		for _, c := range campaigns {
-			// Create a new pipe that'll handle this campaign's states.
-			p, err := m.newPipe(c)
+		current := m.getCurrentCampaigns()
+
+		for _, tenantID := range tenantIDs {
+			// current[tenantID] is the zero value (nil ids/counts) for a
+			// tenant with no in-flight campaigns - must not pass that
+			// through as-is. pq.Int64Array(nil) serializes to SQL NULL,
+			// not an empty array, and next-campaigns' `NOT(id = ANY($1))`
+			// evaluates to NULL (filtering out every row) rather than
+			// TRUE against a NULL array, via ordinary three-valued SQL
+			// NULL comparison semantics - silently returning zero
+			// campaigns instead of erroring. Caught by live-testing (a
+			// campaign set to "running" was never picked up), not by
+			// reading the code. The original single-tenant
+			// getCurrentCampaigns avoided this by explicitly building
+			// with make([]int64, 0, ...) rather than a nil default.
+			e := current[tenantID]
+			if e.ids == nil {
+				e.ids = []int64{}
+			}
+			if e.counts == nil {
+				e.counts = []int64{}
+			}
+
+			campaigns, err := m.store.NextCampaigns(tenantID, e.ids, e.counts)
 			if err != nil {
-				m.log.Printf("error processing campaign (%s): %v", c.Name, err)
+				m.log.Printf("error fetching campaigns for tenant %d: %v", tenantID, err)
 				continue
 			}
-			m.log.Printf("start processing campaign (%s)", c.Name)
 
-			// If subscriber processing is busy, move on. Blocking and waiting
-			// can end up in a race condition where the waiting campaign's
-			// state in the data source has changed.
-			select {
-			case m.nextPipes <- p:
-			default:
-				// If the queue is full for any reason, stop the pipe and release it.
-				// The cleanup() records the state in DB and scanCampaigns() picks it up
-				// at a later point.
-				p.Stop(false)
-				p.wg.Done()
+			for _, c := range campaigns {
+				// Create a new pipe that'll handle this campaign's states.
+				p, err := m.newPipe(c)
+				if err != nil {
+					m.log.Printf("error processing campaign (%s): %v", c.Name, err)
+					continue
+				}
+				m.log.Printf("start processing campaign (%s)", c.Name)
+
+				// If subscriber processing is busy, move on. Blocking and waiting
+				// can end up in a race condition where the waiting campaign's
+				// state in the data source has changed.
+				select {
+				case m.nextPipes <- p:
+				default:
+					// If the queue is full for any reason, stop the pipe and release it.
+					// The cleanup() records the state in DB and scanCampaigns() picks it up
+					// at a later point.
+					p.Stop(false)
+					p.wg.Done()
+				}
 			}
 		}
 	}
@@ -511,6 +583,7 @@ func (m *Manager) worker() {
 
 			// Outgoing message.
 			out := models.Message{
+				TenantID:    msg.Campaign.TenantID,
 				From:        msg.from,
 				To:          []string{msg.to},
 				Subject:     msg.subject,
@@ -543,7 +616,10 @@ func (m *Manager) worker() {
 			out.Headers = h
 
 			// Push the message to the messenger.
-			err := m.messengers[msg.Campaign.Messenger].Push(out)
+			msgr, err := m.getMessenger(context.Background(), msg.Campaign.TenantID, msg.Campaign.Messenger)
+			if err == nil {
+				err = msgr.Push(out)
+			}
 			if err != nil {
 				m.log.Printf("error sending message in campaign %s: subscriber %d: %v", msg.Campaign.Name, msg.Subscriber.ID, err)
 			}
@@ -574,7 +650,11 @@ func (m *Manager) worker() {
 			}
 
 			// Push the message to the messenger.
-			if err := m.messengers[msg.Messenger].Push(msg); err != nil {
+			msgr, err := m.getMessenger(context.Background(), msg.TenantID, msg.Messenger)
+			if err == nil {
+				err = msgr.Push(msg)
+			}
+			if err != nil {
 				m.log.Printf("error sending message '%s': %v", msg.Subject, err)
 			}
 		}
@@ -583,30 +663,44 @@ func (m *Manager) worker() {
 
 // getCurrentCampaigns returns the IDs of campaigns currently being processed
 // and their sent counts.
-func (m *Manager) getCurrentCampaigns() ([]int64, []int64) {
-	// Needs to return an empty slice in case there are no campaigns.
+// currentCampaignIDs holds one tenant's in-flight campaign IDs and their
+// pending sent-count increments.
+type currentCampaignIDs struct {
+	ids    []int64
+	counts []int64
+}
+
+// getCurrentCampaigns groups all currently-processing campaigns (m.pipes,
+// tracked globally by campaign ID regardless of tenant) by tenant, so
+// scanCampaigns can call Store.NextCampaigns once per tenant with only
+// that tenant's IDs/counts. This grouping - not a SQL-level change - is
+// what keeps the per-tenant sent-count increment in
+// queries/campaigns.sql's next-campaigns from being applied once per
+// tenant scanned per tick (it would double/triple/etc.-count otherwise,
+// since that query updates by campaign ID with no awareness of which
+// call it's answering).
+func (m *Manager) getCurrentCampaigns() map[int]currentCampaignIDs {
 	m.pipesMut.RLock()
 	defer m.pipesMut.RUnlock()
 
-	var (
-		ids    = make([]int64, 0, len(m.pipes))
-		counts = make([]int64, 0, len(m.pipes))
-	)
+	out := make(map[int]currentCampaignIDs, len(m.pipes))
 	for _, p := range m.pipes {
-		ids = append(ids, int64(p.camp.ID))
+		e := out[p.camp.TenantID]
+		e.ids = append(e.ids, int64(p.camp.ID))
 
 		// Get the sent counts for campaigns and reset them to 0
 		// as in the database, they're stored cumulatively (sent += $newSent).
-		counts = append(counts, p.sent.Load())
+		e.counts = append(e.counts, p.sent.Load())
 		p.sent.Store(0)
+		out[p.camp.TenantID] = e
 	}
 
-	return ids, counts
+	return out
 }
 
 // trackLink register a URL and return its UUID to be used in message templates
 // for tracking links.
-func (m *Manager) trackLink(url, campUUID, subUUID string) string {
+func (m *Manager) trackLink(tenantID int, url, campUUID, subUUID string) string {
 	if m.cfg.DisableTracking {
 		return url
 	}
@@ -621,7 +715,7 @@ func (m *Manager) trackLink(url, campUUID, subUUID string) string {
 	m.linksMut.RUnlock()
 
 	// Register link.
-	uu, err := m.store.CreateLink(url)
+	uu, err := m.store.CreateLink(context.Background(), tenantID, url)
 	if err != nil {
 		m.log.Printf("error registering tracking for link '%s': %v", url, err)
 
@@ -694,7 +788,7 @@ func (m *Manager) attachMedia(c *models.Campaign) error {
 	}
 
 	for _, mid := range []int64(c.MediaIDs) {
-		a, err := m.store.GetAttachment(int(mid))
+		a, err := m.store.GetAttachment(context.Background(), c.TenantID, int(mid))
 		if err != nil {
 			return fmt.Errorf("error fetching attachment %d on campaign %s: %v", mid, c.Name, err)
 		}
@@ -712,10 +806,10 @@ func (m *Manager) LoadInlineImages(c *models.Campaign) error {
 	}
 
 	cidCache := make(map[string]string)
-	body, atts := m.applyInlineImages(c.Body, cidCache)
+	body, atts := m.applyInlineImages(c.TenantID, c.Body, cidCache)
 	c.Body = body
 
-	tplBody, tplAtts := m.applyInlineImages(c.TemplateBody, cidCache)
+	tplBody, tplAtts := m.applyInlineImages(c.TenantID, c.TemplateBody, cidCache)
 	c.TemplateBody = tplBody
 	atts = append(atts, tplAtts...)
 
@@ -726,11 +820,11 @@ func (m *Manager) LoadInlineImages(c *models.Campaign) error {
 // ApplyInlineImages scans body for <img ... data-embed ...> tags, resolves
 // each unique src filename to a media item, attaches it as an inline part, and
 // rewrites the matched img src to cid.
-func (m *Manager) ApplyInlineImages(body string) (string, []models.Attachment) {
-	return m.applyInlineImages(body, make(map[string]string))
+func (m *Manager) ApplyInlineImages(tenantID int, body string) (string, []models.Attachment) {
+	return m.applyInlineImages(tenantID, body, make(map[string]string))
 }
 
-func (m *Manager) applyInlineImages(body string, cache map[string]string) (string, []models.Attachment) {
+func (m *Manager) applyInlineImages(tenantID int, body string, cache map[string]string) (string, []models.Attachment) {
 	if !strings.Contains(body, attribInlineEmbed) {
 		return body, nil
 	}
@@ -749,7 +843,7 @@ func (m *Manager) applyInlineImages(body string, cache map[string]string) (strin
 
 		cid, ok := cache[src]
 		if !ok {
-			if a, c, err := m.store.GetInlineAttachmentByFilename(fname); err == nil {
+			if a, c, err := m.store.GetInlineAttachmentByFilename(context.Background(), tenantID, fname); err == nil {
 				atts = append(atts, a)
 				cid = c
 			} else {

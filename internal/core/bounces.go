@@ -1,9 +1,11 @@
 package core
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/knadh/listmonk/models"
 	"github.com/labstack/echo/v4"
 	"github.com/lib/pq"
@@ -13,7 +15,7 @@ var bounceQuerySortFields = []string{"email", "campaign_name", "source", "create
 
 // QueryBounces retrieves paginated bounce entries based on the given params.
 // It also returns the total number of bounce records in the DB.
-func (c *Core) QueryBounces(campID, subID int, source, orderBy, order string, offset, limit int) ([]models.Bounce, int, error) {
+func (c *Core) QueryBounces(ctx context.Context, tenantID int, campID, subID int, source, orderBy, order string, offset, limit int) ([]models.Bounce, int, error) {
 	if !strSliceContains(orderBy, bounceQuerySortFields) {
 		orderBy = "created_at"
 	}
@@ -23,7 +25,10 @@ func (c *Core) QueryBounces(campID, subID int, source, orderBy, order string, of
 
 	out := []models.Bounce{}
 	stmt := strings.ReplaceAll(c.q.QueryBounces, "%order%", orderBy+" "+order)
-	if err := c.db.Select(&out, stmt, 0, campID, subID, source, offset, limit); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return tx.Select(&out, stmt, 0, campID, subID, source, offset, limit)
+	})
+	if err != nil {
 		c.log.Printf("error fetching bounces: %v", err)
 		return nil, 0, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.bounce}", "error", pqErrMsg(err)))
@@ -38,10 +43,13 @@ func (c *Core) QueryBounces(campID, subID int, source, orderBy, order string, of
 }
 
 // GetBounce retrieves bounce entries based on the given params.
-func (c *Core) GetBounce(id int) (models.Bounce, error) {
+func (c *Core) GetBounce(ctx context.Context, tenantID int, id int) (models.Bounce, error) {
 	var out []models.Bounce
 	stmt := strings.ReplaceAll(c.q.QueryBounces, "%order%", "id "+SortAsc)
-	if err := c.db.Select(&out, stmt, id, 0, 0, "", 0, 1); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return tx.Select(&out, stmt, id, 0, 0, "", 0, 1)
+	})
+	if err != nil {
 		c.log.Printf("error fetching bounces: %v", err)
 		return models.Bounce{}, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.bounce}", "error", pqErrMsg(err)))
@@ -57,6 +65,12 @@ func (c *Core) GetBounce(id int) (models.Bounce, error) {
 }
 
 // RecordBounce records a new bounce.
+//
+// This is called from bounce webhook/POP3-polling paths (internal/bounce)
+// which have no request-scoped tenant to resolve - it does NOT go through
+// WithTenant. queries/bounces.sql's record-bounce derives the inserted
+// row's tenant_id from the resolved subscriber's own tenant_id instead of a
+// session variable; see that query's comment.
 func (c *Core) RecordBounce(b models.Bounce) error {
 	action, ok := c.consts.BounceActions[b.Type]
 	if !ok {
@@ -87,8 +101,12 @@ func (c *Core) RecordBounce(b models.Bounce) error {
 }
 
 // BlocklistBouncedSubscribers blocklists all bounced subscribers.
-func (c *Core) BlocklistBouncedSubscribers() error {
-	if _, err := c.q.BlocklistBouncedSubscribers.Exec(); err != nil {
+func (c *Core) BlocklistBouncedSubscribers(ctx context.Context, tenantID int) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.BlocklistBouncedSubscribers).Exec()
+		return err
+	})
+	if err != nil {
 		c.log.Printf("error blocklisting bounced subscribers: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, c.i18n.Ts("subscribers.errorBlocklisting", "error", err.Error()))
 	}
@@ -97,13 +115,17 @@ func (c *Core) BlocklistBouncedSubscribers() error {
 }
 
 // DeleteBounce deletes a list.
-func (c *Core) DeleteBounce(id int) error {
-	return c.DeleteBounces([]int{id}, false)
+func (c *Core) DeleteBounce(ctx context.Context, tenantID int, id int) error {
+	return c.DeleteBounces(ctx, tenantID, []int{id}, false)
 }
 
 // DeleteBounces deletes multiple lists.
-func (c *Core) DeleteBounces(ids []int, all bool) error {
-	if _, err := c.q.DeleteBounces.Exec(pq.Array(ids), all); err != nil {
+func (c *Core) DeleteBounces(ctx context.Context, tenantID int, ids []int, all bool) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.DeleteBounces).Exec(pq.Array(ids), all)
+		return err
+	})
+	if err != nil {
 		c.log.Printf("error deleting lists: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorDeleting", "name", "{globals.terms.list}", "error", pqErrMsg(err)))

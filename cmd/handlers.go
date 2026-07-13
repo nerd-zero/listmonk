@@ -10,6 +10,8 @@ import (
 
 	_ "github.com/knadh/listmonk/docs" // swaggo generated docs
 	"github.com/knadh/listmonk/internal/auth"
+	"github.com/knadh/listmonk/internal/operator"
+	"github.com/knadh/listmonk/models"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
@@ -234,6 +236,27 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 	}
 
 	// =================================================================
+	// Operator API: cross-tenant tenant provisioning/management. Entirely
+	// separate auth model (static bearer token, see internal/operator) -
+	// no session/JWT, no RLS-scoped DB role. Off by default; the group is
+	// only registered when the Operator API is configured (a.operator is
+	// non-nil), so it's simply absent (404) otherwise, not just
+	// unauthenticated - see docs/design/multi-tenancy.md's Operator API
+	// section.
+	if a.operator != nil {
+		g := e.Group("/api/operator", operator.Middleware(a.cfg.Operator.Token))
+		g.GET("/organizations", a.ListOperatorOrganizations)
+		g.GET("/organizations/:id", hasID(a.GetOperatorOrganization))
+		g.POST("/organizations", a.CreateOperatorOrganization)
+		g.GET("/tenants", a.ListOperatorTenants)
+		g.GET("/tenants/:id", hasID(a.GetOperatorTenant))
+		g.POST("/tenants", a.CreateOperatorTenant)
+		g.PUT("/tenants/:id/status", hasID(a.UpdateOperatorTenantStatus))
+		g.POST("/tenants/:id/setup-link", hasID(a.CreateOperatorSetupLink))
+		g.PUT("/tenants/:id/smtp", hasID(a.SetOperatorTenantSMTP))
+	}
+
+	// =================================================================
 	// Public API endpoints.
 	{
 		// Public unauthenticated endpoints.
@@ -259,7 +282,21 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 		g.GET(path.Join(uriAdmin, "/reset"), a.ResetPage)
 		g.POST(path.Join(uriAdmin, "/reset"), a.ResetPage)
 
-		if a.cfg.Security.OIDC.Enabled {
+		// Consumes the one-time setup link an Operator API-provisioned
+		// tenant's initial admin uses to set their password. Registered
+		// unconditionally (harmless when the Operator API itself is
+		// disabled - no tokens can ever exist to redeem).
+		g.GET(path.Join(uriAdmin, "/operator-setup"), a.OperatorSetupPage)
+		g.POST(path.Join(uriAdmin, "/operator-setup"), a.OperatorSetupPage)
+
+		// When multi-tenancy is enabled, OIDC is per-tenant (settings are
+		// per-tenant since phase 5) - a tenant may enable it even if the
+		// boot-time global config (tenant 1's settings) has it disabled, so
+		// the routes are always registered and OIDCLogin/OIDCFinish check
+		// the resolved tenant's own settings at request time. In
+		// single-tenant mode, the global flag is still the gate, preserving
+		// existing behavior (routes only exist if configured).
+		if a.cfg.MultiTenancyEnabled || a.cfg.Security.OIDC.Enabled {
 			g.POST("/auth/oidc", a.OIDCLogin)
 			g.GET("/auth/oidc", a.OIDCFinish)
 		}
@@ -412,7 +449,7 @@ func (a *App) hasSub(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		subUUID := c.Param("subUUID")
 
-		if _, err := a.core.GetSubscriber(0, subUUID, ""); err != nil {
+		if _, err := a.core.GetSubscriber(c.Request().Context(), tenantID(c), 0, subUUID, ""); err != nil {
 			if er, ok := err.(*echo.HTTPError); ok && er.Code == http.StatusBadRequest {
 				return c.Render(http.StatusNotFound, tplMessage,
 					makeMsgTpl(a.i18n.T("public.notFoundTitle"), "", er.Message.(string)))
@@ -438,6 +475,21 @@ func noIndex(next echo.HandlerFunc) echo.HandlerFunc {
 // getID returns the :id param from the URL parsed and stored as an int by the hasID middleware.
 func getID(c echo.Context) int {
 	return c.Get("id").(int)
+}
+
+// tenantID returns the tenant resolved for this request by
+// internal/tenant.Middleware. Used uniformly at every Core call site
+// (both authenticated and public routes) rather than switching between
+// auth.GetUser(c).TenantID and the resolved tenant depending on route
+// type - phase 4's auth cross-check already guarantees the two agree
+// wherever a user is authenticated, and public routes have no user at
+// all. Falls back to 1 (the default tenant) if the middleware wasn't run,
+// e.g. in a test that constructs a handler directly.
+func tenantID(c echo.Context) int {
+	if t, ok := c.Get(models.TenantCtxKey).(*models.Tenant); ok {
+		return t.ID
+	}
+	return 1
 }
 
 // trustedURLsToCORSOrigins takes a list of trusted URLs and returns a list of

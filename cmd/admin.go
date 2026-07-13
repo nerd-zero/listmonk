@@ -27,16 +27,17 @@ type serverConfig struct {
 		DisableTracking    bool `json:"disable_tracking"`
 		IndividualTracking bool `json:"individual_tracking"`
 	} `json:"privacy"`
-	MediaProvider string          `json:"media_provider"`
-	Messengers    []string        `json:"messengers"`
-	Langs         []i18nLang      `json:"langs"`
-	Lang          string          `json:"lang"`
-	Permissions   json.RawMessage `json:"permissions"`
-	Update        *AppUpdate      `json:"update"`
-	NeedsRestart  bool            `json:"needs_restart"`
-	HasLegacyUser bool            `json:"has_legacy_user"`
-	ScrubEnabled  bool            `json:"scrub_enabled"`
-	Version       string          `json:"version"`
+	MediaProvider    string          `json:"media_provider"`
+	Messengers       []string        `json:"messengers"`
+	Langs            []i18nLang      `json:"langs"`
+	Lang             string          `json:"lang"`
+	Permissions      json.RawMessage `json:"permissions"`
+	Update           *AppUpdate      `json:"update"`
+	NeedsRestart     bool            `json:"needs_restart"`
+	HasLegacyUser    bool            `json:"has_legacy_user"`
+	ScrubEnabled     bool            `json:"scrub_enabled"`
+	Version          string          `json:"version"`
+	OrganizationName string          `json:"organization_name,omitempty"`
 } // @name ServerConfig
 
 // GetServerConfig returns general server config.
@@ -48,8 +49,17 @@ type serverConfig struct {
 //	@Success		200	{object}	serverConfig
 //	@Router			/api/config [get]
 func (a *App) GetServerConfig(c echo.Context) error {
+	rootURL := a.urlCfg.RootURL
+	if a.cfg.MultiTenancyEnabled {
+		// a.urlCfg.RootURL is a single boot-time value derived from
+		// tenant 1's settings - every other tenant's admin SPA would
+		// otherwise be told tenant 1's public URL for its own lists/
+		// campaigns. Derive it from the actual request instead.
+		rootURL = c.Scheme() + "://" + c.Request().Host
+	}
+
 	out := serverConfig{
-		RootURL:       a.urlCfg.RootURL,
+		RootURL:       rootURL,
 		FromEmail:     a.cfg.FromEmail,
 		Lang:          a.cfg.Lang,
 		Permissions:   a.cfg.PermissionsRaw,
@@ -81,7 +91,19 @@ func (a *App) GetServerConfig(c echo.Context) error {
 		out.PublicSubscription.CaptchaKey = null.StringFrom(a.cfg.Security.Captcha.HCaptcha.Key)
 	}
 
-	out.MediaProvider = a.cfg.MediaUpload.Provider
+	if _, settings, err := a.media.Get(c.Request().Context(), tenantID(c)); err == nil {
+		out.MediaProvider = settings.UploadProvider
+	} else {
+		out.MediaProvider = a.cfg.MediaUpload.Provider
+	}
+
+	// Organizations are an operator-managed, multi-tenancy-only concept -
+	// single-tenant installs have no tenant to look one up for.
+	if a.cfg.MultiTenancyEnabled {
+		if name, err := a.core.GetTenantOrganizationName(tenantID(c)); err == nil {
+			out.OrganizationName = name
+		}
+	}
 
 	// Language list.
 	langList, err := getI18nLangList(a.fs)
@@ -96,7 +118,7 @@ func (a *App) GetServerConfig(c echo.Context) error {
 		out.Messengers = append(out.Messengers, m.Name())
 	}
 
-	if s, err := a.core.GetSettings(); err == nil {
+	if s, err := a.core.GetSettings(c.Request().Context(), tenantID(c)); err == nil {
 		out.ScrubEnabled = s.Scrub.Enabled && s.Scrub.URL != "" && s.Scrub.APIKey != ""
 	}
 
@@ -119,7 +141,7 @@ func (a *App) GetServerConfig(c echo.Context) error {
 //	@Router			/api/dashboard/charts [get]
 func (a *App) GetDashboardCharts(c echo.Context) error {
 	// Get the chart data from the DB.
-	out, err := a.core.GetDashboardCharts()
+	out, err := a.core.GetDashboardCharts(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}
@@ -137,7 +159,7 @@ func (a *App) GetDashboardCharts(c echo.Context) error {
 //	@Router			/api/dashboard/counts [get]
 func (a *App) GetDashboardCounts(c echo.Context) error {
 	// Get the chart data from the DB.
-	out, err := a.core.GetDashboardCounts()
+	out, err := a.core.GetDashboardCounts(c.Request().Context(), tenantID(c))
 	if err != nil {
 		return err
 	}

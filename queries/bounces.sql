@@ -1,7 +1,11 @@
 -- name: record-bounce
 -- Insert a bounce and count the bounces for the subscriber and either unsubscribe them,
+-- This runs outside any tenant session context (bounce webhooks/POP3 polling
+-- have no request-scoped tenant to resolve - see internal/core/bounces.go's
+-- RecordBounce), so the inserted bounce's tenant_id is derived from the
+-- resolved subscriber's own tenant_id rather than a session variable.
 WITH sub AS (
-    SELECT id, status FROM subscribers WHERE CASE WHEN $1 != '' THEN uuid = $1::UUID ELSE email = $2 END
+    SELECT id, status, tenant_id FROM subscribers WHERE CASE WHEN $1 != '' THEN uuid = $1::UUID ELSE email = $2 END
 ),
 camp AS (
     SELECT id FROM campaigns WHERE $3 != '' AND uuid = $3::UUID
@@ -21,8 +25,8 @@ block2 AS (
 ),
 bounce AS (
     -- Record the bounce if the subscriber is not already blocklisted;
-    INSERT INTO bounces (subscriber_id, campaign_id, type, source, meta, created_at)
-    SELECT (SELECT id FROM sub), (SELECT id FROM camp), $4, $5, $6, $7
+    INSERT INTO bounces (subscriber_id, campaign_id, type, source, meta, created_at, tenant_id)
+    SELECT (SELECT id FROM sub), (SELECT id FROM camp), $4, $5, $6, $7, (SELECT tenant_id FROM sub)
     WHERE NOT EXISTS (SELECT 1 WHERE (SELECT status FROM sub) = 'blocklisted' OR (SELECT num FROM num) > $8)
 )
 -- This delete  will only run when $9 = 'delete' and the number of bounces exceed $8.

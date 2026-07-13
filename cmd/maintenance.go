@@ -31,9 +31,9 @@ func (a *App) GCSubscribers(c echo.Context) error {
 
 	switch typ {
 	case "blocklisted":
-		n, err = a.core.DeleteBlocklistedSubscribers()
+		n, err = a.core.DeleteBlocklistedSubscribers(c.Request().Context(), tenantID(c), )
 	case "orphan":
-		n, err = a.core.DeleteOrphanSubscribers()
+		n, err = a.core.DeleteOrphanSubscribers(c.Request().Context(), tenantID(c), )
 	default:
 		err = echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("globals.messages.invalidData"))
 	}
@@ -65,7 +65,7 @@ func (a *App) GCSubscriptions(c echo.Context) error {
 	}
 
 	// Delete unconfirmed subscriptions from the DB in bulk.
-	n, err := a.core.DeleteUnconfirmedSubscriptions(t)
+	n, err := a.core.DeleteUnconfirmedSubscriptions(c.Request().Context(), tenantID(c), t)
 	if err != nil {
 		return err
 	}
@@ -95,14 +95,14 @@ func (a *App) GCCampaignAnalytics(c echo.Context) error {
 
 	switch c.Param("type") {
 	case "all":
-		if err := a.core.DeleteCampaignViews(t); err != nil {
+		if err := a.core.DeleteCampaignViews(c.Request().Context(), tenantID(c), t); err != nil {
 			return err
 		}
-		err = a.core.DeleteCampaignLinkClicks(t)
+		err = a.core.DeleteCampaignLinkClicks(c.Request().Context(), tenantID(c), t)
 	case "views":
-		err = a.core.DeleteCampaignViews(t)
+		err = a.core.DeleteCampaignViews(c.Request().Context(), tenantID(c), t)
 	case "clicks":
-		err = a.core.DeleteCampaignLinkClicks(t)
+		err = a.core.DeleteCampaignLinkClicks(c.Request().Context(), tenantID(c), t)
 	default:
 		err = echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("globals.messages.invalidData"))
 	}
@@ -147,7 +147,7 @@ func (a *App) ExportCampaignAnalytics(c echo.Context) error {
 	switch typ {
 	case "views":
 		wr.Write([]string{"campaign_id", "campaign_uuid", "campaign_name", "subscriber_id", "subscriber_uuid", "email", "subscriber_name", "created_at"})
-		next := a.core.ExportCampaignViews(since, a.cfg.DBBatchSize)
+		next := a.core.ExportCampaignViews(c.Request().Context(), tenantID(c), since, a.cfg.DBBatchSize)
 		for {
 			rows, err := next()
 			if err != nil {
@@ -171,7 +171,7 @@ func (a *App) ExportCampaignAnalytics(c echo.Context) error {
 
 	case "clicks":
 		wr.Write([]string{"campaign_id", "campaign_uuid", "campaign_name", "subscriber_id", "subscriber_uuid", "email", "subscriber_name", "url", "created_at"})
-		next := a.core.ExportCampaignLinkClicks(since, a.cfg.DBBatchSize)
+		next := a.core.ExportCampaignLinkClicks(c.Request().Context(), tenantID(c), since, a.cfg.DBBatchSize)
 		for {
 			rows, err := next()
 			if err != nil {

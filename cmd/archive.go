@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"html/template"
 	"net/http"
@@ -27,7 +28,7 @@ type campArchive struct {
 func (a *App) GetCampaignArchives(c echo.Context) error {
 	// Get archives from the DB.
 	pg := a.pg.NewFromURL(c.Request().URL.Query())
-	camps, total, err := a.getCampaignArchives(pg.Offset, pg.Limit, false)
+	camps, total, err := a.getCampaignArchives(c.Request().Context(), tenantID(c), pg.Offset, pg.Limit, false)
 	if err != nil {
 		return err
 	}
@@ -57,7 +58,7 @@ func (a *App) GetCampaignArchivesFeed(c echo.Context) error {
 	)
 
 	// Get archives from the DB.
-	camps, _, err := a.getCampaignArchives(pg.Offset, pg.Limit, showFullContent)
+	camps, _, err := a.getCampaignArchives(c.Request().Context(), tenantID(c), pg.Offset, pg.Limit, showFullContent)
 	if err != nil {
 		return err
 	}
@@ -79,10 +80,18 @@ func (a *App) GetCampaignArchivesFeed(c echo.Context) error {
 		})
 	}
 
+	rootURL := a.urlCfg.RootURL
+	if a.cfg.MultiTenancyEnabled {
+		// a.urlCfg.RootURL is a single boot-time value derived from
+		// tenant 1's settings - every other tenant's archive feed would
+		// otherwise self-identify as tenant 1's site.
+		rootURL = c.Scheme() + "://" + c.Request().Host
+	}
+
 	// Generate the feed.
 	feed := &feeds.Feed{
 		Title:       a.cfg.SiteName,
-		Link:        &feeds.Link{Href: a.urlCfg.RootURL},
+		Link:        &feeds.Link{Href: rootURL},
 		Description: a.i18n.T("public.archiveTitle"),
 		Items:       out,
 	}
@@ -99,7 +108,7 @@ func (a *App) GetCampaignArchivesFeed(c echo.Context) error {
 func (a *App) CampaignArchivesPage(c echo.Context) error {
 	// Get archives from the DB.
 	pg := a.pg.NewFromURL(c.Request().URL.Query())
-	out, total, err := a.getCampaignArchives(pg.Offset, pg.Limit, false)
+	out, total, err := a.getCampaignArchives(c.Request().Context(), tenantID(c), pg.Offset, pg.Limit, false)
 	if err != nil {
 		return err
 	}
@@ -129,7 +138,7 @@ func (a *App) CampaignArchivePage(c echo.Context) error {
 	}
 
 	// Get the campaign from the DB.
-	pubCamp, err := a.core.GetArchivedCampaign(0, uuid, slug)
+	pubCamp, err := a.core.GetArchivedCampaign(c.Request().Context(), tenantID(c), 0, uuid, slug)
 	if err != nil || pubCamp.Type != models.CampaignTypeRegular {
 		notFound := false
 
@@ -176,7 +185,7 @@ func (a *App) CampaignArchivePage(c echo.Context) error {
 // CampaignArchivePageLatest renders the latest public campaign.
 func (a *App) CampaignArchivePageLatest(c echo.Context) error {
 	// Get the latest campaign from the DB.
-	camps, _, err := a.getCampaignArchives(0, 1, true)
+	camps, _, err := a.getCampaignArchives(c.Request().Context(), tenantID(c), 0, 1, true)
 	if err != nil {
 		return err
 	}
@@ -191,8 +200,8 @@ func (a *App) CampaignArchivePageLatest(c echo.Context) error {
 }
 
 // getCampaignArchives fetches the public campaign archives from the DB.
-func (a *App) getCampaignArchives(offset, limit int, renderBody bool) ([]campArchive, int, error) {
-	pubCamps, total, err := a.core.GetArchivedCampaigns(offset, limit)
+func (a *App) getCampaignArchives(ctx context.Context, tenantID int, offset, limit int, renderBody bool) ([]campArchive, int, error) {
+	pubCamps, total, err := a.core.GetArchivedCampaigns(ctx, tenantID, offset, limit)
 	if err != nil {
 		return []campArchive{}, total, echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("public.errorFetchingCampaign"))
 	}

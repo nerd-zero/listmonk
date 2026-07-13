@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"database/sql"
 	"encoding/json"
@@ -47,7 +48,7 @@ import (
 	"github.com/knadh/listmonk/internal/messenger/email"
 	"github.com/knadh/listmonk/internal/messenger/postback"
 	"github.com/knadh/listmonk/internal/notifs"
-	"github.com/knadh/listmonk/internal/subimporter"
+	"github.com/knadh/listmonk/internal/tenant"
 	"github.com/knadh/listmonk/models"
 	"github.com/knadh/stuffbin"
 	"github.com/labstack/echo/v4"
@@ -88,7 +89,14 @@ type Config struct {
 	ShowOptinPage                 bool     `koanf:"show_optin_page"`
 	Lang                          string   `koanf:"lang"`
 	DBBatchSize                   int      `koanf:"batch_size"`
-	Privacy                       struct {
+	MultiTenancyEnabled           bool     `koanf:"multi_tenancy_enabled"`
+	RootDomain                    string   `koanf:"root_domain"`
+	Operator                      struct {
+		Token      string `koanf:"token"`
+		DBUser     string `koanf:"db_user"`
+		DBPassword string `koanf:"db_password"`
+	} `koanf:"operator"`
+	Privacy struct {
 		IndividualTracking bool            `koanf:"individual_tracking"`
 		DisableTracking    bool            `koanf:"disable_tracking"`
 		AllowPreferences   bool            `koanf:"allow_preferences"`
@@ -430,10 +438,15 @@ func prepareQueries(qMap goyesql.Queries, db *sqlx.DB, ko *koanf.Koanf) *models.
 	return &q
 }
 
-// initSettings loads settings from the DB into the given Koanf map.
+// initSettings loads settings from the DB into the given Koanf map. Always
+// loads tenant 1's settings - phase 5 (issue #32) made the settings table
+// per-tenant, but this boot-time global config load, and everything built
+// from it (SMTP pools, media store, OIDC config, the campaign manager),
+// stays a single process-wide instance pinned to the default tenant until
+// that's redesigned (tracked as a follow-up, same pattern as issue #40).
 func initSettings(query string, db *sqlx.DB, ko *koanf.Koanf) {
 	var s types.JSONText
-	if err := db.Get(&s, query); err != nil {
+	if err := db.Get(&s, query, 1); err != nil {
 		msg := err.Error()
 		if err, ok := err.(*pq.Error); ok {
 			if err.Detail != "" {
@@ -497,6 +510,9 @@ func initConstConfig(ko *koanf.Koanf) *Config {
 	}
 	if err := ko.Unmarshal("security", &c.Security); err != nil {
 		lo.Fatalf("error loading app.security config: %v", err)
+	}
+	if err := ko.Unmarshal("operator", &c.Operator); err != nil {
+		lo.Fatalf("error loading operator config: %v", err)
 	}
 
 	if err := ko.UnmarshalWithConf("appearance", &c.Appearance, koanf.UnmarshalConf{FlatPaths: true}); err != nil {
@@ -588,7 +604,7 @@ func initCore(fnNotify func(sub models.Subscriber, listIDs []int) (int, error), 
 }
 
 // initCampaignManager initializes the campaign manager.
-func initCampaignManager(msgrs []manager.Messenger, q *models.Queries, u *UrlConfig, co *core.Core, md media.Store, i *i18n.I18n, ko *koanf.Koanf) *manager.Manager {
+func initCampaignManager(msgrs []manager.Messenger, q *models.Queries, u *UrlConfig, co *core.Core, md *tenantMedia, i *i18n.I18n, ko *koanf.Koanf) *manager.Manager {
 	if ko.Bool("passive") {
 		lo.Println("running in passive mode. won't process campaigns.")
 	}
@@ -614,7 +630,7 @@ func initCampaignManager(msgrs []manager.Messenger, q *models.Queries, u *UrlCon
 		SlidingWindowRate:     ko.Int("app.message_sliding_window_rate"),
 		ScanInterval:          time.Second * 5,
 		ScanCampaigns:         !ko.Bool("passive"),
-	}, newManagerStore(q, co, md), i, lo)
+	}, newManagerStore(q, co, md), newTenantMessengers(co), i, lo)
 
 	// Attach all messengers to the campaign manager.
 	for _, m := range msgrs {
@@ -624,48 +640,47 @@ func initCampaignManager(msgrs []manager.Messenger, q *models.Queries, u *UrlCon
 	return mgr
 }
 
-// initTxTemplates initializes and compiles the transactional templates and caches them in-memory.
+// initTxTemplates initializes and compiles the transactional templates of
+// every active tenant and caches them in-memory, same per-tenant boot loop
+// shape as scanCampaigns (phase 6).
 func initTxTemplates(m *manager.Manager, co *core.Core) {
-	tpls, err := co.GetTemplates(models.TemplateTypeTx, false)
+	tenantIDs, err := co.GetActiveTenantIDs()
 	if err != nil {
-		lo.Fatalf("error loading transactional templates: %v", err)
+		lo.Fatalf("error loading active tenants: %v", err)
 	}
 
-	for _, t := range tpls {
-		tpl := t
-		if err := tpl.Compile(m.GenericTemplateFuncs()); err != nil {
-			lo.Printf("error compiling transactional template %d: %v", tpl.ID, err)
-			continue
+	for _, tenantID := range tenantIDs {
+		tpls, err := co.GetTemplates(context.Background(), tenantID, models.TemplateTypeTx, false)
+		if err != nil {
+			lo.Fatalf("error loading transactional templates: %v", err)
 		}
-		m.CacheTpl(tpl.ID, &tpl)
+
+		for _, t := range tpls {
+			tpl := t
+			if err := tpl.Compile(m.GenericTemplateFuncs()); err != nil {
+				lo.Printf("error compiling transactional template %d: %v", tpl.ID, err)
+				continue
+			}
+			m.CacheTpl(tenantID, tpl.ID, &tpl)
+		}
 	}
 }
 
-// initImporter initializes the bulk subscriber importer.
-func initImporter(q *models.Queries, db *sqlx.DB, core *core.Core, i *i18n.I18n, ko *koanf.Koanf) *subimporter.Importer {
-	return subimporter.New(
-		subimporter.Options{
-			DomainBlocklist:    ko.Strings("privacy.domain_blocklist"),
-			DomainAllowlist:    ko.Strings("privacy.domain_allowlist"),
-			UpsertStmt:         q.UpsertSubscriber.Stmt,
-			BlocklistStmt:      q.UpsertBlocklistSubscriber.Stmt,
-			UpdateListDateStmt: q.UpdateListsDate.Stmt,
-
-			// Hook for triggering admin notifications and refreshing stats materialized
-			// views after a successful import.
-			PostCB: func(subject string, data any) error {
-				// Refresh cached subscriber counts and stats.
-				core.RefreshMatViews(true)
-
-				// Send admin notification.
-				notifs.NotifySystem(subject, notifs.TplImport, data, nil)
-				return nil
-			},
-		}, db.DB, i)
-}
 
 // initSMTPMessenger initializes the combined and individual SMTP messengers.
-func initSMTPMessengers() []manager.Messenger {
+// initSMTPMessengers builds SMTP messengers from the given koanf instance's
+// "smtp" key. Takes ko explicitly (rather than closing over the global ko)
+// so it can be reused for the boot-time global messenger set (from tenant
+// 1's settings, via the global ko) and for per-tenant lazy construction
+// (internal/manager.MessengerResolver, see cmd/tenant_messenger.go) - the
+// same reflection-driven koanf/mapstructure unmarshaling into email.Server
+// (which needs its embedded smtppool.Opt's `,squash` handled correctly)
+// backs both paths rather than being duplicated or reimplemented via a
+// naive JSON round-trip. Returns an error instead of calling lo.Fatalf
+// directly: the boot-time caller still wants fail-fast-on-bad-config
+// behavior, but the lazy per-tenant path must not crash the whole process
+// over one tenant's malformed SMTP config.
+func initSMTPMessengers(ko *koanf.Koanf) ([]manager.Messenger, error) {
 	var (
 		servers = []email.Server{}
 		out     = []manager.Messenger{}
@@ -680,7 +695,7 @@ func initSMTPMessengers() []manager.Messenger {
 		// Read the SMTP config.
 		var s email.Server
 		if err := item.UnmarshalWithConf("", &s, koanf.UnmarshalConf{Tag: "json"}); err != nil {
-			lo.Fatalf("error reading SMTP config: %v", err)
+			return nil, fmt.Errorf("error reading SMTP config: %v", err)
 		}
 
 		servers = append(servers, s)
@@ -691,7 +706,7 @@ func initSMTPMessengers() []manager.Messenger {
 		if s.Name != "" {
 			msgr, err := email.New(s.Name, s)
 			if err != nil {
-				lo.Fatalf("error initializing e-mail messenger: %v", err)
+				return nil, fmt.Errorf("error initializing e-mail messenger: %v", err)
 			}
 			out = append(out, msgr)
 		}
@@ -700,18 +715,18 @@ func initSMTPMessengers() []manager.Messenger {
 	// Initialize the 'email' messenger with all SMTP servers.
 	msgr, err := email.New(email.MessengerName, servers...)
 	if err != nil {
-		lo.Fatalf("error initializing e-mail messenger: %v", err)
+		return nil, fmt.Errorf("error initializing e-mail messenger: %v", err)
 	}
 
 	// If it's just one server, return the default "email" messenger.
 	if len(servers) == 1 {
-		return []manager.Messenger{msgr}
+		return []manager.Messenger{msgr}, nil
 	}
 
 	// If there are multiple servers, prepend the group "email" to be the first one.
 	out = append([]manager.Messenger{msgr}, out...)
 
-	return out
+	return out, nil
 }
 
 // initPostbackMessengers initializes and returns all the enabled
@@ -750,8 +765,15 @@ func initPostbackMessengers(ko *koanf.Koanf) []manager.Messenger {
 	return out
 }
 
-// initMediaStore initializes Upload manager with a custom backend.
-func initMediaStore(ko *koanf.Koanf) media.Store {
+// initMediaStore initializes Upload manager with a custom backend. Takes ko
+// explicitly (rather than closing over the global ko) so it can be reused
+// for the boot-time global store (from tenant 1's settings, via the global
+// ko) and for per-tenant lazy construction (see cmd/tenant_media.go) -
+// mirrors initSMTPMessengers' reasoning. Returns an error instead of
+// calling lo.Fatalf directly: the boot-time caller still wants
+// fail-fast-on-bad-config behavior, but the lazy per-tenant path must not
+// crash the whole process over one tenant's malformed upload config.
+func initMediaStore(ko *koanf.Koanf) (media.Store, error) {
 	switch provider := ko.String("upload.provider"); provider {
 	case "s3":
 		var o s3.Opt
@@ -760,10 +782,9 @@ func initMediaStore(ko *koanf.Koanf) media.Store {
 
 		up, err := s3.NewS3Store(o)
 		if err != nil {
-			lo.Fatalf("error initializing s3 upload provider %s", err)
+			return nil, fmt.Errorf("error initializing s3 upload provider: %v", err)
 		}
-		lo.Println("media upload provider: s3")
-		return up
+		return up, nil
 
 	case "filesystem":
 		var o filesystem.Opts
@@ -774,15 +795,13 @@ func initMediaStore(ko *koanf.Koanf) media.Store {
 		o.UploadURI = filepath.Clean(o.UploadURI)
 		up, err := filesystem.New(o)
 		if err != nil {
-			lo.Fatalf("error initializing filesystem upload provider %s", err)
+			return nil, fmt.Errorf("error initializing filesystem upload provider: %v", err)
 		}
-		lo.Println("media upload provider: filesystem")
-		return up
+		return up, nil
 
 	default:
-		lo.Fatalf("unknown provider. select filesystem or s3")
+		return nil, fmt.Errorf("unknown upload provider %q, select filesystem or s3", provider)
 	}
-	return nil
 }
 
 // initNotifs initializes the notifier with the system e-mail templates.
@@ -931,6 +950,10 @@ func initHTTPServer(cfg *Config, urlCfg *UrlConfig, i *i18n.I18n, fs stuffbin.Fi
 		}
 	})
 
+	// Resolve the tenant for every request (authenticated and public alike)
+	// ahead of auth. A no-op unless app.multi_tenancy_enabled is set.
+	srv.Use(tenant.Middleware(app.core, cfg.RootDomain, cfg.MultiTenancyEnabled))
+
 	tpl, err := stuffbin.ParseTemplatesGlob(initTplFuncs(i, urlCfg), fs, "/public/templates/*.html")
 	if err != nil {
 		lo.Fatalf("error parsing public templates: %v", err)
@@ -939,6 +962,7 @@ func initHTTPServer(cfg *Config, urlCfg *UrlConfig, i *i18n.I18n, fs stuffbin.Fi
 		templates:           tpl,
 		SiteName:            cfg.SiteName,
 		RootURL:             urlCfg.RootURL,
+		MultiTenancyEnabled: cfg.MultiTenancyEnabled,
 		LogoURL:             urlCfg.LogoURL,
 		FaviconURL:          urlCfg.FaviconURL,
 		AssetVersion:        cfg.AssetVersion,
@@ -1110,23 +1134,7 @@ func initTplFuncs(i *i18n.I18n, u *UrlConfig) template.FuncMap {
 }
 
 // initAuth initializes the auth module with the given DB connection and
-func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
-	var oidcCfg auth.OIDCConfig
-
-	// If OIDC is enabled, set up the OIDC config.
-	if ko.Bool("security.oidc.enabled") {
-		oidcCfg = auth.OIDCConfig{
-			Enabled:           true,
-			ProviderURL:       ko.String("security.oidc.provider_url"),
-			ClientID:          ko.String("security.oidc.client_id"),
-			ClientSecret:      ko.String("security.oidc.client_secret"),
-			AutoCreateUsers:   ko.Bool("security.oidc.auto_create_users"),
-			DefaultUserRoleID: ko.Int("security.oidc.default_user_role_id"),
-			DefaultListRoleID: ko.Int("security.oidc.default_list_role_id"),
-			RedirectURL:       fmt.Sprintf("%s/auth/oidc", strings.TrimRight(ko.String("app.root_url"), "/")),
-		}
-	}
-
+func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) *auth.Auth {
 	// Setup the sessio manager callbacks for getting and setting cookies.
 	cb := &auth.Callbacks{
 		GetCookie: func(name string, r any) (*http.Cookie, error) {
@@ -1141,19 +1149,42 @@ func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
 			return nil
 		},
 		GetUser: func(id int) (auth.User, error) {
-			return co.GetUser(id, "", "")
+			return co.GetUserUnscoped(id)
+		},
+
+		// GetOIDCConfig resolves the given tenant's own OIDC settings
+		// (per-tenant since phase 5) rather than a single global config -
+		// see internal/auth.Auth's per-tenant provider/verifier cache.
+		// RedirectURL is computed here (not in internal/auth, which has no
+		// notion of tenant settings) from that tenant's own root URL, so
+		// the OAuth callback lands back on the correct tenant subdomain.
+		GetOIDCConfig: func(tenantID int) (auth.OIDCConfig, error) {
+			settings, err := co.GetSettings(context.Background(), tenantID)
+			if err != nil {
+				return auth.OIDCConfig{}, err
+			}
+
+			return auth.OIDCConfig{
+				Enabled:           settings.OIDC.Enabled,
+				ProviderURL:       settings.OIDC.ProviderURL,
+				ClientID:          settings.OIDC.ClientID,
+				ClientSecret:      settings.OIDC.ClientSecret,
+				AutoCreateUsers:   settings.OIDC.AutoCreateUsers,
+				DefaultUserRoleID: int(settings.OIDC.DefaultUserRoleID.Int),
+				DefaultListRoleID: int(settings.OIDC.DefaultListRoleID.Int),
+				RedirectURL:       fmt.Sprintf("%s/auth/oidc", strings.TrimRight(settings.AppRootURL, "/")),
+			}, nil
 		},
 	}
 
 	// Initiaize the auth module.
-	a, err := auth.New(auth.Config{OIDC: oidcCfg}, db, cb, lo)
+	a, err := auth.New(auth.Config{}, db, cb, lo)
 	if err != nil {
 		lo.Fatalf("error initializing auth: %v", err)
 	}
 
 	// Cache all API users in-memory for token auth.
-	hasUsers, err := cacheUsers(co, a)
-	if err != nil {
+	if _, err := cacheUsers(co, a); err != nil {
 		lo.Fatalf("error loading API users to cache: %v", err)
 	}
 
@@ -1181,7 +1212,7 @@ func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
 		lo.Println(`WARNING: Remove the admin_username and admin_password fields from the TOML configuration file. If you are using APIs, create and use new credentials. Users are now managed via the Admin -> Settings -> Users dashboard.`)
 	}
 
-	return hasUsers, a
+	return a
 }
 
 // joinFSPaths joins the given paths with the root path and returns the full paths.

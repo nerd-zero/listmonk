@@ -46,6 +46,16 @@ var migList = []migFunc{
 	{"v6.1.0", migrations.V6_1_0},
 	{"v6.2.0", migrations.V6_2_0},
 	{"v6.3.0", migrations.V6_3_0},
+	{"v6.4.0", migrations.V6_4_0},
+	{"v6.5.0", migrations.V6_5_0},
+	{"v6.6.0", migrations.V6_6_0},
+	{"v6.7.0", migrations.V6_7_0},
+	{"v6.8.0", migrations.V6_8_0},
+	{"v6.9.0", migrations.V6_9_0},
+	{"v6.10.0", migrations.V6_10_0},
+	{"v6.11.0", migrations.V6_11_0},
+	{"v6.12.0", migrations.V6_12_0},
+	{"v6.13.0", migrations.V6_13_0},
 }
 
 // upgrade upgrades the database to the current version by running SQL migration files
@@ -148,7 +158,7 @@ func getLastMigrationVersion(db *sqlx.DB) (string, error) {
 	var v string
 	if err := db.Get(&v, `
 		SELECT COALESCE(
-			(SELECT value->>-1 FROM settings WHERE key='migrations'),
+			(SELECT value->>-1 FROM settings WHERE key='migrations' AND tenant_id=1),
 		'v0.0.0')`); err != nil {
 		if isTableNotExistErr(err) {
 			return "v0.0.0", nil

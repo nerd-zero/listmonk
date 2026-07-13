@@ -1,10 +1,11 @@
 package main
 
 import (
+	"context"
+
 	"github.com/gofrs/uuid/v5"
 	"github.com/knadh/listmonk/internal/core"
 	"github.com/knadh/listmonk/internal/manager"
-	"github.com/knadh/listmonk/internal/media"
 	"github.com/knadh/listmonk/models"
 	"github.com/lib/pq"
 )
@@ -14,7 +15,7 @@ import (
 type store struct {
 	queries *models.Queries
 	core    *core.Core
-	media   media.Store
+	media   *tenantMedia
 }
 
 type runningCamp struct {
@@ -25,7 +26,7 @@ type runningCamp struct {
 	ListID           int    `db:"list_id"`
 }
 
-func newManagerStore(q *models.Queries, c *core.Core, m media.Store) *store {
+func newManagerStore(q *models.Queries, c *core.Core, m *tenantMedia) *store {
 	return &store{
 		queries: q,
 		core:    c,
@@ -33,12 +34,24 @@ func newManagerStore(q *models.Queries, c *core.Core, m media.Store) *store {
 	}
 }
 
-// NextCampaigns retrieves active campaigns ready to be processed excluding
-// campaigns that are also being processed. Additionally, it takes a map of campaignID:sentCount
-// of campaigns that are being processed and updates them in the DB.
-func (s *store) NextCampaigns(currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error) {
+// NextCampaigns retrieves active campaigns for the given tenant ready to be
+// processed, excluding campaigns that are also being processed. currentIDs/
+// sentCounts must only contain that tenant's campaigns (see
+// queries/campaigns.sql's next-campaigns for why) - the caller
+// (internal/manager) is responsible for that grouping, not this method.
+// Additionally, it takes a map of campaignID:sentCount of campaigns that
+// are being processed and updates them in the DB.
+func (s *store) NextCampaigns(tenantID int, currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error) {
 	var out []*models.Campaign
-	err := s.queries.NextCampaigns.Select(&out, pq.Int64Array(currentIDs), pq.Int64Array(sentCounts))
+	err := s.queries.NextCampaigns.Select(&out, pq.Int64Array(currentIDs), pq.Int64Array(sentCounts), tenantID)
+	return out, err
+}
+
+// GetActiveTenantIDs returns the IDs of all active tenants, for
+// scanCampaigns to iterate per tick.
+func (s *store) GetActiveTenantIDs() ([]int, error) {
+	var out []int
+	err := s.queries.GetActiveTenantIDs.Select(&out)
 	return out, err
 }
 
@@ -86,13 +99,18 @@ func (s *store) UpdateCampaignCounts(campID int, toSend int, sent int, lastSubID
 }
 
 // GetAttachment fetches a media attachment blob.
-func (s *store) GetAttachment(mediaID int) (models.Attachment, error) {
-	m, err := s.core.GetMedia(mediaID, "", "", s.media)
+func (s *store) GetAttachment(ctx context.Context, tenantID int, mediaID int) (models.Attachment, error) {
+	ms, _, err := s.media.Get(ctx, tenantID)
 	if err != nil {
 		return models.Attachment{}, err
 	}
 
-	b, err := s.media.GetBlob(m.URL)
+	m, err := s.core.GetMedia(ctx, tenantID, mediaID, "", "", ms)
+	if err != nil {
+		return models.Attachment{}, err
+	}
+
+	b, err := ms.GetBlob(m.URL)
 	if err != nil {
 		return models.Attachment{}, err
 	}
@@ -108,13 +126,18 @@ func (s *store) GetAttachment(mediaID int) (models.Attachment, error) {
 // it as an inline attachment along with the Content-ID value. The lookup is
 // uniform across filesystem and S3 providers because both use the same media
 // store interface; the first match for a given filename is returned.
-func (s *store) GetInlineAttachmentByFilename(filename string) (models.Attachment, string, error) {
-	m, err := s.core.GetMedia(0, "", filename, s.media)
+func (s *store) GetInlineAttachmentByFilename(ctx context.Context, tenantID int, filename string) (models.Attachment, string, error) {
+	ms, _, err := s.media.Get(ctx, tenantID)
 	if err != nil {
 		return models.Attachment{}, "", err
 	}
 
-	b, err := s.media.GetBlob(m.URL)
+	m, err := s.core.GetMedia(ctx, tenantID, 0, "", filename, ms)
+	if err != nil {
+		return models.Attachment{}, "", err
+	}
+
+	b, err := ms.GetBlob(m.URL)
 	if err != nil {
 		return models.Attachment{}, "", err
 	}
@@ -129,7 +152,7 @@ func (s *store) GetInlineAttachmentByFilename(filename string) (models.Attachmen
 }
 
 // CreateLink registers a URL with a UUID for tracking clicks and returns the UUID.
-func (s *store) CreateLink(url string) (string, error) {
+func (s *store) CreateLink(ctx context.Context, tenantID int, url string) (string, error) {
 	// Create a new UUID for the URL. If the URL already exists in the DB
 	// the UUID in the database is returned.
 	uu, err := uuid.NewV4()
@@ -138,7 +161,7 @@ func (s *store) CreateLink(url string) (string, error) {
 	}
 
 	var out string
-	if err := s.queries.CreateLink.Get(&out, uu, url); err != nil {
+	if err := s.queries.CreateLink.Get(&out, uu, url, tenantID); err != nil {
 		return "", err
 	}
 

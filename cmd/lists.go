@@ -40,7 +40,7 @@ func (a *App) GetLists(c echo.Context) error {
 	minimal, _ := strconv.ParseBool(c.FormValue("minimal"))
 	if minimal {
 		status := c.FormValue("status")
-		res, err := a.core.GetLists("", status, hasAllPerm, permittedIDs)
+		res, err := a.core.GetLists(c.Request().Context(), tenantID(c), "", status, hasAllPerm, permittedIDs)
 		if err != nil {
 			return err
 		}
@@ -72,7 +72,7 @@ func (a *App) GetLists(c echo.Context) error {
 
 		pg = a.pg.NewFromURL(c.Request().URL.Query())
 	)
-	res, total, err := a.core.QueryLists(query, typ, optin, status, tags, orderBy, order, hasAllPerm, permittedIDs, pg.Offset, pg.Limit)
+	res, total, err := a.core.QueryLists(c.Request().Context(), tenantID(c), query, typ, optin, status, tags, orderBy, order, hasAllPerm, permittedIDs, pg.Offset, pg.Limit)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (a *App) GetList(c echo.Context) error {
 	}
 
 	// Get the list from the DB.
-	out, err := a.core.GetList(id, "")
+	out, err := a.core.GetList(c.Request().Context(), tenantID(c), id, "")
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (a *App) CreateList(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("lists.invalidName"))
 	}
 
-	out, err := a.core.CreateList(l)
+	out, err := a.core.CreateList(c.Request().Context(), tenantID(c), l)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (a *App) UpdateList(c echo.Context) error {
 	}
 
 	// Update the list in the DB.
-	out, err := a.core.UpdateList(id, l)
+	out, err := a.core.UpdateList(c.Request().Context(), tenantID(c), id, l)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (a *App) DeleteList(c echo.Context) error {
 
 	// Delete the list from the DB.
 	// Pass getAll=true since we've already verified permissions above.
-	if err := a.core.DeleteLists([]int{id}, "", true, nil); err != nil {
+	if err := a.core.DeleteLists(c.Request().Context(), tenantID(c), []int{id}, "", true, nil); err != nil {
 		return err
 	}
 
@@ -271,7 +271,7 @@ func (a *App) DeleteLists(c echo.Context) error {
 
 		// Delete the lists from the DB.
 		// Pass getAll=true since we've already verified permissions above.
-		if err := a.core.DeleteLists(ids, "", true, nil); err != nil {
+		if err := a.core.DeleteLists(c.Request().Context(), tenantID(c), ids, "", true, nil); err != nil {
 			return err
 		}
 	} else {
@@ -279,7 +279,7 @@ func (a *App) DeleteLists(c echo.Context) error {
 		hasAllPerm, permittedIDs := user.GetPermittedLists(auth.PermTypeManage)
 
 		// Delete the lists from the DB with permission filtering.
-		if err := a.core.DeleteLists(nil, query, hasAllPerm, permittedIDs); err != nil {
+		if err := a.core.DeleteLists(c.Request().Context(), tenantID(c), nil, query, hasAllPerm, permittedIDs); err != nil {
 			return err
 		}
 	}

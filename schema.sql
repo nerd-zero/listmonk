@@ -12,32 +12,68 @@ DROP TYPE IF EXISTS user_type CASCADE; CREATE TYPE user_type AS ENUM ('user', 'a
 DROP TYPE IF EXISTS user_status CASCADE; CREATE TYPE user_status AS ENUM ('enabled', 'disabled');
 DROP TYPE IF EXISTS role_type CASCADE; CREATE TYPE role_type AS ENUM ('user', 'list');
 DROP TYPE IF EXISTS twofa_type CASCADE; CREATE TYPE twofa_type AS ENUM ('none', 'totp');
+DROP TYPE IF EXISTS tenant_status CASCADE; CREATE TYPE tenant_status AS ENUM ('active', 'suspended', 'disabled');
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- organizations
+-- A purely cross-tenant grouping construct, managed only via the Operator
+-- API (see docs/design/multi-tenancy.md) - never RLS-scoped, never
+-- resolved per-request the way tenants are. One organization can own
+-- multiple tenants ("listmonks") for different purposes (e.g. separate
+-- brands/departments), or none at all - tenants.organization_id is
+-- nullable so existing/standalone tenants aren't forced into one.
+DROP TABLE IF EXISTS organizations CASCADE;
+CREATE TABLE organizations (
+    id          SERIAL PRIMARY KEY,
+    name        TEXT NOT NULL UNIQUE,
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- tenants
+DROP TABLE IF EXISTS tenants CASCADE;
+CREATE TABLE tenants (
+    id              SERIAL PRIMARY KEY,
+    organization_id INTEGER NULL REFERENCES organizations(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    slug            TEXT NOT NULL UNIQUE,
+    name            TEXT NOT NULL,
+    status          tenant_status NOT NULL DEFAULT 'active',
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+DROP INDEX IF EXISTS idx_tenants_organization; CREATE INDEX idx_tenants_organization ON tenants(organization_id);
+INSERT INTO tenants (id, slug, name, status) VALUES (1, 'default', 'Default', 'active');
+SELECT setval('tenants_id_seq', 1);
 
 -- subscribers
 DROP TABLE IF EXISTS subscribers CASCADE;
 CREATE TABLE subscribers (
     id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid uuid       NOT NULL UNIQUE,
-    email           TEXT NOT NULL UNIQUE,
+    email           TEXT NOT NULL,
     name            TEXT NOT NULL,
     attribs         JSONB NOT NULL DEFAULT '{}',
     status          subscriber_status NOT NULL DEFAULT 'enabled',
 
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    CONSTRAINT subscribers_email_key UNIQUE (tenant_id, email)
 );
-DROP INDEX IF EXISTS idx_subs_email; CREATE UNIQUE INDEX idx_subs_email ON subscribers(LOWER(email));
+DROP INDEX IF EXISTS idx_subs_email; CREATE UNIQUE INDEX idx_subs_email ON subscribers(tenant_id, LOWER(email));
 DROP INDEX IF EXISTS idx_subs_status; CREATE INDEX idx_subs_status ON subscribers(status);
 DROP INDEX IF EXISTS idx_subs_id_status; CREATE INDEX idx_subs_id_status ON subscribers(id, status);
 DROP INDEX IF EXISTS idx_subs_created_at; CREATE INDEX idx_subs_created_at ON subscribers(created_at);
 DROP INDEX IF EXISTS idx_subs_updated_at; CREATE INDEX idx_subs_updated_at ON subscribers(updated_at);
+DROP INDEX IF EXISTS idx_subscribers_tenant; CREATE INDEX idx_subscribers_tenant ON subscribers(tenant_id);
 
 -- lists
 DROP TABLE IF EXISTS lists CASCADE;
 CREATE TABLE lists (
     id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid            uuid NOT NULL UNIQUE,
     name            TEXT NOT NULL,
     type            list_type NOT NULL,
@@ -55,12 +91,14 @@ DROP INDEX IF EXISTS idx_lists_status; CREATE INDEX idx_lists_status ON lists(st
 DROP INDEX IF EXISTS idx_lists_name; CREATE INDEX idx_lists_name ON lists(name);
 DROP INDEX IF EXISTS idx_lists_created_at; CREATE INDEX idx_lists_created_at ON lists(created_at);
 DROP INDEX IF EXISTS idx_lists_updated_at; CREATE INDEX idx_lists_updated_at ON lists(updated_at);
+DROP INDEX IF EXISTS idx_lists_tenant; CREATE INDEX idx_lists_tenant ON lists(tenant_id);
 
 
 DROP TABLE IF EXISTS subscriber_lists CASCADE;
 CREATE TABLE subscriber_lists (
     subscriber_id      INTEGER REFERENCES subscribers(id) ON DELETE CASCADE ON UPDATE CASCADE,
     list_id            INTEGER NULL REFERENCES lists(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id          INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     meta               JSONB NOT NULL DEFAULT '{}',
     status             subscription_status NOT NULL DEFAULT 'unconfirmed',
 
@@ -72,11 +110,13 @@ CREATE TABLE subscriber_lists (
 DROP INDEX IF EXISTS idx_sub_lists_sub_id; CREATE INDEX idx_sub_lists_sub_id ON subscriber_lists(subscriber_id);
 DROP INDEX IF EXISTS idx_sub_lists_list_id; CREATE INDEX idx_sub_lists_list_id ON subscriber_lists(list_id);
 DROP INDEX IF EXISTS idx_sub_lists_status; CREATE INDEX idx_sub_lists_status ON subscriber_lists(status);
+DROP INDEX IF EXISTS idx_subscriber_lists_tenant; CREATE INDEX idx_subscriber_lists_tenant ON subscriber_lists(tenant_id);
 
 -- templates
 DROP TABLE IF EXISTS templates CASCADE;
 CREATE TABLE templates (
     id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     name            TEXT NOT NULL,
     type            template_type NOT NULL DEFAULT 'campaign',
     subject         TEXT NOT NULL,
@@ -87,13 +127,15 @@ CREATE TABLE templates (
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-CREATE UNIQUE INDEX ON templates (is_default) WHERE is_default = true;
+CREATE UNIQUE INDEX templates_is_default_idx ON templates (tenant_id, is_default) WHERE is_default = true;
+DROP INDEX IF EXISTS idx_templates_tenant; CREATE INDEX idx_templates_tenant ON templates(tenant_id);
 
 
 -- campaigns
 DROP TABLE IF EXISTS campaigns CASCADE;
 CREATE TABLE campaigns (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid uuid        NOT NULL UNIQUE,
     name             TEXT NOT NULL,
     subject          TEXT NOT NULL,
@@ -136,12 +178,14 @@ DROP INDEX IF EXISTS idx_camps_status; CREATE INDEX idx_camps_status ON campaign
 DROP INDEX IF EXISTS idx_camps_name; CREATE INDEX idx_camps_name ON campaigns(name);
 DROP INDEX IF EXISTS idx_camps_created_at; CREATE INDEX idx_camps_created_at ON campaigns(created_at);
 DROP INDEX IF EXISTS idx_camps_updated_at; CREATE INDEX idx_camps_updated_at ON campaigns(updated_at);
+DROP INDEX IF EXISTS idx_campaigns_tenant; CREATE INDEX idx_campaigns_tenant ON campaigns(tenant_id);
 
 
 DROP TABLE IF EXISTS campaign_lists CASCADE;
 CREATE TABLE campaign_lists (
     id           BIGSERIAL PRIMARY KEY,
     campaign_id  INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id    INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     -- Lists may be deleted, so list_id is nullable
     -- and a copy of the original list name is maintained here.
@@ -151,11 +195,13 @@ CREATE TABLE campaign_lists (
 CREATE UNIQUE INDEX ON campaign_lists (campaign_id, list_id);
 DROP INDEX IF EXISTS idx_camp_lists_camp_id; CREATE INDEX idx_camp_lists_camp_id ON campaign_lists(campaign_id);
 DROP INDEX IF EXISTS idx_camp_lists_list_id; CREATE INDEX idx_camp_lists_list_id ON campaign_lists(list_id);
+DROP INDEX IF EXISTS idx_campaign_lists_tenant; CREATE INDEX idx_campaign_lists_tenant ON campaign_lists(tenant_id);
 
 DROP TABLE IF EXISTS campaign_views CASCADE;
 CREATE TABLE campaign_views (
     id               BIGSERIAL PRIMARY KEY,
     campaign_id      INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     -- Subscribers may be deleted, but the view counts should remain.
     subscriber_id    INTEGER NULL REFERENCES subscribers(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -164,11 +210,13 @@ CREATE TABLE campaign_views (
 DROP INDEX IF EXISTS idx_views_camp_id; CREATE INDEX idx_views_camp_id ON campaign_views(campaign_id);
 DROP INDEX IF EXISTS idx_views_subscriber_id; CREATE INDEX idx_views_subscriber_id ON campaign_views(subscriber_id);
 DROP INDEX IF EXISTS idx_views_date; CREATE INDEX idx_views_date ON campaign_views(created_at);
+DROP INDEX IF EXISTS idx_campaign_views_tenant; CREATE INDEX idx_campaign_views_tenant ON campaign_views(tenant_id);
 
 -- media
 DROP TABLE IF EXISTS media CASCADE;
 CREATE TABLE media (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid uuid        NOT NULL UNIQUE,
     provider         TEXT NOT NULL DEFAULT '',
     filename         TEXT NOT NULL,
@@ -178,11 +226,13 @@ CREATE TABLE media (
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 DROP INDEX IF EXISTS idx_media_filename; CREATE INDEX idx_media_filename ON media(provider, filename);
+DROP INDEX IF EXISTS idx_media_tenant; CREATE INDEX idx_media_tenant ON media(tenant_id);
 
 -- campaign_media
 DROP TABLE IF EXISTS campaign_media CASCADE;
 CREATE TABLE campaign_media (
     campaign_id  INTEGER REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id    INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     -- Media items may be deleted, so media_id is nullable
     -- and a copy of the original name is maintained here.
@@ -192,21 +242,25 @@ CREATE TABLE campaign_media (
 );
 DROP INDEX IF EXISTS idx_camp_media_id; CREATE UNIQUE INDEX idx_camp_media_id ON campaign_media (campaign_id, media_id);
 DROP INDEX IF EXISTS idx_camp_media_camp_id; CREATE INDEX idx_camp_media_camp_id ON campaign_media(campaign_id);
+DROP INDEX IF EXISTS idx_campaign_media_tenant; CREATE INDEX idx_campaign_media_tenant ON campaign_media(tenant_id);
 
 
 -- links
 DROP TABLE IF EXISTS links CASCADE;
 CREATE TABLE links (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     uuid uuid        NOT NULL UNIQUE,
     url              TEXT NOT NULL UNIQUE,
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+DROP INDEX IF EXISTS idx_links_tenant; CREATE INDEX idx_links_tenant ON links(tenant_id);
 
 DROP TABLE IF EXISTS link_clicks CASCADE;
 CREATE TABLE link_clicks (
     id               BIGSERIAL PRIMARY KEY,
     campaign_id      INTEGER NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     link_id          INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     -- Subscribers may be deleted, but the link counts should remain.
@@ -217,15 +271,20 @@ DROP INDEX IF EXISTS idx_clicks_camp_id; CREATE INDEX idx_clicks_camp_id ON link
 DROP INDEX IF EXISTS idx_clicks_link_id; CREATE INDEX idx_clicks_link_id ON link_clicks(link_id);
 DROP INDEX IF EXISTS idx_clicks_sub_id; CREATE INDEX idx_clicks_sub_id ON link_clicks(subscriber_id);
 DROP INDEX IF EXISTS idx_clicks_date; CREATE INDEX idx_clicks_date ON link_clicks(created_at);
+DROP INDEX IF EXISTS idx_link_clicks_tenant; CREATE INDEX idx_link_clicks_tenant ON link_clicks(tenant_id);
 
 -- settings
 DROP TABLE IF EXISTS settings CASCADE;
 CREATE TABLE settings (
-    key             TEXT NOT NULL UNIQUE,
+    key             TEXT NOT NULL,
+    tenant_id       INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     value           JSONB NOT NULL DEFAULT '{}',
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    PRIMARY KEY (tenant_id, key)
 );
 DROP INDEX IF EXISTS idx_settings_key; CREATE INDEX idx_settings_key ON settings(key);
+DROP INDEX IF EXISTS idx_settings_tenant; CREATE INDEX idx_settings_tenant ON settings(tenant_id);
 INSERT INTO settings (key, value) VALUES
     ('app.site_name', '"Mailing list"'),
     ('app.root_url', '"http://localhost:9000"'),
@@ -305,6 +364,7 @@ INSERT INTO settings (key, value) VALUES
 DROP TABLE IF EXISTS bounces CASCADE;
 CREATE TABLE bounces (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     subscriber_id    INTEGER NOT NULL REFERENCES subscribers(id) ON DELETE CASCADE ON UPDATE CASCADE,
     campaign_id      INTEGER NULL REFERENCES campaigns(id) ON DELETE SET NULL ON UPDATE CASCADE,
     type             bounce_type NOT NULL DEFAULT 'hard',
@@ -316,11 +376,13 @@ DROP INDEX IF EXISTS idx_bounces_sub_id; CREATE INDEX idx_bounces_sub_id ON boun
 DROP INDEX IF EXISTS idx_bounces_camp_id; CREATE INDEX idx_bounces_camp_id ON bounces(campaign_id);
 DROP INDEX IF EXISTS idx_bounces_source; CREATE INDEX idx_bounces_source ON bounces(source);
 DROP INDEX IF EXISTS idx_bounces_date; CREATE INDEX idx_bounces_date ON bounces(created_at);
+DROP INDEX IF EXISTS idx_bounces_tenant; CREATE INDEX idx_bounces_tenant ON bounces(tenant_id);
 
 -- roles
 DROP TABLE IF EXISTS roles CASCADE;
 CREATE TABLE roles (
     id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
     type             role_type NOT NULL DEFAULT 'user',
     parent_id        INTEGER NULL REFERENCES roles(id) ON DELETE CASCADE ON UPDATE CASCADE,
     list_id          INTEGER NULL REFERENCES lists(id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -330,16 +392,18 @@ CREATE TABLE roles (
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 CREATE UNIQUE INDEX idx_roles ON roles (parent_id, list_id);
-CREATE UNIQUE INDEX idx_roles_name ON roles (type, name) WHERE name IS NOT NULL;
+CREATE UNIQUE INDEX idx_roles_name ON roles (tenant_id, type, name) WHERE name IS NOT NULL;
+DROP INDEX IF EXISTS idx_roles_tenant; CREATE INDEX idx_roles_tenant ON roles(tenant_id);
 
 -- users
 DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
     id               SERIAL PRIMARY KEY,
-    username         TEXT NOT NULL UNIQUE,
+    tenant_id        INTEGER NOT NULL DEFAULT 1 REFERENCES tenants(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    username         TEXT NOT NULL,
     password_login   BOOLEAN NOT NULL DEFAULT false,
     password         TEXT NULL,
-    email            TEXT NOT NULL UNIQUE,
+    email            TEXT NOT NULL,
     name             TEXT NOT NULL,
     avatar           TEXT NULL,
     type             user_type NOT NULL DEFAULT 'user',
@@ -352,6 +416,71 @@ CREATE TABLE users (
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+DROP INDEX IF EXISTS idx_users_tenant; CREATE INDEX idx_users_tenant ON users(tenant_id);
+CREATE UNIQUE INDEX users_username_key ON users (tenant_id, username);
+CREATE UNIQUE INDEX users_email_key ON users (tenant_id, email);
+
+-- row level security: tenant isolation, enforced inside Postgres itself
+-- rather than solely relying on every hand-written query in queries/*.sql
+-- remembering a `WHERE tenant_id = ...` clause. FORCE (in addition to
+-- ENABLE) matters because most self-hosted listmonk installs use a single
+-- Postgres role for both schema ownership and the app connection, and
+-- table owners are exempt from RLS by default - plain ENABLE alone would
+-- silently be a no-op for that common setup. Superusers are always exempt
+-- regardless of FORCE.
+--
+-- The policy is permissive while `app.current_tenant` is unset (single-
+-- tenant/`multi_tenancy_enabled=false` installs never set it) and treats
+-- '' the same as unset via NULLIF: Postgres reverts a SET LOCAL custom GUC
+-- to '' (not NULL) once any transaction has ever touched it on a given
+-- connection, so casting straight to ::INTEGER without NULLIF fails on
+-- every later query on that same connection outside internal/core.WithTenant.
+ALTER TABLE subscribers      ENABLE ROW LEVEL SECURITY; ALTER TABLE subscribers      FORCE ROW LEVEL SECURITY;
+ALTER TABLE lists            ENABLE ROW LEVEL SECURITY; ALTER TABLE lists            FORCE ROW LEVEL SECURITY;
+ALTER TABLE templates        ENABLE ROW LEVEL SECURITY; ALTER TABLE templates        FORCE ROW LEVEL SECURITY;
+ALTER TABLE campaigns        ENABLE ROW LEVEL SECURITY; ALTER TABLE campaigns        FORCE ROW LEVEL SECURITY;
+ALTER TABLE media            ENABLE ROW LEVEL SECURITY; ALTER TABLE media            FORCE ROW LEVEL SECURITY;
+ALTER TABLE links            ENABLE ROW LEVEL SECURITY; ALTER TABLE links            FORCE ROW LEVEL SECURITY;
+ALTER TABLE bounces          ENABLE ROW LEVEL SECURITY; ALTER TABLE bounces          FORCE ROW LEVEL SECURITY;
+ALTER TABLE roles            ENABLE ROW LEVEL SECURITY; ALTER TABLE roles            FORCE ROW LEVEL SECURITY;
+ALTER TABLE users            ENABLE ROW LEVEL SECURITY; ALTER TABLE users            FORCE ROW LEVEL SECURITY;
+ALTER TABLE subscriber_lists ENABLE ROW LEVEL SECURITY; ALTER TABLE subscriber_lists FORCE ROW LEVEL SECURITY;
+ALTER TABLE campaign_lists   ENABLE ROW LEVEL SECURITY; ALTER TABLE campaign_lists   FORCE ROW LEVEL SECURITY;
+ALTER TABLE campaign_views   ENABLE ROW LEVEL SECURITY; ALTER TABLE campaign_views   FORCE ROW LEVEL SECURITY;
+ALTER TABLE campaign_media   ENABLE ROW LEVEL SECURITY; ALTER TABLE campaign_media   FORCE ROW LEVEL SECURITY;
+ALTER TABLE link_clicks      ENABLE ROW LEVEL SECURITY; ALTER TABLE link_clicks      FORCE ROW LEVEL SECURITY;
+ALTER TABLE settings         ENABLE ROW LEVEL SECURITY; ALTER TABLE settings         FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_isolation ON subscribers;
+CREATE POLICY tenant_isolation ON subscribers USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON lists;
+CREATE POLICY tenant_isolation ON lists USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON templates;
+CREATE POLICY tenant_isolation ON templates USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON campaigns;
+CREATE POLICY tenant_isolation ON campaigns USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON media;
+CREATE POLICY tenant_isolation ON media USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON links;
+CREATE POLICY tenant_isolation ON links USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON bounces;
+CREATE POLICY tenant_isolation ON bounces USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON roles;
+CREATE POLICY tenant_isolation ON roles USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON users;
+CREATE POLICY tenant_isolation ON users USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON subscriber_lists;
+CREATE POLICY tenant_isolation ON subscriber_lists USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON campaign_lists;
+CREATE POLICY tenant_isolation ON campaign_lists USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON campaign_views;
+CREATE POLICY tenant_isolation ON campaign_views USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON campaign_media;
+CREATE POLICY tenant_isolation ON campaign_media USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON link_clicks;
+CREATE POLICY tenant_isolation ON link_clicks USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
+DROP POLICY IF EXISTS tenant_isolation ON settings;
+CREATE POLICY tenant_isolation ON settings USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::INTEGER OR NULLIF(current_setting('app.current_tenant', true), '') IS NULL);
 
 -- user sessions
 DROP TABLE IF EXISTS sessions CASCADE;
@@ -367,80 +496,81 @@ DROP INDEX IF EXISTS idx_sessions; CREATE INDEX idx_sessions ON sessions (id, cr
 -- dashboard stats
 DROP MATERIALIZED VIEW IF EXISTS mat_dashboard_counts;
 CREATE MATERIALIZED VIEW mat_dashboard_counts AS
-    WITH subs AS (
-        SELECT COUNT(*) AS num, status FROM subscribers GROUP BY status
-    )
-    SELECT NOW() AS updated_at,
+    SELECT NOW() AS updated_at, t.id AS tenant_id,
         JSON_BUILD_OBJECT(
             'subscribers', JSON_BUILD_OBJECT(
-                'total', (SELECT SUM(num) FROM subs),
-                'blocklisted', (SELECT num FROM subs WHERE status='blocklisted'),
+                'total', (SELECT COUNT(*) FROM subscribers WHERE tenant_id = t.id),
+                'blocklisted', (SELECT COUNT(*) FROM subscribers WHERE tenant_id = t.id AND status = 'blocklisted'),
                 'orphans', (
-                    SELECT COUNT(id) FROM subscribers
+                    SELECT COUNT(subscribers.id) FROM subscribers
                     LEFT JOIN subscriber_lists ON (subscribers.id = subscriber_lists.subscriber_id)
-                    WHERE subscriber_lists.subscriber_id IS NULL
+                    WHERE subscribers.tenant_id = t.id AND subscriber_lists.subscriber_id IS NULL
                 )
             ),
             'lists', JSON_BUILD_OBJECT(
-                'total', (SELECT COUNT(*) FROM lists),
-                'private', (SELECT COUNT(*) FROM lists WHERE type='private'),
-                'public', (SELECT COUNT(*) FROM lists WHERE type='public'),
-                'optin_single', (SELECT COUNT(*) FROM lists WHERE optin='single'),
-                'optin_double', (SELECT COUNT(*) FROM lists WHERE optin='double')
+                'total', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id),
+                'private', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id AND type='private'),
+                'public', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id AND type='public'),
+                'optin_single', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id AND optin='single'),
+                'optin_double', (SELECT COUNT(*) FROM lists WHERE tenant_id = t.id AND optin='double')
             ),
             'campaigns', JSON_BUILD_OBJECT(
-                'total', (SELECT COUNT(*) FROM campaigns),
+                'total', (SELECT COUNT(*) FROM campaigns WHERE tenant_id = t.id),
                 'by_status', (
-                    SELECT JSON_OBJECT_AGG (status, num) FROM
-                    (SELECT status, COUNT(*) AS num FROM campaigns GROUP BY status) r
+                    SELECT COALESCE(JSON_OBJECT_AGG (status, num), '{}'::JSON) FROM
+                    (SELECT status, COUNT(*) AS num FROM campaigns WHERE tenant_id = t.id GROUP BY status) r
                 )
             ),
-            'messages', (SELECT SUM(sent) AS messages FROM campaigns)
-        ) AS data;
-DROP INDEX IF EXISTS mat_dashboard_stats_idx; CREATE UNIQUE INDEX mat_dashboard_stats_idx ON mat_dashboard_counts (updated_at);
+            'messages', (SELECT COALESCE(SUM(sent), 0) FROM campaigns WHERE tenant_id = t.id)
+        ) AS data
+    FROM tenants t;
+DROP INDEX IF EXISTS mat_dashboard_stats_idx; CREATE UNIQUE INDEX mat_dashboard_stats_idx ON mat_dashboard_counts (tenant_id);
 
 
 DROP MATERIALIZED VIEW IF EXISTS mat_dashboard_charts;
 CREATE MATERIALIZED VIEW mat_dashboard_charts AS
-    WITH clicks AS (
-        SELECT JSON_AGG(ROW_TO_JSON(row))
-        FROM (
-            WITH viewDates AS (
-              SELECT created_at::DATE AS to_date,
-                     created_at::DATE - INTERVAL '30 DAY' AS from_date
-                     FROM link_clicks ORDER BY id DESC LIMIT 1
-            )
-            SELECT COUNT(*) AS count, created_at::DATE as date FROM link_clicks
-              WHERE created_at >= (SELECT from_date FROM viewDates)
-                AND created_at < (SELECT to_date FROM viewDates) + INTERVAL '1 day'
-              GROUP by date ORDER BY date
-        ) row
-    ),
-    views AS (
-        SELECT JSON_AGG(ROW_TO_JSON(row))
-        FROM (
-            WITH viewDates AS (
-              SELECT created_at::DATE AS to_date,
-                     created_at::DATE - INTERVAL '30 DAY' AS from_date
-                     FROM campaign_views ORDER BY id DESC LIMIT 1
-            )
-            SELECT COUNT(*) AS count, created_at::DATE as date FROM campaign_views
-              WHERE created_at >= (SELECT from_date FROM viewDates)
-                AND created_at < (SELECT to_date FROM viewDates) + INTERVAL '1 day'
-              GROUP by date ORDER BY date
-        ) row
-    )
-    SELECT NOW() AS updated_at, JSON_BUILD_OBJECT('link_clicks', COALESCE((SELECT * FROM clicks), '[]'),
-                                  'campaign_views', COALESCE((SELECT * FROM views), '[]')
-                                ) AS data;
-DROP INDEX IF EXISTS mat_dashboard_charts_idx; CREATE UNIQUE INDEX mat_dashboard_charts_idx ON mat_dashboard_charts (updated_at);
+    SELECT NOW() AS updated_at, t.id AS tenant_id,
+        JSON_BUILD_OBJECT(
+            'link_clicks', COALESCE((
+                SELECT JSON_AGG(ROW_TO_JSON(row))
+                FROM (
+                    WITH viewDates AS (
+                      SELECT created_at::DATE AS to_date,
+                             created_at::DATE - INTERVAL '30 DAY' AS from_date
+                             FROM link_clicks WHERE tenant_id = t.id ORDER BY id DESC LIMIT 1
+                    )
+                    SELECT COUNT(*) AS count, created_at::DATE as date FROM link_clicks
+                      WHERE tenant_id = t.id
+                        AND created_at >= (SELECT from_date FROM viewDates)
+                        AND created_at < (SELECT to_date FROM viewDates) + INTERVAL '1 day'
+                      GROUP by date ORDER BY date
+                ) row
+            ), '[]'),
+            'campaign_views', COALESCE((
+                SELECT JSON_AGG(ROW_TO_JSON(row))
+                FROM (
+                    WITH viewDates AS (
+                      SELECT created_at::DATE AS to_date,
+                             created_at::DATE - INTERVAL '30 DAY' AS from_date
+                             FROM campaign_views WHERE tenant_id = t.id ORDER BY id DESC LIMIT 1
+                    )
+                    SELECT COUNT(*) AS count, created_at::DATE as date FROM campaign_views
+                      WHERE tenant_id = t.id
+                        AND created_at >= (SELECT from_date FROM viewDates)
+                        AND created_at < (SELECT to_date FROM viewDates) + INTERVAL '1 day'
+                      GROUP by date ORDER BY date
+                ) row
+            ), '[]')
+        ) AS data
+    FROM tenants t;
+DROP INDEX IF EXISTS mat_dashboard_charts_idx; CREATE UNIQUE INDEX mat_dashboard_charts_idx ON mat_dashboard_charts (tenant_id);
 
 -- subscriber counts stats for lists
 DROP MATERIALIZED VIEW IF EXISTS mat_list_subscriber_stats;
 CREATE MATERIALIZED VIEW mat_list_subscriber_stats AS
-    SELECT NOW() AS updated_at, lists.id AS list_id, subscriber_lists.status, COUNT(subscriber_lists.status) AS subscriber_count FROM lists
+    SELECT NOW() AS updated_at, lists.tenant_id AS tenant_id, lists.id AS list_id, subscriber_lists.status, COUNT(subscriber_lists.status) AS subscriber_count FROM lists
     LEFT JOIN subscriber_lists ON (subscriber_lists.list_id = lists.id)
-    GROUP BY lists.id, subscriber_lists.status
+    GROUP BY lists.tenant_id, lists.id, subscriber_lists.status
     UNION ALL
-    SELECT NOW() AS updated_at, 0 AS list_id, NULL AS status, COUNT(id) AS subscriber_count FROM subscribers;
-DROP INDEX IF EXISTS mat_list_subscriber_stats_idx; CREATE UNIQUE INDEX mat_list_subscriber_stats_idx ON mat_list_subscriber_stats (list_id, status);
+    SELECT NOW() AS updated_at, subscribers.tenant_id AS tenant_id, 0 AS list_id, NULL AS status, COUNT(id) AS subscriber_count FROM subscribers GROUP BY subscribers.tenant_id;
+DROP INDEX IF EXISTS mat_list_subscriber_stats_idx; CREATE UNIQUE INDEX mat_list_subscriber_stats_idx ON mat_list_subscriber_stats (tenant_id, list_id, status);

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"time"
@@ -23,7 +24,7 @@ const (
 
 // QueryCampaigns retrieves paginated campaigns optionally filtering them by the given arbitrary
 // query expression. It also returns the total number of records in the DB.
-func (c *Core) QueryCampaigns(searchStr string, statuses, tags []string, orderBy, order string, getAll bool, permittedLists []int, offset, limit int) (models.Campaigns, int, error) {
+func (c *Core) QueryCampaigns(ctx context.Context, tenantID int, searchStr string, statuses, tags []string, orderBy, order string, getAll bool, permittedLists []int, offset, limit int) (models.Campaigns, int, error) {
 	queryStr, stmt := makeSearchQuery(searchStr, orderBy, order, c.q.QueryCampaigns, campQuerySortFields)
 
 	if statuses == nil {
@@ -36,24 +37,25 @@ func (c *Core) QueryCampaigns(searchStr string, statuses, tags []string, orderBy
 
 	// Unsafe to ignore scanning fields not present in models.Campaigns.
 	var out models.Campaigns
-	if err := c.db.Select(&out, stmt, 0, pq.StringArray(statuses), pq.StringArray(tags), queryStr, getAll, pq.Array(permittedLists), offset, limit); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		if err := tx.Select(&out, stmt, 0, pq.StringArray(statuses), pq.StringArray(tags), queryStr, getAll, pq.Array(permittedLists), offset, limit); err != nil {
+			return err
+		}
+
+		for i := range out {
+			// Replace null tags.
+			if out[i].Tags == nil {
+				out[i].Tags = []string{}
+			}
+		}
+
+		// Lazy load stats.
+		return out.LoadStats(stmtx(tx, c.q.GetCampaignStats))
+	})
+	if err != nil {
 		c.log.Printf("error fetching campaigns: %v", err)
 		return nil, 0, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
-	}
-
-	for i := range out {
-		// Replace null tags.
-		if out[i].Tags == nil {
-			out[i].Tags = []string{}
-		}
-	}
-
-	// Lazy load stats.
-	if err := out.LoadStats(c.q.GetCampaignStats); err != nil {
-		c.log.Printf("error fetching campaign stats: %v", err)
-		return nil, 0, echo.NewHTTPError(http.StatusInternalServerError,
-			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.campaigns}", "error", pqErrMsg(err)))
 	}
 
 	total := 0
@@ -65,13 +67,13 @@ func (c *Core) QueryCampaigns(searchStr string, statuses, tags []string, orderBy
 }
 
 // GetCampaign retrieves a campaign.
-func (c *Core) GetCampaign(id int, uuid, archiveSlug string) (models.Campaign, error) {
-	return c.getCampaign(id, uuid, archiveSlug, campaignTplDefault)
+func (c *Core) GetCampaign(ctx context.Context, tenantID int, id int, uuid, archiveSlug string) (models.Campaign, error) {
+	return c.getCampaign(ctx, tenantID, id, uuid, archiveSlug, campaignTplDefault)
 }
 
 // GetArchivedCampaign retrieves a campaign with the archive template body.
-func (c *Core) GetArchivedCampaign(id int, uuid, archiveSlug string) (models.Campaign, error) {
-	out, err := c.getCampaign(id, uuid, archiveSlug, campaignTplArchive)
+func (c *Core) GetArchivedCampaign(ctx context.Context, tenantID int, id int, uuid, archiveSlug string) (models.Campaign, error) {
+	out, err := c.getCampaign(ctx, tenantID, id, uuid, archiveSlug, campaignTplArchive)
 	if err != nil {
 		return out, err
 	}
@@ -87,7 +89,7 @@ func (c *Core) GetArchivedCampaign(id int, uuid, archiveSlug string) (models.Cam
 // getCampaign retrieves a campaign. If typlType=default, then the campaign's
 // template body is returned as "template_body". If tplType="archive",
 // the archive template is returned.
-func (c *Core) getCampaign(id int, uuid, archiveSlug string, tplType string) (models.Campaign, error) {
+func (c *Core) getCampaign(ctx context.Context, tenantID int, id int, uuid, archiveSlug string, tplType string) (models.Campaign, error) {
 	// Unsafe to ignore scanning fields not present in models.Campaigns.
 	var uu any
 	if uuid != "" {
@@ -95,8 +97,25 @@ func (c *Core) getCampaign(id int, uuid, archiveSlug string, tplType string) (mo
 	}
 
 	var out models.Campaigns
-	if err := c.q.GetCampaign.Select(&out, id, uu, archiveSlug, tplType); err != nil {
-		// if err := c.db.Select(&out, stmt, 0, pq.Array([]string{}), queryStr, 0, 1); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		if err := stmtx(tx, c.q.GetCampaign).Select(&out, id, uu, archiveSlug, tplType); err != nil {
+			return err
+		}
+		if len(out) == 0 {
+			return nil
+		}
+
+		for i := 0; i < len(out); i++ {
+			// Replace null tags.
+			if out[i].Tags == nil {
+				out[i].Tags = []string{}
+			}
+		}
+
+		// Lazy load stats.
+		return out.LoadStats(stmtx(tx, c.q.GetCampaignStats))
+	})
+	if err != nil {
 		c.log.Printf("error fetching campaign: %v", err)
 		return models.Campaign{}, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
@@ -107,28 +126,17 @@ func (c *Core) getCampaign(id int, uuid, archiveSlug string, tplType string) (mo
 			c.i18n.Ts("globals.messages.notFound", "name", "{globals.terms.campaign}"))
 	}
 
-	for i := 0; i < len(out); i++ {
-		// Replace null tags.
-		if out[i].Tags == nil {
-			out[i].Tags = []string{}
-		}
-	}
-
-	// Lazy load stats.
-	if err := out.LoadStats(c.q.GetCampaignStats); err != nil {
-		c.log.Printf("error fetching campaign stats: %v", err)
-		return models.Campaign{}, echo.NewHTTPError(http.StatusInternalServerError,
-			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
-	}
-
 	return out[0], nil
 }
 
 // GetCampaignForPreview retrieves a campaign with a template body. If the optional tplID is > 0
 // that particular template is used, otherwise, the template saved on the campaign is.
-func (c *Core) GetCampaignForPreview(id, tplID int) (models.Campaign, error) {
+func (c *Core) GetCampaignForPreview(ctx context.Context, tenantID int, id, tplID int) (models.Campaign, error) {
 	var out models.Campaign
-	if err := c.q.GetCampaignForPreview.Get(&out, id, tplID); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetCampaignForPreview).Get(&out, id, tplID)
+	})
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return models.Campaign{}, echo.NewHTTPError(http.StatusBadRequest,
 				c.i18n.Ts("globals.messages.notFound", "name", "{globals.terms.campaign}"))
@@ -143,9 +151,12 @@ func (c *Core) GetCampaignForPreview(id, tplID int) (models.Campaign, error) {
 }
 
 // GetArchivedCampaigns retrieves campaigns with a template body.
-func (c *Core) GetArchivedCampaigns(offset, limit int) (models.Campaigns, int, error) {
+func (c *Core) GetArchivedCampaigns(ctx context.Context, tenantID int, offset, limit int) (models.Campaigns, int, error) {
 	var out models.Campaigns
-	if err := c.q.GetArchivedCampaigns.Select(&out, offset, limit, campaignTplArchive); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetArchivedCampaigns).Select(&out, offset, limit, campaignTplArchive)
+	})
+	if err != nil {
 		c.log.Printf("error fetching public campaigns: %v", err)
 		return models.Campaigns{}, 0, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
@@ -160,7 +171,7 @@ func (c *Core) GetArchivedCampaigns(offset, limit int) (models.Campaigns, int, e
 }
 
 // CreateCampaign creates a new campaign.
-func (c *Core) CreateCampaign(o models.Campaign, listIDs []int, mediaIDs []int) (models.Campaign, error) {
+func (c *Core) CreateCampaign(ctx context.Context, tenantID int, o models.Campaign, listIDs []int, mediaIDs []int) (models.Campaign, error) {
 	uu, err := uuid.NewV4()
 	if err != nil {
 		c.log.Printf("error generating UUID: %v", err)
@@ -170,29 +181,33 @@ func (c *Core) CreateCampaign(o models.Campaign, listIDs []int, mediaIDs []int) 
 
 	// Insert and read ID.
 	var newID int
-	if err := c.q.CreateCampaign.Get(&newID,
-		uu,
-		o.Type,
-		o.Name,
-		o.Subject,
-		o.FromEmail,
-		o.Body,
-		o.AltBody,
-		o.ContentType,
-		o.SendAt,
-		o.Headers,
-		o.Attribs,
-		pq.StringArray(normalizeTags(o.Tags)),
-		o.Messenger,
-		o.TemplateID,
-		pq.Array(listIDs),
-		o.Archive,
-		o.ArchiveSlug,
-		o.ArchiveTemplateID,
-		o.ArchiveMeta,
-		pq.Array(mediaIDs),
-		o.BodySource,
-	); err != nil {
+	err = c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.CreateCampaign).Get(&newID,
+			uu,
+			o.Type,
+			o.Name,
+			o.Subject,
+			o.FromEmail,
+			o.Body,
+			o.AltBody,
+			o.ContentType,
+			o.SendAt,
+			o.Headers,
+			o.Attribs,
+			pq.StringArray(normalizeTags(o.Tags)),
+			o.Messenger,
+			o.TemplateID,
+			pq.Array(listIDs),
+			o.Archive,
+			o.ArchiveSlug,
+			o.ArchiveTemplateID,
+			o.ArchiveMeta,
+			pq.Array(mediaIDs),
+			o.BodySource,
+			tenantID,
+		)
+	})
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return models.Campaign{}, echo.NewHTTPError(http.StatusBadRequest, c.i18n.T("campaigns.noSubs"))
 		}
@@ -202,7 +217,7 @@ func (c *Core) CreateCampaign(o models.Campaign, listIDs []int, mediaIDs []int) 
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
 	}
 
-	out, err := c.GetCampaign(newID, "", "")
+	out, err := c.GetCampaign(ctx, tenantID, newID, "", "")
 	if err != nil {
 		return models.Campaign{}, err
 	}
@@ -211,34 +226,39 @@ func (c *Core) CreateCampaign(o models.Campaign, listIDs []int, mediaIDs []int) 
 }
 
 // UpdateCampaign updates a campaign.
-func (c *Core) UpdateCampaign(id int, o models.Campaign, listIDs []int, mediaIDs []int) (models.Campaign, error) {
-	_, err := c.q.UpdateCampaign.Exec(id,
-		o.Name,
-		o.Subject,
-		o.FromEmail,
-		o.Body,
-		o.AltBody,
-		o.ContentType,
-		o.SendAt,
-		o.Headers,
-		o.Attribs,
-		pq.StringArray(normalizeTags(o.Tags)),
-		o.Messenger,
-		o.TemplateID,
-		pq.Array(listIDs),
-		o.Archive,
-		o.ArchiveSlug,
-		o.ArchiveTemplateID,
-		o.ArchiveMeta,
-		pq.Array(mediaIDs),
-		o.BodySource)
+func (c *Core) UpdateCampaign(ctx context.Context, tenantID int, id int, o models.Campaign, listIDs []int, mediaIDs []int) (models.Campaign, error) {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.UpdateCampaign).Exec(id,
+			o.Name,
+			o.Subject,
+			o.FromEmail,
+			o.Body,
+			o.AltBody,
+			o.ContentType,
+			o.SendAt,
+			o.Headers,
+			o.Attribs,
+			pq.StringArray(normalizeTags(o.Tags)),
+			o.Messenger,
+			o.TemplateID,
+			pq.Array(listIDs),
+			o.Archive,
+			o.ArchiveSlug,
+			o.ArchiveTemplateID,
+			o.ArchiveMeta,
+			pq.Array(mediaIDs),
+			o.BodySource,
+			tenantID,
+		)
+		return err
+	})
 	if err != nil {
 		c.log.Printf("error updating campaign: %v", err)
 		return models.Campaign{}, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorUpdating", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
 	}
 
-	out, err := c.GetCampaign(id, "", "")
+	out, err := c.GetCampaign(ctx, tenantID, id, "", "")
 	if err != nil {
 		return models.Campaign{}, err
 	}
@@ -247,8 +267,8 @@ func (c *Core) UpdateCampaign(id int, o models.Campaign, listIDs []int, mediaIDs
 }
 
 // UpdateCampaignStatus updates a campaign's status, eg: draft to running.
-func (c *Core) UpdateCampaignStatus(id int, status string) (models.Campaign, error) {
-	cm, err := c.GetCampaign(id, "", "")
+func (c *Core) UpdateCampaignStatus(ctx context.Context, tenantID int, id int, status string) (models.Campaign, error) {
+	cm, err := c.GetCampaign(ctx, tenantID, id, "", "")
 	if err != nil {
 		return models.Campaign{}, err
 	}
@@ -285,7 +305,15 @@ func (c *Core) UpdateCampaignStatus(id int, status string) (models.Campaign, err
 		return models.Campaign{}, echo.NewHTTPError(http.StatusBadRequest, errMsg)
 	}
 
-	res, err := c.q.UpdateCampaignStatus.Exec(cm.ID, status)
+	var n int64
+	err = c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		res, err := stmtx(tx, c.q.UpdateCampaignStatus).Exec(cm.ID, status)
+		if err != nil {
+			return err
+		}
+		n, err = res.RowsAffected()
+		return err
+	})
 	if err != nil {
 		c.log.Printf("error updating campaign status: %v", err)
 
@@ -293,9 +321,9 @@ func (c *Core) UpdateCampaignStatus(id int, status string) (models.Campaign, err
 			c.i18n.Ts("globals.messages.errorUpdating", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
 	}
 
-	if n, _ := res.RowsAffected(); n == 0 {
+	if n == 0 {
 		return models.Campaign{}, echo.NewHTTPError(http.StatusBadRequest,
-			c.i18n.Ts("globals.messages.notFound", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
+			c.i18n.Ts("globals.messages.notFound", "name", "{globals.terms.campaign}"))
 	}
 
 	cm.Status = status
@@ -303,8 +331,12 @@ func (c *Core) UpdateCampaignStatus(id int, status string) (models.Campaign, err
 }
 
 // UpdateCampaignArchive updates a campaign's archive properties.
-func (c *Core) UpdateCampaignArchive(id int, enabled bool, tplID int, meta models.JSON, archiveSlug string) error {
-	if _, err := c.q.UpdateCampaignArchive.Exec(id, enabled, archiveSlug, tplID, meta); err != nil {
+func (c *Core) UpdateCampaignArchive(ctx context.Context, tenantID int, id int, enabled bool, tplID int, meta models.JSON, archiveSlug string) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.UpdateCampaignArchive).Exec(id, enabled, archiveSlug, tplID, meta)
+		return err
+	})
+	if err != nil {
 		c.log.Printf("error updating campaign: %v", err)
 
 		return echo.NewHTTPError(http.StatusInternalServerError,
@@ -315,8 +347,16 @@ func (c *Core) UpdateCampaignArchive(id int, enabled bool, tplID int, meta model
 }
 
 // DeleteCampaign deletes a campaign.
-func (c *Core) DeleteCampaign(id int) error {
-	res, err := c.q.DeleteCampaign.Exec(id)
+func (c *Core) DeleteCampaign(ctx context.Context, tenantID int, id int) error {
+	var n int64
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		res, err := stmtx(tx, c.q.DeleteCampaign).Exec(id)
+		if err != nil {
+			return err
+		}
+		n, err = res.RowsAffected()
+		return err
+	})
 	if err != nil {
 		c.log.Printf("error deleting campaign: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError,
@@ -324,7 +364,7 @@ func (c *Core) DeleteCampaign(id int) error {
 
 	}
 
-	if n, _ := res.RowsAffected(); n == 0 {
+	if n == 0 {
 		return echo.NewHTTPError(http.StatusBadRequest,
 			c.i18n.Ts("globals.messages.notFound", "name", "{globals.terms.campaign}"))
 	}
@@ -333,7 +373,7 @@ func (c *Core) DeleteCampaign(id int) error {
 }
 
 // DeleteCampaigns deletes multiple campaigns by IDs or by query.
-func (c *Core) DeleteCampaigns(ids []int, query string, hasAllPerm bool, permittedLists []int) error {
+func (c *Core) DeleteCampaigns(ctx context.Context, tenantID int, ids []int, query string, hasAllPerm bool, permittedLists []int) error {
 	var queryStr string
 
 	if len(ids) > 0 {
@@ -342,7 +382,11 @@ func (c *Core) DeleteCampaigns(ids []int, query string, hasAllPerm bool, permitt
 		queryStr = makeSearchString(query)
 	}
 
-	if _, err := c.q.DeleteCampaigns.Exec(pq.Array(ids), queryStr, hasAllPerm, pq.Array(permittedLists)); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.DeleteCampaigns).Exec(pq.Array(ids), queryStr, hasAllPerm, pq.Array(permittedLists))
+		return err
+	})
+	if err != nil {
 		c.log.Printf("error deleting campaigns: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorDeleting", "name", "{globals.terms.campaigns}", "error", pqErrMsg(err)))
@@ -352,9 +396,12 @@ func (c *Core) DeleteCampaigns(ids []int, query string, hasAllPerm bool, permitt
 }
 
 // CampaignHasLists checks if a campaign has any of the given list IDs.
-func (c *Core) CampaignHasLists(id int, listIDs []int) (bool, error) {
+func (c *Core) CampaignHasLists(ctx context.Context, tenantID int, id int, listIDs []int) (bool, error) {
 	has := false
-	if err := c.q.CampaignHasLists.Get(&has, id, pq.Array(listIDs)); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.CampaignHasLists).Get(&has, id, pq.Array(listIDs))
+	})
+	if err != nil {
 		c.log.Printf("error checking campaign lists: %v", err)
 		return false, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
@@ -364,9 +411,12 @@ func (c *Core) CampaignHasLists(id int, listIDs []int) (bool, error) {
 }
 
 // GetRunningCampaignStats returns the progress stats of running campaigns.
-func (c *Core) GetRunningCampaignStats() ([]models.CampaignStats, error) {
+func (c *Core) GetRunningCampaignStats(ctx context.Context, tenantID int) ([]models.CampaignStats, error) {
 	out := []models.CampaignStats{}
-	if err := c.q.GetCampaignStatus.Select(&out, models.CampaignStatusRunning); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetCampaignStatus).Select(&out, models.CampaignStatusRunning)
+	})
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -381,16 +431,16 @@ func (c *Core) GetRunningCampaignStats() ([]models.CampaignStats, error) {
 	return out, nil
 }
 
-func (c *Core) GetCampaignAnalyticsCounts(campIDs []int, typ, fromDate, toDate string) ([]models.CampaignAnalyticsCount, error) {
+func (c *Core) GetCampaignAnalyticsCounts(ctx context.Context, tenantID int, campIDs []int, typ, fromDate, toDate string) ([]models.CampaignAnalyticsCount, error) {
 	// Pick campaign view counts or click counts.
-	var stmt *sqlx.Stmt
+	var q *sqlx.Stmt
 	switch typ {
 	case "views":
-		stmt = c.q.GetCampaignViewCounts
+		q = c.q.GetCampaignViewCounts
 	case "clicks":
-		stmt = c.q.GetCampaignClickCounts
+		q = c.q.GetCampaignClickCounts
 	case "bounces":
-		stmt = c.q.GetCampaignBounceCounts
+		q = c.q.GetCampaignBounceCounts
 	default:
 		return nil, echo.NewHTTPError(http.StatusBadRequest, c.i18n.T("globals.messages.invalidData"))
 	}
@@ -400,7 +450,10 @@ func (c *Core) GetCampaignAnalyticsCounts(campIDs []int, typ, fromDate, toDate s
 	}
 
 	out := []models.CampaignAnalyticsCount{}
-	if err := stmt.Select(&out, pq.Array(campIDs), fromDate, toDate); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, q).Select(&out, pq.Array(campIDs), fromDate, toDate)
+	})
+	if err != nil {
 		c.log.Printf("error fetching campaign %s: %v", typ, err)
 		return nil, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.analytics}", "error", pqErrMsg(err)))
@@ -410,9 +463,12 @@ func (c *Core) GetCampaignAnalyticsCounts(campIDs []int, typ, fromDate, toDate s
 }
 
 // GetCampaignAnalyticsLinks returns link click analytics for the given campaign IDs.
-func (c *Core) GetCampaignAnalyticsLinks(campIDs []int, typ, fromDate, toDate string) ([]models.CampaignAnalyticsLink, error) {
+func (c *Core) GetCampaignAnalyticsLinks(ctx context.Context, tenantID int, campIDs []int, typ, fromDate, toDate string) ([]models.CampaignAnalyticsLink, error) {
 	out := []models.CampaignAnalyticsLink{}
-	if err := c.q.GetCampaignLinkCounts.Select(&out, pq.Array(campIDs), fromDate, toDate); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetCampaignLinkCounts).Select(&out, pq.Array(campIDs), fromDate, toDate)
+	})
+	if err != nil {
 		c.log.Printf("error fetching campaign %s: %v", typ, err)
 		return nil, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.analytics}", "error", pqErrMsg(err)))
@@ -422,8 +478,12 @@ func (c *Core) GetCampaignAnalyticsLinks(campIDs []int, typ, fromDate, toDate st
 }
 
 // RegisterCampaignView registers a subscriber's view on a campaign.
-func (c *Core) RegisterCampaignView(campUUID, subUUID string) error {
-	if _, err := c.q.RegisterCampaignView.Exec(campUUID, subUUID); err != nil {
+func (c *Core) RegisterCampaignView(ctx context.Context, tenantID int, campUUID, subUUID string) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.RegisterCampaignView).Exec(campUUID, subUUID, tenantID)
+		return err
+	})
+	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Column == "campaign_id" {
 			return nil
 		}
@@ -436,9 +496,12 @@ func (c *Core) RegisterCampaignView(campUUID, subUUID string) error {
 }
 
 // GetLinkURL returns the original URL for a link UUID without recording a click.
-func (c *Core) GetLinkURL(linkUUID string) (string, error) {
+func (c *Core) GetLinkURL(ctx context.Context, tenantID int, linkUUID string) (string, error) {
 	var url string
-	if err := c.q.GetLinkURL.Get(&url, linkUUID); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetLinkURL).Get(&url, linkUUID)
+	})
+	if err != nil {
 		c.log.Printf("error getting link URL: %s", err)
 		return "", echo.NewHTTPError(http.StatusInternalServerError, c.i18n.Ts("public.errorProcessingRequest"))
 	}
@@ -446,9 +509,12 @@ func (c *Core) GetLinkURL(linkUUID string) (string, error) {
 }
 
 // RegisterCampaignLinkClick registers a subscriber's link click on a campaign.
-func (c *Core) RegisterCampaignLinkClick(linkUUID, campUUID, subUUID string) (string, error) {
+func (c *Core) RegisterCampaignLinkClick(ctx context.Context, tenantID int, linkUUID, campUUID, subUUID string) (string, error) {
 	var url string
-	if err := c.q.RegisterLinkClick.Get(&url, linkUUID, campUUID, subUUID); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.RegisterLinkClick).Get(&url, linkUUID, campUUID, subUUID, tenantID)
+	})
+	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Column == "link_id" {
 			return "", echo.NewHTTPError(http.StatusBadRequest, c.i18n.Ts("public.invalidLink"))
 		}
@@ -461,7 +527,14 @@ func (c *Core) RegisterCampaignLinkClick(linkUUID, campUUID, subUUID string) (st
 }
 
 // ExportCampaignViews returns an iterator with campaign views for streaming/exporting.
-func (c *Core) ExportCampaignViews(since time.Time, batchSize int) func() ([]models.CampaignViewExport, error) {
+//
+// TODO(#40): ctx/tenantID are accepted for a consistent call-site shape with
+// the rest of Core, but the iterator below does NOT yet enforce tenant
+// scoping - same deferred shape as ExportSubscribers (see subscribers.go),
+// for the same reason (long-lived Preparex'd statement doesn't fit
+// WithTenant's short-transaction shape; zero risk today, no real
+// multi-tenant dataset exists yet).
+func (c *Core) ExportCampaignViews(ctx context.Context, tenantID int, since time.Time, batchSize int) func() ([]models.CampaignViewExport, error) {
 	offset := 0
 	return func() ([]models.CampaignViewExport, error) {
 		var out []models.CampaignViewExport
@@ -476,7 +549,9 @@ func (c *Core) ExportCampaignViews(since time.Time, batchSize int) func() ([]mod
 }
 
 // ExportCampaignLinkClicks returns an iterator with campaign link click for streaming/exporting.
-func (c *Core) ExportCampaignLinkClicks(since time.Time, batchSize int) func() ([]models.CampaignClickExport, error) {
+//
+// TODO(#40): see ExportCampaignViews above - same deferred tenant scoping.
+func (c *Core) ExportCampaignLinkClicks(ctx context.Context, tenantID int, since time.Time, batchSize int) func() ([]models.CampaignClickExport, error) {
 	offset := 0
 	return func() ([]models.CampaignClickExport, error) {
 		var out []models.CampaignClickExport
@@ -491,8 +566,12 @@ func (c *Core) ExportCampaignLinkClicks(since time.Time, batchSize int) func() (
 }
 
 // DeleteCampaignViews deletes campaign views older than a given date.
-func (c *Core) DeleteCampaignViews(before time.Time) error {
-	if _, err := c.q.DeleteCampaignViews.Exec(before); err != nil {
+func (c *Core) DeleteCampaignViews(ctx context.Context, tenantID int, before time.Time) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.DeleteCampaignViews).Exec(before)
+		return err
+	})
+	if err != nil {
 		c.log.Printf("error deleting campaign views: %s", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, c.i18n.Ts("public.errorProcessingRequest"))
 	}
@@ -501,8 +580,12 @@ func (c *Core) DeleteCampaignViews(before time.Time) error {
 }
 
 // DeleteCampaignLinkClicks deletes campaign views older than a given date.
-func (c *Core) DeleteCampaignLinkClicks(before time.Time) error {
-	if _, err := c.q.DeleteCampaignLinkClicks.Exec(before); err != nil {
+func (c *Core) DeleteCampaignLinkClicks(ctx context.Context, tenantID int, before time.Time) error {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		_, err := stmtx(tx, c.q.DeleteCampaignLinkClicks).Exec(before)
+		return err
+	})
+	if err != nil {
 		c.log.Printf("error deleting campaign link clicks: %s", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, c.i18n.Ts("public.errorProcessingRequest"))
 	}

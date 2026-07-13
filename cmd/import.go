@@ -28,8 +28,13 @@ import (
 //	@Failure		500		{object}	echo.HTTPError
 //	@Router			/api/import/subscribers [post]
 func (a *App) ImportSubscribers(c echo.Context) error {
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+
 	// Is an import already running?
-	if a.importer.GetStats().Status == subimporter.StatusImporting {
+	if imp.GetStats().Status == subimporter.StatusImporting {
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("import.alreadyRunning"))
 	}
 
@@ -102,7 +107,8 @@ func (a *App) ImportSubscribers(c echo.Context) error {
 
 	// Start the importer session.
 	opt.Filename = file.Filename
-	sess, err := a.importer.NewSession(opt)
+	opt.TenantID = tenantID(c)
+	sess, err := imp.NewSession(opt)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError,
 			a.i18n.Ts("import.errorStarting", "error", err.Error()))
@@ -127,7 +133,7 @@ func (a *App) ImportSubscribers(c echo.Context) error {
 		go sess.LoadCSV(dir+"/"+files[0], rune(opt.Delim[0]))
 	}
 
-	return c.JSON(http.StatusOK, okResp{a.importer.GetStats()})
+	return c.JSON(http.StatusOK, okResp{imp.GetStats()})
 }
 
 // GetImportSubscribers returns import statistics.
@@ -139,8 +145,11 @@ func (a *App) ImportSubscribers(c echo.Context) error {
 //	@Success		200	{object}	subimporter.Status
 //	@Router			/api/import/subscribers [get]
 func (a *App) GetImportSubscribers(c echo.Context) error {
-	s := a.importer.GetStats()
-	return c.JSON(http.StatusOK, okResp{s})
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, okResp{imp.GetStats()})
 }
 
 // GetImportSubscriberStats returns import log output.
@@ -152,7 +161,11 @@ func (a *App) GetImportSubscribers(c echo.Context) error {
 //	@Success		200	{object}	string
 //	@Router			/api/import/subscribers/logs [get]
 func (a *App) GetImportSubscriberStats(c echo.Context) error {
-	return c.JSON(http.StatusOK, okResp{string(a.importer.GetLogs())})
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, okResp{string(imp.GetLogs())})
 }
 
 // StopImportSubscribers sends a stop signal to the importer.
@@ -166,6 +179,10 @@ func (a *App) GetImportSubscriberStats(c echo.Context) error {
 //	@Success		200	{object}	subimporter.Status
 //	@Router			/api/import/subscribers [delete]
 func (a *App) StopImportSubscribers(c echo.Context) error {
-	a.importer.Stop()
-	return c.JSON(http.StatusOK, okResp{a.importer.GetStats()})
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	imp.Stop()
+	return c.JSON(http.StatusOK, okResp{imp.GetStats()})
 }

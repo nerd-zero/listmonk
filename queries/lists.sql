@@ -53,7 +53,7 @@ SELECT id, uuid, type FROM lists WHERE
     END);
 
 -- name: create-list
-INSERT INTO lists (uuid, name, type, optin, status, tags, description) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id;
+INSERT INTO lists (uuid, name, type, optin, status, tags, description, tenant_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;
 
 -- name: update-list
 WITH l AS (

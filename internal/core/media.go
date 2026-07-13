@@ -1,12 +1,14 @@
 package core
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gofrs/uuid/v5"
+	"github.com/jmoiron/sqlx"
 	"github.com/knadh/listmonk/internal/media"
 	"github.com/knadh/listmonk/models"
 	"github.com/labstack/echo/v4"
@@ -14,14 +16,17 @@ import (
 )
 
 // QueryMedia returns media entries optionally filtered by a query string.
-func (c *Core) QueryMedia(provider string, s media.Store, query string, offset, limit int) ([]media.Media, int, error) {
+func (c *Core) QueryMedia(ctx context.Context, tenantID int, provider string, s media.Store, query string, offset, limit int) ([]media.Media, int, error) {
 	out := []media.Media{}
 
 	if query != "" {
 		query = strings.ToLower(query)
 	}
 
-	if err := c.q.QueryMedia.Select(&out, fmt.Sprintf("%%%s%%", query), provider, offset, limit); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.QueryMedia).Select(&out, fmt.Sprintf("%%%s%%", query), provider, offset, limit)
+	})
+	if err != nil {
 		return out, 0, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching",
 				"name", "{globals.terms.media}", "error", pqErrMsg(err)))
@@ -44,14 +49,17 @@ func (c *Core) QueryMedia(provider string, s media.Store, query string, offset, 
 }
 
 // GetMedia returns a media item.
-func (c *Core) GetMedia(id int, uuid, fileName string, s media.Store) (media.Media, error) {
+func (c *Core) GetMedia(ctx context.Context, tenantID int, id int, uuid, fileName string, s media.Store) (media.Media, error) {
 	var uu any
 	if uuid != "" {
 		uu = uuid
 	}
 
 	var out media.Media
-	if err := c.q.GetMedia.Get(&out, id, uu, fileName); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.GetMedia).Get(&out, id, uu, fileName)
+	})
+	if err != nil {
 		// If it's ` sql: no rows in result set`, return a 404.
 		if err == sql.ErrNoRows {
 			return out, ErrNotFound
@@ -70,7 +78,7 @@ func (c *Core) GetMedia(id int, uuid, fileName string, s media.Store) (media.Med
 }
 
 // InsertMedia inserts a new media file into the DB.
-func (c *Core) InsertMedia(fileName, thumbName, contentType string, meta models.JSON, provider string, s media.Store) (media.Media, error) {
+func (c *Core) InsertMedia(ctx context.Context, tenantID int, fileName, thumbName, contentType string, meta models.JSON, provider string, s media.Store) (media.Media, error) {
 	uu, err := uuid.NewV4()
 	if err != nil {
 		c.log.Printf("error generating UUID: %v", err)
@@ -80,19 +88,25 @@ func (c *Core) InsertMedia(fileName, thumbName, contentType string, meta models.
 
 	// Write to the DB.
 	var newID int
-	if err := c.q.InsertMedia.Get(&newID, uu, fileName, thumbName, contentType, provider, meta); err != nil {
+	err = c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.InsertMedia).Get(&newID, uu, fileName, thumbName, contentType, provider, meta, tenantID)
+	})
+	if err != nil {
 		c.log.Printf("error inserting uploaded file to db: %v", err)
 		return media.Media{}, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{globals.terms.media}", "error", pqErrMsg(err)))
 	}
 
-	return c.GetMedia(newID, "", "", s)
+	return c.GetMedia(ctx, tenantID, newID, "", "", s)
 }
 
 // DeleteMedia deletes a given media item and returns the filename of the deleted item.
-func (c *Core) DeleteMedia(id int) (string, error) {
+func (c *Core) DeleteMedia(ctx context.Context, tenantID int, id int) (string, error) {
 	var fname string
-	if err := c.q.DeleteMedia.Get(&fname, id); err != nil {
+	err := c.WithTenant(ctx, tenantID, nil, func(tx *sqlx.Tx) error {
+		return stmtx(tx, c.q.DeleteMedia).Get(&fname, id)
+	})
+	if err != nil {
 		c.log.Printf("error inserting uploaded file to db: %v", err)
 		return "", echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorCreating", "name", "{globals.terms.media}", "error", pqErrMsg(err)))

@@ -98,6 +98,13 @@ type SessionOpt struct {
 	OverwriteSubStatus bool   `json:"overwrite_subscription_status"`
 	Delim              string `json:"delim"`
 	ListIDs            []int  `json:"lists"`
+
+	// TenantID is set by the HTTP handler from the resolved request tenant
+	// (never from client-supplied JSON, hence no json tag) after Bind, same
+	// as models.Message.TenantID in cmd/tx.go - imported subscribers must
+	// carry the importing tenant's ID since UpsertStmt/BlocklistStmt insert
+	// directly via database/sql, bypassing Core.WithTenant entirely.
+	TenantID int `json:"-"`
 }
 
 // Status represents statistics from an ongoing import session.
@@ -306,9 +313,9 @@ func (s *Session) Start() {
 		}
 
 		if s.opt.Mode == ModeSubscribe {
-			_, err = stmt.Exec(uu, sub.Email, sub.Name, sub.Attribs, listIDsArr, s.opt.SubStatus, s.opt.OverwriteUserInfo, s.opt.OverwriteSubStatus)
+			_, err = stmt.Exec(uu, sub.Email, sub.Name, sub.Attribs, listIDsArr, s.opt.SubStatus, s.opt.OverwriteUserInfo, s.opt.OverwriteSubStatus, s.opt.TenantID)
 		} else if s.opt.Mode == ModeBlocklist {
-			_, err = stmt.Exec(uu, sub.Email, sub.Name, sub.Attribs)
+			_, err = stmt.Exec(uu, sub.Email, sub.Name, sub.Attribs, s.opt.TenantID)
 		}
 		if err != nil {
 			s.log.Printf("error executing insert: %v", err)

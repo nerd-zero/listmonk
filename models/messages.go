@@ -10,6 +10,12 @@ import (
 
 // Message is the message pushed to a Messenger.
 type Message struct {
+	// TenantID is set explicitly by whoever constructs the message (from
+	// the campaign for campaign sends, from the authenticated request's
+	// resolved tenant for transactional sends) rather than derived from
+	// Campaign, which is nil for the transactional path.
+	TenantID int
+
 	From        string
 	To          []string
 	Subject     string

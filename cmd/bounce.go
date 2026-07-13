@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -25,7 +26,7 @@ import (
 func (a *App) GetBounce(c echo.Context) error {
 	// Fetch one bounce from the DB.
 	id := getID(c)
-	out, err := a.core.GetBounce(id)
+	out, err := a.core.GetBounce(c.Request().Context(), tenantID(c), id)
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,7 @@ func (a *App) GetBounces(c echo.Context) error {
 	)
 
 	// Query and fetch bounces from the DB.
-	res, total, err := a.core.QueryBounces(campID, 0, source, orderBy, order, pg.Offset, pg.Limit)
+	res, total, err := a.core.QueryBounces(c.Request().Context(), tenantID(c), campID, 0, source, orderBy, order, pg.Offset, pg.Limit)
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func (a *App) GetBounces(c echo.Context) error {
 func (a *App) GetSubscriberBounces(c echo.Context) error {
 	// Query and fetch bounces from the DB.
 	subID := getID(c)
-	out, _, err := a.core.QueryBounces(0, subID, "", "", "", 0, 1000)
+	out, _, err := a.core.QueryBounces(c.Request().Context(), tenantID(c), 0, subID, "", "", "", 0, 1000)
 	if err != nil {
 		return err
 	}
@@ -130,7 +131,7 @@ func (a *App) DeleteBounces(c echo.Context) error {
 	}
 
 	// Delete bounces from the DB.
-	if err := a.core.DeleteBounces(ids, all); err != nil {
+	if err := a.core.DeleteBounces(c.Request().Context(), tenantID(c), ids, all); err != nil {
 		return err
 	}
 
@@ -151,7 +152,7 @@ func (a *App) DeleteBounces(c echo.Context) error {
 func (a *App) DeleteBounce(c echo.Context) error {
 	// Delete bounces from the DB.
 	id := getID(c)
-	if err := a.core.DeleteBounces([]int{id}, false); err != nil {
+	if err := a.core.DeleteBounces(c.Request().Context(), tenantID(c), []int{id}, false); err != nil {
 		return err
 	}
 
@@ -168,7 +169,7 @@ func (a *App) DeleteBounce(c echo.Context) error {
 //	@Failure		500	{object}	echo.HTTPError
 //	@Router			/api/bounces/blocklist [put]
 func (a *App) BlocklistBouncedSubscribers(c echo.Context) error {
-	if err := a.core.BlocklistBouncedSubscribers(); err != nil {
+	if err := a.core.BlocklistBouncedSubscribers(c.Request().Context(), tenantID(c)); err != nil {
 		return err
 	}
 
@@ -215,7 +216,7 @@ func (a *App) BounceWebhook(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, a.i18n.Ts("globals.messages.invalidData")+":"+err.Error())
 		}
 
-		if bv, err := a.validateBounceFields(b); err != nil {
+		if bv, err := a.validateBounceFields(c.Request().Context(), tenantID(c), b); err != nil {
 			return err
 		} else {
 			b = bv
@@ -353,7 +354,7 @@ func (a *App) BounceWebhook(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{true})
 }
 
-func (a *App) validateBounceFields(b models.Bounce) (models.Bounce, error) {
+func (a *App) validateBounceFields(ctx context.Context, tenantID int, b models.Bounce) (models.Bounce, error) {
 	if b.Email == "" && b.SubscriberUUID == "" {
 		return b, echo.NewHTTPError(http.StatusBadRequest, a.i18n.Ts("globals.messages.invalidFields", "name", "email / subscriber_uuid"))
 	}
@@ -363,7 +364,12 @@ func (a *App) validateBounceFields(b models.Bounce) (models.Bounce, error) {
 	}
 
 	if b.Email != "" {
-		em, err := a.importer.SanitizeEmail(b.Email)
+		imp, err := a.importers.Get(ctx, tenantID)
+		if err != nil {
+			return b, err
+		}
+
+		em, err := imp.SanitizeEmail(b.Email)
 		if err != nil {
 			return b, echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}

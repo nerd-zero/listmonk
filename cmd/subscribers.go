@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -72,12 +73,12 @@ func (a *App) GetSubscriber(c echo.Context) error {
 
 	// Check if the user has access to at least one of the lists on the subscriber.
 	id := getID(c)
-	if err := a.hasSubPerm(user, []int{id}); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, []int{id}); err != nil {
 		return err
 	}
 
 	// Fetch the subscriber from the DB.
-	out, err := a.core.GetSubscriber(id, "", "")
+	out, err := a.core.GetSubscriber(c.Request().Context(), tenantID(c), id, "", "")
 	if err != nil {
 		return err
 	}
@@ -104,12 +105,12 @@ func (a *App) GetSubscriberActivity(c echo.Context) error {
 
 	// Check if the user has access to at least one of the lists on the subscriber.
 	id := getID(c)
-	if err := a.hasSubPerm(user, []int{id}); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, []int{id}); err != nil {
 		return err
 	}
 
 	// Fetch the subscriber activity from the DB.
-	out, err := a.core.GetSubscriberActivity(id)
+	out, err := a.core.GetSubscriberActivity(c.Request().Context(), tenantID(c), id)
 	if err != nil {
 		return err
 	}
@@ -162,7 +163,7 @@ func (a *App) QuerySubscribers(c echo.Context) error {
 	)
 
 	// Query subscribers from the DB.
-	res, total, err := a.core.QuerySubscribers(searchStr, query, listIDs, subStatus, order, orderBy, pg.Offset, pg.Limit)
+	res, total, err := a.core.QuerySubscribers(c.Request().Context(), tenantID(c), searchStr, query, listIDs, subStatus, order, orderBy, pg.Offset, pg.Limit)
 	if err != nil {
 		return err
 	}
@@ -229,7 +230,7 @@ func (a *App) ExportSubscribers(c echo.Context) error {
 	}
 
 	// Get the batched export iterator.
-	exp, err := a.core.ExportSubscribers(searchStr, query, subIDs, listIDs, subStatus, a.cfg.DBBatchSize)
+	exp, err := a.core.ExportSubscribers(c.Request().Context(), tenantID(c), searchStr, query, subIDs, listIDs, subStatus, a.cfg.DBBatchSize)
 	if err != nil {
 		return err
 	}
@@ -295,7 +296,11 @@ func (a *App) CreateSubscriber(c echo.Context) error {
 	}
 
 	// Validate fields.
-	req, err := a.importer.ValidateFields(req)
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	req, err = imp.ValidateFields(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -309,7 +314,7 @@ func (a *App) CreateSubscriber(c echo.Context) error {
 	}
 
 	// Insert the subscriber into the DB.
-	sub, _, err := a.core.InsertSubscriber(req.Subscriber, listIDs, nil, req.PreconfirmSubs, false)
+	sub, _, err := a.core.InsertSubscriber(c.Request().Context(), tenantID(c), req.Subscriber, listIDs, nil, req.PreconfirmSubs, false)
 	if err != nil {
 		return err
 	}
@@ -346,7 +351,11 @@ func (a *App) UpdateSubscriber(c echo.Context) error {
 	}
 
 	// Sanitize and validate the email field.
-	if em, err := a.importer.SanitizeEmail(req.Email); err != nil {
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	if em, err := imp.SanitizeEmail(req.Email); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	} else {
 		req.Email = em
@@ -374,7 +383,7 @@ func (a *App) UpdateSubscriber(c echo.Context) error {
 		permittedLists = []int{}
 	}
 
-	out, _, err := a.core.UpdateSubscriberWithLists(id, req.Subscriber, listIDs, nil, req.PreconfirmSubs, true, false, permittedLists, false)
+	out, _, err := a.core.UpdateSubscriberWithLists(c.Request().Context(), tenantID(c), id, req.Subscriber, listIDs, nil, req.PreconfirmSubs, true, false, permittedLists, false)
 	if err != nil {
 		return err
 	}
@@ -403,7 +412,7 @@ func (a *App) PatchSubscriber(c echo.Context) error {
 	id := getID(c)
 
 	// Fetch the sub subscriber from the DB.
-	sub, err := a.core.GetSubscriber(id, "", "")
+	sub, err := a.core.GetSubscriber(c.Request().Context(), tenantID(c), id, "", "")
 	if err != nil {
 		return err
 	}
@@ -423,7 +432,11 @@ func (a *App) PatchSubscriber(c echo.Context) error {
 		return err
 	}
 
-	if em, err := a.importer.SanitizeEmail(req.Email); err != nil {
+	imp, err := a.importers.Get(c.Request().Context(), tenantID(c))
+	if err != nil {
+		return err
+	}
+	if em, err := imp.SanitizeEmail(req.Email); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	} else {
 		req.Email = em
@@ -449,7 +462,7 @@ func (a *App) PatchSubscriber(c echo.Context) error {
 		permittedLists = []int{}
 	}
 
-	out, _, err := a.core.UpdateSubscriberWithLists(id, req.Subscriber, listIDs, nil, req.PreconfirmSubs, overwriteSubs, false, permittedLists, false)
+	out, _, err := a.core.UpdateSubscriberWithLists(c.Request().Context(), tenantID(c), id, req.Subscriber, listIDs, nil, req.PreconfirmSubs, overwriteSubs, false, permittedLists, false)
 	if err != nil {
 		return err
 	}
@@ -475,11 +488,11 @@ func (a *App) SubscriberSendOptin(c echo.Context) error {
 
 	// Fetch the subscriber.
 	id := getID(c)
-	if err := a.hasSubPerm(user, []int{id}); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, []int{id}); err != nil {
 		return err
 	}
 
-	out, err := a.core.GetSubscriber(id, "", "")
+	out, err := a.core.GetSubscriber(c.Request().Context(), tenantID(c), id, "", "")
 	if err != nil {
 		return err
 	}
@@ -508,11 +521,11 @@ func (a *App) BlocklistSubscriber(c echo.Context) error {
 
 	// Update the subscribers in the DB.
 	id := getID(c)
-	if err := a.hasSubPerm(user, []int{id}); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, []int{id}); err != nil {
 		return err
 	}
 
-	if err := a.core.BlocklistSubscribers([]int{id}); err != nil {
+	if err := a.core.BlocklistSubscribers(c.Request().Context(), tenantID(c), []int{id}); err != nil {
 		return err
 	}
 
@@ -544,12 +557,12 @@ func (a *App) BlocklistSubscribers(c echo.Context) error {
 			a.i18n.Ts("globals.messages.errorInvalidIDs", "error", "ids"))
 	}
 
-	if err := a.hasSubPerm(user, req.SubscriberIDs); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, req.SubscriberIDs); err != nil {
 		return err
 	}
 
 	// Update the subscribers in the DB.
-	if err := a.core.BlocklistSubscribers(req.SubscriberIDs); err != nil {
+	if err := a.core.BlocklistSubscribers(c.Request().Context(), tenantID(c), req.SubscriberIDs); err != nil {
 		return err
 	}
 
@@ -602,7 +615,7 @@ func (a *App) ManageSubscriberLists(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.errorNoListsGiven"))
 	}
 
-	if err := a.hasSubPerm(user, subIDs); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, subIDs); err != nil {
 		return err
 	}
 
@@ -618,11 +631,11 @@ func (a *App) ManageSubscriberLists(c echo.Context) error {
 	var err error
 	switch req.Action {
 	case "add":
-		err = a.core.AddSubscriptions(subIDs, listIDs, req.Status)
+		err = a.core.AddSubscriptions(c.Request().Context(), tenantID(c), subIDs, listIDs, req.Status)
 	case "remove":
-		err = a.core.DeleteSubscriptions(subIDs, listIDs)
+		err = a.core.DeleteSubscriptions(c.Request().Context(), tenantID(c), subIDs, listIDs)
 	case "unsubscribe":
-		err = a.core.UnsubscribeLists(subIDs, listIDs, nil)
+		err = a.core.UnsubscribeLists(c.Request().Context(), tenantID(c), subIDs, listIDs, nil)
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidAction"))
 	}
@@ -650,11 +663,11 @@ func (a *App) DeleteSubscriber(c echo.Context) error {
 
 	// Delete the subscribers from the DB.
 	id := getID(c)
-	if err := a.hasSubPerm(user, []int{id}); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, []int{id}); err != nil {
 		return err
 	}
 
-	if err := a.core.DeleteSubscribers([]int{id}, nil); err != nil {
+	if err := a.core.DeleteSubscribers(c.Request().Context(), tenantID(c), []int{id}, nil); err != nil {
 		return err
 	}
 
@@ -686,12 +699,12 @@ func (a *App) DeleteSubscribers(c echo.Context) error {
 			a.i18n.Ts("globals.messages.errorInvalidIDs", "error", "ids"))
 	}
 
-	if err := a.hasSubPerm(user, ids); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), user, ids); err != nil {
 		return err
 	}
 
 	// Delete the subscribers from the DB.
-	if err := a.core.DeleteSubscribers(ids, nil); err != nil {
+	if err := a.core.DeleteSubscribers(c.Request().Context(), tenantID(c), ids, nil); err != nil {
 		return err
 	}
 
@@ -741,7 +754,7 @@ func (a *App) DeleteSubscribersByQuery(c echo.Context) error {
 	listIDs := user.GetPermittedListIDs(req.ListIDs)
 
 	// Delete the subscribers from the DB.
-	if err := a.core.DeleteSubscribersByQuery(req.Search, req.Query, listIDs, req.SubscriptionStatus); err != nil {
+	if err := a.core.DeleteSubscribersByQuery(c.Request().Context(), tenantID(c), req.Search, req.Query, listIDs, req.SubscriptionStatus); err != nil {
 		return err
 	}
 
@@ -790,7 +803,7 @@ func (a *App) BlocklistSubscribersByQuery(c echo.Context) error {
 	listIDs := user.GetPermittedListIDs(req.ListIDs)
 
 	// Update the subscribers in the DB.
-	if err := a.core.BlocklistSubscribersByQuery(req.Search, req.Query, listIDs, req.SubscriptionStatus); err != nil {
+	if err := a.core.BlocklistSubscribersByQuery(c.Request().Context(), tenantID(c), req.Search, req.Query, listIDs, req.SubscriptionStatus); err != nil {
 		return err
 	}
 
@@ -841,11 +854,11 @@ func (a *App) ManageSubscriberListsByQuery(c echo.Context) error {
 	var err error
 	switch req.Action {
 	case "add":
-		err = a.core.AddSubscriptionsByQuery(req.Search, req.Query, sourceListIDs, targetListIDs, req.Status, req.SubscriptionStatus)
+		err = a.core.AddSubscriptionsByQuery(c.Request().Context(), tenantID(c), req.Search, req.Query, sourceListIDs, targetListIDs, req.Status, req.SubscriptionStatus)
 	case "remove":
-		err = a.core.DeleteSubscriptionsByQuery(req.Search, req.Query, sourceListIDs, targetListIDs, req.SubscriptionStatus)
+		err = a.core.DeleteSubscriptionsByQuery(c.Request().Context(), tenantID(c), req.Search, req.Query, sourceListIDs, targetListIDs, req.SubscriptionStatus)
 	case "unsubscribe":
-		err = a.core.UnsubscribeListsByQuery(req.Search, req.Query, sourceListIDs, targetListIDs, req.SubscriptionStatus)
+		err = a.core.UnsubscribeListsByQuery(c.Request().Context(), tenantID(c), req.Search, req.Query, sourceListIDs, targetListIDs, req.SubscriptionStatus)
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidAction"))
 	}
@@ -870,7 +883,7 @@ func (a *App) ManageSubscriberListsByQuery(c echo.Context) error {
 func (a *App) DeleteSubscriberBounces(c echo.Context) error {
 	// Delete the bounces from the DB.
 	id := getID(c)
-	if err := a.core.DeleteSubscriberBounces(id, ""); err != nil {
+	if err := a.core.DeleteSubscriberBounces(c.Request().Context(), tenantID(c), id, ""); err != nil {
 		return err
 	}
 
@@ -898,11 +911,11 @@ func (a *App) ExportSubscriberData(c echo.Context) error {
 	id := getID(c)
 
 	// Check if the user has access to at least one of the lists on the subscriber.
-	if err := a.hasSubPerm(auth.GetUser(c), []int{id}); err != nil {
+	if err := a.hasSubPerm(c.Request().Context(), tenantID(c), auth.GetUser(c), []int{id}); err != nil {
 		return err
 	}
 
-	_, b, err := a.exportSubscriberData(id, "", a.cfg.Privacy.Exportable)
+	_, b, err := a.exportSubscriberData(c.Request().Context(), tenantID(c), id, "", a.cfg.Privacy.Exportable)
 	if err != nil {
 		a.log.Printf("error exporting subscriber data: %s", err)
 		return echo.NewHTTPError(http.StatusInternalServerError,
@@ -919,8 +932,8 @@ func (a *App) ExportSubscriberData(c echo.Context) error {
 // subscriptions, campaign_views, link_clicks (if they're enabled in the config)
 // and returns a formatted, indented JSON payload. Either takes a numeric id
 // and an empty subUUID or takes 0 and a string subUUID.
-func (a *App) exportSubscriberData(id int, subUUID string, exportables map[string]bool) (models.SubscriberExportProfile, []byte, error) {
-	data, err := a.core.GetSubscriberProfileForExport(id, subUUID)
+func (a *App) exportSubscriberData(ctx context.Context, tenantID int, id int, subUUID string, exportables map[string]bool) (models.SubscriberExportProfile, []byte, error) {
+	data, err := a.core.GetSubscriberProfileForExport(ctx, tenantID, id, subUUID)
 	if err != nil {
 		return data, nil, err
 	}
@@ -980,7 +993,7 @@ func maskRestrictedSubLists(user auth.User, sub *models.Subscriber) {
 
 // hasSubPerm checks whether the current user has permission to access the given list
 // of subscriber IDs.
-func (a *App) hasSubPerm(u auth.User, subIDs []int) error {
+func (a *App) hasSubPerm(ctx context.Context, tenantID int, u auth.User, subIDs []int) error {
 	allPerm, listIDs := u.GetPermittedLists(auth.PermTypeGet | auth.PermTypeManage)
 
 	// User has blanket get_all|manage_all permission.
@@ -989,7 +1002,7 @@ func (a *App) hasSubPerm(u auth.User, subIDs []int) error {
 	}
 
 	// Check whether the subscribers have the list IDs permitted to the user.
-	res, err := a.core.HasSubscriberLists(subIDs, listIDs)
+	res, err := a.core.HasSubscriberLists(ctx, tenantID, subIDs, listIDs)
 	if err != nil {
 		return err
 	}
