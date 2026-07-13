@@ -5,40 +5,10 @@ on:
     branches:
       - main
       - prod
-  # Lets you force a build+push from the Actions tab (or `gh workflow run
-  # build.yml`) without needing an actual backend/web code change to land
-  # first -- e.g. to publish the very first image.
   workflow_dispatch: {}
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend || 'true' }}
-      web: ${{ steps.filter.outputs.web || 'true' }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        if: github.event_name != 'workflow_dispatch'
-        with:
-          token: ""
-          filters: |
-            backend:
-              - 'cmd/**'
-              - 'internal/**'
-              - 'db/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'Dockerfile'
-            web:
-              - 'web/**'
-
   prepare:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.set_variables.outputs.APP_VERSION }}
@@ -67,7 +37,7 @@ jobs:
           echo "WEB_IMAGE=ghcr.io/nerd-zero/listnun-web:${TAG}" >> $GITHUB_OUTPUT
 
   publish:
-    needs: [changes, prepare]
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -83,7 +53,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push backend image
-        if: needs.changes.outputs.backend == 'true'
         run: |
           docker build \
             --build-arg "APP_VERSION=${{ needs.prepare.outputs.version }}" \
@@ -92,7 +61,6 @@ jobs:
           docker push "${{ needs.prepare.outputs.api_image }}"
 
       - name: Build and push web image
-        if: needs.changes.outputs.web == 'true'
         run: |
           docker build \
             --build-arg "APP_VERSION=${{ needs.prepare.outputs.version }}" \
