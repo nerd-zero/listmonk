@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { InstancesPage } from "@/pages/instances-page";
 import { InstanceDetailPage } from "@/pages/instance-detail-page";
 import { MembersPage } from "@/pages/members-page";
+import { AdminInstancesPage } from "@/pages/admin-instances-page";
 import { LandingPage } from "@/pages/landing-page";
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
               element={<InstanceDetailPage />}
             />
             <Route path="/members" element={<MembersPage />} />
+            <Route path="/admin/instances" element={<AdminInstancesPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppShell>
