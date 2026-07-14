@@ -71,3 +71,14 @@ type adminInstanceDetailResponse struct {
 type tenantResponse struct {
 	Data operatorclient.Tenant `json:"data"`
 } // @name TenantResponse
+
+// senderIdentityDetail bundles a sender identity with the DNS records to
+// publish for it (empty for a sender_signature -- only a domain has any).
+type senderIdentityDetail struct {
+	Identity   db.SenderIdentity `json:"identity"`
+	DNSRecords []db.DnsRecord    `json:"dns_records"`
+} // @name SenderIdentityDetail
+
+type senderIdentityResponse struct {
+	Data senderIdentityDetail `json:"data"`
+} // @name SenderIdentityResponse

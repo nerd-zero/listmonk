@@ -40,6 +40,23 @@ type Config struct {
 	// ListmonkRootDomain mirrors the fork's own root_domain -- used only to
 	// show a tenant's workspace URL before its own setup_url is known.
 	ListmonkRootDomain string
+
+	// PostmarkAccountToken authenticates internal/postmarkclient against
+	// Postmark's account-level Account API (create a server + domain per
+	// tenant). Optional, like ZitadelServiceAccountKeyPath above: leave
+	// blank to run without it -- CreateInstance just skips the
+	// provision_postmark_server step, same fail-open pattern as invites.
+	PostmarkAccountToken string
+	// PostmarkTokenEncryptionKey encrypts postmark_servers.api_token_encrypted
+	// at rest (see internal/cryptoutil). A base64-encoded 32-byte AES-256
+	// key, e.g. from `openssl rand -base64 32`. Required only if
+	// PostmarkAccountToken is set.
+	PostmarkTokenEncryptionKey string
+	// PostmarkSharedDomainRoot is the parent domain an org with no domain
+	// of its own can opt into instead of bringing one: an instance with
+	// slug "acme" gets acme.<this>, with the DKIM record published to our
+	// own DNS zone -- see internal/provisioning.AddPlatformDomain.
+	PostmarkSharedDomainRoot string
 }
 
 func Load() Config {
@@ -57,6 +74,9 @@ func Load() Config {
 		ListmonkOperatorBaseURL:      getenv("LISTMONK_OPERATOR_BASE_URL", "http://localhost:9000"),
 		ListmonkOperatorToken:        os.Getenv("LISTMONK_OPERATOR_TOKEN"),
 		ListmonkRootDomain:           getenv("LISTMONK_ROOT_DOMAIN", "listmonk.test"),
+		PostmarkAccountToken:         os.Getenv("POSTMARK_ACCOUNT_TOKEN"),
+		PostmarkTokenEncryptionKey:   os.Getenv("POSTMARK_TOKEN_ENCRYPTION_KEY"),
+		PostmarkSharedDomainRoot:     getenv("POSTMARK_SHARED_DOMAIN_ROOT", "mail.listnun.app"),
 	}
 }
 

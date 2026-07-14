@@ -254,6 +254,120 @@ func (a *API) resendSetupLink(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"setup_url": url})
 }
 
+// getSenderIdentity godoc
+//
+//	@Summary		Get an instance's sender identity
+//	@Description	Returns the domain or sender signature the org added, plus any DNS records to publish for it (empty for a sender signature). 404 if none added yet.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string	true	"Org ID"
+//	@Param			instanceID	path		string	true	"Instance ID"
+//	@Success		200			{object}	senderIdentityResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		404			{object}	errorResponse	"No sender identity yet"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/sender-identity [get]
+func (a *API) getSenderIdentity(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	identity, records, err := a.svc.GetSenderIdentity(r.Context(), orgIDFromRequest(r), instanceID)
+	if err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, senderIdentityDetail{Identity: identity, DNSRecords: records})
+}
+
+type addSenderIdentityRequest struct {
+	// Kind selects which Postmark identity to add: "domain" (an org's own
+	// sending domain, needs DKIM published), "sender_signature" (single
+	// address, confirmed by clicking Postmark's own email -- no DNS), or
+	// "platform_domain" (a subdomain of ours, for an org with no domain of
+	// their own -- no value needed, it's derived from the instance's slug).
+	Kind string `json:"kind"`
+	// Value is the domain name for kind "domain", or the From email
+	// address for kind "sender_signature". Unused for "platform_domain".
+	Value string `json:"value"`
+	// Name is only used for kind "sender_signature" -- the display name
+	// Postmark shows alongside that address.
+	Name string `json:"name"`
+}
+
+// addSenderIdentity godoc
+//
+//	@Summary		Add an instance's sender identity
+//	@Description	Adds exactly one sender identity per instance (an org's own domain, a sender signature, or an opt-in subdomain of ours), and pushes the resulting SMTP credentials into the listmonk tenant. 409 if the instance already has one, or if the domain/email is already claimed by another workspace.
+//	@Tags			instances
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string					true	"Org ID"
+//	@Param			instanceID	path		string					true	"Instance ID"
+//	@Param			identity	body		addSenderIdentityRequest	true	"Sender identity to add"
+//	@Success		200			{object}	senderIdentityResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		409			{object}	errorResponse	"Already added, or already claimed by another workspace"
+//	@Failure		501			{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/sender-identity [post]
+func (a *API) addSenderIdentity(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	var req addSenderIdentityRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	orgID := orgIDFromRequest(r)
+	switch req.Kind {
+	case "domain":
+		if req.Value == "" {
+			writeError(w, http.StatusBadRequest, "value is required")
+			return
+		}
+		identity, records, err := a.svc.AddSenderDomain(r.Context(), orgID, instanceID, req.Value)
+		if err != nil {
+			mapServiceError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, senderIdentityDetail{Identity: identity, DNSRecords: records})
+	case "sender_signature":
+		if req.Value == "" {
+			writeError(w, http.StatusBadRequest, "value is required")
+			return
+		}
+		if req.Name == "" {
+			writeError(w, http.StatusBadRequest, "name is required")
+			return
+		}
+		identity, err := a.svc.AddSenderSignature(r.Context(), orgID, instanceID, req.Value, req.Name)
+		if err != nil {
+			mapServiceError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, senderIdentityDetail{Identity: identity})
+	case "platform_domain":
+		identity, records, err := a.svc.AddPlatformDomain(r.Context(), orgID, instanceID)
+		if err != nil {
+			mapServiceError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, senderIdentityDetail{Identity: identity, DNSRecords: records})
+	default:
+		writeError(w, http.StatusBadRequest, `kind must be "domain", "sender_signature", or "platform_domain"`)
+	}
+}
+
 // --- members --------------------------------------------------------------
 
 // listMembers godoc

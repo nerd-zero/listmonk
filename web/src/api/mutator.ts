@@ -2,6 +2,25 @@ import { userManager } from "@/auth/user-manager";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+// Thrown on any non-2xx response. `error` mirrors the generated
+// ErrorResponse type ({ error?: string }) every mutation hook's `TError`
+// is typed as -- e.g. `onError: (error) => toast.error(error.error ?? ...)`
+// -- so the backend's actual message (internal/httpapi's writeError)
+// reaches the UI instead of always falling back to a hardcoded string.
+// `status` is the raw HTTP status, for callers that need to distinguish
+// e.g. 404 "not found yet" from a real failure.
+export class ApiError extends Error {
+  status: number;
+  error: string;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.error = message;
+  }
+}
+
 // Custom fetch instance for the orval-generated client (see
 // ../../orval.config.ts's override.mutator) -- attaches the current
 // Zitadel access token as a Bearer header, matching internal/authn's
@@ -36,7 +55,10 @@ export const customFetch = async <T,>(
   const body = response.status === 204 ? undefined : await response.json();
 
   if (!response.ok) {
-    throw new Error(body?.error ?? `Request failed: ${response.status}`);
+    throw new ApiError(
+      body?.error ?? `Request failed: ${response.status}`,
+      response.status,
+    );
   }
 
   return {

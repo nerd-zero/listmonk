@@ -12,9 +12,9 @@ import (
 )
 
 const createPostmarkServer = `-- name: CreatePostmarkServer :one
-INSERT INTO postmark_servers (id, instance_id, postmark_server_id, api_token_encrypted, sending_domain)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, instance_id, postmark_server_id, api_token_encrypted, sending_domain, created_at
+INSERT INTO postmark_servers (id, instance_id, postmark_server_id, api_token_encrypted)
+VALUES ($1, $2, $3, $4)
+RETURNING id, instance_id, postmark_server_id, api_token_encrypted, created_at
 `
 
 type CreatePostmarkServerParams struct {
@@ -22,7 +22,6 @@ type CreatePostmarkServerParams struct {
 	InstanceID        pgtype.UUID `json:"instance_id"`
 	PostmarkServerID  string      `json:"postmark_server_id"`
 	ApiTokenEncrypted string      `json:"api_token_encrypted"`
-	SendingDomain     string      `json:"sending_domain"`
 }
 
 func (q *Queries) CreatePostmarkServer(ctx context.Context, arg CreatePostmarkServerParams) (PostmarkServer, error) {
@@ -31,7 +30,6 @@ func (q *Queries) CreatePostmarkServer(ctx context.Context, arg CreatePostmarkSe
 		arg.InstanceID,
 		arg.PostmarkServerID,
 		arg.ApiTokenEncrypted,
-		arg.SendingDomain,
 	)
 	var i PostmarkServer
 	err := row.Scan(
@@ -39,14 +37,13 @@ func (q *Queries) CreatePostmarkServer(ctx context.Context, arg CreatePostmarkSe
 		&i.InstanceID,
 		&i.PostmarkServerID,
 		&i.ApiTokenEncrypted,
-		&i.SendingDomain,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getPostmarkServerByInstanceID = `-- name: GetPostmarkServerByInstanceID :one
-SELECT id, instance_id, postmark_server_id, api_token_encrypted, sending_domain, created_at FROM postmark_servers WHERE instance_id = $1
+SELECT id, instance_id, postmark_server_id, api_token_encrypted, created_at FROM postmark_servers WHERE instance_id = $1
 `
 
 func (q *Queries) GetPostmarkServerByInstanceID(ctx context.Context, instanceID pgtype.UUID) (PostmarkServer, error) {
@@ -57,7 +54,6 @@ func (q *Queries) GetPostmarkServerByInstanceID(ctx context.Context, instanceID 
 		&i.InstanceID,
 		&i.PostmarkServerID,
 		&i.ApiTokenEncrypted,
-		&i.SendingDomain,
 		&i.CreatedAt,
 	)
 	return i, err

@@ -70,6 +70,20 @@ definitions:
           $ref: '#/definitions/db.ProvisioningJob'
         type: array
     type: object
+  SenderIdentityDetail:
+    properties:
+      dns_records:
+        items:
+          $ref: '#/definitions/db.DnsRecord'
+        type: array
+      identity:
+        $ref: '#/definitions/db.SenderIdentity'
+    type: object
+  SenderIdentityResponse:
+    properties:
+      data:
+        $ref: '#/definitions/SenderIdentityDetail'
+    type: object
   SetupLinkResponse:
     properties:
       data:
@@ -87,6 +101,23 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/db.User'
+    type: object
+  db.DnsRecord:
+    properties:
+      created_at:
+        type: string
+      host:
+        type: string
+      id:
+        type: string
+      instance_id:
+        type: string
+      record_type:
+        type: string
+      value:
+        type: string
+      verified:
+        type: boolean
     type: object
   db.Instance:
     properties:
@@ -200,6 +231,23 @@ definitions:
       updated_at:
         type: string
     type: object
+  db.SenderIdentity:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      instance_id:
+        type: string
+      kind:
+        type: string
+      postmark_id:
+        type: string
+      status:
+        type: string
+      value:
+        type: string
+    type: object
   db.User:
     properties:
       created_at:
@@ -215,6 +263,27 @@ definitions:
       updated_at:
         type: string
       zitadel_subject:
+        type: string
+    type: object
+  httpapi.addSenderIdentityRequest:
+    properties:
+      kind:
+        description: |-
+          Kind selects which Postmark identity to add: "domain" (an org's own
+          sending domain, needs DKIM published), "sender_signature" (single
+          address, confirmed by clicking Postmark's own email -- no DNS), or
+          "platform_domain" (a subdomain of ours, for an org with no domain of
+          their own -- no value needed, it's derived from the instance's slug).
+        type: string
+      name:
+        description: |-
+          Name is only used for kind "sender_signature" -- the display name
+          Postmark shows alongside that address.
+        type: string
+      value:
+        description: |-
+          Value is the domain name for kind "domain", or the From email
+          address for kind "sender_signature". Unused for "platform_domain".
         type: string
     type: object
   httpapi.adminInstanceDetail:
@@ -678,6 +747,98 @@ paths:
       security:
       - BearerAuth: []
       summary: Provisioning timeline for an instance
+      tags:
+      - instances
+  /v1/orgs/{orgID}/instances/{instanceID}/sender-identity:
+    get:
+      description: Returns the domain or sender signature the org added, plus any
+        DNS records to publish for it (empty for a sender signature). 404 if none
+        added yet.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SenderIdentityResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: No sender identity yet
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an instance's sender identity
+      tags:
+      - instances
+    post:
+      consumes:
+      - application/json
+      description: Adds exactly one sender identity per instance (an org's own domain,
+        a sender signature, or an opt-in subdomain of ours), and pushes the resulting
+        SMTP credentials into the listmonk tenant. 409 if the instance already has
+        one, or if the domain/email is already claimed by another workspace.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      - description: Sender identity to add
+        in: body
+        name: identity
+        required: true
+        schema:
+          $ref: '#/definitions/httpapi.addSenderIdentityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SenderIdentityResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Already added, or already claimed by another workspace
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Postmark not configured
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add an instance's sender identity
       tags:
       - instances
   /v1/orgs/{orgID}/instances/{instanceID}/setup-link:

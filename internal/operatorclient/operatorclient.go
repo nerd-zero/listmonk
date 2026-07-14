@@ -170,6 +170,41 @@ func (c *Client) CreateSetupLink(ctx context.Context, id int, adminEmail string)
 	return doJSON[SetupLinkResult](ctx, c, http.MethodPost, path, map[string]string{"admin_email": adminEmail})
 }
 
+// SMTPEntry mirrors the listmonk fork's cmd/operator.go operatorSMTPEntry --
+// one entry of models.Settings' own SMTP field. listmonk has no
+// provider-specific knowledge: whoever calls SetTenantSMTP (here,
+// internal/provisioning after internal/postmarkclient creates the actual
+// Postmark server) owns creating the real credentials; this struct only
+// carries them across the wire.
+type SMTPEntry struct {
+	Name          string              `json:"name"`
+	Enabled       bool                `json:"enabled"`
+	Host          string              `json:"host"`
+	HelloHostname string              `json:"hello_hostname"`
+	Port          int                 `json:"port"`
+	AuthProtocol  string              `json:"auth_protocol"`
+	Username      string              `json:"username"`
+	Password      string              `json:"password"`
+	EmailHeaders  []map[string]string `json:"email_headers"`
+	MaxConns      int                 `json:"max_conns"`
+	MaxMsgRetries int                 `json:"max_msg_retries"`
+	MsgRetryDelay string              `json:"msg_retry_delay"`
+	IdleTimeout   string              `json:"idle_timeout"`
+	WaitTimeout   string              `json:"wait_timeout"`
+	TLSType       string              `json:"tls_type"`
+	TLSSkipVerify bool                `json:"tls_skip_verify"`
+	FromAddresses []string            `json:"from_addresses"`
+}
+
+// SetTenantSMTP replaces a tenant's SMTP settings with a single entry --
+// the fork itself assigns a fresh UUID and stores it verbatim, no merge
+// with whatever placeholder entries seeded the tenant at creation.
+func (c *Client) SetTenantSMTP(ctx context.Context, tenantID int, entry SMTPEntry) error {
+	path := "/api/operator/tenants/" + strconv.Itoa(tenantID) + "/smtp"
+	_, err := doJSON[bool](ctx, c, http.MethodPut, path, entry)
+	return err
+}
+
 // envelope mirrors the fork's okResp{data} wrapper (cmd's shared response
 // helper) that every successful Operator API response is nested under.
 type envelope[T any] struct {

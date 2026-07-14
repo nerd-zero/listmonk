@@ -52,7 +52,6 @@ type PostmarkServer struct {
 	InstanceID        pgtype.UUID        `json:"instance_id"`
 	PostmarkServerID  string             `json:"postmark_server_id"`
 	ApiTokenEncrypted string             `json:"api_token_encrypted"`
-	SendingDomain     string             `json:"sending_domain"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
 
@@ -65,6 +64,16 @@ type ProvisioningJob struct {
 	LastError  *string            `json:"last_error"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+type SenderIdentity struct {
+	ID         pgtype.UUID        `json:"id"`
+	InstanceID pgtype.UUID        `json:"instance_id"`
+	Kind       string             `json:"kind"`
+	Value      string             `json:"value"`
+	PostmarkID string             `json:"postmark_id"`
+	Status     string             `json:"status"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type User struct {

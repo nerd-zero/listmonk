@@ -639,6 +639,140 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/orgs/{orgID}/instances/{instanceID}/sender-identity": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the domain or sender signature the org added, plus any DNS records to publish for it (empty for a sender signature). 404 if none added yet.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instances"
+                ],
+                "summary": "Get an instance's sender identity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Org ID",
+                        "name": "orgID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Instance ID",
+                        "name": "instanceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SenderIdentityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "No sender identity yet",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds exactly one sender identity per instance (an org's own domain, a sender signature, or an opt-in subdomain of ours), and pushes the resulting SMTP credentials into the listmonk tenant. 409 if the instance already has one, or if the domain/email is already claimed by another workspace.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instances"
+                ],
+                "summary": "Add an instance's sender identity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Org ID",
+                        "name": "orgID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Instance ID",
+                        "name": "instanceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Sender identity to add",
+                        "name": "identity",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.addSenderIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SenderIdentityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Already added, or already claimed by another workspace",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Postmark not configured",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/orgs/{orgID}/instances/{instanceID}/setup-link": {
             "post": {
                 "security": [
@@ -930,6 +1064,28 @@ const docTemplate = `{
                 }
             }
         },
+        "SenderIdentityDetail": {
+            "type": "object",
+            "properties": {
+                "dns_records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/db.DnsRecord"
+                    }
+                },
+                "identity": {
+                    "$ref": "#/definitions/db.SenderIdentity"
+                }
+            }
+        },
+        "SenderIdentityResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/SenderIdentityDetail"
+                }
+            }
+        },
         "SetupLinkResponse": {
             "type": "object",
             "properties": {
@@ -956,6 +1112,32 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/db.User"
+                }
+            }
+        },
+        "db.DnsRecord": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instance_id": {
+                    "type": "string"
+                },
+                "record_type": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
                 }
             }
         },
@@ -1130,6 +1312,32 @@ const docTemplate = `{
                 }
             }
         },
+        "db.SenderIdentity": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instance_id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "postmark_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
         "db.User": {
             "type": "object",
             "properties": {
@@ -1152,6 +1360,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "zitadel_subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.addSenderIdentityRequest": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "description": "Kind selects which Postmark identity to add: \"domain\" (an org's own\nsending domain, needs DKIM published), \"sender_signature\" (single\naddress, confirmed by clicking Postmark's own email -- no DNS), or\n\"platform_domain\" (a subdomain of ours, for an org with no domain of\ntheir own -- no value needed, it's derived from the instance's slug).",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name is only used for kind \"sender_signature\" -- the display name\nPostmark shows alongside that address.",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "Value is the domain name for kind \"domain\", or the From email\naddress for kind \"sender_signature\". Unused for \"platform_domain\".",
                     "type": "string"
                 }
             }

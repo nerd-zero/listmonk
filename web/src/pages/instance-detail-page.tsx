@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { InstanceStatusBadge } from "@/components/instance-status-badge";
+import { SenderIdentityCard } from "@/components/sender-identity-card";
 import { useOrgContext } from "@/lib/org-context";
 import { unwrap } from "@/api/unwrap";
 import {
@@ -178,6 +179,8 @@ export function InstanceDetailPage() {
           {resendSetupLink.isPending ? "Reissuing…" : "Resend setup link"}
         </Button>
       </div>
+
+      <SenderIdentityCard orgId={orgId} instanceId={instanceId} />
 
       <div>
         <h2 className="mb-2 text-sm font-semibold">Provisioning timeline</h2>

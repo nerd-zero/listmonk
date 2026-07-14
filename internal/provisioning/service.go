@@ -10,12 +10,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
+	"listnun/internal/cryptoutil"
 	"listnun/internal/db"
 	"listnun/internal/operatorclient"
+	"listnun/internal/postmarkclient"
 	"listnun/internal/zitadelmgmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -46,10 +50,26 @@ type Service struct {
 	q    *db.Queries
 	op   *operatorclient.Client
 	zm   *zitadelmgmt.Client // nil unless a Zitadel service account is configured
+	pm   *PostmarkConfig     // nil unless a Postmark account token is configured
 }
 
-func New(pool *pgxpool.Pool, op *operatorclient.Client, zm *zitadelmgmt.Client) *Service {
-	return &Service{pool: pool, q: db.New(pool), op: op, zm: zm}
+// PostmarkConfig bundles everything CreateInstance/AddSenderDomain/
+// AddSenderSignature need to talk to Postmark and protect its credentials
+// at rest. Passed as a single optional pointer (nil disables all of it)
+// rather than separate New params, since both only ever matter together.
+type PostmarkConfig struct {
+	Client *postmarkclient.Client
+	// EncryptionKey encrypts the Postmark server token before it's stored
+	// in postmark_servers.api_token_encrypted -- see internal/cryptoutil.
+	EncryptionKey [32]byte
+	// SharedDomainRoot is the parent domain AddPlatformDomain hands out to
+	// an org with no domain of its own -- an instance with slug "acme"
+	// gets acme.<this>.
+	SharedDomainRoot string
+}
+
+func New(pool *pgxpool.Pool, op *operatorclient.Client, zm *zitadelmgmt.Client, pm *PostmarkConfig) *Service {
+	return &Service{pool: pool, q: db.New(pool), op: op, zm: zm, pm: pm}
 }
 
 // JITProvisionUser looks up a user by their verified Zitadel subject,
@@ -346,7 +366,357 @@ func (s *Service) CreateInstance(ctx context.Context, orgID uuid.UUID, p CreateI
 	if err != nil {
 		return db.Instance{}, fmt.Errorf("record listmonk tenant: %w", err)
 	}
-	return s.q.UpdateInstanceStatus(ctx, db.UpdateInstanceStatusParams{ID: active.ID, Status: "active"})
+	active, err = s.q.UpdateInstanceStatus(ctx, db.UpdateInstanceStatusParams{ID: active.ID, Status: "active"})
+	if err != nil {
+		return db.Instance{}, fmt.Errorf("update instance status: %w", err)
+	}
+
+	// Postmark is a secondary provisioning step, tracked by its own
+	// provisioning_jobs row rather than the instance's own status: the
+	// tenant is already usable (with listmonk's placeholder SMTP examples)
+	// even if this fails, so a Postmark error doesn't flip the instance
+	// back to "failed" -- it's surfaced in the timeline instead, and safe
+	// to retry by re-running CreateInstance's Postmark step once that's
+	// wired to River (see docs/plan.md).
+	//
+	// This only creates the server itself -- no sending domain or sender
+	// signature yet, and so no SMTP push into listmonk yet either. Those
+	// need a real "from" identity, which the org supplies themselves via
+	// AddSenderDomain/AddSenderSignature below.
+	if s.pm != nil {
+		if err := s.provisionPostmarkServer(ctx, active); err != nil {
+			return active, fmt.Errorf("provision postmark server: %w", err)
+		}
+	}
+	return active, nil
+}
+
+// provisionPostmarkServer creates a dedicated Postmark server for inst and
+// stores its encrypted token -- see docs/plan.md's create_postmark_server
+// step and internal/postmarkclient's doc comment.
+func (s *Service) provisionPostmarkServer(ctx context.Context, inst db.Instance) error {
+	job, err := s.q.CreateProvisioningJob(ctx, db.CreateProvisioningJobParams{
+		ID:         pgUUID(uuid.New()),
+		InstanceID: inst.ID,
+		JobType:    "provision_postmark_server",
+	})
+	if err != nil {
+		return fmt.Errorf("create provisioning job row: %w", err)
+	}
+
+	if jobErr := s.doProvisionPostmarkServer(ctx, inst); jobErr != nil {
+		if _, err := s.q.UpdateProvisioningJobStatus(ctx, db.UpdateProvisioningJobStatusParams{
+			ID: job.ID, Status: "failed", LastError: nullableString(jobErr.Error()),
+		}); err != nil {
+			return fmt.Errorf("record job failure: %w", err)
+		}
+		return jobErr
+	}
+
+	if _, err := s.q.UpdateProvisioningJobStatus(ctx, db.UpdateProvisioningJobStatusParams{
+		ID: job.ID, Status: "succeeded",
+	}); err != nil {
+		return fmt.Errorf("record job success: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) doProvisionPostmarkServer(ctx context.Context, inst db.Instance) error {
+	server, err := s.pm.Client.CreateServer(ctx, "listnun-"+inst.Slug)
+	if err != nil {
+		return fmt.Errorf("create postmark server: %w", err)
+	}
+	if len(server.ApiTokens) == 0 {
+		return errors.New("postmark server has no API tokens")
+	}
+
+	encryptedToken, err := cryptoutil.Encrypt(s.pm.EncryptionKey, server.ApiTokens[0])
+	if err != nil {
+		return fmt.Errorf("encrypt postmark token: %w", err)
+	}
+
+	if _, err := s.q.CreatePostmarkServer(ctx, db.CreatePostmarkServerParams{
+		ID:                pgUUID(uuid.New()),
+		InstanceID:        inst.ID,
+		PostmarkServerID:  strconv.Itoa(server.ID),
+		ApiTokenEncrypted: encryptedToken,
+	}); err != nil {
+		return fmt.Errorf("store postmark server: %w", err)
+	}
+	return nil
+}
+
+// ErrPostmarkNotConfigured is returned by AddSenderDomain/AddSenderSignature
+// when no Postmark account token is configured.
+var ErrPostmarkNotConfigured = errors.New("postmark is not configured")
+
+// ErrSenderIdentityExists is returned when the instance already has a
+// sender identity -- exactly one (domain or sender signature) per instance
+// for now, so a second attempt is a no-op rather than a silent overwrite.
+var ErrSenderIdentityExists = errors.New("this instance already has a sender identity")
+
+// ErrSenderIdentityTaken is returned when the domain or sender email is
+// already claimed by another instance -- sender_identities_value_key is
+// global, so two different orgs can never share one.
+var ErrSenderIdentityTaken = errors.New("this domain or sender email is already in use by another workspace")
+
+// ErrSenderIdentityNotFound is returned by GetSenderIdentity when the
+// instance hasn't added one yet -- an expected, common state (not yet
+// configured), distinct from a real lookup failure.
+var ErrSenderIdentityNotFound = errors.New("this instance has no sender identity yet")
+
+// GetSenderIdentity returns instance's sender identity, if any, plus the
+// DNS records to publish for it (empty for a sender signature -- those
+// don't need DNS, just clicking Postmark's confirmation email).
+func (s *Service) GetSenderIdentity(ctx context.Context, orgID, instanceID uuid.UUID) (db.SenderIdentity, []db.DnsRecord, error) {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return db.SenderIdentity{}, nil, fmt.Errorf("get instance: %w", err)
+	}
+	identity, err := s.q.GetSenderIdentityByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.SenderIdentity{}, nil, ErrSenderIdentityNotFound
+		}
+		return db.SenderIdentity{}, nil, fmt.Errorf("get sender identity: %w", err)
+	}
+
+	// Postmark doesn't push a webhook when DKIM verifies or a sender
+	// signature is confirmed -- it's only ever discoverable by asking. So
+	// every fetch of a still-pending identity checks Postmark live and
+	// persists the flip to "confirmed" if it's happened. A failed check
+	// here (Postmark down, network hiccup) isn't fatal to the read --
+	// the org just sees "pending" a little longer, not an error.
+	if identity.Status == "pending" && s.pm != nil {
+		if refreshed, ok := s.refreshSenderIdentityStatus(ctx, identity); ok {
+			identity = refreshed
+		}
+	}
+
+	records, err := s.q.ListDNSRecordsByInstance(ctx, inst.ID)
+	if err != nil {
+		return db.SenderIdentity{}, nil, fmt.Errorf("list dns records: %w", err)
+	}
+	return identity, records, nil
+}
+
+// refreshSenderIdentityStatus asks Postmark whether identity has been
+// verified/confirmed yet and, if so, persists that. ok is false whenever
+// nothing changed -- either it's still pending, or the check itself
+// failed -- so the caller can just keep using the identity it already had.
+func (s *Service) refreshSenderIdentityStatus(ctx context.Context, identity db.SenderIdentity) (db.SenderIdentity, bool) {
+	postmarkID, err := strconv.Atoi(identity.PostmarkID)
+	if err != nil {
+		return identity, false
+	}
+
+	var verified bool
+	switch identity.Kind {
+	case "domain", "platform_domain":
+		domain, err := s.pm.Client.VerifyDKIM(ctx, postmarkID)
+		if err != nil {
+			return identity, false
+		}
+		verified = domain.DKIMVerified
+	case "sender_signature":
+		sig, err := s.pm.Client.GetSenderSignature(ctx, postmarkID)
+		if err != nil {
+			return identity, false
+		}
+		verified = sig.Confirmed
+	default:
+		return identity, false
+	}
+
+	if !verified {
+		return identity, false
+	}
+	confirmed, err := s.q.MarkSenderIdentityConfirmed(ctx, identity.ID)
+	if err != nil {
+		return identity, false
+	}
+	return confirmed, true
+}
+
+// AddSenderDomain gives instance a full sending domain of the org's own:
+// Postmark's Domain API returns a DKIM record, which is stored so the
+// dashboard can show the org what to publish themselves. SMTP credentials
+// are pushed into the listmonk tenant using this domain's "noreply@"
+// address as the From address -- deliverability isn't gated on DKIM
+// actually verifying first, matching Postmark's own model (a domain can
+// send, just with weaker trust, before DKIM is confirmed).
+func (s *Service) AddSenderDomain(ctx context.Context, orgID, instanceID uuid.UUID, domain string) (db.SenderIdentity, []db.DnsRecord, error) {
+	if s.pm == nil {
+		return db.SenderIdentity{}, nil, ErrPostmarkNotConfigured
+	}
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return db.SenderIdentity{}, nil, fmt.Errorf("get instance: %w", err)
+	}
+	return s.addDomainIdentity(ctx, inst, "domain", domain)
+}
+
+// AddPlatformDomain is AddSenderDomain's alternative for an org with no
+// domain of its own: a subdomain of PostmarkConfig.SharedDomainRoot is
+// derived from the instance's slug (already globally unique, so this can
+// never collide) rather than typed in. The resulting DKIM record is ours
+// to publish, not the org's -- there's nothing further for them to do
+// beyond clicking to opt in.
+func (s *Service) AddPlatformDomain(ctx context.Context, orgID, instanceID uuid.UUID) (db.SenderIdentity, []db.DnsRecord, error) {
+	if s.pm == nil {
+		return db.SenderIdentity{}, nil, ErrPostmarkNotConfigured
+	}
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return db.SenderIdentity{}, nil, fmt.Errorf("get instance: %w", err)
+	}
+	domain := inst.Slug + "." + s.pm.SharedDomainRoot
+	return s.addDomainIdentity(ctx, inst, "platform_domain", domain)
+}
+
+// addDomainIdentity is AddSenderDomain and AddPlatformDomain's shared
+// tail: both create a real Postmark domain and store it the same way,
+// differing only in whose domain it is (kind) and where the name came
+// from (the org's own input, vs derived from the instance's slug).
+func (s *Service) addDomainIdentity(ctx context.Context, inst db.Instance, kind, domain string) (db.SenderIdentity, []db.DnsRecord, error) {
+	if err := s.requireNoSenderIdentity(ctx, inst.ID); err != nil {
+		return db.SenderIdentity{}, nil, err
+	}
+
+	pmDomain, err := s.pm.Client.CreateDomain(ctx, domain)
+	if err != nil {
+		return db.SenderIdentity{}, nil, fmt.Errorf("create postmark domain: %w", err)
+	}
+
+	identity, err := s.q.CreateSenderIdentity(ctx, db.CreateSenderIdentityParams{
+		ID:         pgUUID(uuid.New()),
+		InstanceID: inst.ID,
+		Kind:       kind,
+		Value:      domain,
+		PostmarkID: strconv.Itoa(pmDomain.ID),
+	})
+	if err != nil {
+		return db.SenderIdentity{}, nil, mapSenderIdentityConstraint(err)
+	}
+
+	var records []db.DnsRecord
+	if pmDomain.DKIMHost != "" {
+		rec, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
+			ID:         pgUUID(uuid.New()),
+			InstanceID: inst.ID,
+			RecordType: "dkim",
+			Host:       pmDomain.DKIMHost,
+			Value:      pmDomain.DKIMTextValue,
+		})
+		if err != nil {
+			return identity, nil, fmt.Errorf("store dkim record: %w", err)
+		}
+		records = append(records, rec)
+	}
+
+	if err := s.pushSMTPCredentials(ctx, inst, "noreply@"+domain); err != nil {
+		return identity, records, err
+	}
+	return identity, records, nil
+}
+
+// AddSenderSignature gives instance a single verified sender address
+// instead of a full domain -- no DNS involved; Postmark emails a
+// confirmation link straight to fromEmail; identity.Status starts and
+// stays "pending" until that's clicked (there's no API to poll or push
+// that state yet -- see the sender_identities migration's own comment).
+func (s *Service) AddSenderSignature(ctx context.Context, orgID, instanceID uuid.UUID, fromEmail, name string) (db.SenderIdentity, error) {
+	if s.pm == nil {
+		return db.SenderIdentity{}, ErrPostmarkNotConfigured
+	}
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return db.SenderIdentity{}, fmt.Errorf("get instance: %w", err)
+	}
+	if err := s.requireNoSenderIdentity(ctx, inst.ID); err != nil {
+		return db.SenderIdentity{}, err
+	}
+
+	sig, err := s.pm.Client.CreateSenderSignature(ctx, fromEmail, name)
+	if err != nil {
+		return db.SenderIdentity{}, fmt.Errorf("create postmark sender signature: %w", err)
+	}
+
+	identity, err := s.q.CreateSenderIdentity(ctx, db.CreateSenderIdentityParams{
+		ID:         pgUUID(uuid.New()),
+		InstanceID: inst.ID,
+		Kind:       "sender_signature",
+		Value:      fromEmail,
+		PostmarkID: strconv.Itoa(sig.ID),
+	})
+	if err != nil {
+		return db.SenderIdentity{}, mapSenderIdentityConstraint(err)
+	}
+
+	if err := s.pushSMTPCredentials(ctx, inst, fromEmail); err != nil {
+		return identity, err
+	}
+	return identity, nil
+}
+
+func (s *Service) requireNoSenderIdentity(ctx context.Context, instanceID pgtype.UUID) error {
+	_, err := s.q.GetSenderIdentityByInstanceID(ctx, instanceID)
+	switch {
+	case err == nil:
+		return ErrSenderIdentityExists
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil
+	default:
+		return fmt.Errorf("check existing sender identity: %w", err)
+	}
+}
+
+func mapSenderIdentityConstraint(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.ConstraintName == "sender_identities_value_key" {
+		return ErrSenderIdentityTaken
+	}
+	return fmt.Errorf("store sender identity: %w", err)
+}
+
+// pushSMTPCredentials sends the instance's Postmark server credentials
+// into its listmonk tenant, replacing the placeholder SMTP examples --
+// see internal/operatorclient.SetTenantSMTP's doc comment. fromAddress is
+// whatever identity (domain or sender signature) was just confirmed.
+func (s *Service) pushSMTPCredentials(ctx context.Context, inst db.Instance, fromAddress string) error {
+	pmServer, err := s.q.GetPostmarkServerByInstanceID(ctx, inst.ID)
+	if err != nil {
+		return fmt.Errorf("get postmark server: %w", err)
+	}
+	token, err := cryptoutil.Decrypt(s.pm.EncryptionKey, pmServer.ApiTokenEncrypted)
+	if err != nil {
+		return fmt.Errorf("decrypt postmark token: %w", err)
+	}
+	if inst.ListmonkTenantID == nil {
+		return errors.New("instance has no listmonk tenant yet")
+	}
+
+	err = s.op.SetTenantSMTP(ctx, int(*inst.ListmonkTenantID), operatorclient.SMTPEntry{
+		Name:          "Postmark",
+		Enabled:       true,
+		Host:          "smtp.postmarkapp.com",
+		Port:          587,
+		AuthProtocol:  "plain",
+		Username:      token,
+		Password:      token,
+		EmailHeaders:  []map[string]string{},
+		MaxConns:      10,
+		MaxMsgRetries: 2,
+		MsgRetryDelay: "10ms",
+		IdleTimeout:   "15s",
+		WaitTimeout:   "5s",
+		TLSType:       "STARTTLS",
+		FromAddresses: []string{fromAddress},
+	})
+	if err != nil {
+		return fmt.Errorf("push smtp credentials to listmonk: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) ListInstances(ctx context.Context, orgID uuid.UUID) ([]db.Instance, error) {
