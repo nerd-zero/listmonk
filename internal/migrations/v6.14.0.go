@@ -11,11 +11,14 @@ import (
 )
 
 // operatorGrantTables lists every table the Operator API's BYPASSRLS
-// connection needs to read across tenants: the two cross-tenant management
+// connection touches across tenants: the two cross-tenant management
 // tables plus every RLS-scoped table in schema.sql. BYPASSRLS only skips
 // row-level security policies - it does not grant table-level access, so a
-// non-owner role still needs an explicit GRANT before cross-tenant reads
-// will work.
+// non-owner role still needs explicit GRANTs before cross-tenant reads
+// *or writes* will work. Writes are real here, not hypothetical: cmd/
+// operator.go's CreateTenant alone inserts into tenants, settings, roles,
+// and users (via core.Core, which the operator connection also drives),
+// and CreateOrganization/UpdateTenantStatus/SetTenantSMTP write too.
 var operatorGrantTables = []string{
 	"tenants", "organizations",
 	"subscribers", "lists", "templates", "campaigns", "media", "links",
@@ -23,15 +26,16 @@ var operatorGrantTables = []string{
 	"campaign_views", "campaign_media", "link_clicks", "settings",
 }
 
-// ApplyOperatorGrants grants the configured [operator] BYPASSRLS role read
-// access to every tenant table, and arranges for it to keep that access on
-// tables created by future migrations. It's a no-op when operator.db_user
-// is unset - the default, single-tenant case - since this runs on every
-// deployment of this fork, not just ones using the operator feature. It
-// also skips (rather than fails) if the role hasn't been provisioned in
-// Postgres yet, since that's managed out-of-band by infra and may not
-// exist on the app's first boot; the caller is expected to retry (both
-// call sites below do, on every --upgrade / --install run).
+// ApplyOperatorGrants grants the configured [operator] BYPASSRLS role full
+// read/write access (SELECT/INSERT/UPDATE/DELETE, plus sequence USAGE for
+// SERIAL primary keys) on every tenant table, and arranges for it to keep
+// that access on tables created by future migrations. It's a no-op when
+// operator.db_user is unset - the default, single-tenant case - since this
+// runs on every deployment of this fork, not just ones using the operator
+// feature. It also skips (rather than fails) if the role hasn't been
+// provisioned in Postgres yet, since that's managed out-of-band by infra
+// and may not exist on the app's first boot; the caller is expected to
+// retry (both call sites below do, on every --upgrade / --install run).
 //
 // Exported and called from two places: V6_14_0 below (deployments
 // upgrading from an older release) and cmd/install.go's fresh-install path
@@ -40,7 +44,10 @@ var operatorGrantTables = []string{
 // V6_14_0 itself - so it never actually runs via the upgrade path on a new
 // database. schema.sql can't express this GRANT either, since the role
 // name is only known at runtime via config. Calling it unconditionally
-// after install closes that gap.
+// after install closes that gap - and since install.go's call runs on
+// every boot regardless of the migration ledger, fixing this function's
+// SQL (rather than bumping the version) is enough to correct already-
+// deployed installs too, on their next restart.
 func ApplyOperatorGrants(db *sqlx.DB, ko *koanf.Koanf, lo *log.Logger) error {
 	role := ko.String("operator.db_user")
 	if role == "" {
@@ -58,12 +65,18 @@ func ApplyOperatorGrants(db *sqlx.DB, ko *koanf.Koanf, lo *log.Logger) error {
 
 	quotedRole := pq.QuoteIdentifier(role)
 	for _, t := range operatorGrantTables {
-		if _, err := db.Exec(fmt.Sprintf(`GRANT SELECT ON %s TO %s`, pq.QuoteIdentifier(t), quotedRole)); err != nil {
+		if _, err := db.Exec(fmt.Sprintf(`GRANT SELECT, INSERT, UPDATE, DELETE ON %s TO %s`, pq.QuoteIdentifier(t), quotedRole)); err != nil {
 			return err
 		}
 	}
 
-	if _, err := db.Exec(fmt.Sprintf(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO %s`, quotedRole)); err != nil {
+	if _, err := db.Exec(fmt.Sprintf(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %s`, quotedRole)); err != nil {
+		return err
+	}
+	if _, err := db.Exec(fmt.Sprintf(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %s`, quotedRole)); err != nil {
+		return err
+	}
+	if _, err := db.Exec(fmt.Sprintf(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO %s`, quotedRole)); err != nil {
 		return err
 	}
 
