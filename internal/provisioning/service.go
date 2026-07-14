@@ -10,7 +10,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"listnun/internal/cryptoutil"
 	"listnun/internal/db"
@@ -124,6 +127,7 @@ func (s *Service) JITProvisionUser(ctx context.Context, zitadelSubject, email, d
 	if err := tx.Commit(ctx); err != nil {
 		return db.User{}, fmt.Errorf("commit tx: %w", err)
 	}
+	s.createDefaultInstance(ctx, orgID, org.Name, email)
 	return user, nil
 }
 
@@ -131,7 +135,20 @@ func personalOrgName(displayName, email string) string {
 	if displayName != "" {
 		return displayName + "'s org"
 	}
-	return email + "'s org"
+	if email != "" {
+		return email + "'s org"
+	}
+	return "My org"
+}
+
+var reSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
+
+// slugify mirrors web/src/lib/slug.ts's slugifyPart -- lowercase,
+// non-alphanumeric runs collapsed to a single hyphen, no leading/trailing
+// hyphen. Used to derive the org's default instance slug server-side,
+// where there's no form input to slugify as the user types.
+func slugify(s string) string {
+	return strings.Trim(reSlugChars.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }
 
 // createListmonkOrganization creates the org's twin in the listmonk fork
@@ -183,6 +200,9 @@ func (s *Service) CreateOrg(ctx context.Context, ownerUserID uuid.UUID, name str
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.Org{}, fmt.Errorf("commit tx: %w", err)
+	}
+	if owner, err := s.q.GetUserByID(ctx, pgUUID(ownerUserID)); err == nil {
+		s.createDefaultInstance(ctx, orgID, org.Name, owner.Email)
 	}
 	return org, nil
 }
@@ -717,6 +737,43 @@ func (s *Service) pushSMTPCredentials(ctx context.Context, inst db.Instance, fro
 		return fmt.Errorf("push smtp credentials to listmonk: %w", err)
 	}
 	return nil
+}
+
+// createDefaultInstance provisions a new org's root workspace, named after
+// the org itself (e.g. org "Acme" gets instance slug "acme") so there's
+// always something to land on right after signup instead of an empty
+// dashboard. Best-effort: called after the org's own transaction has
+// already committed, so a failure here (operator API down, no ownerEmail
+// to register the tenant admin with, ...) is logged and swallowed rather
+// than rolling back or failing the signup/org-creation that triggered it.
+func (s *Service) createDefaultInstance(ctx context.Context, orgID uuid.UUID, orgName, ownerEmail string) {
+	if ownerEmail == "" {
+		log.Printf("provisioning: skipping default instance for org %s: no owner email to register the tenant admin with", orgID)
+		return
+	}
+
+	base := slugify(orgName)
+	if base == "" {
+		base = "org"
+	}
+
+	params := CreateInstanceParams{
+		Slug: base, Name: orgName, AdminUsername: "admin", AdminEmail: ownerEmail,
+	}
+	if _, err := s.CreateInstance(ctx, orgID, params); err != nil {
+		if !errors.Is(err, ErrSlugTaken) {
+			log.Printf("provisioning: default instance for org %s: %v", orgID, err)
+			return
+		}
+		// The flat slug namespace (see CreateInstance's doc comment) means
+		// another org already has this name -- disambiguate with a chunk
+		// of this org's own id, the same way createListmonkOrganization
+		// disambiguates the listmonk-side org name.
+		params.Slug = base + "-" + orgID.String()[:8]
+		if _, err := s.CreateInstance(ctx, orgID, params); err != nil {
+			log.Printf("provisioning: default instance for org %s: %v", orgID, err)
+		}
+	}
 }
 
 func (s *Service) ListInstances(ctx context.Context, orgID uuid.UUID) ([]db.Instance, error) {
