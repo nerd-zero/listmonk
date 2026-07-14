@@ -12,11 +12,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { InstanceStatusBadge } from "@/components/instance-status-badge";
 import { SenderIdentityCard } from "@/components/sender-identity-card";
 import { useOrgContext } from "@/lib/org-context";
 import { unwrap } from "@/api/unwrap";
 import {
+  useDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer,
   useGetV1OrgsOrgIDInstancesInstanceID,
   useGetV1OrgsOrgIDInstancesInstanceIDEvents,
   usePostV1OrgsOrgIDInstancesInstanceIDSetupLink,
@@ -68,6 +79,7 @@ export function InstanceDetailPage() {
   const { selectedOrg, isLoading: orgLoading } = useOrgContext();
   const orgId = selectedOrg?.id ?? "";
   const [resentSetupUrl, setResentSetupUrl] = useState<string>();
+  const [confirmDeletePostmark, setConfirmDeletePostmark] = useState(false);
 
   const instanceQuery = useGetV1OrgsOrgIDInstancesInstanceID(orgId, instanceId, {
     query: { enabled: !!orgId && !!instanceId },
@@ -87,6 +99,18 @@ export function InstanceDetailPage() {
       },
       onError: (error) => {
         toast.error(error.error ?? "Couldn't reissue the setup link");
+      },
+    },
+  });
+
+  const deletePostmarkServer = useDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer({
+    mutation: {
+      onSuccess: () => {
+        toast.success("Postmark server deleted");
+        setConfirmDeletePostmark(false);
+      },
+      onError: (error) => {
+        toast.error(error.error ?? "Couldn't delete the Postmark server");
       },
     },
   });
@@ -181,6 +205,54 @@ export function InstanceDetailPage() {
       </div>
 
       <SenderIdentityCard orgId={orgId} instanceId={instanceId} />
+
+      <div className="rounded-md border border-destructive/30 p-4">
+        <h2 className="mb-1 text-sm font-semibold">Danger zone</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Delete this workspace's Postmark server. It stops sending email
+          until a new one is provisioned — the instance itself isn't
+          affected.
+        </p>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setConfirmDeletePostmark(true)}
+        >
+          Delete Postmark server
+        </Button>
+      </div>
+
+      <AlertDialog
+        open={confirmDeletePostmark}
+        onOpenChange={setConfirmDeletePostmark}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Postmark server?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes {instance.name}'s Postmark server.
+              Email sending stops until a new one is provisioned. This cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePostmarkServer.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletePostmarkServer.isPending}
+              onClick={() =>
+                deletePostmarkServer.mutate({
+                  orgID: orgId,
+                  instanceID: instanceId,
+                })
+              }
+            >
+              {deletePostmarkServer.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div>
         <h2 className="mb-2 text-sm font-semibold">Provisioning timeline</h2>

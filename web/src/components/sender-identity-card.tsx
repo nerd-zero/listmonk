@@ -7,10 +7,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { unwrap } from "@/api/unwrap";
 import { ApiError } from "@/api/mutator";
 import {
   getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryKey,
+  useDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity,
   useGetV1OrgsOrgIDInstancesInstanceIDSenderIdentity,
   usePostV1OrgsOrgIDInstancesInstanceIDSenderIdentity,
 } from "@/api/generated/endpoints/instances/instances";
@@ -38,7 +49,13 @@ export function SenderIdentityCard({
   if (identityQuery.data) {
     const detail = unwrap<SenderIdentityResponse>(identityQuery.data).data;
     if (detail?.identity) {
-      return <SenderIdentityStatus detail={detail} />;
+      return (
+        <SenderIdentityStatus
+          orgId={orgId}
+          instanceId={instanceId}
+          detail={detail}
+        />
+      );
     }
   }
 
@@ -57,10 +74,35 @@ export function SenderIdentityCard({
 }
 
 function SenderIdentityStatus({
+  orgId,
+  instanceId,
   detail,
 }: {
+  orgId: string;
+  instanceId: string;
   detail: NonNullable<SenderIdentityResponse["data"]>;
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const deleteIdentity = useDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryKey(
+            orgId,
+            instanceId,
+          ),
+        });
+        toast.success("Sender identity removed");
+        setConfirmOpen(false);
+      },
+      onError: (error) => {
+        toast.error(error.error ?? "Couldn't remove that sender identity");
+      },
+    },
+  });
+
   const identity = detail.identity;
   if (!identity) return null;
   const confirmed = identity.status === "confirmed";
@@ -74,16 +116,26 @@ function SenderIdentityStatus({
             {identity.value}
           </p>
         </div>
-        <Badge
-          variant="outline"
-          className={
-            confirmed
-              ? "bg-status-green-soft text-status-green"
-              : "bg-status-amber-soft text-status-amber"
-          }
-        >
-          {confirmed ? "Confirmed" : "Pending"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className={
+              confirmed
+                ? "bg-status-green-soft text-status-green"
+                : "bg-status-amber-soft text-status-amber"
+            }
+          >
+            {confirmed ? "Confirmed" : "Pending"}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmOpen(true)}
+          >
+            Remove
+          </Button>
+        </div>
       </div>
 
       {identity.kind === "domain" &&
@@ -125,6 +177,32 @@ function SenderIdentityStatus({
           DNS changes needed.
         </p>
       )}
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {identity.value}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the sender identity from Postmark and
+              this workspace. You'll need to add a new one before this
+              workspace can send mail again. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteIdentity.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteIdentity.isPending}
+              onClick={() =>
+                deleteIdentity.mutate({ orgID: orgId, instanceID: instanceId })
+              }
+            >
+              {deleteIdentity.isPending ? "Removing…" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -572,7 +572,114 @@ export function useGetV1OrgsOrgIDInstancesInstanceIDEvents<TData = Awaited<Retur
 
 
 
-export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200 = {
+export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse501 = {
+  data: ErrorResponse
+  status: 501
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponseSuccess = (deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse200) & {
+  headers: Headers;
+};
+export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponseError = (deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse400 | deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse401 | deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse404 | deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse501) & {
+  headers: Headers;
+};
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse = (deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponseSuccess | deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponseError)
+
+export const getDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/postmark-server`
+}
+
+/**
+ * Removes the Postmark server without touching the instance/tenant itself -- the instance is left without email sending until re-provisioned. Irreversible.
+ * @summary Delete an instance's Postmark server
+ */
+export const deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer = async (orgID: string,
+    instanceID: string, options?: RequestInit): Promise<deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse> => {
+
+  return customFetch<deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse>(getDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError,{orgID: string;instanceID: string}, TContext> => {
+
+const mutationKey = ['deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, {orgID: string;instanceID: string}> = (props) => {
+          const {orgID,instanceID} = props ?? {};
+
+          return  deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer(orgID,instanceID,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerMutationResult = NonNullable<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>>
+
+    export type DeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerMutationError = ErrorResponse
+
+    /**
+ * @summary Delete an instance's Postmark server
+ */
+export const useDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>,
+        TError,
+        {orgID: string;instanceID: string},
+        TContext
+      > => {
+      return useMutation(getDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerMutationOptions(options), queryClient);
+    }
+    export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200 = {
   data: SenderIdentityResponse
   status: 200
 }
@@ -817,6 +924,113 @@ export const usePostV1OrgsOrgIDInstancesInstanceIDSenderIdentity = <TError = Err
         TContext
       > => {
       return useMutation(getPostV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationOptions(options), queryClient);
+    }
+    export type deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse501 = {
+  data: ErrorResponse
+  status: 501
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseSuccess = (deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200) & {
+  headers: Headers;
+};
+export type deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseError = (deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse400 | deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse401 | deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse404 | deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse501) & {
+  headers: Headers;
+};
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse = (deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseSuccess | deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseError)
+
+export const getDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/sender-identity`
+}
+
+/**
+ * Removes the domain or sender signature from Postmark and locally, along with any DNS records published for it. Irreversible. The instance is left without a confirmed "from" address until a new identity is added.
+ * @summary Delete an instance's sender identity
+ */
+export const deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity = async (orgID: string,
+    instanceID: string, options?: RequestInit): Promise<deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse> => {
+
+  return customFetch<deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse>(getDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError,{orgID: string;instanceID: string}, TContext> => {
+
+const mutationKey = ['deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, {orgID: string;instanceID: string}> = (props) => {
+          const {orgID,instanceID} = props ?? {};
+
+          return  deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity(orgID,instanceID,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationResult = NonNullable<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>>
+
+    export type DeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationError = ErrorResponse
+
+    /**
+ * @summary Delete an instance's sender identity
+ */
+export const useDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>,
+        TError,
+        {orgID: string;instanceID: string},
+        TContext
+      > => {
+      return useMutation(getDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationOptions(options), queryClient);
     }
     export type postV1OrgsOrgIDInstancesInstanceIDSetupLinkResponse200 = {
   data: SetupLinkResponse
