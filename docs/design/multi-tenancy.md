@@ -282,8 +282,15 @@ UI-level "operator" role.
     (`{"status":"suspended"}`); a suspended tenant's subdomain shows the
     "workspace unavailable" page (from tenant-resolution middleware above),
     and the manager/dispatcher scan (phase 6) skips it.
+  - `DELETE /api/operator/tenants/:id` — permanently delete a tenant.
+    Every tenant-scoped table references `tenants(id) ON DELETE CASCADE`,
+    so this cascades into deleting all of the tenant's data (subscribers,
+    campaigns, users, settings, etc.) — irreversible. Refuses to delete
+    tenant 1, the default tenant every pre-multi-tenancy install and fresh
+    `schema.sql` seeds data against.
   - `POST /api/operator/organizations`, `GET /api/operator/organizations`,
-    `GET /api/operator/organizations/:id` — organization CRUD, see
+    `GET /api/operator/organizations/:id`, `DELETE
+    /api/operator/organizations/:id` — organization CRUD, see
     "Organizations" below.
 - **Out of scope for this plan:** actual payment-provider integration
   (Stripe subscription state, invoicing). The operator API just provides the
@@ -304,9 +311,9 @@ outside the Operator API ever needs to know an organization exists.
   /api/operator/organizations` returns 409 on a duplicate name rather than
   silently creating a second, indistinguishable organization.
 - `tenants.organization_id` is a nullable FK (`ON DELETE SET NULL`) — a
-  tenant doesn't have to belong to one, and deleting an organization row
-  (not currently exposed via any endpoint) never cascades into deleting the
-  tenants under it.
+  tenant doesn't have to belong to one, and `DELETE
+  /api/operator/organizations/:id` never cascades into deleting the tenants
+  under it: they're just detached (`organization_id` set to `NULL`).
 - `POST /api/operator/tenants` accepts an optional `organization_id`,
   validated against `GET /api/operator/organizations/:id` before creating
   the tenant so a bad ID fails fast with 400 rather than surfacing as an FK

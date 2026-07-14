@@ -25,6 +25,12 @@ SELECT t.*,
     (SELECT COUNT(*) FROM subscribers WHERE tenant_id = t.id) AS subscriber_count
 FROM tenants t WHERE t.organization_id = $1 ORDER BY t.id;
 
+-- name: operator-delete-organization
+--- organization_id is ON DELETE SET NULL (see docs/design/multi-tenancy.md's
+--- Organizations section) - tenants under this organization are kept,
+--- just detached from it.
+DELETE FROM organizations WHERE id = $1;
+
 -- name: operator-create-tenant
 -- $3 (organization_id) is nullable - a tenant doesn't have to belong to
 -- an organization.
@@ -73,3 +79,11 @@ FROM tenants t ORDER BY t.id;
 
 -- name: operator-update-tenant-status
 UPDATE tenants SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING *;
+
+-- name: operator-delete-tenant
+--- Every tenant-scoped table references tenants(id) ON DELETE CASCADE, so
+--- this single DELETE removes all of the tenant's subscribers, campaigns,
+--- users, settings, etc. along with it. Irreversible - the caller
+--- (cmd/operator.go's DeleteOperatorTenant) refuses to run this against
+--- tenant 1, the default tenant every install seeds data against.
+DELETE FROM tenants WHERE id = $1;
