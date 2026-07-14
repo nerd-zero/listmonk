@@ -368,6 +368,64 @@ func (a *API) addSenderIdentity(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// deleteSenderIdentity godoc
+//
+//	@Summary		Delete an instance's sender identity
+//	@Description	Removes the domain or sender signature from Postmark and locally, along with any DNS records published for it. Irreversible. The instance is left without a confirmed "from" address until a new identity is added.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path	string	true	"Org ID"
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		404	{object}	errorResponse	"No sender identity yet"
+//	@Failure		501	{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/sender-identity [delete]
+func (a *API) deleteSenderIdentity(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.DeleteSenderIdentity(r.Context(), orgIDFromRequest(r), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
+
+// deletePostmarkServer godoc
+//
+//	@Summary		Delete an instance's Postmark server
+//	@Description	Removes the Postmark server without touching the instance/tenant itself -- the instance is left without email sending until re-provisioned. Irreversible.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path	string	true	"Org ID"
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		404	{object}	errorResponse	"Instance has no Postmark server"
+//	@Failure		501	{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/postmark-server [delete]
+func (a *API) deletePostmarkServer(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.DeletePostmarkServer(r.Context(), orgIDFromRequest(r), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
+
 // --- members --------------------------------------------------------------
 
 // listMembers godoc

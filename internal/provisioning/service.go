@@ -742,6 +742,53 @@ func (s *Service) AddSenderSignature(ctx context.Context, orgID, instanceID uuid
 	return identity, nil
 }
 
+// DeleteSenderIdentity removes instance's sender identity (domain or
+// sender signature) from Postmark and locally, along with any DNS records
+// published for it -- irreversible. The instance is left without a
+// confirmed "from" address until a new identity is added; its existing
+// listmonk SMTP config is left as-is (still pointed at the now-orphaned
+// address) since there's nothing sensible to fall back to automatically.
+func (s *Service) DeleteSenderIdentity(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	if s.pm == nil {
+		return ErrPostmarkNotConfigured
+	}
+
+	identity, err := s.q.GetSenderIdentityByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSenderIdentityNotFound
+		}
+		return fmt.Errorf("get sender identity: %w", err)
+	}
+
+	postmarkID, err := strconv.Atoi(identity.PostmarkID)
+	if err != nil {
+		return fmt.Errorf("parse postmark id: %w", err)
+	}
+	switch identity.Kind {
+	case "domain", "platform_domain":
+		if err := s.pm.Client.DeleteDomain(ctx, postmarkID); err != nil && !postmarkclient.IsNotFound(err) {
+			return fmt.Errorf("delete postmark domain: %w", err)
+		}
+	case "sender_signature":
+		if err := s.pm.Client.DeleteSenderSignature(ctx, postmarkID); err != nil && !postmarkclient.IsNotFound(err) {
+			return fmt.Errorf("delete postmark sender signature: %w", err)
+		}
+	}
+
+	if err := s.q.DeleteDNSRecordsByInstance(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete dns records: %w", err)
+	}
+	if err := s.q.DeleteSenderIdentityByInstanceID(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete sender identity row: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) requireNoSenderIdentity(ctx context.Context, instanceID pgtype.UUID) error {
 	_, err := s.q.GetSenderIdentityByInstanceID(ctx, instanceID)
 	switch {

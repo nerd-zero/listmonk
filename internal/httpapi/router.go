@@ -49,6 +49,8 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 						r.Post("/setup-link", a.resendSetupLink)
 						r.Get("/sender-identity", a.getSenderIdentity)
 						r.Post("/sender-identity", a.addSenderIdentity)
+						r.Delete("/sender-identity", a.deleteSenderIdentity)
+						r.Delete("/postmark-server", a.deletePostmarkServer)
 					})
 				})
 

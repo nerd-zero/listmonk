@@ -46,6 +46,15 @@ func (q *Queries) CreateSenderIdentity(ctx context.Context, arg CreateSenderIden
 	return i, err
 }
 
+const deleteSenderIdentityByInstanceID = `-- name: DeleteSenderIdentityByInstanceID :exec
+DELETE FROM sender_identities WHERE instance_id = $1
+`
+
+func (q *Queries) DeleteSenderIdentityByInstanceID(ctx context.Context, instanceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSenderIdentityByInstanceID, instanceID)
+	return err
+}
+
 const getSenderIdentityByInstanceID = `-- name: GetSenderIdentityByInstanceID :one
 SELECT id, instance_id, kind, value, postmark_id, status, created_at FROM sender_identities WHERE instance_id = $1
 `

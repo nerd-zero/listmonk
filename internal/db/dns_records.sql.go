@@ -46,6 +46,15 @@ func (q *Queries) CreateDNSRecord(ctx context.Context, arg CreateDNSRecordParams
 	return i, err
 }
 
+const deleteDNSRecordsByInstance = `-- name: DeleteDNSRecordsByInstance :exec
+DELETE FROM dns_records WHERE instance_id = $1
+`
+
+func (q *Queries) DeleteDNSRecordsByInstance(ctx context.Context, instanceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteDNSRecordsByInstance, instanceID)
+	return err
+}
+
 const listDNSRecordsByInstance = `-- name: ListDNSRecordsByInstance :many
 SELECT id, instance_id, record_type, host, value, verified, created_at FROM dns_records WHERE instance_id = $1 ORDER BY created_at
 `

@@ -89,6 +89,12 @@ func (c *Client) VerifyDKIM(ctx context.Context, id int) (Domain, error) {
 	return doJSON[Domain](ctx, c, http.MethodPut, "/domains/"+strconv.Itoa(id)+"/verifyDkim", nil)
 }
 
+// DeleteDomain permanently removes a sending domain -- irreversible.
+func (c *Client) DeleteDomain(ctx context.Context, id int) error {
+	_, err := doJSON[struct{}](ctx, c, http.MethodDelete, "/domains/"+strconv.Itoa(id), nil)
+	return err
+}
+
 // SenderSignature mirrors the subset of Postmark's Sender Signature
 // resource this client needs -- the alternative to a full Domain for a
 // customer who wants to send from one address (e.g. hello@theirdomain.com)
@@ -114,6 +120,13 @@ func (c *Client) CreateSenderSignature(ctx context.Context, fromEmail, name stri
 // Postmark emailed them.
 func (c *Client) GetSenderSignature(ctx context.Context, id int) (SenderSignature, error) {
 	return doJSON[SenderSignature](ctx, c, http.MethodGet, "/senders/"+strconv.Itoa(id), nil)
+}
+
+// DeleteSenderSignature permanently removes a sender signature --
+// irreversible.
+func (c *Client) DeleteSenderSignature(ctx context.Context, id int) error {
+	_, err := doJSON[struct{}](ctx, c, http.MethodDelete, "/senders/"+strconv.Itoa(id), nil)
+	return err
 }
 
 // DeleteServer permanently deletes a Postmark server -- irreversible, and

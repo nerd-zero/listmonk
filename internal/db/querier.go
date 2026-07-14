@@ -24,9 +24,11 @@ type Querier interface {
 	// JIT provisioning: called the first time we see a valid Zitadel token for a
 	// subject we don't have a row for yet.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteDNSRecordsByInstance(ctx context.Context, instanceID pgtype.UUID) error
 	// Cascades to postmark_servers, dns_records, provisioning_jobs.
 	DeleteInstance(ctx context.Context, id pgtype.UUID) error
 	DeletePostmarkServerByInstanceID(ctx context.Context, instanceID pgtype.UUID) error
+	DeleteSenderIdentityByInstanceID(ctx context.Context, instanceID pgtype.UUID) error
 	GetInstanceByID(ctx context.Context, id pgtype.UUID) (Instance, error)
 	// Ownership check baked into the query rather than done separately in
 	// application code, so a wrong instance id and a wrong org fail the same way.
