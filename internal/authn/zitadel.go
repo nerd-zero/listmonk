@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 )
 
 // Claims is what the rest of the app needs from a verified token, ready to
@@ -22,6 +23,7 @@ type Claims struct {
 
 // Verifier checks a bearer token against Zitadel's JWKS.
 type Verifier struct {
+	provider *oidc.Provider
 	verifier *oidc.IDTokenVerifier
 }
 
@@ -33,24 +35,34 @@ func NewVerifier(ctx context.Context, issuer, clientID string) (*Verifier, error
 	if err != nil {
 		return nil, err
 	}
-	return &Verifier{verifier: provider.Verifier(&oidc.Config{ClientID: clientID})}, nil
+	return &Verifier{provider: provider, verifier: provider.Verifier(&oidc.Config{ClientID: clientID})}, nil
 }
 
+// Verify checks bearerToken -- the frontend's OAuth2 access token, not an ID
+// token (see web/src/api/mutator.ts) -- against Zitadel's JWKS, then calls
+// the userinfo endpoint for email/name: Zitadel's JWT access tokens carry
+// only sub/aud/scope, never profile claims, regardless of the OIDC client's
+// "userinfo inside ID token" setting -- that only affects ID tokens, which
+// never leave the frontend. The userinfo endpoint is the only place a
+// resource server can get profile data for a bearer access token.
 func (v *Verifier) Verify(ctx context.Context, bearerToken string) (Claims, error) {
 	idToken, err := v.verifier.Verify(ctx, bearerToken)
 	if err != nil {
 		return Claims{}, err
 	}
 
-	var raw struct {
-		Email string `json:"email"`
-		Name  string `json:"name"`
+	userInfo, err := v.provider.UserInfo(ctx, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: bearerToken}))
+	if err != nil {
+		return Claims{}, err
 	}
-	if err := idToken.Claims(&raw); err != nil {
+	var raw struct {
+		Name string `json:"name"`
+	}
+	if err := userInfo.Claims(&raw); err != nil {
 		return Claims{}, err
 	}
 
-	return Claims{Subject: idToken.Subject, Email: raw.Email, DisplayName: raw.Name}, nil
+	return Claims{Subject: idToken.Subject, Email: userInfo.Email, DisplayName: raw.Name}, nil
 }
 
 // BearerToken extracts the token from a request's Authorization header.
