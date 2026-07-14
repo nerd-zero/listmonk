@@ -66,8 +66,10 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 			r.Get("/instances", a.adminListInstances)
 			r.Route("/instances/{instanceID}", func(r chi.Router) {
 				r.Get("/", a.adminGetInstance)
+				r.Delete("/", a.adminDeleteInstance)
 				r.Put("/status", a.adminSetTenantStatus)
 				r.Post("/setup-link", a.adminResendSetupLink)
+				r.Delete("/postmark-server", a.adminDeletePostmarkServer)
 			})
 		})
 	})

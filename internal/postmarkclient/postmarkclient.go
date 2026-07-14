@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -113,6 +114,22 @@ func (c *Client) CreateSenderSignature(ctx context.Context, fromEmail, name stri
 // Postmark emailed them.
 func (c *Client) GetSenderSignature(ctx context.Context, id int) (SenderSignature, error) {
 	return doJSON[SenderSignature](ctx, c, http.MethodGet, "/senders/"+strconv.Itoa(id), nil)
+}
+
+// DeleteServer permanently deletes a Postmark server -- irreversible, and
+// Postmark rejects it (422) unless the server has already been manually
+// deactivated first (postmarkapp.com/developer/api/servers-api#delete-server).
+func (c *Client) DeleteServer(ctx context.Context, id int) error {
+	_, err := doJSON[struct{}](ctx, c, http.MethodDelete, "/servers/"+strconv.Itoa(id), nil)
+	return err
+}
+
+// IsNotFound reports whether err is Postmark's response for an ID that
+// doesn't exist -- lets a delete be treated as already-done rather than a
+// failure when retried against a server that's gone.
+func IsNotFound(err error) bool {
+	var ae *APIError
+	return errors.As(err, &ae) && ae.StatusCode == http.StatusNotFound
 }
 
 // APIError is returned for any non-2xx response. Postmark's error body is

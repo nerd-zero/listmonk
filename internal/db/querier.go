@@ -26,6 +26,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// Cascades to postmark_servers, dns_records, provisioning_jobs.
 	DeleteInstance(ctx context.Context, id pgtype.UUID) error
+	DeletePostmarkServerByInstanceID(ctx context.Context, instanceID pgtype.UUID) error
 	GetInstanceByID(ctx context.Context, id pgtype.UUID) (Instance, error)
 	// Ownership check baked into the query rather than done separately in
 	// application code, so a wrong instance id and a wrong org fail the same way.
@@ -59,6 +60,9 @@ type Querier interface {
 	// Called once provision_listmonk_tenant succeeds: records the fork's tenant
 	// id and the one-time setup link handed back by POST /api/operator/tenants.
 	SetInstanceListmonkTenant(ctx context.Context, arg SetInstanceListmonkTenantParams) (Instance, error)
+	// Backs cmd/promote-admin -- the only way to grant is_super_admin, by
+	// deliberate design (see the column's doc comment in the init migration).
+	SetUserSuperAdmin(ctx context.Context, arg SetUserSuperAdminParams) (User, error)
 	// Backs the dashboard's "resend setup link" action, which calls
 	// POST /api/operator/tenants/{id}/setup-link and stores the fresh one-time URL.
 	UpdateInstanceSetupURL(ctx context.Context, arg UpdateInstanceSetupURLParams) (Instance, error)

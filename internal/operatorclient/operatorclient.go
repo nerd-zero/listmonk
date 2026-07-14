@@ -162,6 +162,31 @@ func (c *Client) UpdateTenantStatus(ctx context.Context, id int, status string) 
 	return doJSON[Tenant](ctx, c, http.MethodPut, path, map[string]string{"status": status})
 }
 
+// DeleteTenant permanently deletes a tenant and cascades into deleting all
+// of its data (subscribers, campaigns, users, settings, etc.) on the
+// listmonk side -- irreversible. The fork refuses (400) to delete tenant 1,
+// the default tenant every fresh install seeds data against.
+func (c *Client) DeleteTenant(ctx context.Context, id int) error {
+	path := "/api/operator/tenants/" + strconv.Itoa(id)
+	_, err := doJSON[okResp](ctx, c, http.MethodDelete, path, nil)
+	return err
+}
+
+// DeleteOrganization deletes an organization row. Tenants that belonged to
+// it are kept, just detached (organization_id set to NULL).
+func (c *Client) DeleteOrganization(ctx context.Context, id int) error {
+	path := "/api/operator/organizations/" + strconv.Itoa(id)
+	_, err := doJSON[okResp](ctx, c, http.MethodDelete, path, nil)
+	return err
+}
+
+// okResp mirrors the fork's cmd/handlers.go okResp -- {"data": true} on a
+// successful delete. Only the error (non-2xx) path is ever meaningful to
+// callers here, so the field itself is never read.
+type okResp struct {
+	Data bool `json:"data"`
+}
+
 // CreateSetupLink reissues a one-time setup link for an existing tenant
 // admin -- backs the dashboard's "resend setup link" action, needed
 // because the original link's token is lost on every listmonk restart.

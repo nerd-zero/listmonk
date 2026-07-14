@@ -385,6 +385,42 @@ paths:
       tags:
       - admin
   /v1/admin/instances/{instanceID}:
+    delete:
+      description: Super-admin only. Permanently deletes the instance's Postmark server,
+        its listmonk tenant (cascading into all of the tenant's own data), and the
+        local record. Irreversible.
+      parameters:
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Not a super admin
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an instance (super admin)
+      tags:
+      - admin
     get:
       description: Merges listnun's own provisioning status with the tenant's live
         status/counts straight from listmonk -- two different dimensions, see provisioning.AdminGetTenantLiveStatus's
@@ -421,6 +457,47 @@ paths:
       security:
       - BearerAuth: []
       summary: Get instance detail (super admin)
+      tags:
+      - admin
+  /v1/admin/instances/{instanceID}/postmark-server:
+    delete:
+      description: Super-admin only. Removes the Postmark server without touching
+        the instance/tenant itself -- the instance is left without email sending until
+        re-provisioned. Irreversible.
+      parameters:
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Not a super admin
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Instance has no Postmark server
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an instance's Postmark server (super admin)
       tags:
       - admin
   /v1/admin/instances/{instanceID}/setup-link:

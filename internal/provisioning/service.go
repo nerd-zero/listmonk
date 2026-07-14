@@ -131,12 +131,20 @@ func (s *Service) JITProvisionUser(ctx context.Context, zitadelSubject, email, d
 	return user, nil
 }
 
+// personalOrgName names a new user's personal org after them directly --
+// their first name, or the local part of their email if there's no
+// display name -- rather than "<name>'s org": that suffix reads fine on
+// its own but slugifies into an awkward "-s-org" (see slugify), doubly so
+// once a multi-word display name is in the mix ("Alex Alexson" -> org
+// "Alex Alexson's org" -> slug "alex-alexson-s-org").
 func personalOrgName(displayName, email string) string {
 	if displayName != "" {
-		return displayName + "'s org"
+		first, _, _ := strings.Cut(displayName, " ")
+		return first
 	}
 	if email != "" {
-		return email + "'s org"
+		local, _, _ := strings.Cut(email, "@")
+		return local
 	}
 	return "My org"
 }
@@ -466,6 +474,61 @@ func (s *Service) doProvisionPostmarkServer(ctx context.Context, inst db.Instanc
 	return nil
 }
 
+// ErrInstanceHasNoPostmarkServer is returned by DeletePostmarkServer when
+// the instance has none to delete -- e.g. Postmark wasn't configured when
+// it was created, or one was already removed.
+var ErrInstanceHasNoPostmarkServer = errors.New("this instance has no postmark server")
+
+// DeletePostmarkServer removes instance's Postmark server on its own,
+// without touching the instance/tenant itself -- e.g. to force
+// re-provisioning, or to tear down sending for an instance moving its
+// domain elsewhere. The instance is left without email sending until
+// CreateInstance's Postmark step (or a future re-provision action) runs
+// again.
+func (s *Service) DeletePostmarkServer(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	return s.deletePostmarkServerFor(ctx, inst)
+}
+
+// AdminDeletePostmarkServer is DeletePostmarkServer without the
+// org-membership scope -- a super admin can remove any instance's server.
+func (s *Service) AdminDeletePostmarkServer(ctx context.Context, instanceID uuid.UUID) error {
+	inst, err := s.q.GetInstanceByID(ctx, pgUUID(instanceID))
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	return s.deletePostmarkServerFor(ctx, inst)
+}
+
+func (s *Service) deletePostmarkServerFor(ctx context.Context, inst db.Instance) error {
+	if s.pm == nil {
+		return ErrPostmarkNotConfigured
+	}
+	server, err := s.q.GetPostmarkServerByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInstanceHasNoPostmarkServer
+		}
+		return fmt.Errorf("get postmark server: %w", err)
+	}
+
+	pmID, err := strconv.Atoi(server.PostmarkServerID)
+	if err != nil {
+		return fmt.Errorf("parse postmark server id: %w", err)
+	}
+	if err := s.pm.Client.DeleteServer(ctx, pmID); err != nil && !postmarkclient.IsNotFound(err) {
+		return fmt.Errorf("delete postmark server: %w", err)
+	}
+
+	if err := s.q.DeletePostmarkServerByInstanceID(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete postmark server row: %w", err)
+	}
+	return nil
+}
+
 // ErrPostmarkNotConfigured is returned by AddSenderDomain/AddSenderSignature
 // when no Postmark account token is configured.
 var ErrPostmarkNotConfigured = errors.New("postmark is not configured")
@@ -782,6 +845,53 @@ func (s *Service) ListInstances(ctx context.Context, orgID uuid.UUID) ([]db.Inst
 
 func (s *Service) GetInstance(ctx context.Context, orgID, instanceID uuid.UUID) (db.Instance, error) {
 	return s.q.GetInstanceForOrg(ctx, db.GetInstanceForOrgParams{ID: pgUUID(instanceID), OrgID: pgUUID(orgID)})
+}
+
+// DeleteInstance permanently deletes instance: its Postmark server (if
+// any), its listmonk tenant (which cascades into all of the tenant's own
+// data -- subscribers, campaigns, etc., see operatorclient.DeleteTenant's
+// doc comment), and finally the local row (which cascades into
+// sender_identities/dns_records/provisioning_jobs). Irreversible.
+//
+// External resources are deleted before the local row, in that order, so a
+// failure partway through leaves the local row in place to retry against
+// rather than orphaning a Postmark server or listmonk tenant whose id we've
+// just lost.
+func (s *Service) DeleteInstance(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	return s.deleteInstanceFor(ctx, inst)
+}
+
+// AdminDeleteInstance is DeleteInstance without the org-membership scope --
+// a super admin can delete any instance.
+func (s *Service) AdminDeleteInstance(ctx context.Context, instanceID uuid.UUID) error {
+	inst, err := s.q.GetInstanceByID(ctx, pgUUID(instanceID))
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	return s.deleteInstanceFor(ctx, inst)
+}
+
+func (s *Service) deleteInstanceFor(ctx context.Context, inst db.Instance) error {
+	if s.pm != nil {
+		if err := s.deletePostmarkServerFor(ctx, inst); err != nil && !errors.Is(err, ErrInstanceHasNoPostmarkServer) {
+			return fmt.Errorf("delete postmark server: %w", err)
+		}
+	}
+
+	if inst.ListmonkTenantID != nil {
+		if err := s.op.DeleteTenant(ctx, int(*inst.ListmonkTenantID)); err != nil && !operatorclient.IsNotFound(err) {
+			return fmt.Errorf("delete listmonk tenant: %w", err)
+		}
+	}
+
+	if err := s.q.DeleteInstance(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete instance row: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) ListProvisioningEvents(ctx context.Context, instanceID uuid.UUID) ([]db.ProvisioningJob, error) {

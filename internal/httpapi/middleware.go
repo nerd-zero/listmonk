@@ -125,6 +125,8 @@ func mapServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, err.Error())
 	case err == provisioning.ErrPostmarkNotConfigured:
 		writeError(w, http.StatusNotImplemented, err.Error())
+	case err == provisioning.ErrInstanceHasNoPostmarkServer:
+		writeError(w, http.StatusNotFound, err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "internal error")
 	}
