@@ -12,7 +12,7 @@
       <div class="col-8">
         <div class="field">
           <label class="block mb-1 text-sm font-medium">{{ $t('settings.media.upload.extensions') }}</label>
-          <PvAutoComplete v-model="data['upload.extensions']" name="tags"
+          <PvAutoComplete v-model="data['upload.extensions']" name="tags" :typeahead="false"
             :suggestions="[]" multiple placeholder="jpg, png, gif .." class="w-full" />
         </div>
       </div>

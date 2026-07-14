@@ -39,7 +39,7 @@
 
     <div class="field">
       <label class="block mb-1 text-sm font-medium">{{ $t('settings.general.adminNotifEmails') }}</label>
-      <PvAutoComplete v-model="data['app.notify_emails']" name="app.notify_emails"
+      <PvAutoComplete v-model="data['app.notify_emails']" name="app.notify_emails" :typeahead="false"
         :suggestions="[]" multiple placeholder="you@yoursite.com"
         @before-add="(v) => v.match(/(.+?)@(.+?)/)" class="w-full" />
       <small class="block mt-1 text-color-secondary">{{ $t('settings.general.adminNotifEmailsHelp') }}</small>

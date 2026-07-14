@@ -169,7 +169,7 @@
               <div class="col-7">
                 <div class="field">
                   <label class="block mb-1 text-sm font-medium">{{ $t('settings.smtp.fromAddresses') }}</label>
-                  <PvAutoComplete v-model="item.from_addresses" name="from_addresses" multiple
+                  <PvAutoComplete v-model="item.from_addresses" name="from_addresses" multiple :typeahead="false"
                     :placeholder="'user@example.com, anothersite.com'" class="w-full" />
                   <small class="block mt-1 text-color-secondary">{{ $t('settings.smtp.fromAddressesHelp') }}</small>
                 </div>

@@ -47,6 +47,13 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Load schema
+        # The postgres service above starts with an empty database - tests
+        # like internal/core/tenant_test.go connect successfully (so they
+        # don't hit the "no reachable database" skip) but then fail because
+        # tables such as `tenants` don't exist yet.
+        run: PGPASSWORD=listmonk psql -h localhost -U listmonk -d listmonk -f schema.sql
+
       - name: Run tests
         run: make test
         env:
