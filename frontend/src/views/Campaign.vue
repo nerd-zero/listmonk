@@ -94,7 +94,7 @@
 
               <div class="field">
                 <label class="field-label">{{ $t('globals.terms.tags') }}</label>
-                <PvAutoComplete v-model="form.tags" name="tags" :disabled="!canEdit"
+                <PvAutoComplete v-model="form.tags" name="tags" :disabled="!canEdit" :typeahead="false"
                   :placeholder="$t('globals.terms.tags')" multiple class="w-full" />
               </div>
 
@@ -139,8 +139,9 @@
                   <span>{{ $t('campaigns.sendTest') }}</span>
                 </div>
                 <small class="test-message-card__help">{{ $t('campaigns.sendTestHelp') }}</small>
-                <PvAutoComplete v-model="form.testEmails" :disabled="isNew"
-                  :placeholder="$t('campaigns.testEmails')" multiple class="w-full" />
+                <PvAutoComplete v-model="form.testEmails" :disabled="isNew" :typeahead="false"
+                  :placeholder="$t('campaigns.testEmails')" multiple class="w-full"
+                  @blur="onTestEmailBlur" />
                 <PvButton @click="() => onSubmit('test')" :loading="loading.campaigns" :disabled="isNew"
                   severity="secondary" outlined icon="pi pi-send" :label="$t('campaigns.send')" class="w-full" />
               </div>
@@ -436,6 +437,14 @@ function getCampaign(id: string) {
     isAttachFieldVisible.value = form.media.length > 0;
     form.media = form.media.map((f: any) => (!f.id ? { ...f, filename: `❌ ${f.filename}` } : f));
   });
+}
+
+function onTestEmailBlur(e: FocusEvent) {
+  const val = (e.target as HTMLInputElement).value?.trim();
+  if (val) {
+    form.testEmails.push(val);
+    (e.target as HTMLInputElement).value = '';
+  }
 }
 
 function sendTest() {

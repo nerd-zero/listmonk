@@ -41,7 +41,7 @@
 
       <div class="lm-field">
         <label class="lm-label">{{ $t('globals.terms.tags') }}</label>
-        <PvAutoComplete v-model="form.tags" name="tags"
+        <PvAutoComplete v-model="form.tags" name="tags" :typeahead="false"
           :placeholder="$t('globals.terms.tags')" multiple class="w-full" />
       </div>
 
