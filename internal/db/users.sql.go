@@ -87,6 +87,35 @@ func (q *Queries) GetUserByZitadelSubject(ctx context.Context, zitadelSubject st
 	return i, err
 }
 
+const setUserSuperAdmin = `-- name: SetUserSuperAdmin :one
+UPDATE users
+SET is_super_admin = $2, updated_at = now()
+WHERE email = $1
+RETURNING id, zitadel_subject, email, display_name, is_super_admin, created_at, updated_at
+`
+
+type SetUserSuperAdminParams struct {
+	Email        string `json:"email"`
+	IsSuperAdmin bool   `json:"is_super_admin"`
+}
+
+// Backs cmd/promote-admin -- the only way to grant is_super_admin, by
+// deliberate design (see the column's doc comment in the init migration).
+func (q *Queries) SetUserSuperAdmin(ctx context.Context, arg SetUserSuperAdminParams) (User, error) {
+	row := q.db.QueryRow(ctx, setUserSuperAdmin, arg.Email, arg.IsSuperAdmin)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.ZitadelSubject,
+		&i.Email,
+		&i.DisplayName,
+		&i.IsSuperAdmin,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users
 SET email = $2, display_name = $3, updated_at = now()
