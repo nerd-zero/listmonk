@@ -119,6 +119,12 @@ func mapServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusForbidden, err.Error())
 	case err == provisioning.ErrInvitesNotConfigured:
 		writeError(w, http.StatusNotImplemented, err.Error())
+	case err == provisioning.ErrSenderIdentityNotFound:
+		writeError(w, http.StatusNotFound, err.Error())
+	case err == provisioning.ErrSenderIdentityExists, err == provisioning.ErrSenderIdentityTaken:
+		writeError(w, http.StatusConflict, err.Error())
+	case err == provisioning.ErrPostmarkNotConfigured:
+		writeError(w, http.StatusNotImplemented, err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "internal error")
 	}

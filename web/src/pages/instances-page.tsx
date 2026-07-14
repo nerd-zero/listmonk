@@ -1,18 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -23,14 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { InstanceStatusBadge } from "@/components/instance-status-badge";
+import { CreateInstanceWizard } from "@/components/create-instance-wizard";
 import { useOrgContext } from "@/lib/org-context";
 import { unwrap } from "@/api/unwrap";
-import { instanceSlug } from "@/lib/slug";
-import {
-  getGetV1OrgsOrgIDInstancesQueryKey,
-  useGetV1OrgsOrgIDInstances,
-  usePostV1OrgsOrgIDInstances,
-} from "@/api/generated/endpoints/instances/instances";
+import { useGetV1OrgsOrgIDInstances } from "@/api/generated/endpoints/instances/instances";
 import type { InstanceListResponse } from "@/api/generated/model";
 
 function LoadingSkeleton() {
@@ -132,7 +116,7 @@ export function InstancesPage() {
         </Table>
       )}
 
-      <CreateInstanceSheet
+      <CreateInstanceWizard
         open={createOpen}
         onOpenChange={setCreateOpen}
         orgId={selectedOrg?.id}
@@ -160,122 +144,5 @@ function EmptyState({
       </p>
       <Button onClick={onCreate}>Create instance</Button>
     </div>
-  );
-}
-
-function CreateInstanceSheet({
-  open,
-  onOpenChange,
-  orgId,
-  orgName,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  orgId?: string;
-  orgName?: string;
-}) {
-  const [name, setName] = useState("");
-  const [adminUsername, setAdminUsername] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const queryClient = useQueryClient();
-
-  const slug = instanceSlug(orgName ?? "", name);
-
-  const createInstance = usePostV1OrgsOrgIDInstances({
-    mutation: {
-      onSuccess: () => {
-        if (orgId) {
-          queryClient.invalidateQueries({
-            queryKey: getGetV1OrgsOrgIDInstancesQueryKey(orgId),
-          });
-        }
-        toast.success(`Creating ${slug} — this usually takes under a minute`);
-        setName("");
-        setAdminUsername("");
-        setAdminEmail("");
-        onOpenChange(false);
-      },
-      onError: (error) => {
-        toast.error(error.error ?? "Couldn't create the instance");
-      },
-    },
-  });
-
-  const canSubmit =
-    !!slug && name.trim() && adminUsername.trim() && adminEmail.trim();
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>New instance</SheetTitle>
-          <SheetDescription>
-            This becomes your workspace's address and its first admin.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="flex flex-col gap-4 px-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="name">Workspace name</Label>
-            <Input
-              id="name"
-              placeholder="Marketing"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-            />
-            {slug && (
-              <p className="font-mono text-xs text-muted-foreground">
-                {slug}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="admin-username">Admin username</Label>
-            <Input
-              id="admin-username"
-              value={adminUsername}
-              onChange={(e) => setAdminUsername(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="admin-email">Admin email</Label>
-            <Input
-              id="admin-email"
-              type="email"
-              value={adminEmail}
-              onChange={(e) => setAdminEmail(e.target.value)}
-            />
-          </div>
-        </div>
-        <SheetFooter className="flex-row">
-          <Button
-            variant="ghost"
-            className="flex-1"
-            onClick={() => onOpenChange(false)}
-            disabled={createInstance.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="flex-1"
-            disabled={!canSubmit || !orgId || createInstance.isPending}
-            onClick={() =>
-              orgId &&
-              createInstance.mutate({
-                orgID: orgId,
-                data: {
-                  slug,
-                  name,
-                  admin_username: adminUsername,
-                  admin_email: adminEmail,
-                },
-              })
-            }
-          >
-            {createInstance.isPending ? "Creating…" : "Create instance"}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
   );
 }

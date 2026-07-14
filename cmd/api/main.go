@@ -19,8 +19,10 @@ import (
 
 	"listnun/internal/authn"
 	"listnun/internal/config"
+	"listnun/internal/cryptoutil"
 	"listnun/internal/httpapi"
 	"listnun/internal/operatorclient"
+	"listnun/internal/postmarkclient"
 	"listnun/internal/provisioning"
 	"listnun/internal/zitadelmgmt"
 
@@ -62,7 +64,27 @@ func main() {
 		defer zm.Close()
 	}
 
-	svc := provisioning.New(pool, op, zm)
+	// Creating a Postmark server per tenant is optional too: only wire it
+	// up if an account token is configured, same fail-open pattern as the
+	// Zitadel service account above. Unlike that one, a misconfigured
+	// encryption key here is fatal rather than silently skipped -- an
+	// operator who set the token clearly intends this step to run, and a
+	// bad key would otherwise fail invisibly on every single instance
+	// creation instead of at startup.
+	var pm *provisioning.PostmarkConfig
+	if cfg.PostmarkAccountToken != "" {
+		encKey, err := cryptoutil.ParseKey(cfg.PostmarkTokenEncryptionKey)
+		if err != nil {
+			log.Fatalf("api: parse POSTMARK_TOKEN_ENCRYPTION_KEY: %v", err)
+		}
+		pm = &provisioning.PostmarkConfig{
+			Client:           postmarkclient.New(cfg.PostmarkAccountToken),
+			EncryptionKey:    encKey,
+			SharedDomainRoot: cfg.PostmarkSharedDomainRoot,
+		}
+	}
+
+	svc := provisioning.New(pool, op, zm, pm)
 
 	if cfg.ZitadelIssuer == "" {
 		log.Fatalf("api: ZITADEL_ISSUER is required")

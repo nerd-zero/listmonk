@@ -26,10 +26,12 @@ import type {
 
 import type {
   ErrorResponse,
+  HttpapiAddSenderIdentityRequest,
   HttpapiCreateInstanceRequest,
   InstanceListResponse,
   InstanceResponse,
   ProvisioningJobListResponse,
+  SenderIdentityResponse,
   SetupLinkResponse
 } from '../../model';
 
@@ -570,7 +572,253 @@ export function useGetV1OrgsOrgIDInstancesInstanceIDEvents<TData = Awaited<Retur
 
 
 
-export type postV1OrgsOrgIDInstancesInstanceIDSetupLinkResponse200 = {
+export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200 = {
+  data: SenderIdentityResponse
+  status: 200
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseSuccess = (getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200) & {
+  headers: Headers;
+};
+export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseError = (getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse400 | getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse401 | getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse404) & {
+  headers: Headers;
+};
+
+export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse = (getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseSuccess | getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseError)
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/sender-identity`
+}
+
+/**
+ * Returns the domain or sender signature the org added, plus any DNS records to publish for it (empty for a sender signature). 404 if none added yet.
+ * @summary Get an instance's sender identity
+ */
+export const getV1OrgsOrgIDInstancesInstanceIDSenderIdentity = async (orgID: string,
+    instanceID: string, options?: RequestInit): Promise<getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse> => {
+
+  return customFetch<getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse>(getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryKey = (orgID: string,
+    instanceID: string,) => {
+    return [
+    `/v1/orgs/${orgID}/instances/${instanceID}/sender-identity`
+    ] as const;
+    }
+
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryOptions = <TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError = ErrorResponse>(orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryKey(orgID,instanceID);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>> = ({ signal }) => getV1OrgsOrgIDInstancesInstanceIDSenderIdentity(orgID,instanceID, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined && instanceID !== null && instanceID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryResult = NonNullable<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>>
+export type GetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryError = ErrorResponse
+
+
+export function useGetV1OrgsOrgIDInstancesInstanceIDSenderIdentity<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>,
+          TError,
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetV1OrgsOrgIDInstancesInstanceIDSenderIdentity<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>,
+          TError,
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetV1OrgsOrgIDInstancesInstanceIDSenderIdentity<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get an instance's sender identity
+ */
+
+export function useGetV1OrgsOrgIDInstancesInstanceIDSenderIdentity<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryOptions(orgID,instanceID,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200 = {
+  data: SenderIdentityResponse
+  status: 200
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse409 = {
+  data: ErrorResponse
+  status: 409
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse501 = {
+  data: ErrorResponse
+  status: 501
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseSuccess = (postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200) & {
+  headers: Headers;
+};
+export type postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseError = (postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse400 | postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse401 | postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse409 | postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse501) & {
+  headers: Headers;
+};
+
+export type postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse = (postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseSuccess | postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponseError)
+
+export const getPostV1OrgsOrgIDInstancesInstanceIDSenderIdentityUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/sender-identity`
+}
+
+/**
+ * Adds exactly one sender identity per instance (an org's own domain, a sender signature, or an opt-in subdomain of ours), and pushes the resulting SMTP credentials into the listmonk tenant. 409 if the instance already has one, or if the domain/email is already claimed by another workspace.
+ * @summary Add an instance's sender identity
+ */
+export const postV1OrgsOrgIDInstancesInstanceIDSenderIdentity = async (orgID: string,
+    instanceID: string,
+    httpapiAddSenderIdentityRequest: HttpapiAddSenderIdentityRequest, options?: RequestInit): Promise<postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse> => {
+
+  return customFetch<postV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse>(getPostV1OrgsOrgIDInstancesInstanceIDSenderIdentityUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(httpapiAddSenderIdentityRequest)
+  }
+);}
+
+
+
+
+
+export const getPostV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError,{orgID: string;instanceID: string;data: HttpapiAddSenderIdentityRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError,{orgID: string;instanceID: string;data: HttpapiAddSenderIdentityRequest}, TContext> => {
+
+const mutationKey = ['postV1OrgsOrgIDInstancesInstanceIDSenderIdentity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, {orgID: string;instanceID: string;data: HttpapiAddSenderIdentityRequest}> = (props) => {
+          const {orgID,instanceID,data} = props ?? {};
+
+          return  postV1OrgsOrgIDInstancesInstanceIDSenderIdentity(orgID,instanceID,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>>
+    export type PostV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationBody = HttpapiAddSenderIdentityRequest
+    export type PostV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationError = ErrorResponse
+
+    /**
+ * @summary Add an instance's sender identity
+ */
+export const usePostV1OrgsOrgIDInstancesInstanceIDSenderIdentity = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>, TError,{orgID: string;instanceID: string;data: HttpapiAddSenderIdentityRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDSenderIdentity>>,
+        TError,
+        {orgID: string;instanceID: string;data: HttpapiAddSenderIdentityRequest},
+        TContext
+      > => {
+      return useMutation(getPostV1OrgsOrgIDInstancesInstanceIDSenderIdentityMutationOptions(options), queryClient);
+    }
+    export type postV1OrgsOrgIDInstancesInstanceIDSetupLinkResponse200 = {
   data: SetupLinkResponse
   status: 200
 }

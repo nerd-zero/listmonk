@@ -20,6 +20,7 @@ type Querier interface {
 	CreateOrg(ctx context.Context, arg CreateOrgParams) (Org, error)
 	CreatePostmarkServer(ctx context.Context, arg CreatePostmarkServerParams) (PostmarkServer, error)
 	CreateProvisioningJob(ctx context.Context, arg CreateProvisioningJobParams) (ProvisioningJob, error)
+	CreateSenderIdentity(ctx context.Context, arg CreateSenderIdentityParams) (SenderIdentity, error)
 	// JIT provisioning: called the first time we see a valid Zitadel token for a
 	// subject we don't have a row for yet.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -33,6 +34,7 @@ type Querier interface {
 	// Authorization check: is this user a member of this org, and with what role.
 	GetOrgMember(ctx context.Context, arg GetOrgMemberParams) (OrgMember, error)
 	GetPostmarkServerByInstanceID(ctx context.Context, instanceID pgtype.UUID) (PostmarkServer, error)
+	GetSenderIdentityByInstanceID(ctx context.Context, instanceID pgtype.UUID) (SenderIdentity, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	// Looked up on every authenticated request after the OIDC middleware verifies
 	// the bearer token; a miss here means first login, so the caller JIT-provisions
@@ -53,6 +55,7 @@ type Querier interface {
 	// Backs GET /instances/{id}/events -- the provisioning timeline shown in the UI.
 	ListProvisioningJobsByInstance(ctx context.Context, instanceID pgtype.UUID) ([]ProvisioningJob, error)
 	MarkDNSRecordVerified(ctx context.Context, id pgtype.UUID) (DnsRecord, error)
+	MarkSenderIdentityConfirmed(ctx context.Context, id pgtype.UUID) (SenderIdentity, error)
 	// Called once provision_listmonk_tenant succeeds: records the fork's tenant
 	// id and the one-time setup link handed back by POST /api/operator/tenants.
 	SetInstanceListmonkTenant(ctx context.Context, arg SetInstanceListmonkTenantParams) (Instance, error)
