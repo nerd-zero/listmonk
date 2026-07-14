@@ -168,7 +168,7 @@ func (c *Client) UpdateTenantStatus(ctx context.Context, id int, status string) 
 // the default tenant every fresh install seeds data against.
 func (c *Client) DeleteTenant(ctx context.Context, id int) error {
 	path := "/api/operator/tenants/" + strconv.Itoa(id)
-	_, err := doJSON[okResp](ctx, c, http.MethodDelete, path, nil)
+	_, err := doJSON[bool](ctx, c, http.MethodDelete, path, nil)
 	return err
 }
 
@@ -176,15 +176,8 @@ func (c *Client) DeleteTenant(ctx context.Context, id int) error {
 // it are kept, just detached (organization_id set to NULL).
 func (c *Client) DeleteOrganization(ctx context.Context, id int) error {
 	path := "/api/operator/organizations/" + strconv.Itoa(id)
-	_, err := doJSON[okResp](ctx, c, http.MethodDelete, path, nil)
+	_, err := doJSON[bool](ctx, c, http.MethodDelete, path, nil)
 	return err
-}
-
-// okResp mirrors the fork's cmd/handlers.go okResp -- {"data": true} on a
-// successful delete. Only the error (non-2xx) path is ever meaningful to
-// callers here, so the field itself is never read.
-type okResp struct {
-	Data bool `json:"data"`
 }
 
 // CreateSetupLink reissues a one-time setup link for an existing tenant
