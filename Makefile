@@ -68,6 +68,7 @@ run:
 
 # Build the JS frontend into frontend/dist.
 $(FRONTEND_DIST): $(FRONTEND_DEPS)
+	cd frontend && $(YARN) gen:api
 	export VUE_APP_VERSION="${VERSION}" && cd frontend && $(YARN) build
 	touch -c $(FRONTEND_DIST)
 
