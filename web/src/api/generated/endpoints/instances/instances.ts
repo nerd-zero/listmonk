@@ -30,6 +30,7 @@ import type {
   HttpapiCreateInstanceRequest,
   InstanceListResponse,
   InstanceResponse,
+  PostmarkServerResponse,
   ProvisioningJobListResponse,
   SenderIdentityResponse,
   SetupLinkResponse
@@ -572,6 +573,149 @@ export function useGetV1OrgsOrgIDInstancesInstanceIDEvents<TData = Awaited<Retur
 
 
 
+export type getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse200 = {
+  data: PostmarkServerResponse
+  status: 200
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse501 = {
+  data: ErrorResponse
+  status: 501
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponseSuccess = (getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse200) & {
+  headers: Headers;
+};
+export type getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponseError = (getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse400 | getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse401 | getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse404 | getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse501) & {
+  headers: Headers;
+};
+
+export type getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse = (getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponseSuccess | getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponseError)
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDPostmarkServerUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/postmark-server`
+}
+
+/**
+ * Locally-stored info plus live state from Postmark (name, whether SMTP sending is activated). Never includes the API token.
+ * @summary Get an instance's Postmark server
+ */
+export const getV1OrgsOrgIDInstancesInstanceIDPostmarkServer = async (orgID: string,
+    instanceID: string, options?: RequestInit): Promise<getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse> => {
+
+  return customFetch<getV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse>(getGetV1OrgsOrgIDInstancesInstanceIDPostmarkServerUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDPostmarkServerQueryKey = (orgID: string,
+    instanceID: string,) => {
+    return [
+    `/v1/orgs/${orgID}/instances/${instanceID}/postmark-server`
+    ] as const;
+    }
+
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDPostmarkServerQueryOptions = <TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError = ErrorResponse>(orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetV1OrgsOrgIDInstancesInstanceIDPostmarkServerQueryKey(orgID,instanceID);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>> = ({ signal }) => getV1OrgsOrgIDInstancesInstanceIDPostmarkServer(orgID,instanceID, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined && instanceID !== null && instanceID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetV1OrgsOrgIDInstancesInstanceIDPostmarkServerQueryResult = NonNullable<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>>
+export type GetV1OrgsOrgIDInstancesInstanceIDPostmarkServerQueryError = ErrorResponse
+
+
+export function useGetV1OrgsOrgIDInstancesInstanceIDPostmarkServer<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>,
+          TError,
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetV1OrgsOrgIDInstancesInstanceIDPostmarkServer<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>,
+          TError,
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetV1OrgsOrgIDInstancesInstanceIDPostmarkServer<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get an instance's Postmark server
+ */
+
+export function useGetV1OrgsOrgIDInstancesInstanceIDPostmarkServer<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDPostmarkServer>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetV1OrgsOrgIDInstancesInstanceIDPostmarkServerQueryOptions(orgID,instanceID,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 export type deleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerResponse200 = {
   data: void
   status: 200
@@ -678,6 +822,113 @@ export const useDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServer = <TError = E
         TContext
       > => {
       return useMutation(getDeleteV1OrgsOrgIDInstancesInstanceIDPostmarkServerMutationOptions(options), queryClient);
+    }
+    export type postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse200 = {
+  data: void
+  status: 200
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse501 = {
+  data: ErrorResponse
+  status: 501
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponseSuccess = (postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse200) & {
+  headers: Headers;
+};
+export type postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponseError = (postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse400 | postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse401 | postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse404 | postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse501) & {
+  headers: Headers;
+};
+
+export type postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse = (postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponseSuccess | postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponseError)
+
+export const getPostV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/postmark-server/resync`
+}
+
+/**
+ * Fixes drift if the tenant's SMTP config was reset or changed by hand. Requires both a Postmark server and a confirmed sender identity to already exist.
+ * @summary Re-push an instance's Postmark SMTP credentials into listmonk
+ */
+export const postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync = async (orgID: string,
+    instanceID: string, options?: RequestInit): Promise<postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse> => {
+
+  return customFetch<postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncResponse>(getPostV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync>>, TError,{orgID: string;instanceID: string}, TContext> => {
+
+const mutationKey = ['postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync>>, {orgID: string;instanceID: string}> = (props) => {
+          const {orgID,instanceID} = props ?? {};
+
+          return  postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync(orgID,instanceID,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncMutationResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync>>>
+
+    export type PostV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncMutationError = ErrorResponse
+
+    /**
+ * @summary Re-push an instance's Postmark SMTP credentials into listmonk
+ */
+export const usePostV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDPostmarkServerResync>>,
+        TError,
+        {orgID: string;instanceID: string},
+        TContext
+      > => {
+      return useMutation(getPostV1OrgsOrgIDInstancesInstanceIDPostmarkServerResyncMutationOptions(options), queryClient);
     }
     export type getV1OrgsOrgIDInstancesInstanceIDSenderIdentityResponse200 = {
   data: SenderIdentityResponse
