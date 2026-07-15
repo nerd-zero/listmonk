@@ -123,13 +123,8 @@ export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
   return (
     <div className="flex min-h-svh flex-col bg-background bg-[repeating-linear-gradient(0deg,var(--border)_0,var(--border)_1px,transparent_1px,transparent_48px),repeating-linear-gradient(90deg,var(--border)_0,var(--border)_1px,transparent_1px,transparent_48px)] bg-[length:100%_48px,48px_100%]">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-        <div>
-          <div className="font-mono text-lg font-semibold tracking-tight">
-            listnun
-          </div>
-          <span className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-            Tenant console
-          </span>
+        <div className="font-mono text-lg font-semibold tracking-tight">
+          listnun
         </div>
         <Button variant="outline" size="sm" onClick={onSignIn}>
           Sign in
