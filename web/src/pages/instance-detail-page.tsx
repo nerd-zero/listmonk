@@ -15,6 +15,7 @@ import {
 import { InstanceStatusBadge } from "@/components/instance-status-badge";
 import { SenderIdentityCard } from "@/components/sender-identity-card";
 import { PostmarkServerCard } from "@/components/postmark-server-card";
+import { CustomDomainCard } from "@/components/custom-domain-card";
 import { useOrgContext } from "@/lib/org-context";
 import { copyToClipboard } from "@/lib/utils";
 import { unwrap } from "@/api/unwrap";
@@ -176,6 +177,8 @@ export function InstanceDetailPage() {
       <SenderIdentityCard orgId={orgId} instanceId={instanceId} />
 
       <PostmarkServerCard orgId={orgId} instanceId={instanceId} />
+
+      <CustomDomainCard orgId={orgId} instanceId={instanceId} />
 
       <div>
         <h2 className="mb-2 text-sm font-semibold">Provisioning timeline</h2>

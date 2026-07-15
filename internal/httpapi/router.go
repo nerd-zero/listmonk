@@ -55,6 +55,9 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 						r.Get("/postmark-server", a.getPostmarkServer)
 						r.Delete("/postmark-server", a.deletePostmarkServer)
 						r.Post("/postmark-server/resync", a.resyncPostmarkServer)
+						r.Get("/custom-domain", a.getCustomDomain)
+						r.Post("/custom-domain", a.addCustomDomain)
+						r.Delete("/custom-domain", a.deleteCustomDomain)
 					})
 				})
 

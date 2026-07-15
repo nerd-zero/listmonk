@@ -418,6 +418,112 @@ func (a *API) deleteSenderIdentity(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
 }
 
+// getCustomDomain godoc
+//
+//	@Summary		Get an instance's custom domain
+//	@Description	Returns the custom domain the org added, plus the DNS records to publish for it. 404 if none added yet. Re-checks Cloudflare live if still pending, and flips the tenant's URL over once Cloudflare has finished issuing a certificate for it.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string	true	"Org ID"
+//	@Param			instanceID	path		string	true	"Instance ID"
+//	@Success		200			{object}	customDomainResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		404			{object}	errorResponse	"No custom domain yet"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/custom-domain [get]
+func (a *API) getCustomDomain(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	domain, records, err := a.svc.GetCustomDomain(r.Context(), orgIDFromRequest(r), instanceID)
+	if err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, customDomainDetail{CustomDomain: domain, DNSRecords: records})
+}
+
+type addCustomDomainRequest struct {
+	// Domain is the bare host the instance should be reachable at (e.g.
+	// "mail.acme.com"), instead of only {slug}.{root_domain}.
+	Domain string `json:"domain"`
+}
+
+// addCustomDomain godoc
+//
+//	@Summary		Add an instance's custom domain
+//	@Description	Registers a Cloudflare Custom Hostname for domain and returns the DNS records to publish (a CNAME at our fallback origin, and Cloudflare's ownership-verification TXT). The org's own DNS doesn't need to be on Cloudflare. 409 if the instance already has one, or if the domain is already claimed by another workspace.
+//	@Tags			instances
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string					true	"Org ID"
+//	@Param			instanceID	path		string					true	"Instance ID"
+//	@Param			domain		body		addCustomDomainRequest	true	"Domain to add"
+//	@Success		200			{object}	customDomainResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		409			{object}	errorResponse	"Already added, or already claimed by another workspace"
+//	@Failure		501			{object}	errorResponse	"Cloudflare not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/custom-domain [post]
+func (a *API) addCustomDomain(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	var req addCustomDomainRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Domain == "" {
+		writeError(w, http.StatusBadRequest, "domain is required")
+		return
+	}
+
+	domain, records, err := a.svc.AddCustomDomain(r.Context(), orgIDFromRequest(r), instanceID, req.Domain)
+	if err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, customDomainDetail{CustomDomain: domain, DNSRecords: records})
+}
+
+// deleteCustomDomain godoc
+//
+//	@Summary		Delete an instance's custom domain
+//	@Description	Reverts the tenant's URL back to {slug}.{root_domain}, then removes the Cloudflare Custom Hostname and the DNS records stored for it. Irreversible.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path	string	true	"Org ID"
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		404	{object}	errorResponse	"No custom domain yet"
+//	@Failure		501	{object}	errorResponse	"Cloudflare not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/custom-domain [delete]
+func (a *API) deleteCustomDomain(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.DeleteCustomDomain(r.Context(), orgIDFromRequest(r), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
+
 // deletePostmarkServer godoc
 //
 //	@Summary		Delete an instance's Postmark server

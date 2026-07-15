@@ -725,6 +725,200 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/orgs/{orgID}/instances/{instanceID}/custom-domain": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the custom domain the org added, plus the DNS records to publish for it. 404 if none added yet. Re-checks Cloudflare live if still pending, and flips the tenant's URL over once Cloudflare has finished issuing a certificate for it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instances"
+                ],
+                "summary": "Get an instance's custom domain",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Org ID",
+                        "name": "orgID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Instance ID",
+                        "name": "instanceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/CustomDomainResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "No custom domain yet",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Registers a Cloudflare Custom Hostname for domain and returns the DNS records to publish (a CNAME at our fallback origin, and Cloudflare's ownership-verification TXT). The org's own DNS doesn't need to be on Cloudflare. 409 if the instance already has one, or if the domain is already claimed by another workspace.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instances"
+                ],
+                "summary": "Add an instance's custom domain",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Org ID",
+                        "name": "orgID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Instance ID",
+                        "name": "instanceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Domain to add",
+                        "name": "domain",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.addCustomDomainRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/CustomDomainResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Already added, or already claimed by another workspace",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Cloudflare not configured",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reverts the tenant's URL back to {slug}.{root_domain}, then removes the Cloudflare Custom Hostname and the DNS records stored for it. Irreversible.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instances"
+                ],
+                "summary": "Delete an instance's custom domain",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Org ID",
+                        "name": "orgID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Instance ID",
+                        "name": "instanceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "No custom domain yet",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Cloudflare not configured",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/orgs/{orgID}/instances/{instanceID}/events": {
             "get": {
                 "security": [
@@ -1375,6 +1569,28 @@ const docTemplate = `{
                 }
             }
         },
+        "CustomDomainDetail": {
+            "type": "object",
+            "properties": {
+                "custom_domain": {
+                    "$ref": "#/definitions/db.CustomDomain"
+                },
+                "dns_records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/db.DnsRecord"
+                    }
+                }
+            }
+        },
+        "CustomDomainResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/CustomDomainDetail"
+                }
+            }
+        },
         "ErrorResponse": {
             "type": "object",
             "properties": {
@@ -1512,6 +1728,29 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/db.User"
+                }
+            }
+        },
+        "db.CustomDomain": {
+            "type": "object",
+            "properties": {
+                "cloudflare_hostname_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "domain": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instance_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },
@@ -1783,6 +2022,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "zitadel_subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.addCustomDomainRequest": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "description": "Domain is the bare host the instance should be reachable at (e.g.\n\"mail.acme.com\"), instead of only {slug}.{root_domain}.",
                     "type": "string"
                 }
             }

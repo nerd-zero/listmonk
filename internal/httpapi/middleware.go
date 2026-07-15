@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"listnun/internal/authn"
+	"listnun/internal/cloudflareclient"
 	"listnun/internal/db"
 	"listnun/internal/operatorclient"
 	"listnun/internal/postmarkclient"
@@ -130,14 +131,23 @@ func mapServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotImplemented, err.Error())
 	case err == provisioning.ErrInstanceHasNoPostmarkServer:
 		writeError(w, http.StatusNotFound, err.Error())
+	case err == provisioning.ErrCustomDomainNotFound:
+		writeError(w, http.StatusNotFound, err.Error())
+	case err == provisioning.ErrCustomDomainExists, err == provisioning.ErrCustomDomainTaken:
+		writeError(w, http.StatusConflict, err.Error())
+	case err == provisioning.ErrCloudflareNotConfigured:
+		writeError(w, http.StatusNotImplemented, err.Error())
 	default:
 		var pmErr *postmarkclient.APIError
 		var opErr *operatorclient.APIError
+		var cfErr *cloudflareclient.APIError
 		switch {
 		case errors.As(err, &pmErr):
 			writeError(w, http.StatusBadGateway, "postmark: "+pmErr.Message)
 		case errors.As(err, &opErr):
 			writeError(w, http.StatusBadGateway, "listmonk: "+opErr.Message)
+		case errors.As(err, &cfErr):
+			writeError(w, http.StatusBadGateway, "cloudflare: "+cfErr.Message)
 		default:
 			writeError(w, http.StatusInternalServerError, "internal error")
 		}

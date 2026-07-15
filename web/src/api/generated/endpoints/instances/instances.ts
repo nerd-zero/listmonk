@@ -25,7 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CustomDomainResponse,
   ErrorResponse,
+  HttpapiAddCustomDomainRequest,
   HttpapiAddSenderIdentityRequest,
   HttpapiCreateInstanceRequest,
   InstanceListResponse,
@@ -435,7 +437,360 @@ export function useGetV1OrgsOrgIDInstancesInstanceID<TData = Awaited<ReturnType<
 
 
 
-export type getV1OrgsOrgIDInstancesInstanceIDEventsResponse200 = {
+export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse200 = {
+  data: CustomDomainResponse
+  status: 200
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseSuccess = (getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse200) & {
+  headers: Headers;
+};
+export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseError = (getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse400 | getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse401 | getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse404) & {
+  headers: Headers;
+};
+
+export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse = (getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseSuccess | getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseError)
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDCustomDomainUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/custom-domain`
+}
+
+/**
+ * Returns the custom domain the org added, plus the DNS records to publish for it. 404 if none added yet. Re-checks Cloudflare live if still pending, and flips the tenant's URL over once Cloudflare has finished issuing a certificate for it.
+ * @summary Get an instance's custom domain
+ */
+export const getV1OrgsOrgIDInstancesInstanceIDCustomDomain = async (orgID: string,
+    instanceID: string, options?: RequestInit): Promise<getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse> => {
+
+  return customFetch<getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse>(getGetV1OrgsOrgIDInstancesInstanceIDCustomDomainUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDCustomDomainQueryKey = (orgID: string,
+    instanceID: string,) => {
+    return [
+    `/v1/orgs/${orgID}/instances/${instanceID}/custom-domain`
+    ] as const;
+    }
+
+
+export const getGetV1OrgsOrgIDInstancesInstanceIDCustomDomainQueryOptions = <TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError = ErrorResponse>(orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetV1OrgsOrgIDInstancesInstanceIDCustomDomainQueryKey(orgID,instanceID);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>> = ({ signal }) => getV1OrgsOrgIDInstancesInstanceIDCustomDomain(orgID,instanceID, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined && instanceID !== null && instanceID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetV1OrgsOrgIDInstancesInstanceIDCustomDomainQueryResult = NonNullable<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>>
+export type GetV1OrgsOrgIDInstancesInstanceIDCustomDomainQueryError = ErrorResponse
+
+
+export function useGetV1OrgsOrgIDInstancesInstanceIDCustomDomain<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>,
+          TError,
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetV1OrgsOrgIDInstancesInstanceIDCustomDomain<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>,
+          TError,
+          Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetV1OrgsOrgIDInstancesInstanceIDCustomDomain<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get an instance's custom domain
+ */
+
+export function useGetV1OrgsOrgIDInstancesInstanceIDCustomDomain<TData = Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError = ErrorResponse>(
+ orgID: string,
+    instanceID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetV1OrgsOrgIDInstancesInstanceIDCustomDomainQueryOptions(orgID,instanceID,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse200 = {
+  data: CustomDomainResponse
+  status: 200
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse409 = {
+  data: ErrorResponse
+  status: 409
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse501 = {
+  data: ErrorResponse
+  status: 501
+}
+
+export type postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseSuccess = (postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse200) & {
+  headers: Headers;
+};
+export type postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseError = (postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse400 | postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse401 | postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse409 | postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse501) & {
+  headers: Headers;
+};
+
+export type postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse = (postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseSuccess | postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseError)
+
+export const getPostV1OrgsOrgIDInstancesInstanceIDCustomDomainUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/custom-domain`
+}
+
+/**
+ * Registers a Cloudflare Custom Hostname for domain and returns the DNS records to publish (a CNAME at our fallback origin, and Cloudflare's ownership-verification TXT). The org's own DNS doesn't need to be on Cloudflare. 409 if the instance already has one, or if the domain is already claimed by another workspace.
+ * @summary Add an instance's custom domain
+ */
+export const postV1OrgsOrgIDInstancesInstanceIDCustomDomain = async (orgID: string,
+    instanceID: string,
+    httpapiAddCustomDomainRequest: HttpapiAddCustomDomainRequest, options?: RequestInit): Promise<postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse> => {
+
+  return customFetch<postV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse>(getPostV1OrgsOrgIDInstancesInstanceIDCustomDomainUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(httpapiAddCustomDomainRequest)
+  }
+);}
+
+
+
+
+
+export const getPostV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError,{orgID: string;instanceID: string;data: HttpapiAddCustomDomainRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError,{orgID: string;instanceID: string;data: HttpapiAddCustomDomainRequest}, TContext> => {
+
+const mutationKey = ['postV1OrgsOrgIDInstancesInstanceIDCustomDomain'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, {orgID: string;instanceID: string;data: HttpapiAddCustomDomainRequest}> = (props) => {
+          const {orgID,instanceID,data} = props ?? {};
+
+          return  postV1OrgsOrgIDInstancesInstanceIDCustomDomain(orgID,instanceID,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationResult = NonNullable<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDCustomDomain>>>
+    export type PostV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationBody = HttpapiAddCustomDomainRequest
+    export type PostV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationError = ErrorResponse
+
+    /**
+ * @summary Add an instance's custom domain
+ */
+export const usePostV1OrgsOrgIDInstancesInstanceIDCustomDomain = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError,{orgID: string;instanceID: string;data: HttpapiAddCustomDomainRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV1OrgsOrgIDInstancesInstanceIDCustomDomain>>,
+        TError,
+        {orgID: string;instanceID: string;data: HttpapiAddCustomDomainRequest},
+        TContext
+      > => {
+      return useMutation(getPostV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationOptions(options), queryClient);
+    }
+    export type deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse501 = {
+  data: ErrorResponse
+  status: 501
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseSuccess = (deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse200) & {
+  headers: Headers;
+};
+export type deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseError = (deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse400 | deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse401 | deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse404 | deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse501) & {
+  headers: Headers;
+};
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse = (deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseSuccess | deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponseError)
+
+export const getDeleteV1OrgsOrgIDInstancesInstanceIDCustomDomainUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}/custom-domain`
+}
+
+/**
+ * Reverts the tenant's URL back to {slug}.{root_domain}, then removes the Cloudflare Custom Hostname and the DNS records stored for it. Irreversible.
+ * @summary Delete an instance's custom domain
+ */
+export const deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain = async (orgID: string,
+    instanceID: string, options?: RequestInit): Promise<deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse> => {
+
+  return customFetch<deleteV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse>(getDeleteV1OrgsOrgIDInstancesInstanceIDCustomDomainUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError,{orgID: string;instanceID: string}, TContext> => {
+
+const mutationKey = ['deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, {orgID: string;instanceID: string}> = (props) => {
+          const {orgID,instanceID} = props ?? {};
+
+          return  deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain(orgID,instanceID,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationResult = NonNullable<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain>>>
+
+    export type DeleteV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationError = ErrorResponse
+
+    /**
+ * @summary Delete an instance's custom domain
+ */
+export const useDeleteV1OrgsOrgIDInstancesInstanceIDCustomDomain = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceIDCustomDomain>>,
+        TError,
+        {orgID: string;instanceID: string},
+        TContext
+      > => {
+      return useMutation(getDeleteV1OrgsOrgIDInstancesInstanceIDCustomDomainMutationOptions(options), queryClient);
+    }
+    export type getV1OrgsOrgIDInstancesInstanceIDEventsResponse200 = {
   data: ProvisioningJobListResponse
   status: 200
 }

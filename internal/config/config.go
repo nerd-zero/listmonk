@@ -57,6 +57,24 @@ type Config struct {
 	// slug "acme" gets acme.<this>, with the DKIM record published to our
 	// own DNS zone -- see internal/provisioning.AddPlatformDomain.
 	PostmarkSharedDomainRoot string
+
+	// CloudflareAPIToken authenticates internal/cloudflareclient against
+	// Cloudflare's Custom Hostnames API ("Cloudflare for SaaS") -- lets an
+	// org point their own domain at their instance instead of only
+	// {slug}.{root_domain}. Optional, like PostmarkAccountToken above:
+	// leave blank to run without it -- AddCustomDomain just returns
+	// ErrCloudflareNotConfigured. See docs/custom-domains.md.
+	CloudflareAPIToken string
+	// CloudflareZoneID is the zone the Custom Hostnames API above
+	// registers each org's domain against. Required if CloudflareAPIToken
+	// is set.
+	CloudflareZoneID string
+	// CloudflareFallbackOrigin is our own hostname, proxied through the
+	// Cloudflare zone above, that every org CNAMEs their custom domain at
+	// -- the org's own DNS never has to be on Cloudflare, since a CNAME
+	// works the same regardless of registrar. Required if
+	// CloudflareAPIToken is set.
+	CloudflareFallbackOrigin string
 }
 
 func Load() Config {
@@ -77,6 +95,9 @@ func Load() Config {
 		PostmarkAccountToken:         os.Getenv("POSTMARK_ACCOUNT_TOKEN"),
 		PostmarkTokenEncryptionKey:   os.Getenv("POSTMARK_TOKEN_ENCRYPTION_KEY"),
 		PostmarkSharedDomainRoot:     getenv("POSTMARK_SHARED_DOMAIN_ROOT", "mail.listnun.app"),
+		CloudflareAPIToken:           os.Getenv("CLOUDFLARE_API_TOKEN"),
+		CloudflareZoneID:             os.Getenv("CLOUDFLARE_ZONE_ID"),
+		CloudflareFallbackOrigin:     os.Getenv("CLOUDFLARE_FALLBACK_ORIGIN"),
 	}
 }
 

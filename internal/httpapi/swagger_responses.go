@@ -84,6 +84,17 @@ type senderIdentityResponse struct {
 	Data senderIdentityDetail `json:"data"`
 } // @name SenderIdentityResponse
 
+// customDomainDetail bundles a custom domain with the DNS records to
+// publish for it (a CNAME plus Cloudflare's ownership-verification TXT).
+type customDomainDetail struct {
+	CustomDomain db.CustomDomain `json:"custom_domain"`
+	DNSRecords   []db.DnsRecord  `json:"dns_records"`
+} // @name CustomDomainDetail
+
+type customDomainResponse struct {
+	Data customDomainDetail `json:"data"`
+} // @name CustomDomainResponse
+
 type postmarkServerResponse struct {
 	Data provisioning.PostmarkServerDetail `json:"data"`
 } // @name PostmarkServerResponse

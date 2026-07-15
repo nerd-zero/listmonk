@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"listnun/internal/cloudflareclient"
 	"listnun/internal/cryptoutil"
 	"listnun/internal/db"
 	"listnun/internal/operatorclient"
@@ -54,6 +55,7 @@ type Service struct {
 	op   *operatorclient.Client
 	zm   *zitadelmgmt.Client // nil unless a Zitadel service account is configured
 	pm   *PostmarkConfig     // nil unless a Postmark account token is configured
+	cf   *CloudflareConfig   // nil unless a Cloudflare API token is configured
 }
 
 // PostmarkConfig bundles everything CreateInstance/AddSenderDomain/
@@ -71,8 +73,21 @@ type PostmarkConfig struct {
 	SharedDomainRoot string
 }
 
-func New(pool *pgxpool.Pool, op *operatorclient.Client, zm *zitadelmgmt.Client, pm *PostmarkConfig) *Service {
-	return &Service{pool: pool, q: db.New(pool), op: op, zm: zm, pm: pm}
+// CloudflareConfig bundles everything AddCustomDomain/GetCustomDomain/
+// DeleteCustomDomain need to talk to Cloudflare's Custom Hostnames API.
+// Passed as a single optional pointer (nil disables all of it), same
+// pattern as PostmarkConfig above.
+type CloudflareConfig struct {
+	Client *cloudflareclient.Client
+	// FallbackOrigin is our own hostname, proxied through the configured
+	// Cloudflare zone, that every org CNAMEs their custom domain at --
+	// see internal/cloudflareclient's package doc and
+	// docs/custom-domains.md.
+	FallbackOrigin string
+}
+
+func New(pool *pgxpool.Pool, op *operatorclient.Client, zm *zitadelmgmt.Client, pm *PostmarkConfig, cf *CloudflareConfig) *Service {
+	return &Service{pool: pool, q: db.New(pool), op: op, zm: zm, pm: pm, cf: cf}
 }
 
 // JITProvisionUser looks up a user by their verified Zitadel subject,
@@ -659,6 +674,14 @@ var ErrSenderIdentityTaken = errors.New("this domain or sender email is already 
 // configured), distinct from a real lookup failure.
 var ErrSenderIdentityNotFound = errors.New("this instance has no sender identity yet")
 
+// senderIdentityDNSRecordTypes and customDomainDNSRecordTypes partition
+// dns_records by which feature owns each row -- sender identities and
+// custom domains share the one table (docs/custom-domains.md), so every
+// read/delete here must filter to its own record_types or it'd leak the
+// other feature's records.
+var senderIdentityDNSRecordTypes = []string{"dkim", "return_path"}
+var customDomainDNSRecordTypes = []string{"custom_domain_cname", "custom_domain_ownership"}
+
 // GetSenderIdentity returns instance's sender identity, if any, plus the
 // DNS records to publish for it (empty for a sender signature -- those
 // don't need DNS, just clicking Postmark's confirmation email).
@@ -687,7 +710,10 @@ func (s *Service) GetSenderIdentity(ctx context.Context, orgID, instanceID uuid.
 		}
 	}
 
-	records, err := s.q.ListDNSRecordsByInstance(ctx, inst.ID)
+	records, err := s.q.ListDNSRecordsByInstanceAndTypes(ctx, db.ListDNSRecordsByInstanceAndTypesParams{
+		InstanceID:  inst.ID,
+		RecordTypes: senderIdentityDNSRecordTypes,
+	})
 	if err != nil {
 		return db.SenderIdentity{}, nil, fmt.Errorf("list dns records: %w", err)
 	}
@@ -907,7 +933,10 @@ func (s *Service) DeleteSenderIdentity(ctx context.Context, orgID, instanceID uu
 		}
 	}
 
-	if err := s.q.DeleteDNSRecordsByInstance(ctx, inst.ID); err != nil {
+	if err := s.q.DeleteDNSRecordsByInstanceAndTypes(ctx, db.DeleteDNSRecordsByInstanceAndTypesParams{
+		InstanceID:  inst.ID,
+		RecordTypes: senderIdentityDNSRecordTypes,
+	}); err != nil {
 		return fmt.Errorf("delete dns records: %w", err)
 	}
 	if err := s.q.DeleteSenderIdentityByInstanceID(ctx, inst.ID); err != nil {
@@ -934,6 +963,215 @@ func mapSenderIdentityConstraint(err error) error {
 		return ErrSenderIdentityTaken
 	}
 	return fmt.Errorf("store sender identity: %w", err)
+}
+
+// ErrCloudflareNotConfigured is returned by AddCustomDomain/
+// DeleteCustomDomain when no Cloudflare API token is configured.
+var ErrCloudflareNotConfigured = errors.New("cloudflare is not configured")
+
+// ErrCustomDomainExists is returned when the instance already has a
+// custom domain -- exactly one per instance, mirroring sender identities.
+var ErrCustomDomainExists = errors.New("this instance already has a custom domain")
+
+// ErrCustomDomainTaken is returned when the domain is already claimed by
+// another instance -- custom_domains_domain_key is global.
+var ErrCustomDomainTaken = errors.New("this domain is already in use by another workspace")
+
+// ErrCustomDomainNotFound is returned by GetCustomDomain/
+// DeleteCustomDomain when the instance hasn't added one yet.
+var ErrCustomDomainNotFound = errors.New("this instance has no custom domain yet")
+
+// AddCustomDomain registers instance to be reachable at domain (e.g.
+// mail.acme.com) instead of only {slug}.{root_domain}: a Cloudflare
+// Custom Hostname is created for it, and the CNAME (-> cf.FallbackOrigin
+// -- the org's own DNS doesn't need to be on Cloudflare, a CNAME works
+// the same regardless of registrar) plus Cloudflare's
+// ownership-verification TXT are stored as dns_records for the org to
+// publish. The tenant's app.root_url isn't updated yet -- that happens
+// once GetCustomDomain notices Cloudflare has finished validating and
+// issued a cert, same re-check-on-read pattern as GetSenderIdentity.
+func (s *Service) AddCustomDomain(ctx context.Context, orgID, instanceID uuid.UUID, domain string) (db.CustomDomain, []db.DnsRecord, error) {
+	if s.cf == nil {
+		return db.CustomDomain{}, nil, ErrCloudflareNotConfigured
+	}
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return db.CustomDomain{}, nil, fmt.Errorf("get instance: %w", err)
+	}
+	if err := s.requireNoCustomDomain(ctx, inst.ID); err != nil {
+		return db.CustomDomain{}, nil, err
+	}
+
+	hostname, err := s.cf.Client.CreateCustomHostname(ctx, domain)
+	if err != nil {
+		return db.CustomDomain{}, nil, fmt.Errorf("create cloudflare custom hostname: %w", err)
+	}
+
+	cd, err := s.q.CreateCustomDomain(ctx, db.CreateCustomDomainParams{
+		ID:                   pgUUID(uuid.New()),
+		InstanceID:           inst.ID,
+		Domain:               domain,
+		CloudflareHostnameID: hostname.ID,
+	})
+	if err != nil {
+		return db.CustomDomain{}, nil, mapCustomDomainConstraint(err)
+	}
+
+	var records []db.DnsRecord
+	cname, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
+		ID:         pgUUID(uuid.New()),
+		InstanceID: inst.ID,
+		RecordType: "custom_domain_cname",
+		Host:       domain,
+		Value:      s.cf.FallbackOrigin,
+	})
+	if err != nil {
+		return cd, nil, fmt.Errorf("store cname record: %w", err)
+	}
+	records = append(records, cname)
+
+	if hostname.OwnershipVerification.Name != "" {
+		ownership, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
+			ID:         pgUUID(uuid.New()),
+			InstanceID: inst.ID,
+			RecordType: "custom_domain_ownership",
+			Host:       hostname.OwnershipVerification.Name,
+			Value:      hostname.OwnershipVerification.Value,
+		})
+		if err != nil {
+			return cd, records, fmt.Errorf("store ownership record: %w", err)
+		}
+		records = append(records, ownership)
+	}
+
+	return cd, records, nil
+}
+
+// GetCustomDomain returns instance's custom domain, if any, plus the DNS
+// records to publish for it.
+func (s *Service) GetCustomDomain(ctx context.Context, orgID, instanceID uuid.UUID) (db.CustomDomain, []db.DnsRecord, error) {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return db.CustomDomain{}, nil, fmt.Errorf("get instance: %w", err)
+	}
+	cd, err := s.q.GetCustomDomainByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.CustomDomain{}, nil, ErrCustomDomainNotFound
+		}
+		return db.CustomDomain{}, nil, fmt.Errorf("get custom domain: %w", err)
+	}
+
+	// Cloudflare doesn't push a webhook when a Custom Hostname's cert
+	// finishes issuing -- it's only ever discoverable by asking. So every
+	// fetch of a still-pending domain checks Cloudflare live and, if it's
+	// now active, both persists that and flips the tenant's app.root_url
+	// via the listmonk fork's operator API (docs/custom-domains.md step
+	// 5). A failed check here isn't fatal to the read -- the org just
+	// sees "pending" a little longer.
+	if cd.Status == "pending" && s.cf != nil {
+		if refreshed, ok := s.refreshCustomDomainStatus(ctx, inst, cd); ok {
+			cd = refreshed
+		}
+	}
+
+	records, err := s.q.ListDNSRecordsByInstanceAndTypes(ctx, db.ListDNSRecordsByInstanceAndTypesParams{
+		InstanceID:  inst.ID,
+		RecordTypes: customDomainDNSRecordTypes,
+	})
+	if err != nil {
+		return db.CustomDomain{}, nil, fmt.Errorf("list dns records: %w", err)
+	}
+	return cd, records, nil
+}
+
+// refreshCustomDomainStatus asks Cloudflare whether cd's Custom Hostname
+// has finished domain control validation and issued + deployed a cert
+// yet. ok is false whenever nothing changed -- either it's still
+// pending, the check itself failed, or the tenant has no listmonk
+// tenant ID yet -- so the caller can just keep using cd as-is.
+func (s *Service) refreshCustomDomainStatus(ctx context.Context, inst db.Instance, cd db.CustomDomain) (db.CustomDomain, bool) {
+	hostname, err := s.cf.Client.GetCustomHostname(ctx, cd.CloudflareHostnameID)
+	if err != nil || !hostname.IsActive() {
+		return cd, false
+	}
+	if inst.ListmonkTenantID == nil {
+		return cd, false
+	}
+	if _, err := s.op.SetTenantCustomDomain(ctx, int(*inst.ListmonkTenantID), cd.Domain); err != nil {
+		return cd, false
+	}
+
+	active, err := s.q.MarkCustomDomainActive(ctx, cd.ID)
+	if err != nil {
+		return cd, false
+	}
+	return active, true
+}
+
+// DeleteCustomDomain removes instance's custom domain: reverts the
+// tenant's app.root_url to {slug}.{root_domain} first, then deletes the
+// Cloudflare Custom Hostname and the locally stored DNS records --
+// mirroring docs/custom-domains.md's "reverses steps 5 and 2" removal
+// order, so a request never resolves as the custom domain to a tenant
+// that's mid-teardown.
+func (s *Service) DeleteCustomDomain(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	if s.cf == nil {
+		return ErrCloudflareNotConfigured
+	}
+
+	cd, err := s.q.GetCustomDomainByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrCustomDomainNotFound
+		}
+		return fmt.Errorf("get custom domain: %w", err)
+	}
+
+	if inst.ListmonkTenantID != nil {
+		if _, err := s.op.SetTenantCustomDomain(ctx, int(*inst.ListmonkTenantID), ""); err != nil {
+			return fmt.Errorf("revert tenant root url: %w", err)
+		}
+	}
+
+	if err := s.cf.Client.DeleteCustomHostname(ctx, cd.CloudflareHostnameID); err != nil && !cloudflareclient.IsNotFound(err) {
+		return fmt.Errorf("delete cloudflare custom hostname: %w", err)
+	}
+
+	if err := s.q.DeleteDNSRecordsByInstanceAndTypes(ctx, db.DeleteDNSRecordsByInstanceAndTypesParams{
+		InstanceID:  inst.ID,
+		RecordTypes: customDomainDNSRecordTypes,
+	}); err != nil {
+		return fmt.Errorf("delete dns records: %w", err)
+	}
+	if err := s.q.DeleteCustomDomainByInstanceID(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete custom domain row: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) requireNoCustomDomain(ctx context.Context, instanceID pgtype.UUID) error {
+	_, err := s.q.GetCustomDomainByInstanceID(ctx, instanceID)
+	switch {
+	case err == nil:
+		return ErrCustomDomainExists
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil
+	default:
+		return fmt.Errorf("check existing custom domain: %w", err)
+	}
+}
+
+func mapCustomDomainConstraint(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.ConstraintName == "custom_domains_domain_key" {
+		return ErrCustomDomainTaken
+	}
+	return fmt.Errorf("store custom domain: %w", err)
 }
 
 // pushSMTPCredentials sends the instance's Postmark server credentials

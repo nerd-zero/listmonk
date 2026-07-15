@@ -18,6 +18,7 @@ import (
 	"net/http"
 
 	"listnun/internal/authn"
+	"listnun/internal/cloudflareclient"
 	"listnun/internal/config"
 	"listnun/internal/cryptoutil"
 	"listnun/internal/httpapi"
@@ -84,7 +85,19 @@ func main() {
 		}
 	}
 
-	svc := provisioning.New(pool, op, zm, pm)
+	// Custom domains are optional too, same fail-open pattern as the
+	// Postmark account token above: leave CLOUDFLARE_API_TOKEN blank to
+	// run without it -- AddCustomDomain just returns
+	// ErrCloudflareNotConfigured.
+	var cf *provisioning.CloudflareConfig
+	if cfg.CloudflareAPIToken != "" {
+		cf = &provisioning.CloudflareConfig{
+			Client:         cloudflareclient.New(cfg.CloudflareAPIToken, cfg.CloudflareZoneID),
+			FallbackOrigin: cfg.CloudflareFallbackOrigin,
+		}
+	}
+
+	svc := provisioning.New(pool, op, zm, pm, cf)
 
 	if cfg.ZitadelIssuer == "" {
 		log.Fatalf("api: ZITADEL_ISSUER is required")

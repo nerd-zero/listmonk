@@ -8,6 +8,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CustomDomain struct {
+	ID                   pgtype.UUID        `json:"id"`
+	InstanceID           pgtype.UUID        `json:"instance_id"`
+	Domain               string             `json:"domain"`
+	CloudflareHostnameID string             `json:"cloudflare_hostname_id"`
+	Status               string             `json:"status"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+}
+
 type DnsRecord struct {
 	ID         pgtype.UUID        `json:"id"`
 	InstanceID pgtype.UUID        `json:"instance_id"`
