@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useOrgContext } from "@/lib/org-context";
+import { usePermissions } from "@/lib/permissions";
 import { unwrap } from "@/api/unwrap";
 import {
   getGetV1OrgsOrgIDMembersQueryKey,
@@ -51,6 +52,7 @@ function initialFor(displayName?: string, email?: string) {
 
 export function MembersPage() {
   const { selectedOrg, isLoading: orgLoading } = useOrgContext();
+  const { can } = usePermissions();
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const membersQuery = useGetV1OrgsOrgIDMembers(selectedOrg?.id ?? "", {
@@ -91,7 +93,9 @@ export function MembersPage() {
             Everyone with access to <strong>{selectedOrg.name}</strong>.
           </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+        {can("inviteMember") && (
+          <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+        )}
       </div>
 
       {members.length === 0 ? (
@@ -102,7 +106,9 @@ export function MembersPage() {
           <p className="max-w-sm text-sm text-muted-foreground">
             Invite someone to help run {selectedOrg.name}.
           </p>
-          <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+          {can("inviteMember") && (
+            <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+          )}
         </div>
       ) : (
         <Table>

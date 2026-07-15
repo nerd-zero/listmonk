@@ -20,3 +20,11 @@ UPDATE users
 SET email = $2, display_name = $3, updated_at = now()
 WHERE id = $1
 RETURNING *;
+
+-- name: SetUserSuperAdmin :one
+-- Backs cmd/promote-admin -- the only way to grant is_super_admin, by
+-- deliberate design (see the column's doc comment in the init migration).
+UPDATE users
+SET is_super_admin = $2, updated_at = now()
+WHERE email = $1
+RETURNING *;

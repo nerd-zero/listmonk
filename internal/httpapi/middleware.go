@@ -2,10 +2,13 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"listnun/internal/authn"
 	"listnun/internal/db"
+	"listnun/internal/operatorclient"
+	"listnun/internal/postmarkclient"
 	"listnun/internal/provisioning"
 
 	"github.com/go-chi/chi/v5"
@@ -125,7 +128,18 @@ func mapServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, err.Error())
 	case err == provisioning.ErrPostmarkNotConfigured:
 		writeError(w, http.StatusNotImplemented, err.Error())
+	case err == provisioning.ErrInstanceHasNoPostmarkServer:
+		writeError(w, http.StatusNotFound, err.Error())
 	default:
-		writeError(w, http.StatusInternalServerError, "internal error")
+		var pmErr *postmarkclient.APIError
+		var opErr *operatorclient.APIError
+		switch {
+		case errors.As(err, &pmErr):
+			writeError(w, http.StatusBadGateway, "postmark: "+pmErr.Message)
+		case errors.As(err, &opErr):
+			writeError(w, http.StatusBadGateway, "listmonk: "+opErr.Message)
+		default:
+			writeError(w, http.StatusInternalServerError, "internal error")
+		}
 	}
 }

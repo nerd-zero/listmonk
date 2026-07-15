@@ -32,6 +32,8 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(a.authMiddleware)
 
+		r.Get("/me", a.getMe)
+
 		r.Route("/orgs", func(r chi.Router) {
 			r.Get("/", a.listOrgs)
 			r.Post("/", a.createOrg)
@@ -49,6 +51,10 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 						r.Post("/setup-link", a.resendSetupLink)
 						r.Get("/sender-identity", a.getSenderIdentity)
 						r.Post("/sender-identity", a.addSenderIdentity)
+						r.Delete("/sender-identity", a.deleteSenderIdentity)
+						r.Get("/postmark-server", a.getPostmarkServer)
+						r.Delete("/postmark-server", a.deletePostmarkServer)
+						r.Post("/postmark-server/resync", a.resyncPostmarkServer)
 					})
 				})
 
@@ -66,8 +72,10 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 			r.Get("/instances", a.adminListInstances)
 			r.Route("/instances/{instanceID}", func(r chi.Router) {
 				r.Get("/", a.adminGetInstance)
+				r.Delete("/", a.adminDeleteInstance)
 				r.Put("/status", a.adminSetTenantStatus)
 				r.Post("/setup-link", a.adminResendSetupLink)
+				r.Delete("/postmark-server", a.adminDeletePostmarkServer)
 			})
 		})
 	})

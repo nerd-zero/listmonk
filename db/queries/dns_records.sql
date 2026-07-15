@@ -11,3 +11,6 @@ UPDATE dns_records
 SET verified = true
 WHERE id = $1
 RETURNING *;
+
+-- name: DeleteDNSRecordsByInstance :exec
+DELETE FROM dns_records WHERE instance_id = $1;

@@ -9,6 +9,12 @@
 export interface HttpapiCreateInstanceRequest {
   admin_email?: string;
   admin_username?: string;
+  /**
+     * IncludePostmark defaults to true (a nil pointer, i.e. the field
+     * omitted) so a caller that predates this field keeps getting the old
+     * always-on behavior -- only an explicit `false` opts out.
+     */
+  include_postmark?: boolean;
   name?: string;
   slug?: string;
 }

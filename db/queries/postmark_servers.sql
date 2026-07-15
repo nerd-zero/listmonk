@@ -5,3 +5,6 @@ RETURNING *;
 
 -- name: GetPostmarkServerByInstanceID :one
 SELECT * FROM postmark_servers WHERE instance_id = $1;
+
+-- name: DeletePostmarkServerByInstanceID :exec
+DELETE FROM postmark_servers WHERE instance_id = $1;

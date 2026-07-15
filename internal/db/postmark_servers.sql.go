@@ -42,6 +42,15 @@ func (q *Queries) CreatePostmarkServer(ctx context.Context, arg CreatePostmarkSe
 	return i, err
 }
 
+const deletePostmarkServerByInstanceID = `-- name: DeletePostmarkServerByInstanceID :exec
+DELETE FROM postmark_servers WHERE instance_id = $1
+`
+
+func (q *Queries) DeletePostmarkServerByInstanceID(ctx context.Context, instanceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deletePostmarkServerByInstanceID, instanceID)
+	return err
+}
+
 const getPostmarkServerByInstanceID = `-- name: GetPostmarkServerByInstanceID :one
 SELECT id, instance_id, postmark_server_id, api_token_encrypted, created_at FROM postmark_servers WHERE instance_id = $1
 `

@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,10 +42,13 @@ func New(accountToken string) *Client {
 // Server mirrors the subset of Postmark's Server resource this client
 // needs. ApiTokens holds up to 3 tokens on creation; the first one doubles
 // as the SMTP username and password (postmarkapp.com/support/article/811).
+// GetServer never returns ApiTokens populated (Postmark doesn't return
+// them outside of creation) -- only CreateServer's result ever has them.
 type Server struct {
-	ID        int      `json:"ID"`
-	Name      string   `json:"Name"`
-	ApiTokens []string `json:"ApiTokens"`
+	ID               int      `json:"ID"`
+	Name             string   `json:"Name"`
+	SmtpApiActivated bool     `json:"SmtpApiActivated"`
+	ApiTokens        []string `json:"ApiTokens"`
 }
 
 // CreateServer creates a new Postmark server -- listnun's "one Postmark
@@ -58,19 +62,47 @@ func (c *Client) CreateServer(ctx context.Context, name string) (Server, error) 
 	return doJSON[Server](ctx, c, http.MethodPost, "/servers", body)
 }
 
+// GetServer fetches a Postmark server's current live state.
+func (c *Client) GetServer(ctx context.Context, id int) (Server, error) {
+	return doJSON[Server](ctx, c, http.MethodGet, "/servers/"+strconv.Itoa(id), nil)
+}
+
 // Domain mirrors the subset of Postmark's Domain resource this client
-// needs to publish the DKIM record a customer (or listnun's own DNS, once
-// automated) must add before mail from this domain is trusted. Return-Path
-// (bounce domain) setup is a later step -- not configured on creation.
-// DKIMVerified flips to true once Postmark's own periodic DNS check (or an
-// explicit PUT /domains/{id}/verifyDkim, not yet called by this client)
-// finds the record published -- see GetDomain.
+// needs to publish the two DNS records a customer (or listnun's own DNS,
+// once automated) must add before mail from this domain is trusted and its
+// bounces route correctly: a DKIM TXT record and a Return-Path CNAME
+// record. Both are already populated at creation, same as Postmark's own
+// domain setup page shows both right away. DKIMVerified/
+// ReturnPathDomainVerified flip to true once Postmark's own periodic DNS
+// check (or an explicit PUT /domains/{id}/verifyDkim for DKIM) finds the
+// record published.
+//
+// DKIMHost/DKIMTextValue are BOTH EMPTY on creation -- Postmark returns the
+// record to actually publish under DKIMPendingHost/DKIMPendingTextValue
+// instead, only promoting it into DKIMHost/DKIMTextValue once verification
+// succeeds. Use DKIMRecord() rather than these fields directly.
 type Domain struct {
-	ID            int    `json:"ID"`
-	Name          string `json:"Name"`
-	DKIMHost      string `json:"DKIMHost"`
-	DKIMTextValue string `json:"DKIMTextValue"`
-	DKIMVerified  bool   `json:"DKIMVerified"`
+	ID                         int    `json:"ID"`
+	Name                       string `json:"Name"`
+	DKIMHost                   string `json:"DKIMHost"`
+	DKIMTextValue              string `json:"DKIMTextValue"`
+	DKIMPendingHost            string `json:"DKIMPendingHost"`
+	DKIMPendingTextValue       string `json:"DKIMPendingTextValue"`
+	DKIMVerified               bool   `json:"DKIMVerified"`
+	ReturnPathDomain           string `json:"ReturnPathDomain"`
+	ReturnPathDomainCNAMEValue string `json:"ReturnPathDomainCNAMEValue"`
+	ReturnPathDomainVerified   bool   `json:"ReturnPathDomainVerified"`
+}
+
+// DKIMRecord returns the DKIM host/value pair to publish, confirmed if
+// verification already succeeded, otherwise the still-pending pair --
+// see this type's doc comment for why DKIMHost/DKIMTextValue alone aren't
+// enough. Empty/empty if Postmark hasn't generated one yet.
+func (d Domain) DKIMRecord() (host, value string) {
+	if d.DKIMHost != "" {
+		return d.DKIMHost, d.DKIMTextValue
+	}
+	return d.DKIMPendingHost, d.DKIMPendingTextValue
 }
 
 // CreateDomain registers a new sending domain and returns the DKIM record
@@ -86,6 +118,12 @@ func (c *Client) CreateDomain(ctx context.Context, name string) (Domain, error) 
 // eventually-consistent on Postmark's own schedule.
 func (c *Client) VerifyDKIM(ctx context.Context, id int) (Domain, error) {
 	return doJSON[Domain](ctx, c, http.MethodPut, "/domains/"+strconv.Itoa(id)+"/verifyDkim", nil)
+}
+
+// DeleteDomain permanently removes a sending domain -- irreversible.
+func (c *Client) DeleteDomain(ctx context.Context, id int) error {
+	_, err := doJSON[struct{}](ctx, c, http.MethodDelete, "/domains/"+strconv.Itoa(id), nil)
+	return err
 }
 
 // SenderSignature mirrors the subset of Postmark's Sender Signature
@@ -113,6 +151,29 @@ func (c *Client) CreateSenderSignature(ctx context.Context, fromEmail, name stri
 // Postmark emailed them.
 func (c *Client) GetSenderSignature(ctx context.Context, id int) (SenderSignature, error) {
 	return doJSON[SenderSignature](ctx, c, http.MethodGet, "/senders/"+strconv.Itoa(id), nil)
+}
+
+// DeleteSenderSignature permanently removes a sender signature --
+// irreversible.
+func (c *Client) DeleteSenderSignature(ctx context.Context, id int) error {
+	_, err := doJSON[struct{}](ctx, c, http.MethodDelete, "/senders/"+strconv.Itoa(id), nil)
+	return err
+}
+
+// DeleteServer permanently deletes a Postmark server -- irreversible, and
+// Postmark rejects it (422) unless the server has already been manually
+// deactivated first (postmarkapp.com/developer/api/servers-api#delete-server).
+func (c *Client) DeleteServer(ctx context.Context, id int) error {
+	_, err := doJSON[struct{}](ctx, c, http.MethodDelete, "/servers/"+strconv.Itoa(id), nil)
+	return err
+}
+
+// IsNotFound reports whether err is Postmark's response for an ID that
+// doesn't exist -- lets a delete be treated as already-done rather than a
+// failure when retried against a server that's gone.
+func IsNotFound(err error) bool {
+	var ae *APIError
+	return errors.As(err, &ae) && ae.StatusCode == http.StatusNotFound
 }
 
 // APIError is returned for any non-2xx response. Postmark's error body is

@@ -5,6 +5,7 @@ import { Check, Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Sheet,
   SheetContent,
@@ -31,13 +32,16 @@ const DOTS: Step[] = ["details", "admin", "review", "done"];
 // These are the real steps CreateInstance runs through server-side (see
 // internal/provisioning.CreateInstance) -- ticked forward on a timer while
 // the single blocking POST is in flight, since there's no intermediate
-// progress to poll mid-request. Worded to stay true regardless of whether
-// this deployment has Postmark configured.
-const PROVISION_LABELS = [
-  "Creating your workspace",
-  "Setting up your sending domain",
-  "Finishing up",
-];
+// progress to poll mid-request. The sending-domain step only appears when
+// Postmark setup is actually included, so the fake progress never claims
+// a step that isn't going to run.
+function provisionLabels(includePostmark: boolean) {
+  return [
+    "Creating your workspace",
+    ...(includePostmark ? ["Setting up your sending domain"] : []),
+    "Finishing up",
+  ];
+}
 
 function dotIndex(step: Step) {
   if (step === "provisioning" || step === "error") return DOTS.indexOf("done");
@@ -57,6 +61,7 @@ export function CreateInstanceWizard({
 }) {
   const [step, setStep] = useState<Step>("details");
   const [name, setName] = useState("");
+  const [includePostmark, setIncludePostmark] = useState(true);
   const [adminUsername, setAdminUsername] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [labelIndex, setLabelIndex] = useState(0);
@@ -86,17 +91,20 @@ export function CreateInstanceWizard({
 
   // Fake-but-honest progress: advances on a timer, never past the last
   // label, and only ever reaches "done" once the real response comes back.
+  const labels = provisionLabels(includePostmark);
+
   useEffect(() => {
     if (step !== "provisioning") return;
     const id = setInterval(() => {
-      setLabelIndex((i) => Math.min(i + 1, PROVISION_LABELS.length - 1));
+      setLabelIndex((i) => Math.min(i + 1, labels.length - 1));
     }, 900);
     return () => clearInterval(id);
-  }, [step]);
+  }, [step, labels.length]);
 
   function reset() {
     setStep("details");
     setName("");
+    setIncludePostmark(true);
     setAdminUsername("");
     setAdminEmail("");
     setLabelIndex(0);
@@ -122,6 +130,7 @@ export function CreateInstanceWizard({
         name,
         admin_username: adminUsername,
         admin_email: adminEmail,
+        include_postmark: includePostmark,
       },
     });
   }
@@ -172,21 +181,39 @@ export function CreateInstanceWizard({
 
         <div className="flex flex-1 flex-col gap-4 px-4">
           {step === "details" && (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="name">Workspace name</Label>
-              <Input
-                id="name"
-                placeholder="Marketing"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoFocus
-              />
-              {slug && (
-                <p className="font-mono text-xs text-muted-foreground">
-                  {slug}
-                </p>
-              )}
-            </div>
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="name">Workspace name</Label>
+                <Input
+                  id="name"
+                  placeholder="Marketing"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoFocus
+                />
+                {slug && (
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {slug}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+                <div>
+                  <Label htmlFor="include-postmark">Set up sending</Label>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Provision a dedicated Postmark server and sending domain
+                    for this workspace. You can add this later instead.
+                  </p>
+                </div>
+                <Switch
+                  id="include-postmark"
+                  className="mt-0.5 shrink-0"
+                  checked={includePostmark}
+                  onCheckedChange={setIncludePostmark}
+                />
+              </div>
+            </>
           )}
 
           {step === "admin" && (
@@ -217,12 +244,16 @@ export function CreateInstanceWizard({
               <ReviewRow label="Organization" value={orgName ?? "—"} />
               <ReviewRow label="Workspace" value={slug} mono />
               <ReviewRow label="Admin" value={adminEmail} />
+              <ReviewRow
+                label="Sending setup"
+                value={includePostmark ? "Included" : "Skipped"}
+              />
             </div>
           )}
 
           {(step === "provisioning" || step === "error") && (
             <div className="flex flex-col gap-3 rounded-md border border-border p-4">
-              {PROVISION_LABELS.map((label, i) => (
+              {labels.map((label, i) => (
                 <div key={label} className="flex items-center gap-2.5 text-sm">
                   {step === "error" && i === labelIndex ? (
                     <div className="size-4 shrink-0 rounded-full bg-status-red-soft" />

@@ -321,7 +321,222 @@ export function useGetV1AdminInstancesInstanceID<TData = Awaited<ReturnType<type
 
 
 
-export type postV1AdminInstancesInstanceIDSetupLinkResponse200 = {
+export type deleteV1AdminInstancesInstanceIDResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteV1AdminInstancesInstanceIDResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type deleteV1AdminInstancesInstanceIDResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type deleteV1AdminInstancesInstanceIDResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type deleteV1AdminInstancesInstanceIDResponse500 = {
+  data: ErrorResponse
+  status: 500
+}
+
+export type deleteV1AdminInstancesInstanceIDResponseSuccess = (deleteV1AdminInstancesInstanceIDResponse200) & {
+  headers: Headers;
+};
+export type deleteV1AdminInstancesInstanceIDResponseError = (deleteV1AdminInstancesInstanceIDResponse400 | deleteV1AdminInstancesInstanceIDResponse401 | deleteV1AdminInstancesInstanceIDResponse403 | deleteV1AdminInstancesInstanceIDResponse500) & {
+  headers: Headers;
+};
+
+export type deleteV1AdminInstancesInstanceIDResponse = (deleteV1AdminInstancesInstanceIDResponseSuccess | deleteV1AdminInstancesInstanceIDResponseError)
+
+export const getDeleteV1AdminInstancesInstanceIDUrl = (instanceID: string,) => {
+
+
+
+
+  return `/v1/admin/instances/${instanceID}`
+}
+
+/**
+ * Super-admin only. Permanently deletes the instance's Postmark server, its listmonk tenant (cascading into all of the tenant's own data), and the local record. Irreversible.
+ * @summary Delete an instance (super admin)
+ */
+export const deleteV1AdminInstancesInstanceID = async (instanceID: string, options?: RequestInit): Promise<deleteV1AdminInstancesInstanceIDResponse> => {
+
+  return customFetch<deleteV1AdminInstancesInstanceIDResponse>(getDeleteV1AdminInstancesInstanceIDUrl(instanceID),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteV1AdminInstancesInstanceIDMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceID>>, TError,{instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceID>>, TError,{instanceID: string}, TContext> => {
+
+const mutationKey = ['deleteV1AdminInstancesInstanceID'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceID>>, {instanceID: string}> = (props) => {
+          const {instanceID} = props ?? {};
+
+          return  deleteV1AdminInstancesInstanceID(instanceID,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteV1AdminInstancesInstanceIDMutationResult = NonNullable<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceID>>>
+
+    export type DeleteV1AdminInstancesInstanceIDMutationError = ErrorResponse
+
+    /**
+ * @summary Delete an instance (super admin)
+ */
+export const useDeleteV1AdminInstancesInstanceID = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceID>>, TError,{instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceID>>,
+        TError,
+        {instanceID: string},
+        TContext
+      > => {
+      return useMutation(getDeleteV1AdminInstancesInstanceIDMutationOptions(options), queryClient);
+    }
+    export type deleteV1AdminInstancesInstanceIDPostmarkServerResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteV1AdminInstancesInstanceIDPostmarkServerResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type deleteV1AdminInstancesInstanceIDPostmarkServerResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type deleteV1AdminInstancesInstanceIDPostmarkServerResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type deleteV1AdminInstancesInstanceIDPostmarkServerResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type deleteV1AdminInstancesInstanceIDPostmarkServerResponse500 = {
+  data: ErrorResponse
+  status: 500
+}
+
+export type deleteV1AdminInstancesInstanceIDPostmarkServerResponseSuccess = (deleteV1AdminInstancesInstanceIDPostmarkServerResponse200) & {
+  headers: Headers;
+};
+export type deleteV1AdminInstancesInstanceIDPostmarkServerResponseError = (deleteV1AdminInstancesInstanceIDPostmarkServerResponse400 | deleteV1AdminInstancesInstanceIDPostmarkServerResponse401 | deleteV1AdminInstancesInstanceIDPostmarkServerResponse403 | deleteV1AdminInstancesInstanceIDPostmarkServerResponse404 | deleteV1AdminInstancesInstanceIDPostmarkServerResponse500) & {
+  headers: Headers;
+};
+
+export type deleteV1AdminInstancesInstanceIDPostmarkServerResponse = (deleteV1AdminInstancesInstanceIDPostmarkServerResponseSuccess | deleteV1AdminInstancesInstanceIDPostmarkServerResponseError)
+
+export const getDeleteV1AdminInstancesInstanceIDPostmarkServerUrl = (instanceID: string,) => {
+
+
+
+
+  return `/v1/admin/instances/${instanceID}/postmark-server`
+}
+
+/**
+ * Super-admin only. Removes the Postmark server without touching the instance/tenant itself -- the instance is left without email sending until re-provisioned. Irreversible.
+ * @summary Delete an instance's Postmark server (super admin)
+ */
+export const deleteV1AdminInstancesInstanceIDPostmarkServer = async (instanceID: string, options?: RequestInit): Promise<deleteV1AdminInstancesInstanceIDPostmarkServerResponse> => {
+
+  return customFetch<deleteV1AdminInstancesInstanceIDPostmarkServerResponse>(getDeleteV1AdminInstancesInstanceIDPostmarkServerUrl(instanceID),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteV1AdminInstancesInstanceIDPostmarkServerMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceIDPostmarkServer>>, TError,{instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceIDPostmarkServer>>, TError,{instanceID: string}, TContext> => {
+
+const mutationKey = ['deleteV1AdminInstancesInstanceIDPostmarkServer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceIDPostmarkServer>>, {instanceID: string}> = (props) => {
+          const {instanceID} = props ?? {};
+
+          return  deleteV1AdminInstancesInstanceIDPostmarkServer(instanceID,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteV1AdminInstancesInstanceIDPostmarkServerMutationResult = NonNullable<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceIDPostmarkServer>>>
+
+    export type DeleteV1AdminInstancesInstanceIDPostmarkServerMutationError = ErrorResponse
+
+    /**
+ * @summary Delete an instance's Postmark server (super admin)
+ */
+export const useDeleteV1AdminInstancesInstanceIDPostmarkServer = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceIDPostmarkServer>>, TError,{instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteV1AdminInstancesInstanceIDPostmarkServer>>,
+        TError,
+        {instanceID: string},
+        TContext
+      > => {
+      return useMutation(getDeleteV1AdminInstancesInstanceIDPostmarkServerMutationOptions(options), queryClient);
+    }
+    export type postV1AdminInstancesInstanceIDSetupLinkResponse200 = {
   data: SetupLinkResponse
   status: 200
 }

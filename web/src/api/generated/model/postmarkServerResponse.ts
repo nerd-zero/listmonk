@@ -5,8 +5,8 @@
  * Orgs and the listmonk-tenant instances each org owns. See docs/plan.md for architecture.
  * OpenAPI spec version: 1.0
  */
-import type { DbListOrgsByUserRow } from './dbListOrgsByUserRow';
+import type { ProvisioningPostmarkServerDetail } from './provisioningPostmarkServerDetail';
 
-export interface OrgListResponse {
-  data?: DbListOrgsByUserRow[];
+export interface PostmarkServerResponse {
+  data?: ProvisioningPostmarkServerDetail;
 }

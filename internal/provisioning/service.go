@@ -10,7 +10,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"listnun/internal/cryptoutil"
 	"listnun/internal/db"
@@ -78,7 +81,7 @@ func New(pool *pgxpool.Pool, op *operatorclient.Client, zm *zitadelmgmt.Client, 
 func (s *Service) JITProvisionUser(ctx context.Context, zitadelSubject, email, displayName string) (db.User, error) {
 	existing, err := s.q.GetUserByZitadelSubject(ctx, zitadelSubject)
 	if err == nil {
-		return existing, nil
+		return s.syncUserProfile(ctx, existing, email, displayName)
 	}
 
 	orgID := uuid.New()
@@ -124,14 +127,72 @@ func (s *Service) JITProvisionUser(ctx context.Context, zitadelSubject, email, d
 	if err := tx.Commit(ctx); err != nil {
 		return db.User{}, fmt.Errorf("commit tx: %w", err)
 	}
+	s.createDefaultInstance(ctx, orgID, org.Name, email)
 	return user, nil
 }
 
+// syncUserProfile keeps an existing user's email/display_name current with
+// whatever Zitadel resolves this login -- JITProvisionUser only ever wrote
+// these once, at first sight, so anyone provisioned before internal/authn's
+// userinfo fix (or whose Zitadel profile simply changed since) kept
+// stale/blank values forever otherwise. Never overwrites a stored
+// non-empty value with a blank one -- a transient claims hiccup shouldn't
+// erase a name/email that's already on file.
+func (s *Service) syncUserProfile(ctx context.Context, user db.User, email, displayName string) (db.User, error) {
+	newEmail := user.Email
+	if email != "" {
+		newEmail = email
+	}
+	currentDisplayName := ""
+	if user.DisplayName != nil {
+		currentDisplayName = *user.DisplayName
+	}
+	newDisplayName := currentDisplayName
+	if displayName != "" {
+		newDisplayName = displayName
+	}
+
+	if newEmail == user.Email && newDisplayName == currentDisplayName {
+		return user, nil
+	}
+
+	updated, err := s.q.UpdateUserProfile(ctx, db.UpdateUserProfileParams{
+		ID:          user.ID,
+		Email:       newEmail,
+		DisplayName: nullableString(newDisplayName),
+	})
+	if err != nil {
+		return db.User{}, fmt.Errorf("sync user profile: %w", err)
+	}
+	return updated, nil
+}
+
+// personalOrgName names a new user's personal org after them directly --
+// their first name, or the local part of their email if there's no
+// display name -- rather than "<name>'s org": that suffix reads fine on
+// its own but slugifies into an awkward "-s-org" (see slugify), doubly so
+// once a multi-word display name is in the mix ("Alex Alexson" -> org
+// "Alex Alexson's org" -> slug "alex-alexson-s-org").
 func personalOrgName(displayName, email string) string {
 	if displayName != "" {
-		return displayName + "'s org"
+		first, _, _ := strings.Cut(displayName, " ")
+		return first
 	}
-	return email + "'s org"
+	if email != "" {
+		local, _, _ := strings.Cut(email, "@")
+		return local
+	}
+	return "My org"
+}
+
+var reSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
+
+// slugify mirrors web/src/lib/slug.ts's slugifyPart -- lowercase,
+// non-alphanumeric runs collapsed to a single hyphen, no leading/trailing
+// hyphen. Used to derive the org's default instance slug server-side,
+// where there's no form input to slugify as the user types.
+func slugify(s string) string {
+	return strings.Trim(reSlugChars.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }
 
 // createListmonkOrganization creates the org's twin in the listmonk fork
@@ -184,10 +245,13 @@ func (s *Service) CreateOrg(ctx context.Context, ownerUserID uuid.UUID, name str
 	if err := tx.Commit(ctx); err != nil {
 		return db.Org{}, fmt.Errorf("commit tx: %w", err)
 	}
+	if owner, err := s.q.GetUserByID(ctx, pgUUID(ownerUserID)); err == nil {
+		s.createDefaultInstance(ctx, orgID, org.Name, owner.Email)
+	}
 	return org, nil
 }
 
-func (s *Service) ListOrgsForUser(ctx context.Context, userID uuid.UUID) ([]db.Org, error) {
+func (s *Service) ListOrgsForUser(ctx context.Context, userID uuid.UUID) ([]db.ListOrgsByUserRow, error) {
 	return s.q.ListOrgsByUser(ctx, pgUUID(userID))
 }
 
@@ -265,10 +329,11 @@ func (s *Service) InviteMember(ctx context.Context, orgID uuid.UUID, email, disp
 
 // CreateInstanceParams is what the dashboard's "New instance" form collects.
 type CreateInstanceParams struct {
-	Slug          string
-	Name          string
-	AdminUsername string
-	AdminEmail    string
+	Slug            string
+	Name            string
+	AdminUsername   string
+	AdminEmail      string
+	IncludePostmark bool
 }
 
 // CreateInstance provisions a tenant in the listmonk fork for this org: an
@@ -371,19 +436,19 @@ func (s *Service) CreateInstance(ctx context.Context, orgID uuid.UUID, p CreateI
 		return db.Instance{}, fmt.Errorf("update instance status: %w", err)
 	}
 
-	// Postmark is a secondary provisioning step, tracked by its own
-	// provisioning_jobs row rather than the instance's own status: the
-	// tenant is already usable (with listmonk's placeholder SMTP examples)
-	// even if this fails, so a Postmark error doesn't flip the instance
-	// back to "failed" -- it's surfaced in the timeline instead, and safe
-	// to retry by re-running CreateInstance's Postmark step once that's
-	// wired to River (see docs/plan.md).
+	// Postmark is a secondary, opt-in provisioning step (p.IncludePostmark),
+	// tracked by its own provisioning_jobs row rather than the instance's
+	// own status: the tenant is already usable (with listmonk's placeholder
+	// SMTP examples) even if this fails, so a Postmark error doesn't flip
+	// the instance back to "failed" -- it's surfaced in the timeline
+	// instead, and safe to retry by re-running CreateInstance's Postmark
+	// step once that's wired to River (see docs/plan.md).
 	//
 	// This only creates the server itself -- no sending domain or sender
 	// signature yet, and so no SMTP push into listmonk yet either. Those
 	// need a real "from" identity, which the org supplies themselves via
 	// AddSenderDomain/AddSenderSignature below.
-	if s.pm != nil {
+	if s.pm != nil && p.IncludePostmark {
 		if err := s.provisionPostmarkServer(ctx, active); err != nil {
 			return active, fmt.Errorf("provision postmark server: %w", err)
 		}
@@ -442,6 +507,135 @@ func (s *Service) doProvisionPostmarkServer(ctx context.Context, inst db.Instanc
 		ApiTokenEncrypted: encryptedToken,
 	}); err != nil {
 		return fmt.Errorf("store postmark server: %w", err)
+	}
+	return nil
+}
+
+// ErrInstanceHasNoPostmarkServer is returned by DeletePostmarkServer when
+// the instance has none to delete -- e.g. Postmark wasn't configured when
+// it was created, or one was already removed.
+var ErrInstanceHasNoPostmarkServer = errors.New("this instance has no postmark server")
+
+// PostmarkServerDetail combines the locally-stored row with the server's
+// live state straight from Postmark (name, whether SMTP sending is
+// activated). Deliberately doesn't embed db.PostmarkServer -- that struct
+// carries ApiTokenEncrypted, which must never reach the API response.
+type PostmarkServerDetail struct {
+	ID               uuid.UUID          `json:"id"`
+	PostmarkID       string             `json:"postmark_id"`
+	Name             string             `json:"name"`
+	SmtpApiActivated bool               `json:"smtp_api_activated"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+// GetPostmarkServer returns instance's Postmark server, enriched with its
+// current live state from Postmark.
+func (s *Service) GetPostmarkServer(ctx context.Context, orgID, instanceID uuid.UUID) (PostmarkServerDetail, error) {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return PostmarkServerDetail{}, fmt.Errorf("get instance: %w", err)
+	}
+	if s.pm == nil {
+		return PostmarkServerDetail{}, ErrPostmarkNotConfigured
+	}
+
+	row, err := s.q.GetPostmarkServerByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return PostmarkServerDetail{}, ErrInstanceHasNoPostmarkServer
+		}
+		return PostmarkServerDetail{}, fmt.Errorf("get postmark server: %w", err)
+	}
+
+	pmID, err := strconv.Atoi(row.PostmarkServerID)
+	if err != nil {
+		return PostmarkServerDetail{}, fmt.Errorf("parse postmark server id: %w", err)
+	}
+	live, err := s.pm.Client.GetServer(ctx, pmID)
+	if err != nil {
+		return PostmarkServerDetail{}, fmt.Errorf("get postmark server from postmark: %w", err)
+	}
+
+	return PostmarkServerDetail{
+		ID:               uuid.UUID(row.ID.Bytes),
+		PostmarkID:       row.PostmarkServerID,
+		Name:             live.Name,
+		SmtpApiActivated: live.SmtpApiActivated,
+		CreatedAt:        row.CreatedAt,
+	}, nil
+}
+
+// ResyncPostmarkServer re-pushes instance's Postmark server credentials
+// into its listmonk tenant, using its confirmed sender identity's address
+// as the From -- fixes drift if the tenant's SMTP config was reset or
+// changed by hand. Requires both a Postmark server and a sender identity
+// to already exist.
+func (s *Service) ResyncPostmarkServer(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	if s.pm == nil {
+		return ErrPostmarkNotConfigured
+	}
+
+	identity, err := s.q.GetSenderIdentityByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSenderIdentityNotFound
+		}
+		return fmt.Errorf("get sender identity: %w", err)
+	}
+
+	return s.pushSMTPCredentials(ctx, inst, identity.Value)
+}
+
+// DeletePostmarkServer removes instance's Postmark server on its own,
+// without touching the instance/tenant itself -- e.g. to force
+// re-provisioning, or to tear down sending for an instance moving its
+// domain elsewhere. The instance is left without email sending until
+// CreateInstance's Postmark step (or a future re-provision action) runs
+// again.
+func (s *Service) DeletePostmarkServer(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	return s.deletePostmarkServerFor(ctx, inst)
+}
+
+// AdminDeletePostmarkServer is DeletePostmarkServer without the
+// org-membership scope -- a super admin can remove any instance's server.
+func (s *Service) AdminDeletePostmarkServer(ctx context.Context, instanceID uuid.UUID) error {
+	inst, err := s.q.GetInstanceByID(ctx, pgUUID(instanceID))
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	return s.deletePostmarkServerFor(ctx, inst)
+}
+
+func (s *Service) deletePostmarkServerFor(ctx context.Context, inst db.Instance) error {
+	if s.pm == nil {
+		return ErrPostmarkNotConfigured
+	}
+	server, err := s.q.GetPostmarkServerByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInstanceHasNoPostmarkServer
+		}
+		return fmt.Errorf("get postmark server: %w", err)
+	}
+
+	pmID, err := strconv.Atoi(server.PostmarkServerID)
+	if err != nil {
+		return fmt.Errorf("parse postmark server id: %w", err)
+	}
+	if err := s.pm.Client.DeleteServer(ctx, pmID); err != nil && !postmarkclient.IsNotFound(err) {
+		return fmt.Errorf("delete postmark server: %w", err)
+	}
+
+	if err := s.q.DeletePostmarkServerByInstanceID(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete postmark server row: %w", err)
 	}
 	return nil
 }
@@ -600,16 +794,32 @@ func (s *Service) addDomainIdentity(ctx context.Context, inst db.Instance, kind,
 	}
 
 	var records []db.DnsRecord
-	if pmDomain.DKIMHost != "" {
+	if host, value := pmDomain.DKIMRecord(); host != "" {
 		rec, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
 			ID:         pgUUID(uuid.New()),
 			InstanceID: inst.ID,
 			RecordType: "dkim",
-			Host:       pmDomain.DKIMHost,
-			Value:      pmDomain.DKIMTextValue,
+			Host:       host,
+			Value:      value,
 		})
 		if err != nil {
 			return identity, nil, fmt.Errorf("store dkim record: %w", err)
+		}
+		records = append(records, rec)
+	}
+	// Return-Path (bounce domain) -- a CNAME, published the same way as
+	// the DKIM TXT record above. Postmark's own domain setup page shows
+	// both records side by side; this was missing one of the two.
+	if pmDomain.ReturnPathDomain != "" && pmDomain.ReturnPathDomainCNAMEValue != "" {
+		rec, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
+			ID:         pgUUID(uuid.New()),
+			InstanceID: inst.ID,
+			RecordType: "return_path",
+			Host:       pmDomain.ReturnPathDomain,
+			Value:      pmDomain.ReturnPathDomainCNAMEValue,
+		})
+		if err != nil {
+			return identity, records, fmt.Errorf("store return-path record: %w", err)
 		}
 		records = append(records, rec)
 	}
@@ -657,6 +867,53 @@ func (s *Service) AddSenderSignature(ctx context.Context, orgID, instanceID uuid
 		return identity, err
 	}
 	return identity, nil
+}
+
+// DeleteSenderIdentity removes instance's sender identity (domain or
+// sender signature) from Postmark and locally, along with any DNS records
+// published for it -- irreversible. The instance is left without a
+// confirmed "from" address until a new identity is added; its existing
+// listmonk SMTP config is left as-is (still pointed at the now-orphaned
+// address) since there's nothing sensible to fall back to automatically.
+func (s *Service) DeleteSenderIdentity(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	if s.pm == nil {
+		return ErrPostmarkNotConfigured
+	}
+
+	identity, err := s.q.GetSenderIdentityByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSenderIdentityNotFound
+		}
+		return fmt.Errorf("get sender identity: %w", err)
+	}
+
+	postmarkID, err := strconv.Atoi(identity.PostmarkID)
+	if err != nil {
+		return fmt.Errorf("parse postmark id: %w", err)
+	}
+	switch identity.Kind {
+	case "domain", "platform_domain":
+		if err := s.pm.Client.DeleteDomain(ctx, postmarkID); err != nil && !postmarkclient.IsNotFound(err) {
+			return fmt.Errorf("delete postmark domain: %w", err)
+		}
+	case "sender_signature":
+		if err := s.pm.Client.DeleteSenderSignature(ctx, postmarkID); err != nil && !postmarkclient.IsNotFound(err) {
+			return fmt.Errorf("delete postmark sender signature: %w", err)
+		}
+	}
+
+	if err := s.q.DeleteDNSRecordsByInstance(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete dns records: %w", err)
+	}
+	if err := s.q.DeleteSenderIdentityByInstanceID(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete sender identity row: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) requireNoSenderIdentity(ctx context.Context, instanceID pgtype.UUID) error {
@@ -719,12 +976,97 @@ func (s *Service) pushSMTPCredentials(ctx context.Context, inst db.Instance, fro
 	return nil
 }
 
+// createDefaultInstance provisions a new org's root workspace, named after
+// the org itself (e.g. org "Acme" gets instance slug "acme") so there's
+// always something to land on right after signup instead of an empty
+// dashboard. Best-effort: called after the org's own transaction has
+// already committed, so a failure here (operator API down, no ownerEmail
+// to register the tenant admin with, ...) is logged and swallowed rather
+// than rolling back or failing the signup/org-creation that triggered it.
+func (s *Service) createDefaultInstance(ctx context.Context, orgID uuid.UUID, orgName, ownerEmail string) {
+	if ownerEmail == "" {
+		log.Printf("provisioning: skipping default instance for org %s: no owner email to register the tenant admin with", orgID)
+		return
+	}
+
+	base := slugify(orgName)
+	if base == "" {
+		base = "org"
+	}
+
+	params := CreateInstanceParams{
+		Slug: base, Name: orgName, AdminUsername: "admin", AdminEmail: ownerEmail,
+		IncludePostmark: true,
+	}
+	if _, err := s.CreateInstance(ctx, orgID, params); err != nil {
+		if !errors.Is(err, ErrSlugTaken) {
+			log.Printf("provisioning: default instance for org %s: %v", orgID, err)
+			return
+		}
+		// The flat slug namespace (see CreateInstance's doc comment) means
+		// another org already has this name -- disambiguate with a chunk
+		// of this org's own id, the same way createListmonkOrganization
+		// disambiguates the listmonk-side org name.
+		params.Slug = base + "-" + orgID.String()[:8]
+		if _, err := s.CreateInstance(ctx, orgID, params); err != nil {
+			log.Printf("provisioning: default instance for org %s: %v", orgID, err)
+		}
+	}
+}
+
 func (s *Service) ListInstances(ctx context.Context, orgID uuid.UUID) ([]db.Instance, error) {
 	return s.q.ListInstancesByOrg(ctx, pgUUID(orgID))
 }
 
 func (s *Service) GetInstance(ctx context.Context, orgID, instanceID uuid.UUID) (db.Instance, error) {
 	return s.q.GetInstanceForOrg(ctx, db.GetInstanceForOrgParams{ID: pgUUID(instanceID), OrgID: pgUUID(orgID)})
+}
+
+// DeleteInstance permanently deletes instance: its Postmark server (if
+// any), its listmonk tenant (which cascades into all of the tenant's own
+// data -- subscribers, campaigns, etc., see operatorclient.DeleteTenant's
+// doc comment), and finally the local row (which cascades into
+// sender_identities/dns_records/provisioning_jobs). Irreversible.
+//
+// External resources are deleted before the local row, in that order, so a
+// failure partway through leaves the local row in place to retry against
+// rather than orphaning a Postmark server or listmonk tenant whose id we've
+// just lost.
+func (s *Service) DeleteInstance(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	return s.deleteInstanceFor(ctx, inst)
+}
+
+// AdminDeleteInstance is DeleteInstance without the org-membership scope --
+// a super admin can delete any instance.
+func (s *Service) AdminDeleteInstance(ctx context.Context, instanceID uuid.UUID) error {
+	inst, err := s.q.GetInstanceByID(ctx, pgUUID(instanceID))
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	return s.deleteInstanceFor(ctx, inst)
+}
+
+func (s *Service) deleteInstanceFor(ctx context.Context, inst db.Instance) error {
+	if s.pm != nil {
+		if err := s.deletePostmarkServerFor(ctx, inst); err != nil && !errors.Is(err, ErrInstanceHasNoPostmarkServer) {
+			return fmt.Errorf("delete postmark server: %w", err)
+		}
+	}
+
+	if inst.ListmonkTenantID != nil {
+		if err := s.op.DeleteTenant(ctx, int(*inst.ListmonkTenantID)); err != nil && !operatorclient.IsNotFound(err) {
+			return fmt.Errorf("delete listmonk tenant: %w", err)
+		}
+	}
+
+	if err := s.q.DeleteInstance(ctx, inst.ID); err != nil {
+		return fmt.Errorf("delete instance row: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) ListProvisioningEvents(ctx context.Context, instanceID uuid.UUID) ([]db.ProvisioningJob, error) {

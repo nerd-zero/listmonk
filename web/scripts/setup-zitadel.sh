@@ -139,7 +139,7 @@ if [[ -n "$APP_ID" ]]; then
             \"accessTokenType\": \"OIDC_TOKEN_TYPE_JWT\",
             \"accessTokenRoleAssertion\": false,
             \"idTokenRoleAssertion\": false,
-            \"idTokenUserinfoAssertion\": false
+            \"idTokenUserinfoAssertion\": true
         }")
     check_response "$UPDATE_RESP" "update application oidc config"
 else
@@ -159,7 +159,7 @@ else
             \"accessTokenType\": \"OIDC_TOKEN_TYPE_JWT\",
             \"accessTokenRoleAssertion\": false,
             \"idTokenRoleAssertion\": false,
-            \"idTokenUserinfoAssertion\": false,
+            \"idTokenUserinfoAssertion\": true,
             \"additionalOrigins\": []
         }")
     check_response "$APP_RESP" "create application"

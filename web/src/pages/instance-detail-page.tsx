@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/table";
 import { InstanceStatusBadge } from "@/components/instance-status-badge";
 import { SenderIdentityCard } from "@/components/sender-identity-card";
+import { PostmarkServerCard } from "@/components/postmark-server-card";
 import { useOrgContext } from "@/lib/org-context";
+import { copyToClipboard } from "@/lib/utils";
 import { unwrap } from "@/api/unwrap";
 import {
   useGetV1OrgsOrgIDInstancesInstanceID,
@@ -42,15 +44,6 @@ const JOB_STATUS_CLASS: Record<string, string> = {
 function formatTimestamp(value?: string) {
   if (!value) return "—";
   return new Date(value).toLocaleString();
-}
-
-async function copyToClipboard(url: string) {
-  try {
-    await navigator.clipboard.writeText(url);
-    toast.success("Setup link copied");
-  } catch {
-    toast.error("Couldn't copy — select and copy the link manually");
-  }
 }
 
 function LoadingSkeleton() {
@@ -154,7 +147,7 @@ export function InstanceDetailPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => copyToClipboard(setupUrl)}
+              onClick={() => copyToClipboard(setupUrl, "Setup link copied")}
               aria-label="Copy setup link"
             >
               <Copy className="size-3.5" />
@@ -181,6 +174,8 @@ export function InstanceDetailPage() {
       </div>
 
       <SenderIdentityCard orgId={orgId} instanceId={instanceId} />
+
+      <PostmarkServerCard orgId={orgId} instanceId={instanceId} />
 
       <div>
         <h2 className="mb-2 text-sm font-semibold">Provisioning timeline</h2>

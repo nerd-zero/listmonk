@@ -27,6 +27,21 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
+// getMe godoc
+//
+//	@Summary	The caller's own user record
+//	@Description	Includes is_super_admin -- the only client-side way to know whether to show admin-only UI (there's no separate permissions endpoint; this is the single source of truth the frontend's permissions.tsx reads from).
+//	@Tags		users
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Success	200	{object}	userResponse
+//	@Failure	401	{object}	errorResponse
+//	@Router		/v1/me [get]
+func (a *API) getMe(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFromContext(r.Context())
+	writeJSON(w, http.StatusOK, user)
+}
+
 // --- orgs -------------------------------------------------------------
 
 // listOrgs godoc
@@ -115,12 +130,16 @@ type createInstanceRequest struct {
 	Name          string `json:"name"`
 	AdminUsername string `json:"admin_username"`
 	AdminEmail    string `json:"admin_email"`
+	// IncludePostmark defaults to true (a nil pointer, i.e. the field
+	// omitted) so a caller that predates this field keeps getting the old
+	// always-on behavior -- only an explicit `false` opts out.
+	IncludePostmark *bool `json:"include_postmark"`
 }
 
 // createInstance godoc
 //
 //	@Summary		Create an instance
-//	@Description	Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section).
+//	@Description	Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section). include_postmark defaults to true if omitted.
 //	@Tags			instances
 //	@Accept			json
 //	@Produce		json
@@ -148,12 +167,14 @@ func (a *API) createInstance(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name, admin_username, and admin_email are required")
 		return
 	}
+	includePostmark := req.IncludePostmark == nil || *req.IncludePostmark
 
 	inst, err := a.svc.CreateInstance(r.Context(), orgIDFromRequest(r), provisioning.CreateInstanceParams{
-		Slug:          req.Slug,
-		Name:          req.Name,
-		AdminUsername: req.AdminUsername,
-		AdminEmail:    req.AdminEmail,
+		Slug:            req.Slug,
+		Name:            req.Name,
+		AdminUsername:   req.AdminUsername,
+		AdminEmail:      req.AdminEmail,
+		IncludePostmark: includePostmark,
 	})
 	if err != nil {
 		mapServiceError(w, err)
@@ -366,6 +387,123 @@ func (a *API) addSenderIdentity(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusBadRequest, `kind must be "domain", "sender_signature", or "platform_domain"`)
 	}
+}
+
+// deleteSenderIdentity godoc
+//
+//	@Summary		Delete an instance's sender identity
+//	@Description	Removes the domain or sender signature from Postmark and locally, along with any DNS records published for it. Irreversible. The instance is left without a confirmed "from" address until a new identity is added.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path	string	true	"Org ID"
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		404	{object}	errorResponse	"No sender identity yet"
+//	@Failure		501	{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/sender-identity [delete]
+func (a *API) deleteSenderIdentity(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.DeleteSenderIdentity(r.Context(), orgIDFromRequest(r), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
+
+// deletePostmarkServer godoc
+//
+//	@Summary		Delete an instance's Postmark server
+//	@Description	Removes the Postmark server without touching the instance/tenant itself -- the instance is left without email sending until re-provisioned. Irreversible.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path	string	true	"Org ID"
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		404	{object}	errorResponse	"Instance has no Postmark server"
+//	@Failure		501	{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/postmark-server [delete]
+func (a *API) deletePostmarkServer(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.DeletePostmarkServer(r.Context(), orgIDFromRequest(r), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
+
+// getPostmarkServer godoc
+//
+//	@Summary		Get an instance's Postmark server
+//	@Description	Locally-stored info plus live state from Postmark (name, whether SMTP sending is activated). Never includes the API token.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string	true	"Org ID"
+//	@Param			instanceID	path		string	true	"Instance ID"
+//	@Success		200			{object}	postmarkServerResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		404			{object}	errorResponse	"Instance has no Postmark server"
+//	@Failure		501			{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/postmark-server [get]
+func (a *API) getPostmarkServer(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	server, err := a.svc.GetPostmarkServer(r.Context(), orgIDFromRequest(r), instanceID)
+	if err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, server)
+}
+
+// resyncPostmarkServer godoc
+//
+//	@Summary		Re-push an instance's Postmark SMTP credentials into listmonk
+//	@Description	Fixes drift if the tenant's SMTP config was reset or changed by hand. Requires both a Postmark server and a confirmed sender identity to already exist.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path	string	true	"Org ID"
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		404	{object}	errorResponse	"No sender identity yet"
+//	@Failure		501	{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/postmark-server/resync [post]
+func (a *API) resyncPostmarkServer(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.ResyncPostmarkServer(r.Context(), orgIDFromRequest(r), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"resynced": true})
 }
 
 // --- members --------------------------------------------------------------

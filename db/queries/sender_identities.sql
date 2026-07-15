@@ -11,3 +11,6 @@ UPDATE sender_identities
 SET status = 'confirmed'
 WHERE id = $1
 RETURNING *;
+
+-- name: DeleteSenderIdentityByInstanceID :exec
+DELETE FROM sender_identities WHERE instance_id = $1;

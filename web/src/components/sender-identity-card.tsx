@@ -1,22 +1,40 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { copyToClipboard } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { unwrap } from "@/api/unwrap";
 import { ApiError } from "@/api/mutator";
 import {
   getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryKey,
+  useDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity,
   useGetV1OrgsOrgIDInstancesInstanceIDSenderIdentity,
   usePostV1OrgsOrgIDInstancesInstanceIDSenderIdentity,
 } from "@/api/generated/endpoints/instances/instances";
 import type { SenderIdentityResponse } from "@/api/generated/model";
 
 type Kind = "domain" | "sender_signature" | "platform_domain";
+
+const RECORD_TYPE_LABEL: Record<string, string> = {
+  dkim: "DKIM (TXT)",
+  return_path: "Return-Path (CNAME)",
+};
 
 export function SenderIdentityCard({
   orgId,
@@ -38,7 +56,13 @@ export function SenderIdentityCard({
   if (identityQuery.data) {
     const detail = unwrap<SenderIdentityResponse>(identityQuery.data).data;
     if (detail?.identity) {
-      return <SenderIdentityStatus detail={detail} />;
+      return (
+        <SenderIdentityStatus
+          orgId={orgId}
+          instanceId={instanceId}
+          detail={detail}
+        />
+      );
     }
   }
 
@@ -57,10 +81,35 @@ export function SenderIdentityCard({
 }
 
 function SenderIdentityStatus({
+  orgId,
+  instanceId,
   detail,
 }: {
+  orgId: string;
+  instanceId: string;
   detail: NonNullable<SenderIdentityResponse["data"]>;
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const deleteIdentity = useDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryKey(
+            orgId,
+            instanceId,
+          ),
+        });
+        toast.success("Sender identity removed");
+        setConfirmOpen(false);
+      },
+      onError: (error) => {
+        toast.error(error.error ?? "Couldn't remove that sender identity");
+      },
+    },
+  });
+
   const identity = detail.identity;
   if (!identity) return null;
   const confirmed = identity.status === "confirmed";
@@ -74,34 +123,46 @@ function SenderIdentityStatus({
             {identity.value}
           </p>
         </div>
-        <Badge
-          variant="outline"
-          className={
-            confirmed
-              ? "bg-status-green-soft text-status-green"
-              : "bg-status-amber-soft text-status-amber"
-          }
-        >
-          {confirmed ? "Confirmed" : "Pending"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className={
+              confirmed
+                ? "bg-status-green-soft text-status-green"
+                : "bg-status-amber-soft text-status-amber"
+            }
+          >
+            {confirmed ? "Confirmed" : "Pending"}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmOpen(true)}
+          >
+            Remove
+          </Button>
+        </div>
       </div>
 
       {identity.kind === "domain" &&
         (detail.dns_records && detail.dns_records.length > 0 ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <p className="text-xs text-muted-foreground">
-              Publish this record with your DNS provider to verify the
+              Publish these {detail.dns_records.length === 1 ? "record" : "records"} with your DNS provider to verify the
               domain:
             </p>
             {detail.dns_records.map((record) => (
               <div
                 key={record.id}
-                className="rounded-md bg-secondary px-2.5 py-2 font-mono text-xs"
+                className="rounded-md bg-secondary px-2.5 py-2 text-xs"
               >
-                <div className="text-muted-foreground">
-                  {record.record_type?.toUpperCase()} · {record.host}
+                <div className="mb-1.5 font-medium text-muted-foreground">
+                  {RECORD_TYPE_LABEL[record.record_type ?? ""] ??
+                    record.record_type?.toUpperCase()}
                 </div>
-                <div className="truncate">{record.value}</div>
+                <DNSField label="Host" value={record.host} />
+                <DNSField label="Value" value={record.value} />
               </div>
             ))}
           </div>
@@ -125,6 +186,32 @@ function SenderIdentityStatus({
           DNS changes needed.
         </p>
       )}
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {identity.value}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the sender identity from Postmark and
+              this workspace. You'll need to add a new one before this
+              workspace can send mail again. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteIdentity.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteIdentity.isPending}
+              onClick={() =>
+                deleteIdentity.mutate({ orgID: orgId, instanceID: instanceId })
+              }
+            >
+              {deleteIdentity.isPending ? "Removing…" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -261,6 +348,25 @@ function AddSenderIdentityForm({
         onClick={submit}
       >
         {addIdentity.isPending ? "Adding…" : "Add"}
+      </Button>
+    </div>
+  );
+}
+
+function DNSField({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div className="mb-1 flex items-center gap-2 last:mb-0">
+      <span className="w-10 shrink-0 text-muted-foreground">{label}</span>
+      <code className="min-w-0 flex-1 truncate font-mono">{value}</code>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-5 shrink-0"
+        onClick={() => copyToClipboard(value, `${label} copied`)}
+        aria-label={`Copy ${label.toLowerCase()}`}
+      >
+        <Copy className="size-3" />
       </Button>
     </div>
   );

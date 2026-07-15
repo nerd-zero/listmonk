@@ -163,3 +163,60 @@ func (a *API) adminResendSetupLink(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"setup_url": url})
 }
+
+// adminDeleteInstance godoc
+//
+//	@Summary		Delete an instance (super admin)
+//	@Description	Super-admin only. Permanently deletes the instance's Postmark server, its listmonk tenant (cascading into all of the tenant's own data), and the local record. Irreversible.
+//	@Tags			admin
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		403	{object}	errorResponse	"Not a super admin"
+//	@Failure		500	{object}	errorResponse
+//	@Router			/v1/admin/instances/{instanceID} [delete]
+func (a *API) adminDeleteInstance(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.AdminDeleteInstance(r.Context(), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
+
+// adminDeletePostmarkServer godoc
+//
+//	@Summary		Delete an instance's Postmark server (super admin)
+//	@Description	Super-admin only. Removes the Postmark server without touching the instance/tenant itself -- the instance is left without email sending until re-provisioned. Irreversible.
+//	@Tags			admin
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		403	{object}	errorResponse	"Not a super admin"
+//	@Failure		404	{object}	errorResponse	"Instance has no Postmark server"
+//	@Failure		500	{object}	errorResponse
+//	@Router			/v1/admin/instances/{instanceID}/postmark-server [delete]
+func (a *API) adminDeletePostmarkServer(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.AdminDeletePostmarkServer(r.Context(), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
