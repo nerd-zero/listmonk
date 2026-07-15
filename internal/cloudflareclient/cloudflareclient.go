@@ -55,32 +55,49 @@ type OwnershipVerification struct {
 	Value string `json:"value"`
 }
 
-// SSL mirrors the subset of a Custom Hostname's nested "ssl" object this
-// client needs. Status moves through "pending_validation" ->
-// "pending_issuance" -> "pending_deployment" -> "active" as Cloudflare
-// notices the org's DNS records published and issues + deploys a cert --
-// IsActive checks for the last of these. TxtName/TxtValue are the CA's
-// own domain-control-validation TXT record (e.g. served under
-// "_acme-challenge.<hostname>" by Google Trust Services) -- separate from,
-// and in addition to, CustomHostname.OwnershipVerification below. Both
-// must be published for SSL.Status to ever reach "active".
-type SSL struct {
+// ValidationRecord is one entry of SSL.ValidationRecords -- the issuing
+// CA's own domain-control-validation TXT record(s), e.g. served under
+// "_acme-challenge.<hostname>". How many of these a hostname gets, and
+// whether SSL.TxtName/TxtValue (the older, CA-dependent convenience
+// fields) are populated at all, varies by which CA Cloudflare assigns
+// (CustomHostname.SSL.CertificateAuthority) -- confirmed live: a
+// "google"-issued hostname had exactly one entry here, mirrored in the
+// flat SSL.TxtName/TxtValue; an "ssl_com"-issued one had two entries
+// (same TxtName, different TxtValue -- both need publishing, ordinary
+// multi-value TXT) and left the flat fields empty. ValidationRecords is
+// the only field reliably populated across CAs -- read this, not the
+// flat fields.
+type ValidationRecord struct {
 	Status   string `json:"status"`
 	TxtName  string `json:"txt_name"`
 	TxtValue string `json:"txt_value"`
 }
 
+// SSL mirrors the subset of a Custom Hostname's nested "ssl" object this
+// client needs. Status moves through "pending_validation" ->
+// "pending_issuance" -> "pending_deployment" -> "active" as Cloudflare
+// notices the org's DNS records published and issues + deploys a cert --
+// IsActive checks for the last of these. ValidationRecords are the CA's
+// own domain-control-validation TXT record(s) -- separate from, and in
+// addition to, CustomHostname.OwnershipVerification below. Both must be
+// published for SSL.Status to ever reach "active".
+type SSL struct {
+	Status               string             `json:"status"`
+	CertificateAuthority string             `json:"certificate_authority"`
+	ValidationRecords    []ValidationRecord `json:"validation_records"`
+}
+
 // CustomHostname mirrors the subset of Cloudflare's Custom Hostname
 // resource this client needs. Before SSL.Status ever reaches "active",
-// the org must publish three DNS records, none of which require them to
-// use Cloudflare themselves: a CNAME pointing Hostname at our zone's
-// configured fallback origin (a plain config value, CLOUDFLARE_FALLBACK_ORIGIN --
-// not part of this API response, since it's a zone-level setting, not a
-// per-hostname one), the OwnershipVerification TXT record below (proves
-// hostname ownership to Cloudflare itself, checked first), and the
-// SSL.TxtName/TxtValue TXT record (the issuing CA's own DCV challenge,
-// checked once ownership passes -- these are two genuinely different
-// records, easy to conflate since both are TXT).
+// the org must publish a CNAME (pointing Hostname at our zone's
+// configured fallback origin -- a plain config value,
+// CLOUDFLARE_FALLBACK_ORIGIN, not part of this API response since it's a
+// zone-level setting, not a per-hostname one), the OwnershipVerification
+// TXT record below (proves hostname ownership to Cloudflare itself,
+// checked first), and every SSL.ValidationRecords TXT entry (the issuing
+// CA's own DCV challenge(s), checked once ownership passes -- genuinely
+// different records from OwnershipVerification, easy to conflate since
+// both are TXT).
 type CustomHostname struct {
 	ID                    string                `json:"id"`
 	Hostname              string                `json:"hostname"`

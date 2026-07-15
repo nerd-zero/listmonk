@@ -1049,16 +1049,24 @@ func (s *Service) AddCustomDomain(ctx context.Context, orgID, instanceID uuid.UU
 		records = append(records, ownership)
 	}
 
-	// The CA's own DCV challenge TXT (see AddCustomDomain's doc comment) --
-	// distinct from the ownership-verification TXT above, and just as
-	// required before SSL.Status can ever reach "active".
-	if hostname.SSL.TxtName != "" {
+	// The CA's own DCV challenge TXT record(s) (see AddCustomDomain's doc
+	// comment) -- distinct from the ownership-verification TXT above, and
+	// just as required before SSL.Status can ever reach "active". How many
+	// of these there are, and their values, depends on which CA Cloudflare
+	// assigned (SSL.CertificateAuthority) -- confirmed live that this can
+	// be more than one entry sharing the same TxtName with different
+	// TxtValues (ordinary multi-value TXT, not a conflict), so every entry
+	// gets its own dns_records row rather than assuming exactly one.
+	for _, vr := range hostname.SSL.ValidationRecords {
+		if vr.TxtName == "" {
+			continue
+		}
 		certValidation, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
 			ID:         pgUUID(uuid.New()),
 			InstanceID: inst.ID,
 			RecordType: "custom_domain_cert_validation",
-			Host:       hostname.SSL.TxtName,
-			Value:      hostname.SSL.TxtValue,
+			Host:       vr.TxtName,
+			Value:      vr.TxtValue,
 		})
 		if err != nil {
 			return cd, records, fmt.Errorf("store cert validation record: %w", err)
