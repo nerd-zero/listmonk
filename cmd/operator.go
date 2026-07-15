@@ -18,6 +18,7 @@ import (
 	"github.com/knadh/koanf/v2"
 	"github.com/knadh/listmonk/internal/auth"
 	"github.com/knadh/listmonk/internal/core"
+	"github.com/knadh/listmonk/internal/tenant"
 	"github.com/knadh/listmonk/internal/tmptokens"
 	"github.com/knadh/listmonk/internal/utils"
 	"github.com/knadh/listmonk/models"
@@ -731,6 +732,13 @@ func (a *App) operatorSetupURL(tenantSlug, token string) string {
 // settings.AppRootURL directly rather than deriving it from the
 // request like cmd/public.go's tplRenderer does). Returns "" if
 // app.root_domain isn't configured or app.root_url has no scheme.
+//
+// When [operator].env is "dev", the subdomain gets a "-dev" suffix
+// (<slug>-dev.root_domain instead of <slug>.root_domain) so a dev
+// deployment's tenant URLs never collide with a prod deployment sharing
+// the same root_domain. tenant.SlugSuffix is the single source of truth
+// for this suffix - internal/tenant.Middleware strips the same suffix
+// when resolving incoming requests, so the two can't drift apart.
 func (a *App) tenantRootURL(tenantSlug string) string {
 	if a.cfg.RootDomain == "" {
 		return ""
@@ -739,7 +747,7 @@ func (a *App) tenantRootURL(tenantSlug string) string {
 	if err != nil || u.Scheme == "" {
 		return ""
 	}
-	return u.Scheme + "://" + tenantSlug + "." + a.cfg.RootDomain
+	return u.Scheme + "://" + tenantSlug + tenant.SlugSuffix(a.cfg.Operator.Env) + "." + a.cfg.RootDomain
 }
 
 // CreateOperatorSetupLink issues a fresh one-time setup link for an
