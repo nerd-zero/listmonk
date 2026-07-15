@@ -42,10 +42,13 @@ func New(accountToken string) *Client {
 // Server mirrors the subset of Postmark's Server resource this client
 // needs. ApiTokens holds up to 3 tokens on creation; the first one doubles
 // as the SMTP username and password (postmarkapp.com/support/article/811).
+// GetServer never returns ApiTokens populated (Postmark doesn't return
+// them outside of creation) -- only CreateServer's result ever has them.
 type Server struct {
-	ID        int      `json:"ID"`
-	Name      string   `json:"Name"`
-	ApiTokens []string `json:"ApiTokens"`
+	ID               int      `json:"ID"`
+	Name             string   `json:"Name"`
+	SmtpApiActivated bool     `json:"SmtpApiActivated"`
+	ApiTokens        []string `json:"ApiTokens"`
 }
 
 // CreateServer creates a new Postmark server -- listnun's "one Postmark
@@ -57,6 +60,11 @@ func (c *Client) CreateServer(ctx context.Context, name string) (Server, error) 
 		"SmtpApiActivated": true,
 	}
 	return doJSON[Server](ctx, c, http.MethodPost, "/servers", body)
+}
+
+// GetServer fetches a Postmark server's current live state.
+func (c *Client) GetServer(ctx context.Context, id int) (Server, error) {
+	return doJSON[Server](ctx, c, http.MethodGet, "/servers/"+strconv.Itoa(id), nil)
 }
 
 // Domain mirrors the subset of Postmark's Domain resource this client

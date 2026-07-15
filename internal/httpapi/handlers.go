@@ -441,6 +441,65 @@ func (a *API) deletePostmarkServer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
 }
 
+// getPostmarkServer godoc
+//
+//	@Summary		Get an instance's Postmark server
+//	@Description	Locally-stored info plus live state from Postmark (name, whether SMTP sending is activated). Never includes the API token.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path		string	true	"Org ID"
+//	@Param			instanceID	path		string	true	"Instance ID"
+//	@Success		200			{object}	postmarkServerResponse
+//	@Failure		400			{object}	errorResponse
+//	@Failure		401			{object}	errorResponse
+//	@Failure		404			{object}	errorResponse	"Instance has no Postmark server"
+//	@Failure		501			{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/postmark-server [get]
+func (a *API) getPostmarkServer(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	server, err := a.svc.GetPostmarkServer(r.Context(), orgIDFromRequest(r), instanceID)
+	if err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, server)
+}
+
+// resyncPostmarkServer godoc
+//
+//	@Summary		Re-push an instance's Postmark SMTP credentials into listmonk
+//	@Description	Fixes drift if the tenant's SMTP config was reset or changed by hand. Requires both a Postmark server and a confirmed sender identity to already exist.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path	string	true	"Org ID"
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		404	{object}	errorResponse	"No sender identity yet"
+//	@Failure		501	{object}	errorResponse	"Postmark not configured"
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID}/postmark-server/resync [post]
+func (a *API) resyncPostmarkServer(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.ResyncPostmarkServer(r.Context(), orgIDFromRequest(r), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"resynced": true})
+}
+
 // --- members --------------------------------------------------------------
 
 // listMembers godoc

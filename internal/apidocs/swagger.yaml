@@ -63,6 +63,11 @@ definitions:
       data:
         $ref: '#/definitions/db.Org'
     type: object
+  PostmarkServerResponse:
+    properties:
+      data:
+        $ref: '#/definitions/provisioning.PostmarkServerDetail'
+    type: object
   ProvisioningJobListResponse:
     properties:
       data:
@@ -351,6 +356,19 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  provisioning.PostmarkServerDetail:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      postmark_id:
+        type: string
+      smtp_api_activated:
+        type: boolean
     type: object
 info:
   contact: {}
@@ -902,6 +920,90 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete an instance's Postmark server
+      tags:
+      - instances
+    get:
+      description: Locally-stored info plus live state from Postmark (name, whether
+        SMTP sending is activated). Never includes the API token.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PostmarkServerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Instance has no Postmark server
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Postmark not configured
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an instance's Postmark server
+      tags:
+      - instances
+  /v1/orgs/{orgID}/instances/{instanceID}/postmark-server/resync:
+    post:
+      description: Fixes drift if the tenant's SMTP config was reset or changed by
+        hand. Requires both a Postmark server and a confirmed sender identity to already
+        exist.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: No sender identity yet
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Postmark not configured
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Re-push an instance's Postmark SMTP credentials into listmonk
       tags:
       - instances
   /v1/orgs/{orgID}/instances/{instanceID}/sender-identity:

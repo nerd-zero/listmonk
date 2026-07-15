@@ -479,6 +479,80 @@ func (s *Service) doProvisionPostmarkServer(ctx context.Context, inst db.Instanc
 // it was created, or one was already removed.
 var ErrInstanceHasNoPostmarkServer = errors.New("this instance has no postmark server")
 
+// PostmarkServerDetail combines the locally-stored row with the server's
+// live state straight from Postmark (name, whether SMTP sending is
+// activated). Deliberately doesn't embed db.PostmarkServer -- that struct
+// carries ApiTokenEncrypted, which must never reach the API response.
+type PostmarkServerDetail struct {
+	ID               uuid.UUID          `json:"id"`
+	PostmarkID       string             `json:"postmark_id"`
+	Name             string             `json:"name"`
+	SmtpApiActivated bool               `json:"smtp_api_activated"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+// GetPostmarkServer returns instance's Postmark server, enriched with its
+// current live state from Postmark.
+func (s *Service) GetPostmarkServer(ctx context.Context, orgID, instanceID uuid.UUID) (PostmarkServerDetail, error) {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return PostmarkServerDetail{}, fmt.Errorf("get instance: %w", err)
+	}
+	if s.pm == nil {
+		return PostmarkServerDetail{}, ErrPostmarkNotConfigured
+	}
+
+	row, err := s.q.GetPostmarkServerByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return PostmarkServerDetail{}, ErrInstanceHasNoPostmarkServer
+		}
+		return PostmarkServerDetail{}, fmt.Errorf("get postmark server: %w", err)
+	}
+
+	pmID, err := strconv.Atoi(row.PostmarkServerID)
+	if err != nil {
+		return PostmarkServerDetail{}, fmt.Errorf("parse postmark server id: %w", err)
+	}
+	live, err := s.pm.Client.GetServer(ctx, pmID)
+	if err != nil {
+		return PostmarkServerDetail{}, fmt.Errorf("get postmark server from postmark: %w", err)
+	}
+
+	return PostmarkServerDetail{
+		ID:               uuid.UUID(row.ID.Bytes),
+		PostmarkID:       row.PostmarkServerID,
+		Name:             live.Name,
+		SmtpApiActivated: live.SmtpApiActivated,
+		CreatedAt:        row.CreatedAt,
+	}, nil
+}
+
+// ResyncPostmarkServer re-pushes instance's Postmark server credentials
+// into its listmonk tenant, using its confirmed sender identity's address
+// as the From -- fixes drift if the tenant's SMTP config was reset or
+// changed by hand. Requires both a Postmark server and a sender identity
+// to already exist.
+func (s *Service) ResyncPostmarkServer(ctx context.Context, orgID, instanceID uuid.UUID) error {
+	inst, err := s.GetInstance(ctx, orgID, instanceID)
+	if err != nil {
+		return fmt.Errorf("get instance: %w", err)
+	}
+	if s.pm == nil {
+		return ErrPostmarkNotConfigured
+	}
+
+	identity, err := s.q.GetSenderIdentityByInstanceID(ctx, inst.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSenderIdentityNotFound
+		}
+		return fmt.Errorf("get sender identity: %w", err)
+	}
+
+	return s.pushSMTPCredentials(ctx, inst, identity.Value)
+}
+
 // DeletePostmarkServer removes instance's Postmark server on its own,
 // without touching the instance/tenant itself -- e.g. to force
 // re-provisioning, or to tear down sending for an instance moving its

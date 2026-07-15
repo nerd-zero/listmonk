@@ -52,7 +52,9 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 						r.Get("/sender-identity", a.getSenderIdentity)
 						r.Post("/sender-identity", a.addSenderIdentity)
 						r.Delete("/sender-identity", a.deleteSenderIdentity)
+						r.Get("/postmark-server", a.getPostmarkServer)
 						r.Delete("/postmark-server", a.deletePostmarkServer)
+						r.Post("/postmark-server/resync", a.resyncPostmarkServer)
 					})
 				})
 

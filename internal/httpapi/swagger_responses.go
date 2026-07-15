@@ -3,6 +3,7 @@ package httpapi
 import (
 	"listnun/internal/db"
 	"listnun/internal/operatorclient"
+	"listnun/internal/provisioning"
 )
 
 // Response envelope types for swaggo -- writeJSON always wraps the actual
@@ -82,3 +83,7 @@ type senderIdentityDetail struct {
 type senderIdentityResponse struct {
 	Data senderIdentityDetail `json:"data"`
 } // @name SenderIdentityResponse
+
+type postmarkServerResponse struct {
+	Data provisioning.PostmarkServerDetail `json:"data"`
+} // @name PostmarkServerResponse
