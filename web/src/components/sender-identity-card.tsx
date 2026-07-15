@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { copyToClipboard } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +30,11 @@ import {
 import type { SenderIdentityResponse } from "@/api/generated/model";
 
 type Kind = "domain" | "sender_signature" | "platform_domain";
+
+const RECORD_TYPE_LABEL: Record<string, string> = {
+  dkim: "DKIM (TXT)",
+  return_path: "Return-Path (CNAME)",
+};
 
 export function SenderIdentityCard({
   orgId,
@@ -140,20 +147,22 @@ function SenderIdentityStatus({
 
       {identity.kind === "domain" &&
         (detail.dns_records && detail.dns_records.length > 0 ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <p className="text-xs text-muted-foreground">
-              Publish this record with your DNS provider to verify the
+              Publish these {detail.dns_records.length === 1 ? "record" : "records"} with your DNS provider to verify the
               domain:
             </p>
             {detail.dns_records.map((record) => (
               <div
                 key={record.id}
-                className="rounded-md bg-secondary px-2.5 py-2 font-mono text-xs"
+                className="rounded-md bg-secondary px-2.5 py-2 text-xs"
               >
-                <div className="text-muted-foreground">
-                  {record.record_type?.toUpperCase()} · {record.host}
+                <div className="mb-1.5 font-medium text-muted-foreground">
+                  {RECORD_TYPE_LABEL[record.record_type ?? ""] ??
+                    record.record_type?.toUpperCase()}
                 </div>
-                <div className="truncate">{record.value}</div>
+                <DNSField label="Host" value={record.host} />
+                <DNSField label="Value" value={record.value} />
               </div>
             ))}
           </div>
@@ -339,6 +348,25 @@ function AddSenderIdentityForm({
         onClick={submit}
       >
         {addIdentity.isPending ? "Adding…" : "Add"}
+      </Button>
+    </div>
+  );
+}
+
+function DNSField({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div className="mb-1 flex items-center gap-2 last:mb-0">
+      <span className="w-10 shrink-0 text-muted-foreground">{label}</span>
+      <code className="min-w-0 flex-1 truncate font-mono">{value}</code>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-5 shrink-0"
+        onClick={() => copyToClipboard(value, `${label} copied`)}
+        aria-label={`Copy ${label.toLowerCase()}`}
+      >
+        <Copy className="size-3" />
       </Button>
     </div>
   );
