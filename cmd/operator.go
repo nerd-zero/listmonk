@@ -43,6 +43,7 @@ type operatorQueries struct {
 	CreateTenant           *sqlx.Stmt `query:"operator-create-tenant"`
 	SeedTenantSettings     *sqlx.Stmt `query:"operator-seed-tenant-settings"`
 	SetTenantRootURL       *sqlx.Stmt `query:"operator-set-tenant-root-url"`
+	SetTenantCustomDomain  *sqlx.Stmt `query:"operator-set-tenant-custom-domain"`
 	SetTenantSMTP          *sqlx.Stmt `query:"operator-set-tenant-smtp"`
 	GetTenant              *sqlx.Stmt `query:"operator-get-tenant"`
 	GetTenants             *sqlx.Stmt `query:"operator-get-tenants"`
@@ -184,6 +185,45 @@ func (s *operatorStore) UpdateTenantStatus(id int, status string) (models.Tenant
 		return out, err
 	}
 	return out, nil
+}
+
+// SetTenantRootURL sets a tenant's app.root_url setting -- called both by
+// CreateTenant (seeding the initial <slug>.root_domain value) and by
+// SetTenantCustomDomain (keeping it in sync with tenants.custom_domain).
+// Same upsert query either way, no RETURNING clause, so this method has no
+// result to give back beyond the error.
+func (s *operatorStore) SetTenantRootURL(id int, rootURL string) error {
+	_, err := s.q.SetTenantRootURL.Exec(id, rootURL)
+	return err
+}
+
+// SetTenantCustomDomain sets (customDomain != "") or clears (customDomain
+// == "") tenants.custom_domain -- the exact Host internal/tenant.Middleware
+// will now also accept for this tenant, alongside <slug>.root_domain -- and
+// updates app.root_url to rootURL in the same transaction, so the two
+// never drift apart (see UpdateOperatorTenantCustomDomain, the caller,
+// for what rootURL should be in each case).
+func (s *operatorStore) SetTenantCustomDomain(id int, customDomain, rootURL string) (models.Tenant, error) {
+	tx, err := s.db.Beginx()
+	if err != nil {
+		return models.Tenant{}, err
+	}
+	defer tx.Rollback()
+
+	var domain sql.NullString
+	if customDomain != "" {
+		domain = sql.NullString{String: customDomain, Valid: true}
+	}
+
+	var out models.Tenant
+	if err := tx.Stmtx(s.q.SetTenantCustomDomain).Get(&out, id, domain); err != nil {
+		return models.Tenant{}, err
+	}
+	if _, err := tx.Stmtx(s.q.SetTenantRootURL).Exec(id, rootURL); err != nil {
+		return models.Tenant{}, err
+	}
+
+	return out, tx.Commit()
 }
 
 // DeleteTenant permanently deletes a tenant row. Every tenant-scoped table
@@ -778,6 +818,62 @@ func (a *App) UpdateOperatorTenantStatus(c echo.Context) error {
 	if err != nil {
 		a.log.Printf("error updating tenant status: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "error updating tenant status")
+	}
+
+	return c.JSON(http.StatusOK, okResp{out})
+}
+
+type operatorSetCustomDomainReq struct {
+	// CustomDomain is the bare host (e.g. "mail.acme.com"), no scheme --
+	// empty clears it, reverting the tenant to <slug>.root_domain only.
+	CustomDomain string `json:"custom_domain"`
+}
+
+// UpdateOperatorTenantCustomDomain godoc
+//
+//	@ID			updateOperatorTenantCustomDomain
+//	@Summary		Set or clear a tenant's custom domain (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. Sets tenants.custom_domain -- the additional exact Host internal/tenant.Middleware will accept for this tenant, alongside <slug>.root_domain -- and updates app.root_url to match in the same transaction. Pass an empty custom_domain to clear it and revert root_url to <slug>.root_domain. The caller is responsible for having already verified domain ownership (e.g. via a Cloudflare Custom Hostname's DCV) before calling this; listmonk does no verification of its own.
+//	@Tags			operator
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id				path	int							true	"Tenant ID"
+//	@Param			custom_domain	body	operatorSetCustomDomainReq	true	"Custom domain to set, or empty to clear"
+//	@Success		200	{object}	okResp
+//	@Failure		400	{object}	echo.HTTPError
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError	"Tenant not found"
+//	@Failure		409	{object}	echo.HTTPError	"This custom domain is already in use by another tenant"
+//	@Router			/api/operator/tenants/{id}/custom-domain [put]
+func (a *App) UpdateOperatorTenantCustomDomain(c echo.Context) error {
+	id := getID(c)
+
+	t, err := a.operator.GetTenant(id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "tenant not found")
+	}
+
+	var req operatorSetCustomDomainReq
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+
+	rootURL := a.tenantRootURL(t.Slug)
+	if req.CustomDomain != "" {
+		if strings.ContainsAny(req.CustomDomain, "/:") {
+			return echo.NewHTTPError(http.StatusBadRequest, "custom_domain must be a bare host, no scheme or path")
+		}
+		rootURL = "https://" + req.CustomDomain
+	}
+
+	out, err := a.operator.SetTenantCustomDomain(id, req.CustomDomain, rootURL)
+	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Constraint == "tenants_custom_domain_key" {
+			return echo.NewHTTPError(http.StatusConflict, "this custom domain is already in use by another tenant")
+		}
+		a.log.Printf("error updating tenant custom domain: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error updating tenant custom domain")
 	}
 
 	return c.JSON(http.StatusOK, okResp{out})

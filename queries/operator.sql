@@ -58,6 +58,14 @@ ON CONFLICT (tenant_id, key) DO NOTHING;
 INSERT INTO settings (tenant_id, key, value) VALUES ($1, 'app.root_url', to_jsonb($2::TEXT))
 ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value;
 
+-- name: operator-set-tenant-custom-domain
+-- $2 is nullable - clears the custom domain (reverting to <slug>.root_domain
+-- resolution only) when unset. Paired transactionally with
+-- operator-set-tenant-root-url by the Go caller (UpdateOperatorTenantCustomDomain)
+-- so tenants.custom_domain (what internal/tenant.Middleware resolves by)
+-- and app.root_url (what listmonk generates links with) never drift apart.
+UPDATE tenants SET custom_domain = $2, updated_at = NOW() WHERE id = $1 RETURNING *;
+
 -- name: operator-set-tenant-smtp
 -- Replaces the tenant's smtp setting (copied as tenant 1's placeholder
 -- example entries by operator-seed-tenant-settings) with a real entry

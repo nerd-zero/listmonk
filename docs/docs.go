@@ -2321,6 +2321,77 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/operator/tenants/{id}/custom-domain": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. Sets tenants.custom_domain -- the additional exact Host internal/tenant.Middleware will accept for this tenant, alongside \u003cslug\u003e.root_domain -- and updates app.root_url to match in the same transaction. Pass an empty custom_domain to clear it and revert root_url to \u003cslug\u003e.root_domain. The caller is responsible for having already verified domain ownership (e.g. via a Cloudflare Custom Hostname's DCV) before calling this; listmonk does no verification of its own.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "operator"
+                ],
+                "summary": "Set or clear a tenant's custom domain (Operator API)",
+                "operationId": "updateOperatorTenantCustomDomain",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Custom domain to set, or empty to clear",
+                        "name": "custom_domain",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/cmd.operatorSetCustomDomainReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/cmd.okResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Tenant not found",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    },
+                    "409": {
+                        "description": "This custom domain is already in use by another tenant",
+                        "schema": {
+                            "$ref": "#/definitions/echo.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/operator/tenants/{id}/setup-link": {
             "post": {
                 "security": [
@@ -5408,6 +5479,9 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "custom_domain": {
+                    "$ref": "#/definitions/null.String"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -6469,6 +6543,15 @@ const docTemplate = `{
                 "data": {}
             }
         },
+        "cmd.operatorSetCustomDomainReq": {
+            "type": "object",
+            "properties": {
+                "custom_domain": {
+                    "description": "CustomDomain is the bare host (e.g. \"mail.acme.com\"), no scheme --\nempty clears it, reverting the tenant to \u003cslug\u003e.root_domain only.",
+                    "type": "string"
+                }
+            }
+        },
         "echo.HTTPError": {
             "type": "object",
             "properties": {
@@ -6480,6 +6563,9 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string"
+                },
+                "custom_domain": {
+                    "$ref": "#/definitions/null.String"
                 },
                 "id": {
                     "type": "integer"

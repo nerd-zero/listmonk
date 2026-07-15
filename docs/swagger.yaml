@@ -523,6 +523,8 @@ definitions:
     properties:
       created_at:
         type: string
+      custom_domain:
+        $ref: '#/definitions/null.String'
       id:
         type: integer
       name:
@@ -1225,6 +1227,14 @@ definitions:
     properties:
       data: {}
     type: object
+  cmd.operatorSetCustomDomainReq:
+    properties:
+      custom_domain:
+        description: |-
+          CustomDomain is the bare host (e.g. "mail.acme.com"), no scheme --
+          empty clears it, reverting the tenant to <slug>.root_domain only.
+        type: string
+    type: object
   echo.HTTPError:
     properties:
       message: {}
@@ -1233,6 +1243,8 @@ definitions:
     properties:
       created_at:
         type: string
+      custom_domain:
+        $ref: '#/definitions/null.String'
       id:
         type: integer
       name:
@@ -2800,6 +2812,59 @@ paths:
       security:
       - BearerAuth: []
       summary: Get a tenant (Operator API)
+      tags:
+      - operator
+  /api/operator/tenants/{id}/custom-domain:
+    put:
+      consumes:
+      - application/json
+      description: Fork-only, off by default (see [operator] config). Requires the
+        Operator API bearer token. Sets tenants.custom_domain -- the additional exact
+        Host internal/tenant.Middleware will accept for this tenant, alongside <slug>.root_domain
+        -- and updates app.root_url to match in the same transaction. Pass an empty
+        custom_domain to clear it and revert root_url to <slug>.root_domain. The caller
+        is responsible for having already verified domain ownership (e.g. via a Cloudflare
+        Custom Hostname's DCV) before calling this; listmonk does no verification
+        of its own.
+      operationId: updateOperatorTenantCustomDomain
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Custom domain to set, or empty to clear
+        in: body
+        name: custom_domain
+        required: true
+        schema:
+          $ref: '#/definitions/cmd.operatorSetCustomDomainReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/cmd.okResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Tenant not found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "409":
+          description: This custom domain is already in use by another tenant
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Set or clear a tenant's custom domain (Operator API)
       tags:
       - operator
   /api/operator/tenants/{id}/setup-link:

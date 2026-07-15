@@ -39,6 +39,7 @@ CREATE TABLE tenants (
     slug            TEXT NOT NULL UNIQUE,
     name            TEXT NOT NULL,
     status          tenant_status NOT NULL DEFAULT 'active',
+    custom_domain   TEXT UNIQUE,
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

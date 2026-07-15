@@ -139,6 +139,7 @@ type Queries struct {
 	DeleteListPermission  *sqlx.Stmt `query:"delete-list-permission"`
 
 	GetTenantBySlug           *sqlx.Stmt `query:"get-tenant-by-slug"`
+	GetTenantByCustomDomain   *sqlx.Stmt `query:"get-tenant-by-custom-domain"`
 	GetActiveTenantIDs        *sqlx.Stmt `query:"get-active-tenant-ids"`
 	GetTenantOrganizationName *sqlx.Stmt `query:"get-tenant-organization-name"`
 }

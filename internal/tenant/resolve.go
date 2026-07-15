@@ -35,9 +35,10 @@ const operatorPathPrefix = "/api/operator/"
 // Middleware resolves the tenant for a request and stores it on the echo
 // context under models.TenantCtxKey. When enabled is false it always
 // resolves to the seeded default tenant without touching the database.
-// When enabled, it requires the request's Host header to carry a
-// subdomain of rootDomain (`<slug>.rootDomain`) identifying an active
-// tenant, or the request is rejected.
+// When enabled, the request's Host header must either carry a subdomain
+// of rootDomain (`<slug>.rootDomain`) or exactly match a tenant's
+// tenants.custom_domain, identifying an active tenant, or the request is
+// rejected.
 func Middleware(core *core.Core, rootDomain string, enabled bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -51,12 +52,7 @@ func Middleware(core *core.Core, rootDomain string, enabled bool) echo.Middlewar
 				host = h
 			}
 
-			slug := strings.TrimSuffix(host, "."+rootDomain)
-			if slug == host || slug == "" {
-				return echo.NewHTTPError(http.StatusNotFound)
-			}
-
-			t, err := core.GetTenantBySlug(slug)
+			t, err := resolveTenant(core, host, rootDomain)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusNotFound)
 			}
@@ -68,4 +64,20 @@ func Middleware(core *core.Core, rootDomain string, enabled bool) echo.Middlewar
 			return next(c)
 		}
 	}
+}
+
+// resolveTenant tries subdomain stripping first (<slug>.rootDomain) - the
+// original, still-default resolution path, and the common case for every
+// request that isn't under a custom domain - falling back to an exact
+// Host match against tenants.custom_domain only when the Host doesn't fit
+// the subdomain pattern at all. This ordering means a normal
+// <slug>.rootDomain request costs exactly the one DB lookup it always
+// has; the second lookup only ever runs for a custom-domain request,
+// which previously 404'd here unconditionally.
+func resolveTenant(core *core.Core, host, rootDomain string) (models.Tenant, error) {
+	slug := strings.TrimSuffix(host, "."+rootDomain)
+	if slug != host && slug != "" {
+		return core.GetTenantBySlug(slug)
+	}
+	return core.GetTenantByCustomDomain(host)
 }
