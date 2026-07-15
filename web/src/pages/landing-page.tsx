@@ -16,7 +16,7 @@ const PIPELINE_STEPS = [
     index: "01",
     title: "A workspace is created",
     body: "Your own org, ready the moment you sign in — nothing to name or configure first.",
-    tag: "orgs.create",
+    tag: "status: created",
   },
   {
     index: "02",
@@ -150,7 +150,7 @@ export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={onSignIn}>
-                Continue with SSO
+                Sign in
               </Button>
               <a
                 href="#pipeline"
@@ -204,7 +204,7 @@ export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
           <div className="mx-auto w-full max-w-6xl px-6 py-16 md:py-24">
             <SectionEyebrow>Why not just use one shared instance</SectionEyebrow>
             <h2 className="mt-3 max-w-xl font-mono text-2xl font-semibold tracking-tight sm:text-3xl">
-              Everything a sender needs, minus the ops
+              Nothing shared but the codebase
             </h2>
 
             <div className="mt-10 grid gap-6 sm:grid-cols-2">
