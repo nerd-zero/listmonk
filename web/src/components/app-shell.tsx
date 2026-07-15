@@ -7,22 +7,20 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/lib/permissions";
 
 const NAV_ITEMS = [
   { to: "/", label: "Instances", icon: Boxes, end: true },
   { to: "/members", label: "Members", icon: Users, end: false },
 ];
 
-// Always shown -- there's no client-side way to know is_super_admin (no
-// /me endpoint yet), so a non-admin just gets a 403 from the page itself
-// (see AdminInstancesPage's isError state) rather than the link being
-// hidden from them.
 const PLATFORM_NAV_ITEMS = [
   { to: "/admin/instances", label: "All instances", icon: Shield, end: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const { isSuperAdmin } = usePermissions();
   const email = auth.user?.profile.email ?? "";
   const initial = email.charAt(0).toUpperCase() || "?";
 
@@ -64,27 +62,31 @@ export function AppShell({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
 
-          <span className="mt-3 mb-1 px-2 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-            Platform
-          </span>
-          {PLATFORM_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                )
-              }
-            >
-              <Icon className="size-4" />
-              {label}
-            </NavLink>
-          ))}
+          {isSuperAdmin && (
+            <>
+              <span className="mt-3 mb-1 px-2 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+                Platform
+              </span>
+              {PLATFORM_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                    )
+                  }
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </>
+          )}
         </nav>
 
         <Separator className="bg-sidebar-border" />

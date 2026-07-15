@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useGetV1Orgs } from "@/api/generated/endpoints/orgs/orgs";
-import type { DbOrg, OrgListResponse } from "@/api/generated/model";
+import type { DbListOrgsByUserRow, OrgListResponse } from "@/api/generated/model";
 import { unwrap } from "@/api/unwrap";
 
 const SELECTED_ORG_STORAGE_KEY = "listnun.selectedOrgId";
@@ -13,10 +13,10 @@ const SELECTED_ORG_STORAGE_KEY = "listnun.selectedOrgId";
 // (internal/provisioning's AdminListOrgs/AdminSetTenantStatus) and never
 // exposed here.
 interface OrgContextValue {
-  orgs: DbOrg[];
+  orgs: DbListOrgsByUserRow[];
   isLoading: boolean;
   selectedOrgId: string | undefined;
-  selectedOrg: DbOrg | undefined;
+  selectedOrg: DbListOrgsByUserRow | undefined;
   setSelectedOrgId: (orgId: string) => void;
 }
 

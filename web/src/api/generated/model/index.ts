@@ -14,6 +14,7 @@ export * from './dbInstance';
 export * from './dbListAllInstancesWithOrgNameRow';
 export * from './dbListAllOrgsWithInstanceCountRow';
 export * from './dbListOrgMembersWithUserRow';
+export * from './dbListOrgsByUserRow';
 export * from './dbOrg';
 export * from './dbProvisioningJob';
 export * from './dbSenderIdentity';
