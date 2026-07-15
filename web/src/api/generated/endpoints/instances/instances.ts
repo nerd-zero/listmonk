@@ -235,7 +235,7 @@ export const getPostV1OrgsOrgIDInstancesUrl = (orgID: string,) => {
 }
 
 /**
- * Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section).
+ * Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section). include_postmark defaults to true if omitted.
  * @summary Create an instance
  */
 export const postV1OrgsOrgIDInstances = async (orgID: string,
