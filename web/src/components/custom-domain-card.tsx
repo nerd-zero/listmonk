@@ -150,8 +150,9 @@ function CustomDomainStatus({
 
       {active ? (
         <p className="text-xs text-muted-foreground">
-          This workspace is reachable at {domain.domain} — its assigned{" "}
-          subdomain keeps working too.
+          {domain.domain} is pointed at this workspace — its assigned
+          subdomain keeps working too. Secure (HTTPS) access on this domain
+          isn't turned on yet.
         </p>
       ) : detail.dns_records && detail.dns_records.length > 0 ? (
         <div className="flex flex-col gap-3">

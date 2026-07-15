@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -982,14 +983,20 @@ var ErrCustomDomainTaken = errors.New("this domain is already in use by another 
 var ErrCustomDomainNotFound = errors.New("this instance has no custom domain yet")
 
 // AddCustomDomain registers instance to be reachable at domain (e.g.
-// mail.acme.com) instead of only {slug}.{root_domain}: a Cloudflare
-// Custom Hostname is created for it, and the CNAME (-> cf.FallbackOrigin
-// -- the org's own DNS doesn't need to be on Cloudflare, a CNAME works
-// the same regardless of registrar) plus Cloudflare's
-// ownership-verification TXT are stored as dns_records for the org to
-// publish. The tenant's app.root_url isn't updated yet -- that happens
-// once GetCustomDomain notices Cloudflare has finished validating and
-// issued a cert, same re-check-on-read pattern as GetSenderIdentity.
+// mail.acme.com) instead of only {slug}.{root_domain}: stores the CNAME
+// record the org needs to publish (-> cf.FallbackOrigin -- the org's own
+// DNS doesn't need to be on Cloudflare, a CNAME works the same regardless
+// of registrar).
+//
+// INTERIM MODE: Cloudflare's Custom Hostnames API (cf.Client) is not
+// called here right now -- "SSL for SaaS" isn't yet enabled on our zone
+// (see docs/custom-domains.md), so this only verifies the CNAME itself;
+// no TLS certificate is issued and a custom domain is not yet served over
+// HTTPS. GetCustomDomain's re-check-on-read confirms the CNAME resolves
+// via plain DNS instead of asking Cloudflare. Re-wiring cf.Client back in
+// here (CreateCustomHostname, same as before) is tracked as follow-up
+// work for once SSL for SaaS is turned on -- nothing else about this
+// method's shape needs to change to add it back.
 func (s *Service) AddCustomDomain(ctx context.Context, orgID, instanceID uuid.UUID, domain string) (db.CustomDomain, []db.DnsRecord, error) {
 	if s.cf == nil {
 		return db.CustomDomain{}, nil, ErrCloudflareNotConfigured
@@ -1002,22 +1009,16 @@ func (s *Service) AddCustomDomain(ctx context.Context, orgID, instanceID uuid.UU
 		return db.CustomDomain{}, nil, err
 	}
 
-	hostname, err := s.cf.Client.CreateCustomHostname(ctx, domain)
-	if err != nil {
-		return db.CustomDomain{}, nil, fmt.Errorf("create cloudflare custom hostname: %w", err)
-	}
-
 	cd, err := s.q.CreateCustomDomain(ctx, db.CreateCustomDomainParams{
 		ID:                   pgUUID(uuid.New()),
 		InstanceID:           inst.ID,
 		Domain:               domain,
-		CloudflareHostnameID: hostname.ID,
+		CloudflareHostnameID: "",
 	})
 	if err != nil {
 		return db.CustomDomain{}, nil, mapCustomDomainConstraint(err)
 	}
 
-	var records []db.DnsRecord
 	cname, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
 		ID:         pgUUID(uuid.New()),
 		InstanceID: inst.ID,
@@ -1028,23 +1029,8 @@ func (s *Service) AddCustomDomain(ctx context.Context, orgID, instanceID uuid.UU
 	if err != nil {
 		return cd, nil, fmt.Errorf("store cname record: %w", err)
 	}
-	records = append(records, cname)
 
-	if hostname.OwnershipVerification.Name != "" {
-		ownership, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
-			ID:         pgUUID(uuid.New()),
-			InstanceID: inst.ID,
-			RecordType: "custom_domain_ownership",
-			Host:       hostname.OwnershipVerification.Name,
-			Value:      hostname.OwnershipVerification.Value,
-		})
-		if err != nil {
-			return cd, records, fmt.Errorf("store ownership record: %w", err)
-		}
-		records = append(records, ownership)
-	}
-
-	return cd, records, nil
+	return cd, []db.DnsRecord{cname}, nil
 }
 
 // GetCustomDomain returns instance's custom domain, if any, plus the DNS
@@ -1062,15 +1048,16 @@ func (s *Service) GetCustomDomain(ctx context.Context, orgID, instanceID uuid.UU
 		return db.CustomDomain{}, nil, fmt.Errorf("get custom domain: %w", err)
 	}
 
-	// Cloudflare doesn't push a webhook when a Custom Hostname's cert
-	// finishes issuing -- it's only ever discoverable by asking. So every
-	// fetch of a still-pending domain checks Cloudflare live and, if it's
-	// now active, both persists that and flips the tenant's app.root_url
-	// via the listmonk fork's operator API (docs/custom-domains.md step
-	// 5). A failed check here isn't fatal to the read -- the org just
+	// INTERIM MODE (see AddCustomDomain's doc comment): every fetch of a
+	// still-pending domain re-checks the org's CNAME live via plain DNS
+	// and, if it now resolves to our fallback origin, both persists that
+	// and flips the tenant's app.root_url via the listmonk fork's
+	// operator API (docs/custom-domains.md step 5). No certificate check
+	// happens here -- this only proves routing works, not HTTPS. A
+	// failed/unresolved lookup isn't fatal to the read -- the org just
 	// sees "pending" a little longer.
 	if cd.Status == "pending" && s.cf != nil {
-		if refreshed, ok := s.refreshCustomDomainStatus(ctx, inst, cd); ok {
+		if refreshed, ok := s.refreshCustomDomainCNAME(ctx, inst, cd); ok {
 			cd = refreshed
 		}
 	}
@@ -1085,14 +1072,19 @@ func (s *Service) GetCustomDomain(ctx context.Context, orgID, instanceID uuid.UU
 	return cd, records, nil
 }
 
-// refreshCustomDomainStatus asks Cloudflare whether cd's Custom Hostname
-// has finished domain control validation and issued + deployed a cert
-// yet. ok is false whenever nothing changed -- either it's still
-// pending, the check itself failed, or the tenant has no listmonk
-// tenant ID yet -- so the caller can just keep using cd as-is.
-func (s *Service) refreshCustomDomainStatus(ctx context.Context, inst db.Instance, cd db.CustomDomain) (db.CustomDomain, bool) {
-	hostname, err := s.cf.Client.GetCustomHostname(ctx, cd.CloudflareHostnameID)
-	if err != nil || !hostname.IsActive() {
+// refreshCustomDomainCNAME checks whether cd.Domain's CNAME record
+// resolves to our fallback origin yet -- the interim stand-in for
+// Cloudflare's own domain-control validation while SSL for SaaS isn't
+// enabled (see AddCustomDomain's doc comment). ok is false whenever
+// nothing changed: no CNAME published yet, it points somewhere else, the
+// lookup itself failed (transient DNS issues aren't fatal to the read),
+// or the tenant has no listmonk tenant ID yet.
+func (s *Service) refreshCustomDomainCNAME(ctx context.Context, inst db.Instance, cd db.CustomDomain) (db.CustomDomain, bool) {
+	target, err := net.LookupCNAME(cd.Domain)
+	if err != nil {
+		return cd, false
+	}
+	if !strings.EqualFold(strings.TrimSuffix(target, "."), strings.TrimSuffix(s.cf.FallbackOrigin, ".")) {
 		return cd, false
 	}
 	if inst.ListmonkTenantID == nil {
@@ -1111,10 +1103,11 @@ func (s *Service) refreshCustomDomainStatus(ctx context.Context, inst db.Instanc
 
 // DeleteCustomDomain removes instance's custom domain: reverts the
 // tenant's app.root_url to {slug}.{root_domain} first, then deletes the
-// Cloudflare Custom Hostname and the locally stored DNS records --
-// mirroring docs/custom-domains.md's "reverses steps 5 and 2" removal
-// order, so a request never resolves as the custom domain to a tenant
-// that's mid-teardown.
+// Cloudflare Custom Hostname (if one was ever created -- see
+// AddCustomDomain's interim-mode doc comment, none is right now) and the
+// locally stored DNS records -- mirroring docs/custom-domains.md's
+// "reverses steps 5 and 2" removal order, so a request never resolves as
+// the custom domain to a tenant that's mid-teardown.
 func (s *Service) DeleteCustomDomain(ctx context.Context, orgID, instanceID uuid.UUID) error {
 	inst, err := s.GetInstance(ctx, orgID, instanceID)
 	if err != nil {
@@ -1138,8 +1131,10 @@ func (s *Service) DeleteCustomDomain(ctx context.Context, orgID, instanceID uuid
 		}
 	}
 
-	if err := s.cf.Client.DeleteCustomHostname(ctx, cd.CloudflareHostnameID); err != nil && !cloudflareclient.IsNotFound(err) {
-		return fmt.Errorf("delete cloudflare custom hostname: %w", err)
+	if cd.CloudflareHostnameID != "" && s.cf.Client != nil {
+		if err := s.cf.Client.DeleteCustomHostname(ctx, cd.CloudflareHostnameID); err != nil && !cloudflareclient.IsNotFound(err) {
+			return fmt.Errorf("delete cloudflare custom hostname: %w", err)
+		}
 	}
 
 	if err := s.q.DeleteDNSRecordsByInstanceAndTypes(ctx, db.DeleteDNSRecordsByInstanceAndTypesParams{
@@ -1302,8 +1297,10 @@ func (s *Service) deleteInstanceFor(ctx context.Context, inst db.Instance) error
 		cd, err := s.q.GetCustomDomainByInstanceID(ctx, inst.ID)
 		switch {
 		case err == nil:
-			if err := s.cf.Client.DeleteCustomHostname(ctx, cd.CloudflareHostnameID); err != nil && !cloudflareclient.IsNotFound(err) {
-				return fmt.Errorf("delete cloudflare custom hostname: %w", err)
+			if cd.CloudflareHostnameID != "" && s.cf.Client != nil {
+				if err := s.cf.Client.DeleteCustomHostname(ctx, cd.CloudflareHostnameID); err != nil && !cloudflareclient.IsNotFound(err) {
+					return fmt.Errorf("delete cloudflare custom hostname: %w", err)
+				}
 			}
 		case errors.Is(err, pgx.ErrNoRows):
 			// No custom domain -- nothing to clean up.

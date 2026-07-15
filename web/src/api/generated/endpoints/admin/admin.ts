@@ -364,7 +364,7 @@ export const getDeleteV1AdminInstancesInstanceIDUrl = (instanceID: string,) => {
 }
 
 /**
- * Super-admin only. Permanently deletes the instance's Postmark server, its listmonk tenant (cascading into all of the tenant's own data), and the local record. Irreversible.
+ * Super-admin only. Permanently deletes the instance's Postmark server, its Cloudflare custom domain (if any), its listmonk tenant (cascading into all of the tenant's own data), and the local record. Irreversible.
  * @summary Delete an instance (super admin)
  */
 export const deleteV1AdminInstancesInstanceID = async (instanceID: string, options?: RequestInit): Promise<deleteV1AdminInstancesInstanceIDResponse> => {
