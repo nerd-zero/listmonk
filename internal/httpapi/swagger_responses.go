@@ -23,7 +23,7 @@ type healthResponse struct {
 } // @name HealthResponse
 
 type orgListResponse struct {
-	Data []db.Org `json:"data"`
+	Data []db.ListOrgsByUserRow `json:"data"`
 } // @name OrgListResponse
 
 type orgResponse struct {

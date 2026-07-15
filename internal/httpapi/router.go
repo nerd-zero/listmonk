@@ -32,6 +32,8 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(a.authMiddleware)
 
+		r.Get("/me", a.getMe)
+
 		r.Route("/orgs", func(r chi.Router) {
 			r.Get("/", a.listOrgs)
 			r.Post("/", a.createOrg)

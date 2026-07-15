@@ -215,7 +215,7 @@ func (s *Service) CreateOrg(ctx context.Context, ownerUserID uuid.UUID, name str
 	return org, nil
 }
 
-func (s *Service) ListOrgsForUser(ctx context.Context, userID uuid.UUID) ([]db.Org, error) {
+func (s *Service) ListOrgsForUser(ctx context.Context, userID uuid.UUID) ([]db.ListOrgsByUserRow, error) {
 	return s.q.ListOrgsByUser(ctx, pgUUID(userID))
 }
 

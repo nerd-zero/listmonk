@@ -55,7 +55,7 @@ definitions:
     properties:
       data:
         items:
-          $ref: '#/definitions/db.Org'
+          $ref: '#/definitions/db.ListOrgsByUserRow'
         type: array
     type: object
   OrgResponse:
@@ -197,6 +197,21 @@ definitions:
       id:
         type: string
       role:
+        type: string
+    type: object
+  db.ListOrgsByUserRow:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      listmonk_organization_id:
+        type: integer
+      name:
+        type: string
+      role:
+        type: string
+      updated_at:
         type: string
     type: object
   db.Org:
@@ -612,6 +627,27 @@ paths:
       summary: List every org on the platform
       tags:
       - admin
+  /v1/me:
+    get:
+      description: Includes is_super_admin -- the only client-side way to know whether
+        to show admin-only UI (there's no separate permissions endpoint; this is the
+        single source of truth the frontend's permissions.tsx reads from).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: The caller's own user record
+      tags:
+      - users
   /v1/orgs:
     get:
       produces:

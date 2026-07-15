@@ -57,27 +57,40 @@ func (q *Queries) GetOrgByID(ctx context.Context, id pgtype.UUID) (Org, error) {
 }
 
 const listOrgsByUser = `-- name: ListOrgsByUser :many
-SELECT orgs.id, orgs.name, orgs.listmonk_organization_id, orgs.created_at, orgs.updated_at FROM orgs
+SELECT orgs.id, orgs.name, orgs.listmonk_organization_id, orgs.created_at, orgs.updated_at, org_members.role FROM orgs
 JOIN org_members ON org_members.org_id = orgs.id
 WHERE org_members.user_id = $1
 ORDER BY orgs.created_at
 `
 
-func (q *Queries) ListOrgsByUser(ctx context.Context, userID pgtype.UUID) ([]Org, error) {
+type ListOrgsByUserRow struct {
+	ID                     pgtype.UUID        `json:"id"`
+	Name                   string             `json:"name"`
+	ListmonkOrganizationID *int32             `json:"listmonk_organization_id"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
+	Role                   string             `json:"role"`
+}
+
+// org_members.role is the caller's own role in each org -- lets the
+// frontend gate owner-only actions (e.g. inviting members) without a
+// second round trip per org.
+func (q *Queries) ListOrgsByUser(ctx context.Context, userID pgtype.UUID) ([]ListOrgsByUserRow, error) {
 	rows, err := q.db.Query(ctx, listOrgsByUser, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Org{}
+	items := []ListOrgsByUserRow{}
 	for rows.Next() {
-		var i Org
+		var i ListOrgsByUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.ListmonkOrganizationID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}

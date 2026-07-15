@@ -27,6 +27,21 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
+// getMe godoc
+//
+//	@Summary	The caller's own user record
+//	@Description	Includes is_super_admin -- the only client-side way to know whether to show admin-only UI (there's no separate permissions endpoint; this is the single source of truth the frontend's permissions.tsx reads from).
+//	@Tags		users
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Success	200	{object}	userResponse
+//	@Failure	401	{object}	errorResponse
+//	@Router		/v1/me [get]
+func (a *API) getMe(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFromContext(r.Context())
+	writeJSON(w, http.StatusOK, user)
+}
+
 // --- orgs -------------------------------------------------------------
 
 // listOrgs godoc
