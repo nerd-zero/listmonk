@@ -223,6 +223,16 @@ func (c *Client) SetTenantSMTP(ctx context.Context, tenantID int, entry SMTPEntr
 	return err
 }
 
+// SetTenantCustomDomain sets or clears a tenant's custom domain (empty
+// string clears it), matching the fork's
+// PUT /api/operator/tenants/{id}/custom-domain -- the fork updates
+// app.root_url to match in the same transaction, reverting to
+// <slug>.root_domain when cleared. See docs/custom-domains.md.
+func (c *Client) SetTenantCustomDomain(ctx context.Context, tenantID int, customDomain string) (Tenant, error) {
+	path := "/api/operator/tenants/" + strconv.Itoa(tenantID) + "/custom-domain"
+	return doJSON[Tenant](ctx, c, http.MethodPut, path, map[string]string{"custom_domain": customDomain})
+}
+
 // envelope mirrors the fork's okResp{data} wrapper (cmd's shared response
 // helper) that every successful Operator API response is nested under.
 type envelope[T any] struct {

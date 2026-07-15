@@ -46,21 +46,37 @@ func (q *Queries) CreateDNSRecord(ctx context.Context, arg CreateDNSRecordParams
 	return i, err
 }
 
-const deleteDNSRecordsByInstance = `-- name: DeleteDNSRecordsByInstance :exec
-DELETE FROM dns_records WHERE instance_id = $1
+const deleteDNSRecordsByInstanceAndTypes = `-- name: DeleteDNSRecordsByInstanceAndTypes :exec
+DELETE FROM dns_records
+WHERE instance_id = $1 AND record_type = ANY($2::text[])
 `
 
-func (q *Queries) DeleteDNSRecordsByInstance(ctx context.Context, instanceID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteDNSRecordsByInstance, instanceID)
+type DeleteDNSRecordsByInstanceAndTypesParams struct {
+	InstanceID  pgtype.UUID `json:"instance_id"`
+	RecordTypes []string    `json:"record_types"`
+}
+
+func (q *Queries) DeleteDNSRecordsByInstanceAndTypes(ctx context.Context, arg DeleteDNSRecordsByInstanceAndTypesParams) error {
+	_, err := q.db.Exec(ctx, deleteDNSRecordsByInstanceAndTypes, arg.InstanceID, arg.RecordTypes)
 	return err
 }
 
-const listDNSRecordsByInstance = `-- name: ListDNSRecordsByInstance :many
-SELECT id, instance_id, record_type, host, value, verified, created_at FROM dns_records WHERE instance_id = $1 ORDER BY created_at
+const listDNSRecordsByInstanceAndTypes = `-- name: ListDNSRecordsByInstanceAndTypes :many
+SELECT id, instance_id, record_type, host, value, verified, created_at FROM dns_records
+WHERE instance_id = $1 AND record_type = ANY($2::text[])
+ORDER BY created_at
 `
 
-func (q *Queries) ListDNSRecordsByInstance(ctx context.Context, instanceID pgtype.UUID) ([]DnsRecord, error) {
-	rows, err := q.db.Query(ctx, listDNSRecordsByInstance, instanceID)
+type ListDNSRecordsByInstanceAndTypesParams struct {
+	InstanceID  pgtype.UUID `json:"instance_id"`
+	RecordTypes []string    `json:"record_types"`
+}
+
+// record_types filters to the caller's own concern -- sender identities
+// and custom domains share this table (see docs/custom-domains.md) but
+// must never see each other's records.
+func (q *Queries) ListDNSRecordsByInstanceAndTypes(ctx context.Context, arg ListDNSRecordsByInstanceAndTypesParams) ([]DnsRecord, error) {
+	rows, err := q.db.Query(ctx, listDNSRecordsByInstanceAndTypes, arg.InstanceID, arg.RecordTypes)
 	if err != nil {
 		return nil, err
 	}

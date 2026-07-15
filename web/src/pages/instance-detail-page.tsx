@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { InstanceStatusBadge } from "@/components/instance-status-badge";
 import { SenderIdentityCard } from "@/components/sender-identity-card";
 import { PostmarkServerCard } from "@/components/postmark-server-card";
+import { CustomDomainCard } from "@/components/custom-domain-card";
 import { useOrgContext } from "@/lib/org-context";
 import { copyToClipboard } from "@/lib/utils";
 import { unwrap } from "@/api/unwrap";
 import {
+  useDeleteV1OrgsOrgIDInstancesInstanceID,
   useGetV1OrgsOrgIDInstancesInstanceID,
   useGetV1OrgsOrgIDInstancesInstanceIDEvents,
   usePostV1OrgsOrgIDInstancesInstanceIDSetupLink,
@@ -60,7 +72,9 @@ export function InstanceDetailPage() {
   const { instanceId = "" } = useParams<{ instanceId: string }>();
   const { selectedOrg, isLoading: orgLoading } = useOrgContext();
   const orgId = selectedOrg?.id ?? "";
+  const navigate = useNavigate();
   const [resentSetupUrl, setResentSetupUrl] = useState<string>();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const instanceQuery = useGetV1OrgsOrgIDInstancesInstanceID(orgId, instanceId, {
     query: { enabled: !!orgId && !!instanceId },
@@ -80,6 +94,19 @@ export function InstanceDetailPage() {
       },
       onError: (error) => {
         toast.error(error.error ?? "Couldn't reissue the setup link");
+      },
+    },
+  });
+
+  const deleteInstance = useDeleteV1OrgsOrgIDInstancesInstanceID({
+    mutation: {
+      onSuccess: () => {
+        toast.success("Instance deleted");
+        navigate("/");
+      },
+      onError: (error) => {
+        toast.error(error.error ?? "Couldn't delete this instance");
+        setDeleteConfirmOpen(false);
       },
     },
   });
@@ -177,6 +204,8 @@ export function InstanceDetailPage() {
 
       <PostmarkServerCard orgId={orgId} instanceId={instanceId} />
 
+      <CustomDomainCard orgId={orgId} instanceId={instanceId} />
+
       <div>
         <h2 className="mb-2 text-sm font-semibold">Provisioning timeline</h2>
         {eventsQuery.isLoading ? (
@@ -226,6 +255,55 @@ export function InstanceDetailPage() {
           </Table>
         )}
       </div>
+
+      <div className="rounded-md border border-destructive/30 p-4">
+        <h2 className="mb-1 text-sm font-semibold text-destructive">
+          Danger zone
+        </h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Permanently deletes this instance: its Postmark server, its custom
+          domain, its listmonk tenant (subscribers, campaigns, users,
+          settings — everything), and its record here. This cannot be
+          undone.
+        </p>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setDeleteConfirmOpen(true)}
+        >
+          Delete instance
+        </Button>
+      </div>
+
+      <AlertDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {instance.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the instance's Postmark server, its
+              custom domain, its listmonk tenant (subscribers, campaigns,
+              users, settings — everything), and its record here. This
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteInstance.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteInstance.isPending}
+              onClick={() =>
+                deleteInstance.mutate({ orgID: orgId, instanceID: instanceId })
+              }
+            >
+              {deleteInstance.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

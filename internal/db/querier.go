@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	AddOrgMember(ctx context.Context, arg AddOrgMemberParams) (OrgMember, error)
+	CreateCustomDomain(ctx context.Context, arg CreateCustomDomainParams) (CustomDomain, error)
 	CreateDNSRecord(ctx context.Context, arg CreateDNSRecordParams) (DnsRecord, error)
 	CreateInstance(ctx context.Context, arg CreateInstanceParams) (Instance, error)
 	// The listmonk Organization is created first (see internal/provisioning),
@@ -24,11 +25,13 @@ type Querier interface {
 	// JIT provisioning: called the first time we see a valid Zitadel token for a
 	// subject we don't have a row for yet.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
-	DeleteDNSRecordsByInstance(ctx context.Context, instanceID pgtype.UUID) error
+	DeleteCustomDomainByInstanceID(ctx context.Context, instanceID pgtype.UUID) error
+	DeleteDNSRecordsByInstanceAndTypes(ctx context.Context, arg DeleteDNSRecordsByInstanceAndTypesParams) error
 	// Cascades to postmark_servers, dns_records, provisioning_jobs.
 	DeleteInstance(ctx context.Context, id pgtype.UUID) error
 	DeletePostmarkServerByInstanceID(ctx context.Context, instanceID pgtype.UUID) error
 	DeleteSenderIdentityByInstanceID(ctx context.Context, instanceID pgtype.UUID) error
+	GetCustomDomainByInstanceID(ctx context.Context, instanceID pgtype.UUID) (CustomDomain, error)
 	GetInstanceByID(ctx context.Context, id pgtype.UUID) (Instance, error)
 	// Ownership check baked into the query rather than done separately in
 	// application code, so a wrong instance id and a wrong org fail the same way.
@@ -48,7 +51,10 @@ type Querier interface {
 	// from orgs.sql/instances.sql since every query here intentionally skips
 	// the org-membership scoping every other query enforces.
 	ListAllOrgsWithInstanceCount(ctx context.Context) ([]ListAllOrgsWithInstanceCountRow, error)
-	ListDNSRecordsByInstance(ctx context.Context, instanceID pgtype.UUID) ([]DnsRecord, error)
+	// record_types filters to the caller's own concern -- sender identities
+	// and custom domains share this table (see docs/custom-domains.md) but
+	// must never see each other's records.
+	ListDNSRecordsByInstanceAndTypes(ctx context.Context, arg ListDNSRecordsByInstanceAndTypesParams) ([]DnsRecord, error)
 	ListInstancesByOrg(ctx context.Context, orgID pgtype.UUID) ([]Instance, error)
 	ListOrgMembers(ctx context.Context, orgID pgtype.UUID) ([]OrgMember, error)
 	// Backs the dashboard's members page: needs email/display_name, which
@@ -60,6 +66,7 @@ type Querier interface {
 	ListOrgsByUser(ctx context.Context, userID pgtype.UUID) ([]ListOrgsByUserRow, error)
 	// Backs GET /instances/{id}/events -- the provisioning timeline shown in the UI.
 	ListProvisioningJobsByInstance(ctx context.Context, instanceID pgtype.UUID) ([]ProvisioningJob, error)
+	MarkCustomDomainActive(ctx context.Context, id pgtype.UUID) (CustomDomain, error)
 	MarkDNSRecordVerified(ctx context.Context, id pgtype.UUID) (DnsRecord, error)
 	MarkSenderIdentityConfirmed(ctx context.Context, id pgtype.UUID) (SenderIdentity, error)
 	// Called once provision_listmonk_tenant succeeds: records the fork's tenant

@@ -47,6 +47,7 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 
 					r.Route("/{instanceID}", func(r chi.Router) {
 						r.Get("/", a.getInstance)
+						r.Delete("/", a.deleteInstance)
 						r.Get("/events", a.listEvents)
 						r.Post("/setup-link", a.resendSetupLink)
 						r.Get("/sender-identity", a.getSenderIdentity)
@@ -55,6 +56,9 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 						r.Get("/postmark-server", a.getPostmarkServer)
 						r.Delete("/postmark-server", a.deletePostmarkServer)
 						r.Post("/postmark-server/resync", a.resyncPostmarkServer)
+						r.Get("/custom-domain", a.getCustomDomain)
+						r.Post("/custom-domain", a.addCustomDomain)
+						r.Delete("/custom-domain", a.deleteCustomDomain)
 					})
 				})
 

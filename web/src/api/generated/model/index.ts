@@ -9,6 +9,9 @@
 export * from './adminInstanceDetailResponse';
 export * from './adminInstanceListResponse';
 export * from './adminOrgListResponse';
+export * from './customDomainDetail';
+export * from './customDomainResponse';
+export * from './dbCustomDomain';
 export * from './dbDnsRecord';
 export * from './dbInstance';
 export * from './dbListAllInstancesWithOrgNameRow';
@@ -22,6 +25,7 @@ export * from './dbUser';
 export * from './errorResponse';
 export * from './healthResponse';
 export * from './healthResponseData';
+export * from './httpapiAddCustomDomainRequest';
 export * from './httpapiAddSenderIdentityRequest';
 export * from './httpapiAdminInstanceDetail';
 export * from './httpapiAdminSetStatusRequest';

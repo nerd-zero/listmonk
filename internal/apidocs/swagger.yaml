@@ -19,6 +19,20 @@ definitions:
           $ref: '#/definitions/db.ListAllOrgsWithInstanceCountRow'
         type: array
     type: object
+  CustomDomainDetail:
+    properties:
+      custom_domain:
+        $ref: '#/definitions/db.CustomDomain'
+      dns_records:
+        items:
+          $ref: '#/definitions/db.DnsRecord'
+        type: array
+    type: object
+  CustomDomainResponse:
+    properties:
+      data:
+        $ref: '#/definitions/CustomDomainDetail'
+    type: object
   ErrorResponse:
     properties:
       error:
@@ -106,6 +120,21 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/db.User'
+    type: object
+  db.CustomDomain:
+    properties:
+      cloudflare_hostname_id:
+        type: string
+      created_at:
+        type: string
+      domain:
+        type: string
+      id:
+        type: string
+      instance_id:
+        type: string
+      status:
+        type: string
     type: object
   db.DnsRecord:
     properties:
@@ -285,6 +314,14 @@ definitions:
       zitadel_subject:
         type: string
     type: object
+  httpapi.addCustomDomainRequest:
+    properties:
+      domain:
+        description: |-
+          Domain is the bare host the instance should be reachable at (e.g.
+          "mail.acme.com"), instead of only {slug}.{root_domain}.
+        type: string
+    type: object
   httpapi.addSenderIdentityRequest:
     properties:
       kind:
@@ -426,8 +463,8 @@ paths:
   /v1/admin/instances/{instanceID}:
     delete:
       description: Super-admin only. Permanently deletes the instance's Postmark server,
-        its listmonk tenant (cascading into all of the tenant's own data), and the
-        local record. Irreversible.
+        its Cloudflare custom domain (if any), its listmonk tenant (cascading into
+        all of the tenant's own data), and the local record. Irreversible.
       parameters:
       - description: Instance ID
         in: path
@@ -812,6 +849,47 @@ paths:
       tags:
       - instances
   /v1/orgs/{orgID}/instances/{instanceID}:
+    delete:
+      description: Permanently deletes the instance's Postmark server (if any), its
+        Cloudflare custom domain (if any), its listmonk tenant (subscribers, campaigns,
+        users, settings -- everything), and its record here. Irreversible.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an instance
+      tags:
+      - instances
     get:
       parameters:
       - description: Org ID
@@ -846,6 +924,139 @@ paths:
       security:
       - BearerAuth: []
       summary: Get instance detail
+      tags:
+      - instances
+  /v1/orgs/{orgID}/instances/{instanceID}/custom-domain:
+    delete:
+      description: Reverts the tenant's URL back to {slug}.{root_domain}, then removes
+        the Cloudflare Custom Hostname and the DNS records stored for it. Irreversible.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: No custom domain yet
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Cloudflare not configured
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an instance's custom domain
+      tags:
+      - instances
+    get:
+      description: Returns the custom domain the org added, plus the DNS records to
+        publish for it. 404 if none added yet. Re-checks Cloudflare live if still
+        pending, and flips the tenant's URL over once Cloudflare has finished issuing
+        a certificate for it.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CustomDomainResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: No custom domain yet
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an instance's custom domain
+      tags:
+      - instances
+    post:
+      consumes:
+      - application/json
+      description: Registers a Cloudflare Custom Hostname for domain and returns the
+        DNS records to publish (a CNAME at our fallback origin, and Cloudflare's ownership-verification
+        TXT). The org's own DNS doesn't need to be on Cloudflare. 409 if the instance
+        already has one, or if the domain is already claimed by another workspace.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      - description: Domain to add
+        in: body
+        name: domain
+        required: true
+        schema:
+          $ref: '#/definitions/httpapi.addCustomDomainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CustomDomainResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Already added, or already claimed by another workspace
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Cloudflare not configured
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add an instance's custom domain
       tags:
       - instances
   /v1/orgs/{orgID}/instances/{instanceID}/events:
