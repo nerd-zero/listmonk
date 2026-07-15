@@ -680,7 +680,7 @@ var ErrSenderIdentityNotFound = errors.New("this instance has no sender identity
 // read/delete here must filter to its own record_types or it'd leak the
 // other feature's records.
 var senderIdentityDNSRecordTypes = []string{"dkim", "return_path"}
-var customDomainDNSRecordTypes = []string{"custom_domain_cname", "custom_domain_ownership"}
+var customDomainDNSRecordTypes = []string{"custom_domain_cname", "custom_domain_ownership", "custom_domain_cert_validation"}
 
 // GetSenderIdentity returns instance's sender identity, if any, plus the
 // DNS records to publish for it (empty for a sender signature -- those
@@ -983,13 +983,18 @@ var ErrCustomDomainNotFound = errors.New("this instance has no custom domain yet
 
 // AddCustomDomain registers instance to be reachable at domain (e.g.
 // mail.acme.com) instead of only {slug}.{root_domain}: a Cloudflare
-// Custom Hostname is created for it, and the CNAME (-> cf.FallbackOrigin
-// -- the org's own DNS doesn't need to be on Cloudflare, a CNAME works
-// the same regardless of registrar) plus Cloudflare's
-// ownership-verification TXT are stored as dns_records for the org to
-// publish. The tenant's app.root_url isn't updated yet -- that happens
-// once GetCustomDomain notices Cloudflare has finished validating and
-// issued a cert, same re-check-on-read pattern as GetSenderIdentity.
+// Custom Hostname is created for it, and three dns_records are stored for
+// the org to publish -- the CNAME (-> cf.FallbackOrigin -- the org's own
+// DNS doesn't need to be on Cloudflare, a CNAME works the same regardless
+// of registrar), Cloudflare's own ownership-verification TXT (proves
+// hostname ownership to Cloudflare, checked first), and the issuing CA's
+// separate DCV challenge TXT (hostname.SSL.TxtName/TxtValue -- e.g. an
+// "_acme-challenge." record from Google Trust Services, checked once
+// ownership passes; easy to conflate with the ownership TXT since both
+// are TXT records, but genuinely different ones). The tenant's
+// app.root_url isn't updated yet -- that happens once GetCustomDomain
+// notices Cloudflare has finished validating and issued a cert, same
+// re-check-on-read pattern as GetSenderIdentity.
 func (s *Service) AddCustomDomain(ctx context.Context, orgID, instanceID uuid.UUID, domain string) (db.CustomDomain, []db.DnsRecord, error) {
 	if s.cf == nil {
 		return db.CustomDomain{}, nil, ErrCloudflareNotConfigured
@@ -1042,6 +1047,23 @@ func (s *Service) AddCustomDomain(ctx context.Context, orgID, instanceID uuid.UU
 			return cd, records, fmt.Errorf("store ownership record: %w", err)
 		}
 		records = append(records, ownership)
+	}
+
+	// The CA's own DCV challenge TXT (see AddCustomDomain's doc comment) --
+	// distinct from the ownership-verification TXT above, and just as
+	// required before SSL.Status can ever reach "active".
+	if hostname.SSL.TxtName != "" {
+		certValidation, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
+			ID:         pgUUID(uuid.New()),
+			InstanceID: inst.ID,
+			RecordType: "custom_domain_cert_validation",
+			Host:       hostname.SSL.TxtName,
+			Value:      hostname.SSL.TxtValue,
+		})
+		if err != nil {
+			return cd, records, fmt.Errorf("store cert validation record: %w", err)
+		}
+		records = append(records, certValidation)
 	}
 
 	return cd, records, nil
