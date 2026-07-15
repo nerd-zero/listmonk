@@ -420,7 +420,7 @@ go run ./cmd/worker
 3. **Postmark integration.** Server + domain creation, DNS record publishing to our own zone, DKIM verification polling, SMTP credentials pushed into the tenant via the now-confirmed `PUT /api/operator/tenants/{id}/smtp`. Not started.
 4. **Webhooks + Scrub.** `register_webhooks` job wires the shared fork's webhook endpoint and Scrub as two independent subscriptions. Not started.
 5. **Teardown + retry.** `DELETE /instances/{id}` reverses every job in the chain; `retry` re-enqueues a stalled step. Not started — moot until step 3/4 give the job chain more than one step to retry.
-6. **v1.1 — bring-your-own domain.** Layers in the Cloudflare Custom Hostnames flow from part one — `cloudflare_provisioning` job, DNS-records-to-publish UI step, hostname status polling. Everything it needs was already researched above. Not started.
+6. **v1.1 — bring-your-own domain.** Layers in the Cloudflare Custom Hostnames flow from part one — `cloudflare_provisioning` job, DNS-records-to-publish UI step, hostname status polling. Everything it needs was already researched above. Not started. Design doc: `docs/custom-domains.md` — data model, API surface, fork-side changes, and open decisions (2026-07-15).
 
 ## Implementation log
 
