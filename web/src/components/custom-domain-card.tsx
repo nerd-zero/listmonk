@@ -31,6 +31,7 @@ import type { CustomDomainResponse } from "@/api/generated/model";
 const RECORD_TYPE_LABEL: Record<string, string> = {
   custom_domain_cname: "CNAME",
   custom_domain_ownership: "Ownership verification (TXT)",
+  custom_domain_cert_validation: "Certificate validation (TXT)",
 };
 
 export function CustomDomainCard({
