@@ -72,14 +72,31 @@ func (c *Client) GetServer(ctx context.Context, id int) (Server, error) {
 // automated) must add before mail from this domain is trusted. Return-Path
 // (bounce domain) setup is a later step -- not configured on creation.
 // DKIMVerified flips to true once Postmark's own periodic DNS check (or an
-// explicit PUT /domains/{id}/verifyDkim, not yet called by this client)
-// finds the record published -- see GetDomain.
+// explicit PUT /domains/{id}/verifyDkim) finds the record published.
+//
+// DKIMHost/DKIMTextValue are BOTH EMPTY on creation -- Postmark returns the
+// record to actually publish under DKIMPendingHost/DKIMPendingTextValue
+// instead, only promoting it into DKIMHost/DKIMTextValue once verification
+// succeeds. Use DKIMRecord() rather than these fields directly.
 type Domain struct {
-	ID            int    `json:"ID"`
-	Name          string `json:"Name"`
-	DKIMHost      string `json:"DKIMHost"`
-	DKIMTextValue string `json:"DKIMTextValue"`
-	DKIMVerified  bool   `json:"DKIMVerified"`
+	ID                   int    `json:"ID"`
+	Name                 string `json:"Name"`
+	DKIMHost             string `json:"DKIMHost"`
+	DKIMTextValue        string `json:"DKIMTextValue"`
+	DKIMPendingHost      string `json:"DKIMPendingHost"`
+	DKIMPendingTextValue string `json:"DKIMPendingTextValue"`
+	DKIMVerified         bool   `json:"DKIMVerified"`
+}
+
+// DKIMRecord returns the DKIM host/value pair to publish, confirmed if
+// verification already succeeded, otherwise the still-pending pair --
+// see this type's doc comment for why DKIMHost/DKIMTextValue alone aren't
+// enough. Empty/empty if Postmark hasn't generated one yet.
+func (d Domain) DKIMRecord() (host, value string) {
+	if d.DKIMHost != "" {
+		return d.DKIMHost, d.DKIMTextValue
+	}
+	return d.DKIMPendingHost, d.DKIMPendingTextValue
 }
 
 // CreateDomain registers a new sending domain and returns the DKIM record

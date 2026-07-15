@@ -757,13 +757,13 @@ func (s *Service) addDomainIdentity(ctx context.Context, inst db.Instance, kind,
 	}
 
 	var records []db.DnsRecord
-	if pmDomain.DKIMHost != "" {
+	if host, value := pmDomain.DKIMRecord(); host != "" {
 		rec, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
 			ID:         pgUUID(uuid.New()),
 			InstanceID: inst.ID,
 			RecordType: "dkim",
-			Host:       pmDomain.DKIMHost,
-			Value:      pmDomain.DKIMTextValue,
+			Host:       host,
+			Value:      value,
 		})
 		if err != nil {
 			return identity, nil, fmt.Errorf("store dkim record: %w", err)
