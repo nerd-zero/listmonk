@@ -81,7 +81,7 @@ func New(pool *pgxpool.Pool, op *operatorclient.Client, zm *zitadelmgmt.Client, 
 func (s *Service) JITProvisionUser(ctx context.Context, zitadelSubject, email, displayName string) (db.User, error) {
 	existing, err := s.q.GetUserByZitadelSubject(ctx, zitadelSubject)
 	if err == nil {
-		return existing, nil
+		return s.syncUserProfile(ctx, existing, email, displayName)
 	}
 
 	orgID := uuid.New()
@@ -129,6 +129,42 @@ func (s *Service) JITProvisionUser(ctx context.Context, zitadelSubject, email, d
 	}
 	s.createDefaultInstance(ctx, orgID, org.Name, email)
 	return user, nil
+}
+
+// syncUserProfile keeps an existing user's email/display_name current with
+// whatever Zitadel resolves this login -- JITProvisionUser only ever wrote
+// these once, at first sight, so anyone provisioned before internal/authn's
+// userinfo fix (or whose Zitadel profile simply changed since) kept
+// stale/blank values forever otherwise. Never overwrites a stored
+// non-empty value with a blank one -- a transient claims hiccup shouldn't
+// erase a name/email that's already on file.
+func (s *Service) syncUserProfile(ctx context.Context, user db.User, email, displayName string) (db.User, error) {
+	newEmail := user.Email
+	if email != "" {
+		newEmail = email
+	}
+	currentDisplayName := ""
+	if user.DisplayName != nil {
+		currentDisplayName = *user.DisplayName
+	}
+	newDisplayName := currentDisplayName
+	if displayName != "" {
+		newDisplayName = displayName
+	}
+
+	if newEmail == user.Email && newDisplayName == currentDisplayName {
+		return user, nil
+	}
+
+	updated, err := s.q.UpdateUserProfile(ctx, db.UpdateUserProfileParams{
+		ID:          user.ID,
+		Email:       newEmail,
+		DisplayName: nullableString(newDisplayName),
+	})
+	if err != nil {
+		return db.User{}, fmt.Errorf("sync user profile: %w", err)
+	}
+	return updated, nil
 }
 
 // personalOrgName names a new user's personal org after them directly --
