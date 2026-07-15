@@ -322,6 +322,12 @@ definitions:
         type: string
       admin_username:
         type: string
+      include_postmark:
+        description: |-
+          IncludePostmark defaults to true (a nil pointer, i.e. the field
+          omitted) so a caller that predates this field keeps getting the old
+          always-on behavior -- only an explicit `false` opts out.
+        type: boolean
       name:
         type: string
       slug:
@@ -759,7 +765,8 @@ paths:
       consumes:
       - application/json
       description: Provisions a real tenant via the listmonk fork's Operator API,
-        synchronously (see docs/plan.md's Provisioning state machine section).
+        synchronously (see docs/plan.md's Provisioning state machine section). include_postmark
+        defaults to true if omitted.
       parameters:
       - description: Org ID
         in: path

@@ -130,12 +130,16 @@ type createInstanceRequest struct {
 	Name          string `json:"name"`
 	AdminUsername string `json:"admin_username"`
 	AdminEmail    string `json:"admin_email"`
+	// IncludePostmark defaults to true (a nil pointer, i.e. the field
+	// omitted) so a caller that predates this field keeps getting the old
+	// always-on behavior -- only an explicit `false` opts out.
+	IncludePostmark *bool `json:"include_postmark"`
 }
 
 // createInstance godoc
 //
 //	@Summary		Create an instance
-//	@Description	Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section).
+//	@Description	Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section). include_postmark defaults to true if omitted.
 //	@Tags			instances
 //	@Accept			json
 //	@Produce		json
@@ -163,12 +167,14 @@ func (a *API) createInstance(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name, admin_username, and admin_email are required")
 		return
 	}
+	includePostmark := req.IncludePostmark == nil || *req.IncludePostmark
 
 	inst, err := a.svc.CreateInstance(r.Context(), orgIDFromRequest(r), provisioning.CreateInstanceParams{
-		Slug:          req.Slug,
-		Name:          req.Name,
-		AdminUsername: req.AdminUsername,
-		AdminEmail:    req.AdminEmail,
+		Slug:            req.Slug,
+		Name:            req.Name,
+		AdminUsername:   req.AdminUsername,
+		AdminEmail:      req.AdminEmail,
+		IncludePostmark: includePostmark,
 	})
 	if err != nil {
 		mapServiceError(w, err)

@@ -329,10 +329,11 @@ func (s *Service) InviteMember(ctx context.Context, orgID uuid.UUID, email, disp
 
 // CreateInstanceParams is what the dashboard's "New instance" form collects.
 type CreateInstanceParams struct {
-	Slug          string
-	Name          string
-	AdminUsername string
-	AdminEmail    string
+	Slug            string
+	Name            string
+	AdminUsername   string
+	AdminEmail      string
+	IncludePostmark bool
 }
 
 // CreateInstance provisions a tenant in the listmonk fork for this org: an
@@ -435,19 +436,19 @@ func (s *Service) CreateInstance(ctx context.Context, orgID uuid.UUID, p CreateI
 		return db.Instance{}, fmt.Errorf("update instance status: %w", err)
 	}
 
-	// Postmark is a secondary provisioning step, tracked by its own
-	// provisioning_jobs row rather than the instance's own status: the
-	// tenant is already usable (with listmonk's placeholder SMTP examples)
-	// even if this fails, so a Postmark error doesn't flip the instance
-	// back to "failed" -- it's surfaced in the timeline instead, and safe
-	// to retry by re-running CreateInstance's Postmark step once that's
-	// wired to River (see docs/plan.md).
+	// Postmark is a secondary, opt-in provisioning step (p.IncludePostmark),
+	// tracked by its own provisioning_jobs row rather than the instance's
+	// own status: the tenant is already usable (with listmonk's placeholder
+	// SMTP examples) even if this fails, so a Postmark error doesn't flip
+	// the instance back to "failed" -- it's surfaced in the timeline
+	// instead, and safe to retry by re-running CreateInstance's Postmark
+	// step once that's wired to River (see docs/plan.md).
 	//
 	// This only creates the server itself -- no sending domain or sender
 	// signature yet, and so no SMTP push into listmonk yet either. Those
 	// need a real "from" identity, which the org supplies themselves via
 	// AddSenderDomain/AddSenderSignature below.
-	if s.pm != nil {
+	if s.pm != nil && p.IncludePostmark {
 		if err := s.provisionPostmarkServer(ctx, active); err != nil {
 			return active, fmt.Errorf("provision postmark server: %w", err)
 		}
@@ -995,6 +996,7 @@ func (s *Service) createDefaultInstance(ctx context.Context, orgID uuid.UUID, or
 
 	params := CreateInstanceParams{
 		Slug: base, Name: orgName, AdminUsername: "admin", AdminEmail: ownerEmail,
+		IncludePostmark: true,
 	}
 	if _, err := s.CreateInstance(ctx, orgID, params); err != nil {
 		if !errors.Is(err, ErrSlugTaken) {

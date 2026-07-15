@@ -598,7 +598,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section).",
+                "description": "Provisions a real tenant via the listmonk fork's Operator API, synchronously (see docs/plan.md's Provisioning state machine section). include_postmark defaults to true if omitted.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1827,6 +1827,10 @@ const docTemplate = `{
                 },
                 "admin_username": {
                     "type": "string"
+                },
+                "include_postmark": {
+                    "description": "IncludePostmark defaults to true (a nil pointer, i.e. the field\nomitted) so a caller that predates this field keeps getting the old\nalways-on behavior -- only an explicit ` + "`" + `false` + "`" + ` opts out.",
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
