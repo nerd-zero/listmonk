@@ -15,7 +15,7 @@ const PIPELINE_STEPS = [
   {
     index: "01",
     title: "A workspace is created",
-    body: "Your own org, ready the moment you sign in — nothing to name or configure first.",
+    body: "Your own org, ready the moment you sign in. Nothing to name or configure first.",
     tag: "status: created",
   },
   {
@@ -42,7 +42,7 @@ const FEATURES = [
   {
     icon: Mail,
     title: "Dedicated sending domain",
-    body: "Every workspace gets its own Postmark server and DKIM-verified domain — never a shared IP, never someone else's spam complaints.",
+    body: "Every workspace gets its own Postmark server and DKIM-verified domain. Never a shared IP, never someone else's spam complaints.",
   },
   {
     icon: Server,
@@ -57,7 +57,7 @@ const FEATURES = [
   {
     icon: KeyRound,
     title: "One console, every workspace",
-    body: "Run one newsletter or ten — create and monitor every workspace, and reissue its setup link if it's ever needed again, from a single dashboard.",
+    body: "Run one newsletter or ten. Create and monitor every workspace, and reissue its setup link if it's ever needed again, from a single dashboard.",
   },
 ];
 
@@ -144,9 +144,9 @@ export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
             </h1>
             <p className="mt-5 max-w-md text-base text-muted-foreground">
               listnun provisions a private Listmonk workspace in about a
-              minute — its own admin login, its own verified sending domain,
-              its own dedicated Postmark server. Nothing shared, nothing to
-              run yourself.
+              minute, with its own admin login, its own verified sending
+              domain, and its own dedicated Postmark server. Nothing shared,
+              nothing to run yourself.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={onSignIn}>
@@ -177,8 +177,8 @@ export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
             </h2>
             <p className="mt-3 max-w-xl text-sm text-muted-foreground">
               Every workspace goes through the same four steps, in the same
-              order — the same timeline your own dashboard shows for every
-              workspace you create.
+              order. It's the same timeline your own dashboard shows for
+              every workspace you create.
             </p>
 
             <ol className="mt-10 grid gap-px overflow-hidden rounded-xl bg-border sm:grid-cols-2 lg:grid-cols-4">
@@ -236,7 +236,7 @@ export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
               Ready to run your own list?
             </h2>
             <p className="max-w-md text-sm text-muted-foreground">
-              Sign in with the account you already use — your workspace is
+              Sign in with the account you already use. Your workspace is
               provisioning before the redirect finishes.
             </p>
             <Button size="lg" onClick={onSignIn}>
