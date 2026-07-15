@@ -86,19 +86,14 @@ func main() {
 	}
 
 	// Custom domains are optional too, same fail-open pattern as the
-	// Postmark account token above: leave CLOUDFLARE_FALLBACK_ORIGIN blank
-	// to run without it -- AddCustomDomain just returns
-	// ErrCloudflareNotConfigured. CLOUDFLARE_API_TOKEN/ZONE_ID are a
-	// further-optional upgrade on top of that: right now
-	// provisioning.Service only verifies a plain DNS CNAME (Cloudflare's
-	// "SSL for SaaS" isn't enabled on our zone yet), so cf.Client sits
-	// unused until that's wired back in -- see AddCustomDomain's doc
-	// comment.
+	// Postmark account token above: leave CLOUDFLARE_API_TOKEN blank to
+	// run without it -- AddCustomDomain just returns
+	// ErrCloudflareNotConfigured.
 	var cf *provisioning.CloudflareConfig
-	if cfg.CloudflareFallbackOrigin != "" {
-		cf = &provisioning.CloudflareConfig{FallbackOrigin: cfg.CloudflareFallbackOrigin}
-		if cfg.CloudflareAPIToken != "" {
-			cf.Client = cloudflareclient.New(cfg.CloudflareAPIToken, cfg.CloudflareZoneID)
+	if cfg.CloudflareAPIToken != "" {
+		cf = &provisioning.CloudflareConfig{
+			Client:         cloudflareclient.New(cfg.CloudflareAPIToken, cfg.CloudflareZoneID),
+			FallbackOrigin: cfg.CloudflareFallbackOrigin,
 		}
 	}
 

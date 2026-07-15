@@ -58,28 +58,23 @@ type Config struct {
 	// own DNS zone -- see internal/provisioning.AddPlatformDomain.
 	PostmarkSharedDomainRoot string
 
-	// CloudflareFallbackOrigin is our own hostname, proxied through
-	// Cloudflare, that every org CNAMEs their custom domain at -- the
-	// org's own DNS never has to be on Cloudflare, since a CNAME works the
-	// same regardless of registrar. This is what actually turns the
-	// custom-domains feature on: leave it blank to run without it --
-	// AddCustomDomain just returns ErrCloudflareNotConfigured. See
-	// docs/custom-domains.md.
-	//
-	// Right now this alone is enough: provisioning.Service only verifies
-	// the org's CNAME via plain DNS (Cloudflare's "SSL for SaaS" isn't
-	// enabled on our zone yet, so no certificate is issued and a custom
-	// domain isn't served over HTTPS yet). CloudflareAPIToken/ZoneID below
-	// are a further-optional upgrade, unused until that's wired back in.
-	CloudflareFallbackOrigin string
 	// CloudflareAPIToken authenticates internal/cloudflareclient against
-	// Cloudflare's Custom Hostnames API ("Cloudflare for SaaS"). Currently
-	// unused by provisioning.Service (see CloudflareFallbackOrigin above)
-	// -- safe to leave blank.
+	// Cloudflare's Custom Hostnames API ("Cloudflare for SaaS") -- lets an
+	// org point their own domain at their instance instead of only
+	// {slug}.{root_domain}. Optional, like PostmarkAccountToken above:
+	// leave blank to run without it -- AddCustomDomain just returns
+	// ErrCloudflareNotConfigured. See docs/custom-domains.md.
 	CloudflareAPIToken string
-	// CloudflareZoneID is the zone CloudflareAPIToken above would register
-	// each org's domain against, once that path is wired back in.
+	// CloudflareZoneID is the zone the Custom Hostnames API above
+	// registers each org's domain against. Required if CloudflareAPIToken
+	// is set.
 	CloudflareZoneID string
+	// CloudflareFallbackOrigin is our own hostname, proxied through the
+	// Cloudflare zone above, that every org CNAMEs their custom domain at
+	// -- the org's own DNS never has to be on Cloudflare, since a CNAME
+	// works the same regardless of registrar. Required if
+	// CloudflareAPIToken is set.
+	CloudflareFallbackOrigin string
 }
 
 func Load() Config {
