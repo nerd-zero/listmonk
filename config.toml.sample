@@ -49,3 +49,9 @@ token = ""
 # design doc for how to create this role).
 db_user = ""
 db_password = ""
+
+# Set to "dev" to distinguish this instance's tenant subdomains from a
+# separate prod deployment sharing the same root_domain - generated/
+# resolved tenant URLs become <slug>-dev.root_domain instead of
+# <slug>.root_domain. Leave empty (default) for prod - no suffix.
+env = ""

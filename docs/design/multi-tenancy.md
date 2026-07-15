@@ -296,6 +296,28 @@ UI-level "operator" role.
   (Stripe subscription state, invoicing). The operator API just provides the
   status/suspend lever a billing webhook handler would call into.
 
+### Dev vs. prod environments
+
+**Decided (2026-07-15):** a dev and a prod deployment may share the same
+`root_domain` (e.g. both provision tenants under `*.acmesaas.com`). Without
+some distinction, a dev-provisioned tenant's subdomain would collide with -
+or be indistinguishable from - a prod tenant's.
+
+- `[operator] env = "dev"` (empty/`"prod"` for prod, the default) makes every
+  tenant URL this instance generates carry a `-dev` suffix on the slug:
+  `<slug>-dev.root_domain` instead of `<slug>.root_domain`
+  (`cmd/operator.go`'s `tenantRootURL`, used by `CreateTenant`'s setup link
+  and by the seeded `app.root_url` setting).
+- `internal/tenant.Middleware`'s subdomain resolver strips the same suffix
+  before looking up the tenant by slug, so a dev instance's own generated
+  URLs resolve correctly. `internal/tenant.SlugSuffix(env)` is the single
+  source of truth for the suffix - both sides import it, so generation and
+  resolution can't drift apart.
+- Tenant slugs themselves are never suffixed in the DB (`tenants.slug`
+  stays e.g. `"acme"` regardless of env) - only the generated/resolved
+  subdomain is. Custom domains (`tenants.custom_domain`) are unaffected -
+  they're exact-host matches, not derived from the slug.
+
 ### Organizations
 
 **Decided (2026-07-09):** a tenant ("listmonk") and a customer aren't
