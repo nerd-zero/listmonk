@@ -50,6 +50,18 @@ export function CustomDomainCard({
     return <Skeleton className="h-32 w-full" />;
   }
 
+  // Check the error before `data`: react-query keeps the last successful
+  // `data` cached even after a later refetch errors (e.g. right after
+  // removing the domain, which correctly 404s going forward) -- checking
+  // `data` first would keep rendering the just-deleted domain forever.
+  if (domainQuery.error instanceof ApiError && domainQuery.error.status === 404) {
+    return <AddCustomDomainForm orgId={orgId} instanceId={instanceId} />;
+  }
+
+  if (domainQuery.error instanceof ApiError && domainQuery.error.status === 501) {
+    return null;
+  }
+
   if (domainQuery.data) {
     const detail = unwrap<CustomDomainResponse>(domainQuery.data).data;
     if (detail?.custom_domain) {
@@ -61,14 +73,6 @@ export function CustomDomainCard({
         />
       );
     }
-  }
-
-  if (domainQuery.error instanceof ApiError && domainQuery.error.status === 404) {
-    return <AddCustomDomainForm orgId={orgId} instanceId={instanceId} />;
-  }
-
-  if (domainQuery.error instanceof ApiError && domainQuery.error.status === 501) {
-    return null;
   }
 
   return (
@@ -96,12 +100,16 @@ function CustomDomainStatus({
   const deleteDomain = useDeleteV1OrgsOrgIDInstancesInstanceIDCustomDomain({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: getGetV1OrgsOrgIDInstancesInstanceIDCustomDomainQueryKey(
-            orgId,
-            instanceId,
-          ),
-        });
+        const queryKey = getGetV1OrgsOrgIDInstancesInstanceIDCustomDomainQueryKey(
+          orgId,
+          instanceId,
+        );
+        // Clear the cached domain immediately -- react-query wouldn't
+        // otherwise drop it until the invalidated refetch below resolves,
+        // during which this component would keep rendering the
+        // just-deleted domain from stale cached data.
+        queryClient.setQueryData(queryKey, undefined);
+        queryClient.invalidateQueries({ queryKey });
         toast.success("Custom domain removed");
         setConfirmOpen(false);
       },
