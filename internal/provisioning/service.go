@@ -1012,6 +1012,17 @@ func (s *Service) AddCustomDomain(ctx context.Context, orgID, instanceID uuid.UU
 		return db.CustomDomain{}, nil, fmt.Errorf("create cloudflare custom hostname: %w", err)
 	}
 
+	// CreateCustomHostname's own response can have SSL.ValidationRecords
+	// still empty -- confirmed live, the exact same hostname's
+	// GetCustomHostname a moment later had them fully populated. One
+	// immediate follow-up read (best-effort -- a failure here just means
+	// GetCustomDomain's own re-check-on-read backfills it a little later,
+	// see backfillCertValidationRecords) means an org usually sees every
+	// record to publish right away instead of only after a refresh.
+	if refreshed, err := s.cf.Client.GetCustomHostname(ctx, hostname.ID); err == nil {
+		hostname = refreshed
+	}
+
 	cd, err := s.q.CreateCustomDomain(ctx, db.CreateCustomDomainParams{
 		ID:                   pgUUID(uuid.New()),
 		InstanceID:           inst.ID,
@@ -1119,10 +1130,23 @@ func (s *Service) GetCustomDomain(ctx context.Context, orgID, instanceID uuid.UU
 // has finished domain control validation and issued + deployed a cert
 // yet. ok is false whenever nothing changed -- either it's still
 // pending, the check itself failed, or the tenant has no listmonk
-// tenant ID yet -- so the caller can just keep using cd as-is.
+// tenant ID yet -- so the caller can just keep using cd as-is. Every call
+// here also backfills any cert-validation dns_records rows AddCustomDomain
+// missed (see backfillCertValidationRecords) as a side effect on the DB --
+// the caller (GetCustomDomain) re-lists records from the DB right after
+// this returns, so a successful backfill surfaces immediately regardless
+// of what this function returns.
 func (s *Service) refreshCustomDomainStatus(ctx context.Context, inst db.Instance, cd db.CustomDomain) (db.CustomDomain, bool) {
 	hostname, err := s.cf.Client.GetCustomHostname(ctx, cd.CloudflareHostnameID)
-	if err != nil || !hostname.IsActive() {
+	if err != nil {
+		return cd, false
+	}
+
+	if err := s.backfillCertValidationRecords(ctx, inst.ID, hostname); err != nil {
+		log.Printf("provisioning: backfill cert validation records for instance_id=%s: %v", inst.ID, err)
+	}
+
+	if !hostname.IsActive() {
 		return cd, false
 	}
 	if inst.ListmonkTenantID == nil {
@@ -1137,6 +1161,43 @@ func (s *Service) refreshCustomDomainStatus(ctx context.Context, inst db.Instanc
 		return cd, false
 	}
 	return active, true
+}
+
+// backfillCertValidationRecords stores any of hostname's SSL.ValidationRecords
+// not already captured as dns_records -- covering AddCustomDomain's own
+// CreateCustomHostname response arriving before Cloudflare has finished
+// computing them (confirmed live: a fresh hostname's create response can
+// have SSL.ValidationRecords empty, populated moments later on the exact
+// same hostname via GetCustomHostname). A no-op once any
+// custom_domain_cert_validation row already exists for this instance, so
+// repeated pending-status re-checks don't insert duplicates.
+func (s *Service) backfillCertValidationRecords(ctx context.Context, instanceID pgtype.UUID, hostname cloudflareclient.CustomHostname) error {
+	existing, err := s.q.ListDNSRecordsByInstanceAndTypes(ctx, db.ListDNSRecordsByInstanceAndTypesParams{
+		InstanceID:  instanceID,
+		RecordTypes: []string{"custom_domain_cert_validation"},
+	})
+	if err != nil {
+		return fmt.Errorf("list existing cert validation records: %w", err)
+	}
+	if len(existing) > 0 {
+		return nil
+	}
+
+	for _, vr := range hostname.SSL.ValidationRecords {
+		if vr.TxtName == "" {
+			continue
+		}
+		if _, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
+			ID:         pgUUID(uuid.New()),
+			InstanceID: instanceID,
+			RecordType: "custom_domain_cert_validation",
+			Host:       vr.TxtName,
+			Value:      vr.TxtValue,
+		}); err != nil {
+			return fmt.Errorf("store cert validation record: %w", err)
+		}
+	}
+	return nil
 }
 
 // DeleteCustomDomain removes instance's custom domain: reverts the
