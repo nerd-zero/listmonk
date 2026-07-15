@@ -708,13 +708,26 @@ func (a *App) CreateOperatorTenant(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "error creating tenant")
 	}
 
-	return c.JSON(http.StatusOK, okResp{operatorCreateTenantResp{tenant, token, a.operatorSetupURL(tenant.Slug, token)}})
+	return c.JSON(http.StatusOK, okResp{operatorCreateTenantResp{tenant, token, a.operatorSetupURL(tenant.Slug, tenant.CustomDomain, token)}})
 }
 
 // operatorSetupURL builds the one-time setup link for a tenant's admin,
-// shared by CreateOperatorTenant and CreateOperatorSetupLink. Empty if
-// app.root_domain isn't configured or app.root_url has no scheme.
-func (a *App) operatorSetupURL(tenantSlug, token string) string {
+// shared by CreateOperatorTenant and CreateOperatorSetupLink. Prefers the
+// tenant's custom domain over its <slug>.root_domain subdomain once one is
+// set - CreateOperatorSetupLink's whole reason to exist is reissuing a
+// link after the original's token was lost (e.g. an app restart), and a
+// tenant that's set up a custom domain since then would otherwise keep
+// getting sent a link for a subdomain that no longer matches
+// app.root_url/their OIDC redirect_uri, even though internal/tenant's
+// custom-domain resolution path already accepts the subdomain too (see
+// docs/design/multi-tenancy.md's Organizations section) - it's just not
+// the address they've told their team/DNS to expect anymore. Empty if
+// neither a custom domain nor app.root_domain is configured (or
+// app.root_url has no scheme).
+func (a *App) operatorSetupURL(tenantSlug string, customDomain null.String, token string) string {
+	if customDomain.Valid && customDomain.String != "" {
+		return "https://" + customDomain.String + "/admin/operator-setup?token=" + token
+	}
 	root := a.tenantRootURL(tenantSlug)
 	if root == "" {
 		return ""
@@ -792,7 +805,7 @@ func (a *App) CreateOperatorSetupLink(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "no admin with that email found for this tenant")
 	}
 
-	return c.JSON(http.StatusOK, okResp{operatorSetupLinkResp{token, a.operatorSetupURL(tenant.Slug, token)}})
+	return c.JSON(http.StatusOK, okResp{operatorSetupLinkResp{token, a.operatorSetupURL(tenant.Slug, tenant.CustomDomain, token)}})
 }
 
 // UpdateOperatorTenantStatus updates a tenant's status (active/suspended/disabled).
