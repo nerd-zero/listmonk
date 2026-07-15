@@ -68,24 +68,30 @@ func (c *Client) GetServer(ctx context.Context, id int) (Server, error) {
 }
 
 // Domain mirrors the subset of Postmark's Domain resource this client
-// needs to publish the DKIM record a customer (or listnun's own DNS, once
-// automated) must add before mail from this domain is trusted. Return-Path
-// (bounce domain) setup is a later step -- not configured on creation.
-// DKIMVerified flips to true once Postmark's own periodic DNS check (or an
-// explicit PUT /domains/{id}/verifyDkim) finds the record published.
+// needs to publish the two DNS records a customer (or listnun's own DNS,
+// once automated) must add before mail from this domain is trusted and its
+// bounces route correctly: a DKIM TXT record and a Return-Path CNAME
+// record. Both are already populated at creation, same as Postmark's own
+// domain setup page shows both right away. DKIMVerified/
+// ReturnPathDomainVerified flip to true once Postmark's own periodic DNS
+// check (or an explicit PUT /domains/{id}/verifyDkim for DKIM) finds the
+// record published.
 //
 // DKIMHost/DKIMTextValue are BOTH EMPTY on creation -- Postmark returns the
 // record to actually publish under DKIMPendingHost/DKIMPendingTextValue
 // instead, only promoting it into DKIMHost/DKIMTextValue once verification
 // succeeds. Use DKIMRecord() rather than these fields directly.
 type Domain struct {
-	ID                   int    `json:"ID"`
-	Name                 string `json:"Name"`
-	DKIMHost             string `json:"DKIMHost"`
-	DKIMTextValue        string `json:"DKIMTextValue"`
-	DKIMPendingHost      string `json:"DKIMPendingHost"`
-	DKIMPendingTextValue string `json:"DKIMPendingTextValue"`
-	DKIMVerified         bool   `json:"DKIMVerified"`
+	ID                         int    `json:"ID"`
+	Name                       string `json:"Name"`
+	DKIMHost                   string `json:"DKIMHost"`
+	DKIMTextValue              string `json:"DKIMTextValue"`
+	DKIMPendingHost            string `json:"DKIMPendingHost"`
+	DKIMPendingTextValue       string `json:"DKIMPendingTextValue"`
+	DKIMVerified               bool   `json:"DKIMVerified"`
+	ReturnPathDomain           string `json:"ReturnPathDomain"`
+	ReturnPathDomainCNAMEValue string `json:"ReturnPathDomainCNAMEValue"`
+	ReturnPathDomainVerified   bool   `json:"ReturnPathDomainVerified"`
 }
 
 // DKIMRecord returns the DKIM host/value pair to publish, confirmed if

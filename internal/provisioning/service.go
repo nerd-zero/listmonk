@@ -770,6 +770,22 @@ func (s *Service) addDomainIdentity(ctx context.Context, inst db.Instance, kind,
 		}
 		records = append(records, rec)
 	}
+	// Return-Path (bounce domain) -- a CNAME, published the same way as
+	// the DKIM TXT record above. Postmark's own domain setup page shows
+	// both records side by side; this was missing one of the two.
+	if pmDomain.ReturnPathDomain != "" && pmDomain.ReturnPathDomainCNAMEValue != "" {
+		rec, err := s.q.CreateDNSRecord(ctx, db.CreateDNSRecordParams{
+			ID:         pgUUID(uuid.New()),
+			InstanceID: inst.ID,
+			RecordType: "return_path",
+			Host:       pmDomain.ReturnPathDomain,
+			Value:      pmDomain.ReturnPathDomainCNAMEValue,
+		})
+		if err != nil {
+			return identity, records, fmt.Errorf("store return-path record: %w", err)
+		}
+		records = append(records, rec)
+	}
 
 	if err := s.pushSMTPCredentials(ctx, inst, "noreply@"+domain); err != nil {
 		return identity, records, err
