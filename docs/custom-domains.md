@@ -1,6 +1,6 @@
 # Custom domains for an instance — design
 
-Status: **planned, not started**. This is `docs/plan.md`'s "v1.1 — bring-your-own domain" (build order step 6), broken out into its own doc because it touches both repos (listnun and the listmonk fork) and needs its own data model, API surface, and step-by-step flow the way `plan.md`'s per-feature sections already do.
+Status: **built, running in an interim mode**. Both repos' work described below is done and live-verified (listmonk fork PR #47, listnun PR #25). The one piece not yet live is Cloudflare's actual Custom Hostnames/SSL issuance — **Cloudflare's "SSL for SaaS" isn't enabled on our zone yet**, so `provisioning.Service.AddCustomDomain`/`GetCustomDomain` currently only verify the org's CNAME via a plain DNS lookup (`net.LookupCNAME`) instead of calling Cloudflare's API. This proves the routing/data-model/UI end to end, but **no TLS certificate is issued and a custom domain is not yet served over HTTPS**. `internal/cloudflareclient` and the `CloudflareAPIToken`/`ZoneID` config are already built and wired up (just unused) — re-enabling the real flow once SSL for SaaS is turned on is additive, not a rewrite (see `AddCustomDomain`'s doc comment in `internal/provisioning/service.go`).
 
 ## What this is (and isn't)
 

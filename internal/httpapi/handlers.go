@@ -450,7 +450,7 @@ func (a *API) deleteSenderIdentity(w http.ResponseWriter, r *http.Request) {
 // getCustomDomain godoc
 //
 //	@Summary		Get an instance's custom domain
-//	@Description	Returns the custom domain the org added, plus the DNS records to publish for it. 404 if none added yet. Re-checks Cloudflare live if still pending, and flips the tenant's URL over once Cloudflare has finished issuing a certificate for it.
+//	@Description	Returns the custom domain the org added, plus the DNS records to publish for it. 404 if none added yet. Re-checks live if still pending and flips the tenant's URL over once verified -- currently a plain DNS CNAME check (no certificate is issued yet; the domain is not yet served over HTTPS, see docs/custom-domains.md).
 //	@Tags			instances
 //	@Produce		json
 //	@Security		BearerAuth
@@ -485,7 +485,7 @@ type addCustomDomainRequest struct {
 // addCustomDomain godoc
 //
 //	@Summary		Add an instance's custom domain
-//	@Description	Registers a Cloudflare Custom Hostname for domain and returns the DNS records to publish (a CNAME at our fallback origin, and Cloudflare's ownership-verification TXT). The org's own DNS doesn't need to be on Cloudflare. 409 if the instance already has one, or if the domain is already claimed by another workspace.
+//	@Description	Returns the CNAME record to publish (at our fallback origin) for domain. The org's own DNS doesn't need to be on Cloudflare. No certificate is issued yet -- see docs/custom-domains.md for why. 409 if the instance already has one, or if the domain is already claimed by another workspace.
 //	@Tags			instances
 //	@Accept			json
 //	@Produce		json
@@ -527,7 +527,7 @@ func (a *API) addCustomDomain(w http.ResponseWriter, r *http.Request) {
 // deleteCustomDomain godoc
 //
 //	@Summary		Delete an instance's custom domain
-//	@Description	Reverts the tenant's URL back to {slug}.{root_domain}, then removes the Cloudflare Custom Hostname and the DNS records stored for it. Irreversible.
+//	@Description	Reverts the tenant's URL back to {slug}.{root_domain}, then removes the DNS records stored for it (and the Cloudflare Custom Hostname, if one was ever created). Irreversible.
 //	@Tags			instances
 //	@Produce		json
 //	@Security		BearerAuth
