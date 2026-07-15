@@ -27,6 +27,25 @@ func (c *Core) GetTenantBySlug(slug string) (models.Tenant, error) {
 	return out[0], nil
 }
 
+// GetTenantByCustomDomain returns the tenant whose custom_domain exactly
+// matches the given host (case-insensitively - see the query's own
+// comment). Same unscoped-lookup reasoning as GetTenantBySlug: tenants
+// itself has no RLS policy to bypass.
+func (c *Core) GetTenantByCustomDomain(host string) (models.Tenant, error) {
+	out := []models.Tenant{}
+	if err := c.q.GetTenantByCustomDomain.Select(&out, host); err != nil {
+		c.log.Printf("error fetching tenant by custom domain: %v", err)
+		return models.Tenant{}, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorFetching", "name", "tenant", "error", pqErrMsg(err)))
+	}
+
+	if len(out) == 0 {
+		return models.Tenant{}, ErrNotFound
+	}
+
+	return out[0], nil
+}
+
 // GetActiveTenantIDs returns the IDs of all active tenants. Reused by
 // boot-time per-tenant loops (e.g. initTxTemplates) - the same underlying
 // query internal/manager's scanCampaigns (phase 6) uses via cmd/manager_store.go.

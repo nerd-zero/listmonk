@@ -19,10 +19,11 @@ const TenantCtxKey = "tenant"
 type Tenant struct {
 	Base
 
-	OrganizationID null.Int `db:"organization_id" json:"organization_id"`
-	Slug           string   `db:"slug" json:"slug"`
-	Name           string   `db:"name" json:"name"`
-	Status         string   `db:"status" json:"status"`
+	OrganizationID null.Int    `db:"organization_id" json:"organization_id"`
+	Slug           string      `db:"slug" json:"slug"`
+	Name           string      `db:"name" json:"name"`
+	Status         string      `db:"status" json:"status"`
+	CustomDomain   null.String `db:"custom_domain" json:"custom_domain"`
 }
 
 // Organization is a purely cross-tenant grouping of tenants ("listmonks"),

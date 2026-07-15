@@ -2,6 +2,11 @@
 -- name: get-tenant-by-slug
 SELECT * FROM tenants WHERE slug = $1;
 
+-- name: get-tenant-by-custom-domain
+-- Case-insensitive: Host headers arrive lowercased by HTTP convention, but
+-- custom_domain is whatever the operator API was given verbatim.
+SELECT * FROM tenants WHERE lower(custom_domain) = lower($1);
+
 -- name: get-active-tenant-ids
 SELECT id FROM tenants WHERE status = 'active' ORDER BY id;
 
