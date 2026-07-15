@@ -52,12 +52,12 @@ const FEATURES = [
   {
     icon: Users,
     title: "Built for a team",
-    body: "Invite teammates with your existing SSO. Owner and member roles keep billing and admin actions where they belong.",
+    body: "Invite teammates through the same sign-in you already use. Owners can invite people and manage instances; members can only manage instances.",
   },
   {
     icon: KeyRound,
     title: "One console, every workspace",
-    body: "Run one newsletter or ten — create, monitor, and hand off admin access to every workspace from a single dashboard.",
+    body: "Run one newsletter or ten — create and monitor every workspace, and reissue its setup link if it's ever needed again, from a single dashboard.",
   },
 ];
 
