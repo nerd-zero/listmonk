@@ -437,7 +437,114 @@ export function useGetV1OrgsOrgIDInstancesInstanceID<TData = Awaited<ReturnType<
 
 
 
-export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse200 = {
+export type deleteV1OrgsOrgIDInstancesInstanceIDResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDResponseSuccess = (deleteV1OrgsOrgIDInstancesInstanceIDResponse200) & {
+  headers: Headers;
+};
+export type deleteV1OrgsOrgIDInstancesInstanceIDResponseError = (deleteV1OrgsOrgIDInstancesInstanceIDResponse400 | deleteV1OrgsOrgIDInstancesInstanceIDResponse401 | deleteV1OrgsOrgIDInstancesInstanceIDResponse403 | deleteV1OrgsOrgIDInstancesInstanceIDResponse404) & {
+  headers: Headers;
+};
+
+export type deleteV1OrgsOrgIDInstancesInstanceIDResponse = (deleteV1OrgsOrgIDInstancesInstanceIDResponseSuccess | deleteV1OrgsOrgIDInstancesInstanceIDResponseError)
+
+export const getDeleteV1OrgsOrgIDInstancesInstanceIDUrl = (orgID: string,
+    instanceID: string,) => {
+
+
+
+
+  return `/v1/orgs/${orgID}/instances/${instanceID}`
+}
+
+/**
+ * Permanently deletes the instance's Postmark server (if any), its Cloudflare custom domain (if any), its listmonk tenant (subscribers, campaigns, users, settings -- everything), and its record here. Irreversible.
+ * @summary Delete an instance
+ */
+export const deleteV1OrgsOrgIDInstancesInstanceID = async (orgID: string,
+    instanceID: string, options?: RequestInit): Promise<deleteV1OrgsOrgIDInstancesInstanceIDResponse> => {
+
+  return customFetch<deleteV1OrgsOrgIDInstancesInstanceIDResponse>(getDeleteV1OrgsOrgIDInstancesInstanceIDUrl(orgID,instanceID),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteV1OrgsOrgIDInstancesInstanceIDMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceID>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceID>>, TError,{orgID: string;instanceID: string}, TContext> => {
+
+const mutationKey = ['deleteV1OrgsOrgIDInstancesInstanceID'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceID>>, {orgID: string;instanceID: string}> = (props) => {
+          const {orgID,instanceID} = props ?? {};
+
+          return  deleteV1OrgsOrgIDInstancesInstanceID(orgID,instanceID,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteV1OrgsOrgIDInstancesInstanceIDMutationResult = NonNullable<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceID>>>
+
+    export type DeleteV1OrgsOrgIDInstancesInstanceIDMutationError = ErrorResponse
+
+    /**
+ * @summary Delete an instance
+ */
+export const useDeleteV1OrgsOrgIDInstancesInstanceID = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceID>>, TError,{orgID: string;instanceID: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteV1OrgsOrgIDInstancesInstanceID>>,
+        TError,
+        {orgID: string;instanceID: string},
+        TContext
+      > => {
+      return useMutation(getDeleteV1OrgsOrgIDInstancesInstanceIDMutationOptions(options), queryClient);
+    }
+    export type getV1OrgsOrgIDInstancesInstanceIDCustomDomainResponse200 = {
   data: CustomDomainResponse
   status: 200
 }

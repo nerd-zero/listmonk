@@ -167,7 +167,7 @@ func (a *API) adminResendSetupLink(w http.ResponseWriter, r *http.Request) {
 // adminDeleteInstance godoc
 //
 //	@Summary		Delete an instance (super admin)
-//	@Description	Super-admin only. Permanently deletes the instance's Postmark server, its listmonk tenant (cascading into all of the tenant's own data), and the local record. Irreversible.
+//	@Description	Super-admin only. Permanently deletes the instance's Postmark server, its Cloudflare custom domain (if any), its listmonk tenant (cascading into all of the tenant's own data), and the local record. Irreversible.
 //	@Tags			admin
 //	@Produce		json
 //	@Security		BearerAuth

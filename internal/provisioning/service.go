@@ -1261,15 +1261,18 @@ func (s *Service) GetInstance(ctx context.Context, orgID, instanceID uuid.UUID) 
 }
 
 // DeleteInstance permanently deletes instance: its Postmark server (if
-// any), its listmonk tenant (which cascades into all of the tenant's own
-// data -- subscribers, campaigns, etc., see operatorclient.DeleteTenant's
-// doc comment), and finally the local row (which cascades into
-// sender_identities/dns_records/provisioning_jobs). Irreversible.
+// any), its Cloudflare custom domain (if any -- just the Custom Hostname;
+// there's no tenant left afterward to revert app.root_url on), its
+// listmonk tenant (which cascades into all of the tenant's own data --
+// subscribers, campaigns, etc., see operatorclient.DeleteTenant's doc
+// comment), and finally the local row (which cascades into
+// sender_identities/dns_records/custom_domains/provisioning_jobs).
+// Irreversible.
 //
 // External resources are deleted before the local row, in that order, so a
 // failure partway through leaves the local row in place to retry against
-// rather than orphaning a Postmark server or listmonk tenant whose id we've
-// just lost.
+// rather than orphaning a Postmark server, Cloudflare hostname, or
+// listmonk tenant whose id we've just lost.
 func (s *Service) DeleteInstance(ctx context.Context, orgID, instanceID uuid.UUID) error {
 	inst, err := s.GetInstance(ctx, orgID, instanceID)
 	if err != nil {
@@ -1292,6 +1295,20 @@ func (s *Service) deleteInstanceFor(ctx context.Context, inst db.Instance) error
 	if s.pm != nil {
 		if err := s.deletePostmarkServerFor(ctx, inst); err != nil && !errors.Is(err, ErrInstanceHasNoPostmarkServer) {
 			return fmt.Errorf("delete postmark server: %w", err)
+		}
+	}
+
+	if s.cf != nil {
+		cd, err := s.q.GetCustomDomainByInstanceID(ctx, inst.ID)
+		switch {
+		case err == nil:
+			if err := s.cf.Client.DeleteCustomHostname(ctx, cd.CloudflareHostnameID); err != nil && !cloudflareclient.IsNotFound(err) {
+				return fmt.Errorf("delete cloudflare custom hostname: %w", err)
+			}
+		case errors.Is(err, pgx.ErrNoRows):
+			// No custom domain -- nothing to clean up.
+		default:
+			return fmt.Errorf("get custom domain: %w", err)
 		}
 	}
 

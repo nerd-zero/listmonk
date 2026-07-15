@@ -211,6 +211,35 @@ func (a *API) getInstance(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, inst)
 }
 
+// deleteInstance godoc
+//
+//	@Summary		Delete an instance
+//	@Description	Permanently deletes the instance's Postmark server (if any), its Cloudflare custom domain (if any), its listmonk tenant (subscribers, campaigns, users, settings -- everything), and its record here. Irreversible.
+//	@Tags			instances
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID		path	string	true	"Org ID"
+//	@Param			instanceID	path	string	true	"Instance ID"
+//	@Success		200
+//	@Failure		400	{object}	errorResponse
+//	@Failure		401	{object}	errorResponse
+//	@Failure		403	{object}	errorResponse
+//	@Failure		404	{object}	errorResponse
+//	@Router			/v1/orgs/{orgID}/instances/{instanceID} [delete]
+func (a *API) deleteInstance(w http.ResponseWriter, r *http.Request) {
+	instanceID, err := instanceIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid instance id")
+		return
+	}
+
+	if err := a.svc.DeleteInstance(r.Context(), orgIDFromRequest(r), instanceID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
+
 // listEvents godoc
 //
 //	@Summary		Provisioning timeline for an instance

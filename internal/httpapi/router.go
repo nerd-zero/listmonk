@@ -47,6 +47,7 @@ func New(svc *provisioning.Service, verifier *authn.Verifier) http.Handler {
 
 					r.Route("/{instanceID}", func(r chi.Router) {
 						r.Get("/", a.getInstance)
+						r.Delete("/", a.deleteInstance)
 						r.Get("/events", a.listEvents)
 						r.Post("/setup-link", a.resendSetupLink)
 						r.Get("/sender-identity", a.getSenderIdentity)

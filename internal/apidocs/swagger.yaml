@@ -463,8 +463,8 @@ paths:
   /v1/admin/instances/{instanceID}:
     delete:
       description: Super-admin only. Permanently deletes the instance's Postmark server,
-        its listmonk tenant (cascading into all of the tenant's own data), and the
-        local record. Irreversible.
+        its Cloudflare custom domain (if any), its listmonk tenant (cascading into
+        all of the tenant's own data), and the local record. Irreversible.
       parameters:
       - description: Instance ID
         in: path
@@ -849,6 +849,47 @@ paths:
       tags:
       - instances
   /v1/orgs/{orgID}/instances/{instanceID}:
+    delete:
+      description: Permanently deletes the instance's Postmark server (if any), its
+        Cloudflare custom domain (if any), its listmonk tenant (subscribers, campaigns,
+        users, settings -- everything), and its record here. Irreversible.
+      parameters:
+      - description: Org ID
+        in: path
+        name: orgID
+        required: true
+        type: string
+      - description: Instance ID
+        in: path
+        name: instanceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an instance
+      tags:
+      - instances
     get:
       parameters:
       - description: Org ID
