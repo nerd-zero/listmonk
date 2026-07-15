@@ -39,6 +39,7 @@ type operatorQueries struct {
 	GetOrganization        *sqlx.Stmt `query:"operator-get-organization"`
 	GetOrganizations       *sqlx.Stmt `query:"operator-get-organizations"`
 	GetOrganizationTenants *sqlx.Stmt `query:"operator-get-organization-tenants"`
+	DeleteOrganization     *sqlx.Stmt `query:"operator-delete-organization"`
 	CreateTenant           *sqlx.Stmt `query:"operator-create-tenant"`
 	SeedTenantSettings     *sqlx.Stmt `query:"operator-seed-tenant-settings"`
 	SetTenantRootURL       *sqlx.Stmt `query:"operator-set-tenant-root-url"`
@@ -46,6 +47,7 @@ type operatorQueries struct {
 	GetTenant              *sqlx.Stmt `query:"operator-get-tenant"`
 	GetTenants             *sqlx.Stmt `query:"operator-get-tenants"`
 	UpdateTenantStatus     *sqlx.Stmt `query:"operator-update-tenant-status"`
+	DeleteTenant           *sqlx.Stmt `query:"operator-delete-tenant"`
 }
 
 // operatorTenant is a tenant row augmented with cross-tenant counts, only
@@ -184,6 +186,17 @@ func (s *operatorStore) UpdateTenantStatus(id int, status string) (models.Tenant
 	return out, nil
 }
 
+// DeleteTenant permanently deletes a tenant row. Every tenant-scoped table
+// references tenants(id) ON DELETE CASCADE, so this cascades into deleting
+// all of the tenant's subscribers, campaigns, users, settings, etc. along
+// with it. Callers (DeleteOperatorTenant) are responsible for refusing to
+// call this against tenant 1, the default tenant every install seeds data
+// against.
+func (s *operatorStore) DeleteTenant(id int) error {
+	_, err := s.q.DeleteTenant.Exec(id)
+	return err
+}
+
 func (s *operatorStore) CreateOrganization(name string) (models.Organization, error) {
 	var out models.Organization
 	if err := s.q.CreateOrganization.Get(&out, name); err != nil {
@@ -215,6 +228,13 @@ func (s *operatorStore) GetOrganizationTenants(id int) ([]operatorTenant, error)
 		return nil, err
 	}
 	return out, nil
+}
+
+// DeleteOrganization removes an organization row. Tenants that belonged to
+// it are not deleted - organization_id is ON DELETE SET NULL.
+func (s *operatorStore) DeleteOrganization(id int) error {
+	_, err := s.q.DeleteOrganization.Exec(id)
+	return err
 }
 
 // CreateTenant creates a tenant row (optionally under an organization -
@@ -281,6 +301,44 @@ func (s *operatorStore) CreateTenant(ctx context.Context, slug, name, adminUsern
 	tmptokens.Set(token, operatorSetupTokenTTL, operatorSetupToken{TenantID: t.ID, Email: adminEmail})
 
 	return t, token, nil
+}
+
+// DeleteOperatorTenant permanently deletes a tenant and cascades into
+// deleting all of its data (subscribers, campaigns, users, settings, etc.
+// - every tenant-scoped table references tenants(id) ON DELETE CASCADE).
+// Irreversible. Tenant 1, the default tenant every pre-multi-tenancy
+// install and fresh schema.sql seeds data against, can never be deleted
+// through this endpoint - doing so would wipe a single-tenant install's
+// only data.
+//
+//	@ID			deleteOperatorTenant
+//	@Summary		Delete a tenant (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. Permanently deletes the tenant and cascades into all of its data (subscribers, campaigns, users, settings, etc.) - irreversible. Tenant 1 (the default tenant) cannot be deleted through this endpoint.
+//	@Tags			operator
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"Tenant ID"
+//	@Success		200	{object}	okResp
+//	@Failure		400	{object}	echo.HTTPError	"Cannot delete the default tenant (id=1)"
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/operator/tenants/{id} [delete]
+func (a *App) DeleteOperatorTenant(c echo.Context) error {
+	id := getID(c)
+	if id == 1 {
+		return echo.NewHTTPError(http.StatusBadRequest, "the default tenant (id=1) cannot be deleted")
+	}
+
+	if _, err := a.operator.GetTenant(id); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "tenant not found")
+	}
+
+	if err := a.operator.DeleteTenant(id); err != nil {
+		a.log.Printf("error deleting tenant: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error deleting tenant")
+	}
+
+	return c.JSON(http.StatusOK, okResp{true})
 }
 
 // operatorSMTPEntry mirrors one entry of models.Settings' SMTP field
@@ -484,6 +542,37 @@ type operatorOrganizationResp struct {
 	operatorOrganization
 	Tenants []operatorTenant `json:"tenants"`
 } // @name OperatorOrganizationResp
+
+// DeleteOperatorOrganization deletes an organization row. Tenants that
+// belonged to it are kept, just detached from it - organization_id is
+// ON DELETE SET NULL (see docs/design/multi-tenancy.md's Organizations
+// section).
+//
+//	@ID			deleteOperatorOrganization
+//	@Summary		Delete an organization (Operator API)
+//	@Description	Fork-only, off by default (see [operator] config). Requires the Operator API bearer token. Tenants belonging to this organization are not deleted - they're detached (organization_id set to NULL).
+//	@Tags			operator
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"Organization ID"
+//	@Success		200	{object}	okResp
+//	@Failure		401	{object}	echo.HTTPError
+//	@Failure		404	{object}	echo.HTTPError
+//	@Router			/api/operator/organizations/{id} [delete]
+func (a *App) DeleteOperatorOrganization(c echo.Context) error {
+	id := getID(c)
+
+	if _, err := a.operator.GetOrganization(id); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "organization not found")
+	}
+
+	if err := a.operator.DeleteOrganization(id); err != nil {
+		a.log.Printf("error deleting organization: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error deleting organization")
+	}
+
+	return c.JSON(http.StatusOK, okResp{true})
+}
 
 // ListOperatorTenants returns every tenant with basic cross-tenant counts.
 //

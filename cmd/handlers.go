@@ -248,10 +248,12 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 		g.GET("/organizations", a.ListOperatorOrganizations)
 		g.GET("/organizations/:id", hasID(a.GetOperatorOrganization))
 		g.POST("/organizations", a.CreateOperatorOrganization)
+		g.DELETE("/organizations/:id", hasID(a.DeleteOperatorOrganization))
 		g.GET("/tenants", a.ListOperatorTenants)
 		g.GET("/tenants/:id", hasID(a.GetOperatorTenant))
 		g.POST("/tenants", a.CreateOperatorTenant)
 		g.PUT("/tenants/:id/status", hasID(a.UpdateOperatorTenantStatus))
+		g.DELETE("/tenants/:id", hasID(a.DeleteOperatorTenant))
 		g.POST("/tenants/:id/setup-link", hasID(a.CreateOperatorSetupLink))
 		g.PUT("/tenants/:id/smtp", hasID(a.SetOperatorTenantSMTP))
 	}

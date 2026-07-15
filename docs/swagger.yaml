@@ -2601,6 +2601,37 @@ paths:
       tags:
       - operator
   /api/operator/organizations/{id}:
+    delete:
+      description: Fork-only, off by default (see [operator] config). Requires the
+        Operator API bearer token. Tenants belonging to this organization are not
+        deleted - they're detached (organization_id set to NULL).
+      operationId: deleteOperatorOrganization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/cmd.okResp'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Delete an organization (Operator API)
+      tags:
+      - operator
     get:
       description: Fork-only, off by default (see [operator] config). Requires the
         Operator API bearer token.
@@ -2705,6 +2736,42 @@ paths:
       tags:
       - operator
   /api/operator/tenants/{id}:
+    delete:
+      description: Fork-only, off by default (see [operator] config). Requires the
+        Operator API bearer token. Permanently deletes the tenant and cascades into
+        all of its data (subscribers, campaigns, users, settings, etc.) - irreversible.
+        Tenant 1 (the default tenant) cannot be deleted through this endpoint.
+      operationId: deleteOperatorTenant
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/cmd.okResp'
+        "400":
+          description: Cannot delete the default tenant (id=1)
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Delete a tenant (Operator API)
+      tags:
+      - operator
     get:
       description: Fork-only, off by default (see [operator] config). Requires the
         Operator API bearer token, not a normal session/API-user token.
