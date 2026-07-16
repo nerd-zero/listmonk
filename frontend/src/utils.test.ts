@@ -146,32 +146,6 @@ describe('Utils.parseQueryIDs', () => {
 });
 
 // ---------------------------------------------------------------------------
-// escapeHTML
-// ---------------------------------------------------------------------------
-
-describe('Utils.escapeHTML', () => {
-  it('escapes angle brackets', () => {
-    expect(u.escapeHTML('<b>hi</b>')).toBe('&lt;b&gt;hi&lt;&#x2F;b&gt;');
-  });
-
-  it('escapes ampersands', () => {
-    expect(u.escapeHTML('a & b')).toBe('a &amp; b');
-  });
-
-  it('escapes double quotes', () => {
-    expect(u.escapeHTML('"hello"')).toBe('&quot;hello&quot;');
-  });
-
-  it('escapes single quotes', () => {
-    expect(u.escapeHTML("it's")).toBe('it&#39;s');
-  });
-
-  it('leaves plain text unchanged', () => {
-    expect(u.escapeHTML('hello world')).toBe('hello world');
-  });
-});
-
-// ---------------------------------------------------------------------------
 // titleCase
 // ---------------------------------------------------------------------------
 

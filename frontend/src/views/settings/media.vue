@@ -18,9 +18,9 @@
       </div>
     </div>
 
-    <hr />
+    <hr class="m-0" />
 
-    <div v-if="data['upload.provider'] === 'filesystem'">
+    <div v-if="data['upload.provider'] === 'filesystem'" class="flex flex-col gap-4">
       <div class="field">
         <label class="block mb-1 text-sm font-medium">{{ $t('settings.media.upload.path') }}</label>
         <PvInputText v-model="data['upload.filesystem.upload_path']" name="app.upload_path"
@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <div v-if="data['upload.provider'] === 's3'">
+    <div v-if="data['upload.provider'] === 's3'" class="flex flex-col gap-4">
       <div class="field">
         <label class="block mb-1 text-sm font-medium">{{ $t('settings.media.s3.region') }}</label>
         <PvInputText v-model="data['upload.s3.aws_default_region']" @input="onS3URLChange"
@@ -114,3 +114,8 @@ function onS3URLChange() {
   data['upload.s3.url'] = `https://s3.${data['upload.s3.aws_default_region']}.amazonaws.com`;
 }
 </script>
+
+<style scoped>
+:deep(.p-password) { width: 100%; }
+:deep(.p-password-input) { width: 100%; }
+</style>

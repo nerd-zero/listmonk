@@ -11,17 +11,6 @@ dayjs.extend(dayDuration);
 const reEmail = /(.+?)@(.+?)/ig;
 const prefKey = 'listmonk_pref';
 
-const htmlEntities: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-  '/': '&#x2F;',
-  '`': '&#x60;',
-  '=': '&#x3D;',
-};
-
 export default class Utils {
   i18n: ReturnType<typeof import('vue-i18n').useI18n>;
 
@@ -139,15 +128,12 @@ export default class Utils {
     return (ids as (string | number)[]).map((id) => parseInt(String(id), 10));
   };
 
-  // https://stackoverflow.com/a/12034334
-  escapeHTML = (html: string): string => html.replace(/[&<>"'`=/]/g, (s) => htmlEntities[s]);
-
   titleCase = (str: string): string => str[0].toUpperCase() + str.slice(1).toLowerCase();
 
   // UI shortcuts.
   confirm = (msg: string | null, onConfirm?: () => void, onCancel?: () => void): void => {
     showConfirm(
-      !msg ? this.i18n.t('globals.messages.confirm') as string : this.escapeHTML(msg),
+      !msg ? this.i18n.t('globals.messages.confirm') as string : msg,
       onConfirm,
       onCancel,
     );
@@ -159,11 +145,11 @@ export default class Utils {
     onConfirm?: (value: string) => void,
     onCancel?: () => void,
   ): void => {
-    showPrompt(this.escapeHTML(msg), onConfirm, onCancel);
+    showPrompt(msg, onConfirm, onCancel);
   };
 
   toast = (msg: string, typ?: string, duration?: number): void => {
-    showToast(this.escapeHTML(msg), typ || 'is-success', duration || 3000);
+    showToast(msg, typ || 'is-success', duration || 3000);
   };
 
   // Takes a props.row from a Buefy b-column <td> template and

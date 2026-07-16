@@ -1,139 +1,133 @@
 <template>
   <div class="items">
-    <div class="grid">
-      <div class="col-3">
-        <div class="field">
-          <div class="flex items-center gap-2">
-            <PvToggleSwitch v-model="data['security.oidc']['enabled']" name="security.oidc" />
-            <span>{{ $t('settings.security.enableOIDC') }}</span>
-          </div>
-          <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCHelp') }}</small>
-        </div>
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="data['security.oidc']['enabled']" name="security.oidc" />
+        <span>{{ $t('settings.security.enableOIDC') }}</span>
       </div>
-      <div class="col-9">
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCURL') }}</label>
-          <PvInputText v-model="data['security.oidc']['provider_url']" name="oidc.provider_url"
-            placeholder="https://login.yoursite.com" :disabled="!data['security.oidc']['enabled']" :maxlength="300"
-            required type="url" pattern="https?://.*" class="w-full" />
-          <div class="quick-links mt-2" :class="{ disabled: !data['security.oidc']['enabled'] }">
-            <a href="#" @click.prevent="() => setProvider('google')">Google</a>
-            <a href="#" @click.prevent="() => setProvider('microsoft')">Microsoft</a>
-            <a href="#" @click.prevent="() => setProvider('apple')">Apple</a>
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCName') }}</label>
-          <PvInputText v-model="data['security.oidc']['provider_name']" name="oidc.provider_name"
-            :disabled="!data['security.oidc']['enabled']" :maxlength="200" class="w-full" />
-        </div>
-
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCClientID') }}</label>
-          <PvInputText v-model="data['security.oidc']['client_id']" name="oidc.client_id" ref="clientIdEl"
-            :disabled="!data['security.oidc']['enabled']" :maxlength="200" required class="w-full" />
-        </div>
-
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCClientSecret') }}</label>
-          <PvPassword v-model="data['security.oidc']['client_secret']" name="oidc.client_secret"
-            :disabled="!data['security.oidc']['enabled']" :maxlength="200" required :feedback="false" class="w-full" />
-        </div>
-
-        <hr />
-
-        <div class="field">
-          <div class="flex items-center gap-2">
-            <PvToggleSwitch v-model="data['security.oidc']['auto_create_users']" :disabled="!data['security.oidc']['enabled']"
-              name="oidc.auto_create_users" />
-            <span>{{ $t('settings.security.OIDCAutoCreateUsers') }}</span>
-          </div>
-          <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCAutoCreateUsersHelp') }}</small>
-        </div>
-
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCDefaultUserRole') }}</label>
-          <PvSelect v-model="data['security.oidc']['default_user_role_id']"
-            :disabled="!data['security.oidc']['enabled'] || !data['security.oidc']['auto_create_users']"
-            name="oidc.default_user_role_id"
-            :options="userRoles" option-label="name" option-value="id" class="w-full" />
-          <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCDefaultRoleHelp') }}</small>
-        </div>
-
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCDefaultListRole') }}</label>
-          <PvSelect v-model="data['security.oidc']['default_list_role_id']"
-            :disabled="!data['security.oidc']['enabled'] || !data['security.oidc']['auto_create_users']"
-            name="oidc.default_list_role_id"
-            :options="listRoleOptions" option-label="name" option-value="id" class="w-full" />
-          <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCDefaultRoleHelp') }}</small>
-        </div>
-
-        <hr />
-
-        <div class="field">
-          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCRedirectURL') }}</label>
-          <code><copy-text :text="`${serverConfig.root_url}/auth/oidc`" /></code>
-        </div>
-        <p v-if="data['security.oidc']['enabled'] && !isURLOk" class="text-red-500 text-sm mt-1">
-          <i class="pi pi-exclamation-triangle" />
-          {{ $t('settings.security.OIDCRedirectWarning') }}
-        </p>
-      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCHelp') }}</small>
     </div>
 
-    <hr />
-
-    <div class="grid">
-      <div class="col-3">
-        <div class="field">
-          <div class="flex items-center gap-2">
-            <PvToggleSwitch v-model="captchaEnabled" name="security.captcha" />
-            <span>{{ $t('settings.security.enableCaptcha') }}</span>
-          </div>
-          <small class="block mt-1 text-color-secondary">{{ $t('settings.security.enableCaptchaHelp') }}</small>
+    <div class="flex flex-col gap-4" :class="{ disabled: !data['security.oidc']['enabled'] }">
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCURL') }}</label>
+        <PvInputText v-model="data['security.oidc']['provider_url']" name="oidc.provider_url"
+          placeholder="https://login.yoursite.com" :disabled="!data['security.oidc']['enabled']" :maxlength="300"
+          required type="url" pattern="https?://.*" class="w-full" />
+        <div class="quick-links mt-2">
+          <a href="#" @click.prevent="() => setProvider('google')">Google</a>
+          <a href="#" @click.prevent="() => setProvider('microsoft')">Microsoft</a>
+          <a href="#" @click.prevent="() => setProvider('apple')">Apple</a>
         </div>
       </div>
-      <div class="col-9" v-if="captchaEnabled">
-        <div class="field">
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2">
-              <PvRadioButton v-model="selectedProvider" value="altcha" name="captcha_provider" input-id="captcha-altcha" />
-              <label for="captcha-altcha">ALTCHA</label>
-            </div>
-            <div class="flex items-center gap-2">
-              <PvRadioButton v-model="selectedProvider" value="hcaptcha" name="captcha_provider" input-id="captcha-hcaptcha" />
-              <label for="captcha-hcaptcha">hCaptcha (deprecated)</label>
-            </div>
-          </div>
-        </div>
 
-        <div v-if="selectedProvider === 'altcha'">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.altchaComplexity') }}</label>
-            <PvInputNumber v-model="data['security.captcha']['altcha']['complexity']" name="altcha_complexity"
-              :min="1000" :max="1000000" required class="w-full" />
-            <small class="block mt-1 text-color-secondary">{{ $t('settings.security.altchaComplexityHelp') }}</small>
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCName') }}</label>
+        <PvInputText v-model="data['security.oidc']['provider_name']" name="oidc.provider_name"
+          :disabled="!data['security.oidc']['enabled']" :maxlength="200" class="w-full" />
+      </div>
+
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCClientID') }}</label>
+        <PvInputText v-model="data['security.oidc']['client_id']" name="oidc.client_id" ref="clientIdEl"
+          :disabled="!data['security.oidc']['enabled']" :maxlength="200" required class="w-full" />
+      </div>
+
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCClientSecret') }}</label>
+        <PvPassword v-model="data['security.oidc']['client_secret']" name="oidc.client_secret"
+          :disabled="!data['security.oidc']['enabled']" :maxlength="200" required :feedback="false" class="w-full" />
+      </div>
+
+      <hr class="m-0" />
+
+      <div class="field">
+        <div class="flex items-center gap-2">
+          <PvToggleSwitch v-model="data['security.oidc']['auto_create_users']" :disabled="!data['security.oidc']['enabled']"
+            name="oidc.auto_create_users" />
+          <span>{{ $t('settings.security.OIDCAutoCreateUsers') }}</span>
+        </div>
+        <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCAutoCreateUsersHelp') }}</small>
+      </div>
+
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCDefaultUserRole') }}</label>
+        <PvSelect v-model="data['security.oidc']['default_user_role_id']"
+          :disabled="!data['security.oidc']['enabled'] || !data['security.oidc']['auto_create_users']"
+          name="oidc.default_user_role_id"
+          :options="userRoles" option-label="name" option-value="id" class="w-full" />
+        <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCDefaultRoleHelp') }}</small>
+      </div>
+
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCDefaultListRole') }}</label>
+        <PvSelect v-model="data['security.oidc']['default_list_role_id']"
+          :disabled="!data['security.oidc']['enabled'] || !data['security.oidc']['auto_create_users']"
+          name="oidc.default_list_role_id"
+          :options="listRoleOptions" option-label="name" option-value="id" class="w-full" />
+        <small class="block mt-1 text-color-secondary">{{ $t('settings.security.OIDCDefaultRoleHelp') }}</small>
+      </div>
+
+      <hr class="m-0" />
+
+      <div class="field">
+        <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.OIDCRedirectURL') }}</label>
+        <code><copy-text :text="`${serverConfig.root_url}/auth/oidc`" /></code>
+      </div>
+      <p v-if="data['security.oidc']['enabled'] && !isURLOk" class="text-red-500 text-sm mt-1">
+        <i class="pi pi-exclamation-triangle" />
+        {{ $t('settings.security.OIDCRedirectWarning') }}
+      </p>
+    </div>
+
+    <hr class="m-0" />
+
+    <div class="field">
+      <div class="flex items-center gap-2">
+        <PvToggleSwitch v-model="captchaEnabled" name="security.captcha" />
+        <span>{{ $t('settings.security.enableCaptcha') }}</span>
+      </div>
+      <small class="block mt-1 text-color-secondary">{{ $t('settings.security.enableCaptchaHelp') }}</small>
+    </div>
+
+    <div v-if="captchaEnabled" class="flex flex-col gap-4">
+      <div class="field">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <PvRadioButton v-model="selectedProvider" value="altcha" name="captcha_provider" input-id="captcha-altcha" />
+            <label for="captcha-altcha">ALTCHA</label>
+          </div>
+          <div class="flex items-center gap-2">
+            <PvRadioButton v-model="selectedProvider" value="hcaptcha" name="captcha_provider" input-id="captcha-hcaptcha" />
+            <label for="captcha-hcaptcha">hCaptcha (deprecated)</label>
           </div>
         </div>
-        <div v-if="selectedProvider === 'hcaptcha'">
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.captchaKey') }}</label>
-            <PvInputText v-model="data['security.captcha']['hcaptcha']['key']" name="hcaptcha_key" :maxlength="200"
-              required class="w-full" />
-            <small class="block mt-1 text-color-secondary">{{ $t('settings.security.captchaKeyHelp') }}</small>
-          </div>
-          <div class="field">
-            <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.captchaSecret') }}</label>
-            <PvPassword v-model="data['security.captcha']['hcaptcha']['secret']" name="hcaptcha_secret"
-              :maxlength="200" required :feedback="false" class="w-full" />
-          </div>
+      </div>
+
+      <div v-if="selectedProvider === 'altcha'">
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.altchaComplexity') }}</label>
+          <PvInputNumber v-model="data['security.captcha']['altcha']['complexity']" name="altcha_complexity"
+            :min="1000" :max="1000000" required class="w-full" />
+          <small class="block mt-1 text-color-secondary">{{ $t('settings.security.altchaComplexityHelp') }}</small>
+        </div>
+      </div>
+      <div v-if="selectedProvider === 'hcaptcha'">
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.captchaKey') }}</label>
+          <PvInputText v-model="data['security.captcha']['hcaptcha']['key']" name="hcaptcha_key" :maxlength="200"
+            required class="w-full" />
+          <small class="block mt-1 text-color-secondary">{{ $t('settings.security.captchaKeyHelp') }}</small>
+        </div>
+        <div class="field">
+          <label class="block mb-1 text-sm font-medium">{{ $t('settings.security.captchaSecret') }}</label>
+          <PvPassword v-model="data['security.captcha']['hcaptcha']['secret']" name="hcaptcha_secret"
+            :maxlength="200" required :feedback="false" class="w-full" />
         </div>
       </div>
     </div>
 
-    <hr />
+    <hr class="m-0" />
 
     <p class="settings-section-label">{{ $t('settings.security.trustedURLs') }} / CORS</p>
     <div class="field">
@@ -229,3 +223,8 @@ function setProvider(provider: string) {
   nextTick(() => { clientIdEl.value?.$el?.focus(); });
 }
 </script>
+
+<style scoped>
+:deep(.p-password) { width: 100%; }
+:deep(.p-password-input) { width: 100%; }
+</style>
