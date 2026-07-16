@@ -231,8 +231,8 @@ function AddSenderIdentityForm({
 
   const addIdentity = usePostV1OrgsOrgIDInstancesInstanceIDSenderIdentity({
     mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
           queryKey: getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryKey(
             orgId,
             instanceId,
@@ -344,10 +344,14 @@ function AddSenderIdentityForm({
 
       <Button
         className="self-start"
-        disabled={!canSubmit || addIdentity.isPending}
+        disabled={!canSubmit || addIdentity.isPending || addIdentity.isSuccess}
         onClick={submit}
       >
-        {addIdentity.isPending ? "Adding…" : "Add"}
+        {addIdentity.isPending
+          ? "Adding…"
+          : addIdentity.isSuccess
+            ? "Added"
+            : "Add"}
       </Button>
     </div>
   );
