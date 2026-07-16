@@ -209,18 +209,12 @@
                 <div class="field" data-cy="btn-archive">
                   <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.archiveEnable') }}</label>
                   <small class="block mt-1 text-color-secondary">{{ $t('campaigns.archiveHelp') }}</small>
-                  <div class="grid">
-                    <div class="col">
-                      <div class="flex items-center gap-2">
-                        <PvToggleSwitch data-cy="btn-archive" v-model="form.archive" :disabled="!canArchive" />
-                      </div>
-                    </div>
-                    <div class="col-12">
-                      <a :href="`${serverConfig.root_url}/archive/${data.uuid}`" target="_blank" rel="noopener noreferer"
-                        :style="{ color: !form.archive ? 'var(--lm-text-subtle)' : 'inherit' }" aria-label="$t('campaigns.archive')">
-                        <i class="pi pi-external-link" />
-                      </a>
-                    </div>
+                  <div class="flex items-center gap-2 mt-2">
+                    <PvToggleSwitch data-cy="btn-archive" v-model="form.archive" :disabled="!canArchive" />
+                    <a :href="`${serverConfig.root_url}/archive/${data.uuid}`" target="_blank" rel="noopener noreferer"
+                      :style="{ color: !form.archive ? 'var(--lm-text-subtle)' : 'inherit' }" :aria-label="$t('campaigns.archive')">
+                      <i class="pi pi-external-link" />
+                    </a>
                   </div>
                 </div>
               </div>
@@ -254,18 +248,16 @@
             </div>
 
             <div class="field">
-              <div class="field">
-                <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.archiveSlug') }}</label>
-                <small class="block mt-1 text-color-secondary">{{ $t('campaigns.archiveSlugHelp') }}</small>
-                <PvInputText :maxlength="200" ref="focus" v-model="form.archiveSlug" name="archive_slug"
-                  data-cy="archive-slug" :disabled="!canArchive || !form.archive" class="w-full" />
-              </div>
+              <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.archiveSlug') }}</label>
+              <small class="block mt-1 text-color-secondary">{{ $t('campaigns.archiveSlugHelp') }}</small>
+              <PvInputText :maxlength="200" ref="focus" v-model="form.archiveSlug" name="archive_slug"
+                data-cy="archive-slug" :disabled="!canArchive || !form.archive" class="w-full" />
             </div>
             <div class="field">
               <label class="block mb-1 text-sm font-medium">{{ $t('campaigns.archiveMeta') }}</label>
               <small class="block mt-1 text-color-secondary">{{ $t('campaigns.archiveMetaHelp') }}</small>
               <PvTextarea v-model="form.archiveMetaStr" name="archive_meta" data-cy="archive-meta"
-                :disabled="!canArchive || !form.archive" rows="20" class="w-full" />
+                :disabled="!canArchive || !form.archive" rows="15" class="w-full" />
             </div>
           </section>
         </PvTabPanel><!-- archive -->
@@ -277,7 +269,7 @@
     </PvDialog>
 
     <campaign-preview v-if="isPreviewingArchive" @close="onToggleArchivePreview" type="campaign" :id="data.id"
-      :archive-meta="form.archiveMetaStr" :title="data.title" :content-type="data.contentType"
+      :archive-meta="form.archiveMetaStr" :title="data.name" :content-type="data.contentType"
       :template-id="form.archiveTemplateId" is-post is-archive />
   </section>
 </template>
@@ -522,10 +514,17 @@ async function updateCampaign(typ?: string) {
 
 function onUpdateCampaignArchive() {
   if (isEditing.value && canEdit.value) return;
+  let archiveMeta;
+  try {
+    archiveMeta = JSON.parse(form.archiveMetaStr);
+  } catch (e: any) {
+    $utils.toast(e.toString(), 'is-danger');
+    return;
+  }
   $api.updateCampaignArchive(data.value.id, {
     archive: form.archive,
     archive_template_id: form.archiveTemplateId,
-    archive_meta: JSON.parse(form.archiveMetaStr),
+    archive_meta: archiveMeta,
     archive_slug: form.archiveSlug,
   }).then((d: any) => { form.archiveSlug = d.archiveSlug; });
 }
