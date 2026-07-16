@@ -277,7 +277,7 @@
     </PvDialog>
 
     <campaign-preview v-if="isPreviewingArchive" @close="onToggleArchivePreview" type="campaign" :id="data.id"
-      :archive-meta="form.archiveMetaStr" :title="data.title" :content-type="data.contentType"
+      :archive-meta="form.archiveMetaStr" :title="data.name" :content-type="data.contentType"
       :template-id="form.archiveTemplateId" is-post is-archive />
   </section>
 </template>
@@ -522,10 +522,17 @@ async function updateCampaign(typ?: string) {
 
 function onUpdateCampaignArchive() {
   if (isEditing.value && canEdit.value) return;
+  let archiveMeta;
+  try {
+    archiveMeta = JSON.parse(form.archiveMetaStr);
+  } catch (e: any) {
+    $utils.toast(e.toString(), 'is-danger');
+    return;
+  }
   $api.updateCampaignArchive(data.value.id, {
     archive: form.archive,
     archive_template_id: form.archiveTemplateId,
-    archive_meta: JSON.parse(form.archiveMetaStr),
+    archive_meta: archiveMeta,
     archive_slug: form.archiveSlug,
   }).then((d: any) => { form.archiveSlug = d.archiveSlug; });
 }
