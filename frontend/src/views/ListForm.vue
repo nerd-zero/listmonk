@@ -93,7 +93,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['finished', 'close']);
 
-const { $utils } = useGlobal();
+const { $utils, $api } = useGlobal();
 const { createList, updateList } = listsApi();
 const { t } = useI18n();
 const { loading } = storeToRefs(useMainStore());
@@ -115,6 +115,7 @@ const isArchived = computed({
 
 function onCreateList() {
   createList(form as any).then((data: any) => {
+    $api.getLists({ minimal: true, per_page: 'all', status: 'active' });
     emit('finished');
     emit('close');
     $utils.toast(t('globals.messages.created', { name: data.name }));
@@ -123,6 +124,7 @@ function onCreateList() {
 
 function onUpdateList() {
   updateList(props.data.id, form as any).then((data: any) => {
+    $api.getLists({ minimal: true, per_page: 'all', status: 'active' });
     emit('finished');
     emit('close');
     $utils.toast(t('globals.messages.updated', { name: data.name }));
