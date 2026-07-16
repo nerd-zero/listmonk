@@ -255,7 +255,7 @@ import { getLists as listsApi } from '../api/generated/endpoints/lists/lists';
 import { getCampaigns as campaignsApi } from '../api/generated/endpoints/campaigns/campaigns';
 import { getSettings as settingsApi } from '../api/generated/endpoints/settings/settings';
 
-const { $utils } = useGlobal();
+const { $utils, $api } = useGlobal();
 const {
   listLists, getList, deleteList, deleteLists,
 } = listsApi();
@@ -357,6 +357,7 @@ function onDeleteList(list: any) {
     () => {
       deleteList(list.id).then(() => {
         fetchLists();
+        $api.getLists({ minimal: true, per_page: 'all', status: 'active' });
         $utils.toast(t('globals.messages.deleted', { name: list.name }));
       });
     },
@@ -381,6 +382,7 @@ function onDeleteLists() {
     }
     deleteLists(params).then(() => {
       fetchLists();
+      $api.getLists({ minimal: true, per_page: 'all', status: 'active' });
       $utils.toast(tc('globals.messages.deletedCount', numSelectedLists.value, { num: numSelectedLists.value, name }));
     });
   };
