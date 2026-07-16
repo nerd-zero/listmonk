@@ -12,7 +12,7 @@
           </a>
         </div>
 
-        <div :class="{ disabled: !item.enabled }">
+        <div class="flex flex-col gap-4" :class="{ disabled: !item.enabled }">
           <div class="field">
             <label class="block mb-1 text-sm font-medium">{{ $t('globals.fields.name') }}</label>
             <PvInputText v-model="item.name" name="name" placeholder="mymessenger" :maxlength="200" class="w-full" />
