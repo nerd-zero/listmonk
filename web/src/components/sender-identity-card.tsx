@@ -53,6 +53,10 @@ export function SenderIdentityCard({
     return <Skeleton className="h-32 w-full" />;
   }
 
+  if (identityQuery.error instanceof ApiError && identityQuery.error.status === 404) {
+    return <AddSenderIdentityForm orgId={orgId} instanceId={instanceId} />;
+  }
+
   if (identityQuery.data) {
     const detail = unwrap<SenderIdentityResponse>(identityQuery.data).data;
     if (detail?.identity) {
@@ -64,10 +68,6 @@ export function SenderIdentityCard({
         />
       );
     }
-  }
-
-  if (identityQuery.error instanceof ApiError && identityQuery.error.status === 404) {
-    return <AddSenderIdentityForm orgId={orgId} instanceId={instanceId} />;
   }
 
   return (
@@ -94,8 +94,8 @@ function SenderIdentityStatus({
 
   const deleteIdentity = useDeleteV1OrgsOrgIDInstancesInstanceIDSenderIdentity({
     mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
           queryKey: getGetV1OrgsOrgIDInstancesInstanceIDSenderIdentityQueryKey(
             orgId,
             instanceId,
