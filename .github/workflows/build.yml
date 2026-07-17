@@ -31,6 +31,14 @@ jobs:
           COUNT=$(git tag -l "${YEAR_MONTH}.*" | wc -l)
           BUILD_NUM=$(printf "%03d" $((COUNT + 1)))
           VER="${YEAR_MONTH}.${BUILD_NUM}"
+          # master isn't a real release branch -- there's no separate prod
+          # branch/tag mechanism here yet, so without a marker every master
+          # build looks identical to a real release. -alpha distinguishes
+          # it (feature/** builds already look pre-release by branch name
+          # alone, so leave those as bare CalVer).
+          if [ "${GITHUB_REF_NAME}" = "master" ]; then
+            VER="${VER}-alpha"
+          fi
           echo "APP_VERSION=${VER}" >> $GITHUB_OUTPUT
           echo "APP_IMAGE_REPOSITORY=${APP_IMAGE_REPOSITORY}:${VER}" >> $GITHUB_OUTPUT
           echo "APP_BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
