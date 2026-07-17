@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - prod
       - "feature/**"
   pull_request:
     branches:
@@ -31,12 +32,11 @@ jobs:
           COUNT=$(git tag -l "${YEAR_MONTH}.*" | wc -l)
           BUILD_NUM=$(printf "%03d" $((COUNT + 1)))
           VER="${YEAR_MONTH}.${BUILD_NUM}"
-          # master isn't a real release branch -- there's no separate prod
-          # branch/tag mechanism here yet, so without a marker every master
-          # build looks identical to a real release. -alpha distinguishes
-          # it (feature/** builds already look pre-release by branch name
-          # alone, so leave those as bare CalVer).
-          if [ "${GITHUB_REF_NAME}" = "master" ]; then
+          # prod ships the bare CalVer tag (a real release); every other
+          # trigger (master, feature/**) gets -alpha so it's never
+          # confused for one -- matches the listnun repo's own build.yml
+          # convention.
+          if [ "${GITHUB_REF_NAME}" != "prod" ]; then
             VER="${VER}-alpha"
           fi
           echo "APP_VERSION=${VER}" >> $GITHUB_OUTPUT
