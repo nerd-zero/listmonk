@@ -64,18 +64,19 @@ jobs:
         id: web_oidc
         run: |
           # prod branch must bake in prod's own Zitadel instance (id.listnun.app)
-          # and app.listnun.app callback -- everything else (main/alpha builds)
-          # keeps pointing at dev. These are compile-time Vite env vars baked
-          # into the static JS bundle, not runtime container env vars, so
-          # getting this branch wrong ships a build that silently calls back
-          # to the wrong environment (found live: a prod pod running an
-          # alpha-built image had https://dev.listnun.app hardcoded in its
-          # bundle).
+          # and the bare apex domain's callback (listnun.app is the real web
+          # URL now, not app.listnun.app -- see infra PR adding the apex
+          # ingress rule) -- everything else (main/alpha builds) keeps
+          # pointing at dev. These are compile-time Vite env vars baked into
+          # the static JS bundle, not runtime container env vars, so getting
+          # this branch wrong ships a build that silently calls back to the
+          # wrong environment (found live: a prod pod running an alpha-built
+          # image had https://dev.listnun.app hardcoded in its bundle).
           if [[ "${{ github.ref_name }}" == "prod" ]]; then
             echo "AUTHORITY=https://id.listnun.app" >> "$GITHUB_OUTPUT"
             echo "CLIENT_ID=382171781189861870" >> "$GITHUB_OUTPUT"
-            echo "REDIRECT_URI=https://app.listnun.app/auth/callback" >> "$GITHUB_OUTPUT"
-            echo "POST_LOGOUT_REDIRECT_URI=https://app.listnun.app" >> "$GITHUB_OUTPUT"
+            echo "REDIRECT_URI=https://listnun.app/auth/callback" >> "$GITHUB_OUTPUT"
+            echo "POST_LOGOUT_REDIRECT_URI=https://listnun.app" >> "$GITHUB_OUTPUT"
           else
             echo "AUTHORITY=https://id.nerdzero.rocks" >> "$GITHUB_OUTPUT"
             echo "CLIENT_ID=381629669008539928" >> "$GITHUB_OUTPUT"
