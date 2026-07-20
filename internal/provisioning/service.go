@@ -1272,6 +1272,9 @@ func mapCustomDomainConstraint(err error) error {
 func (s *Service) pushSMTPCredentials(ctx context.Context, inst db.Instance, fromAddress string) error {
 	pmServer, err := s.q.GetPostmarkServerByInstanceID(ctx, inst.ID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInstanceHasNoPostmarkServer
+		}
 		return fmt.Errorf("get postmark server: %w", err)
 	}
 	token, err := cryptoutil.Decrypt(s.pm.EncryptionKey, pmServer.ApiTokenEncrypted)
