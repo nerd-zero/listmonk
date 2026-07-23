@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"strings"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/knadh/listmonk/internal/core"
@@ -166,6 +168,21 @@ func (s *store) CreateLink(ctx context.Context, tenantID int, url string) (strin
 	}
 
 	return out, nil
+}
+
+// GetTenantRootURL returns the tenant's own app.root_url setting, trimmed
+// of a trailing slash. Returns an empty string, no error, if the tenant
+// has no app.root_url row (the caller falls back to the process-global
+// default in that case).
+func (s *store) GetTenantRootURL(tenantID int) (string, error) {
+	var out string
+	if err := s.queries.GetTenantRootURL.Get(&out, tenantID); err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return strings.TrimSuffix(out, "/"), nil
 }
 
 // RecordBounce records a bounce event and returns the bounce count.
