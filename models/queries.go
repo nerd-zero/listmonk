@@ -108,6 +108,7 @@ type Queries struct {
 	GetSettings         *sqlx.Stmt `query:"get-settings"`
 	UpdateSettings      *sqlx.Stmt `query:"update-settings"`
 	UpdateSettingsByKey *sqlx.Stmt `query:"update-settings-by-key"`
+	GetTenantRootURL    *sqlx.Stmt `query:"get-tenant-root-url"`
 
 	// GetStats *sqlx.Stmt `query:"get-stats"`
 	RecordBounce                *sqlx.Stmt `query:"record-bounce"`

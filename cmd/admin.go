@@ -120,6 +120,15 @@ func (a *App) GetServerConfig(c echo.Context) error {
 
 	if s, err := a.core.GetSettings(c.Request().Context(), tenantID(c)); err == nil {
 		out.ScrubEnabled = s.Scrub.Enabled && s.Scrub.URL != "" && s.Scrub.APIKey != ""
+
+		// a.cfg.FromEmail (out.FromEmail's default above) is a single
+		// boot-time value derived from tenant 1's settings - every other
+		// tenant's "New Campaign" form would otherwise be pre-filled with
+		// tenant 1's From address. Use this tenant's own app.from_email
+		// instead, same as RootURL above.
+		if a.cfg.MultiTenancyEnabled && s.AppFromEmail != "" {
+			out.FromEmail = s.AppFromEmail
+		}
 	}
 
 	a.Lock()

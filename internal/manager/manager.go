@@ -59,6 +59,7 @@ type Store interface {
 	CreateLink(ctx context.Context, tenantID int, url string) (string, error)
 	BlocklistSubscriber(id int64) error
 	DeleteSubscriber(id int64) error
+	GetTenantRootURL(tenantID int) (string, error)
 }
 
 // Messenger is an interface for a generic messaging backend,
@@ -108,6 +109,14 @@ type Manager struct {
 
 	tpls    map[int]*models.Template
 	tplsMut sync.RWMutex
+
+	// Per-tenant resolution of tenantURLCfg, keyed by tenant ID. m.cfg's
+	// own URL fields are process-global and always derived from tenant
+	// 1's app.root_url (see cmd/init.go's initSettings) - this cache lets
+	// TemplateFuncs and NewCampaignMessage generate URLs against each
+	// tenant's own root_url/custom domain instead.
+	tenantURLs    map[int]tenantURLCfg
+	tenantURLsMut sync.RWMutex
 
 	// Links generated using Track() are cached here so as to not query
 	// the database for the link UUID for every message sent. This has to
@@ -179,6 +188,58 @@ type Config struct {
 	ScanCampaigns bool
 }
 
+// tenantURLCfg mirrors Config's URL template fields, resolved against one
+// tenant's own app.root_url rather than the process-global default.
+type tenantURLCfg struct {
+	RootURL      string
+	UnsubURL     string
+	OptinURL     string
+	MessageURL   string
+	ViewTrackURL string
+	LinkTrackURL string
+	ArchiveURL   string
+}
+
+// urlsFor returns the URL templates to use for a given tenant's campaign
+// messages, resolved against that tenant's own app.root_url (which
+// reflects its custom domain, if any) instead of m.cfg's process-global
+// URL fields, which are always derived from tenant 1's settings (see
+// cmd/init.go's initSettings). Falls back to m.cfg's URLs if the tenant
+// has no app.root_url set or the lookup fails. Cached for the process
+// lifetime, same as m.tpls - a full app reload (cmd/admin.go's ReloadApp)
+// rebuilds the manager and clears it.
+func (m *Manager) urlsFor(tenantID int) tenantURLCfg {
+	m.tenantURLsMut.RLock()
+	u, ok := m.tenantURLs[tenantID]
+	m.tenantURLsMut.RUnlock()
+	if ok {
+		return u
+	}
+
+	root := m.cfg.RootURL
+	if r, err := m.store.GetTenantRootURL(tenantID); err != nil {
+		m.log.Printf("error fetching root URL for tenant %d, falling back to default: %v", tenantID, err)
+	} else if r != "" {
+		root = r
+	}
+
+	u = tenantURLCfg{
+		RootURL:      root,
+		UnsubURL:     fmt.Sprintf("%s/subscription/%%s/%%s", root),
+		OptinURL:     fmt.Sprintf("%s/subscription/optin/%%s?%%s", root),
+		LinkTrackURL: fmt.Sprintf("%s/link/%%s/%%s/%%s", root),
+		MessageURL:   fmt.Sprintf("%s/campaign/%%s/%%s", root),
+		ArchiveURL:   root + "/archive",
+		ViewTrackURL: fmt.Sprintf("%s/campaign/%%s/%%s/px.png", root),
+	}
+
+	m.tenantURLsMut.Lock()
+	m.tenantURLs[tenantID] = u
+	m.tenantURLsMut.Unlock()
+
+	return u
+}
+
 var pushTimeout = time.Second * 3
 
 // New returns a new instance of Mailer.
@@ -205,6 +266,7 @@ func New(cfg Config, store Store, resolver MessengerResolver, i *i18n.I18n, l *l
 		messengers:   make(map[string]Messenger),
 		pipes:        make(map[int]*pipe),
 		tpls:         make(map[int]*models.Template),
+		tenantURLs:   make(map[int]tenantURLCfg),
 		links:        make(map[string]string),
 		nextPipes:    make(chan *pipe, 1000),
 		campMsgQ:     make(chan CampaignMessage, cfg.Concurrency*cfg.MessageRate*2),
@@ -412,6 +474,8 @@ func (m *Manager) GetTpl(id int) (*models.Template, error) {
 // TemplateFuncs returns the template functions to be applied into
 // compiled campaign templates.
 func (m *Manager) TemplateFuncs(c *models.Campaign) template.FuncMap {
+	urls := m.urlsFor(c.TenantID)
+
 	f := template.FuncMap{
 		"TrackLink": func(url string, msg *CampaignMessage) string {
 			if m.cfg.DisableTracking {
@@ -436,7 +500,7 @@ func (m *Manager) TemplateFuncs(c *models.Campaign) template.FuncMap {
 			}
 
 			return template.HTML(fmt.Sprintf(`<img src="%s" alt="" />`,
-				fmt.Sprintf(m.cfg.ViewTrackURL, msg.Campaign.UUID, subUUID)))
+				fmt.Sprintf(urls.ViewTrackURL, msg.Campaign.UUID, subUUID)))
 		},
 		"UnsubscribeURL": func(msg *CampaignMessage) string {
 			return msg.unsubURL
@@ -447,16 +511,16 @@ func (m *Manager) TemplateFuncs(c *models.Campaign) template.FuncMap {
 		"OptinURL": func(msg *CampaignMessage) string {
 			// Add list IDs.
 			// TODO: Show private lists list on optin e-mail
-			return fmt.Sprintf(m.cfg.OptinURL, msg.Subscriber.UUID, "")
+			return fmt.Sprintf(urls.OptinURL, msg.Subscriber.UUID, "")
 		},
 		"MessageURL": func(msg *CampaignMessage) string {
-			return fmt.Sprintf(m.cfg.MessageURL, c.UUID, msg.Subscriber.UUID)
+			return fmt.Sprintf(urls.MessageURL, c.UUID, msg.Subscriber.UUID)
 		},
 		"ArchiveURL": func() string {
-			return m.cfg.ArchiveURL
+			return urls.ArchiveURL
 		},
 		"RootURL": func() string {
-			return m.cfg.RootURL
+			return urls.RootURL
 		},
 	}
 
@@ -707,10 +771,12 @@ func (m *Manager) trackLink(tenantID int, url, campUUID, subUUID string) string 
 
 	url = strings.ReplaceAll(url, "&amp;", "&")
 
+	linkTrackURL := m.urlsFor(tenantID).LinkTrackURL
+
 	m.linksMut.RLock()
 	if uu, ok := m.links[url]; ok {
 		m.linksMut.RUnlock()
-		return fmt.Sprintf(m.cfg.LinkTrackURL, uu, campUUID, subUUID)
+		return fmt.Sprintf(linkTrackURL, uu, campUUID, subUUID)
 	}
 	m.linksMut.RUnlock()
 
@@ -727,7 +793,7 @@ func (m *Manager) trackLink(tenantID int, url, campUUID, subUUID string) string 
 	m.links[url] = uu
 	m.linksMut.Unlock()
 
-	return fmt.Sprintf(m.cfg.LinkTrackURL, uu, campUUID, subUUID)
+	return fmt.Sprintf(linkTrackURL, uu, campUUID, subUUID)
 }
 
 // sendNotif sends a notification to registered admin e-mails.
