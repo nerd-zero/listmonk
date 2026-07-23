@@ -7,6 +7,14 @@ SELECT data FROM mat_dashboard_counts WHERE tenant_id = $1;
 -- name: get-settings
 SELECT JSON_OBJECT_AGG(key, value) AS settings FROM (SELECT * FROM settings WHERE tenant_id = $1 ORDER BY key) t;
 
+-- name: get-tenant-root-url
+-- Used by internal/manager to resolve each tenant's own app.root_url for
+-- the URLs it generates (tracking pixel, link clicks, unsubscribe, optin,
+-- archive) instead of the boot-time global config, which is always pinned
+-- to tenant 1 (see cmd/init.go's initSettings). Returns no rows if the
+-- tenant has no app.root_url set, which the caller falls back on.
+SELECT value #>> '{}' FROM settings WHERE tenant_id = $1 AND key = 'app.root_url';
+
 -- name: update-settings
 UPDATE settings AS s SET value = c.value
     -- For each key in the incoming JSON map, update the row with the key and its value.
